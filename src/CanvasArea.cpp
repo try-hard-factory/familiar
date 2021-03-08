@@ -38,33 +38,38 @@ bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     }
 
     Cairo::Matrix matrix(1.0, 0.0, 0.0, 1.0, 0.0, 0.0);
-    matrix.translate(mShift.x, mShift.y);
+    matrix.scale(mScale, mScale);
+    matrix.translate(mShift.x/mScale, mShift.y/mScale);
 
     cr->transform(matrix);
 
 
-
-    cr->set_source_rgb( .0,.0,.0 );
-    cr->set_line_width(3);
-    if ( mMouseTrail.size() )
+    if ( const auto i{mMouseTrail.size()} )
     {
-        cr->move_to(mMouseTrail[0].x,mMouseTrail[0].y);
-        for (auto const & a:mMouseTrail)
+        cr->set_source_rgb( .0,.0,.0 );
+        cr->set_line_width(3);
+        cr->move_to(mMouseTrail[0].x, mMouseTrail[0].y);
+        for (auto const & a : mMouseTrail)
         {
             cr->line_to( a.x, a.y);
         }
         cr->stroke();
+
+        cr->set_source_rgb( .6,.6,.6 );
+        cr->set_line_width(1);
+        cr->move_to(mMouseTrail[i-1].x,mMouseTrail[i-1].y);
+        cr->line_to( mMousePos.x, mMousePos.y );
+        cr->stroke();
     }
 
-    auto const ic{Collision(mMousePos)};
     int i{0};
-    for ( auto const & a:mFleck )
-    {
-        if ( ic == i++ )
+    for (const auto& a : mRectangles) {
+        if ( ( mCollision.nIndex == i++ ) &&
+             ( mCollision.eWhat == Collision_t::EWhat::Fleck ) )
             cr->set_source_rgb( .9, .0, .0 );
         else
             cr->set_source_rgb( .0, .9, .0 );
-        cr->arc(a.x, a.y, a.r, 0, 2*M_PI);
+        cr->rectangle(a.x, a.y, a.w, a.h);
         cr->fill();
     }
 
@@ -73,47 +78,30 @@ bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     cr->arc(mMousePos.x, mMousePos.y, 11, 0, 2*M_PI);
     cr->fill();
 
-//    // draw a blue circle at last mouse position
-//    cr->set_source_rgb(.0,.0,.9);
-//    cr->arc(mMousePos.x, mMousePos.y, 5, 0, 2*M_PI);
-//    cr->fill();
-//
-//    cr->set_source_rgb( .0,.0,.0 );
-//    cr->set_line_width(3);
-//    if ( mMouseTrail.size() )
-//    {
-//        cr->move_to(mMouseTrail[0].x,mMouseTrail[0].y);
-//        for (auto const & a:mMouseTrail)
-//        {
-//            cr->line_to( a.x, a.y);
-//        }
-//        cr->stroke();
-//    }
-//
-//    auto const ic{Collision(mMousePos)};
-//    int i{0};
-//    for ( auto const & a:mFleck )
-//    {
-//        if ( ic == i++ ) {
-//            cr->set_source_rgb(.9, .0, .0);
-//        } else {
-//            cr->set_source_rgb(.0, .9, .0);
-//        }
-//        cr->arc(a.x, a.y, a.r, 0, 2*M_PI);
-//        cr->fill();
-//    }
-//
-//    cr->set_source_rgb( mMouseColor.r, mMouseColor.b, mMouseColor.b );
-//    cr->arc(mMousePos.x, mMousePos.y, 5, 0, 2*M_PI);
-//    cr->fill();
     return true;
 }
 
 bool CanvasArea::on_motion_notify_event(GdkEventMotion* event) {
-    mMousePos = *event - mShift;
-    if ((event->type & GDK_MOTION_NOTIFY ) && (event->state & GDK_BUTTON3_MASK)) {
-        mShift = mShiftStart - (mEventPress - *event);
+    mMousePos = (*event - mShift) / mScale;
+
+    if (event->type & GDK_MOTION_NOTIFY ) {
+        if (event->state & GDK_BUTTON3_MASK) {
+            switch ( mCollision.eWhat  )
+            {
+                case Collision_t::EWhat::Fleck:
+                    mRectangles[mCollision.nIndex] = mMousePos - mCollision.tOffset;
+                    break;
+                case Collision_t::EWhat::Line:
+                    break;
+                case Collision_t::EWhat::none:
+                    mShift = mShiftStart - (mEventPress - *event);
+                    break;
+            }
+        } else {
+            auto const bCol { Collision(mMousePos) };
+        }
     }
+
     queue_draw();
     return true;
 }
@@ -125,24 +113,43 @@ bool CanvasArea::on_scroll_event(GdkEventScroll* event) {
         mMouseColor = {.0, .9, .0};
     }
 
+    Point const p0{ (*event - mShift) / mScale };
+    mScale *= (event->delta_y>0) ? 0.9 : 1.1;
+    if (mScale < 0.01) mScale = 0.01;
+    Point const p1{ (*event - mShift)/mScale };
+    mShift -= (p0-p1)*mScale;
+
     queue_draw();
     return true;
 }
 
 bool CanvasArea::on_button_press_event(GdkEventButton* event) {
-    mMouseColor = { .0, .0, .9};
+    mMouseColor = {.0,.0,.9};
     if (event->type == GDK_BUTTON_PRESS) {
         mEventPress = *event;
         mShiftStart = mShift;
+    } else {
+        auto const bCol {Collision(mMousePos)};
+    }
+
+    if (event->button = 3) {
+        switch (mCollision.eWhat) {
+            case Collision_t::EWhat::Fleck : break;
+            case Collision_t::EWhat::Line : break;
+            case Collision_t::EWhat::none : break;
+        }
     }
     queue_draw();
     return true;
 }
 
 bool CanvasArea::on_button_release_event(GdkEventButton* event) {
-    if ((event->type & GDK_MOTION_NOTIFY ) && (event->state & GDK_BUTTON1_MASK)) {
-        mMouseColor = { .5,.5,.5 };
-        mMouseTrail.emplace_back( Point{ *event - mShift } );
+
+    if (event->type & GDK_MOTION_NOTIFY ) {
+        if (event->state & GDK_BUTTON1_MASK) {
+            mMouseColor = { .5,.5,.5 };
+            mMouseTrail.emplace_back( Point{ *event - mShift }/mScale );
+        }
     }
 
     queue_draw();
@@ -150,16 +157,21 @@ bool CanvasArea::on_button_release_event(GdkEventButton* event) {
 }
 
 int CanvasArea::Collision(const Point& tPoint) {
+    mCollision.eWhat = Collision_t::EWhat::none;
     int i{0};
-    for ( auto& a : mFleck )
+    for ( auto& a : mRectangles )
     {
-        if ( distance(a, tPoint) < a.r )
+        if ( isContainPoint(a, tPoint) )
         {
-            return std::move(i);
+            mCollision.tWhere = tPoint;
+            mCollision.tOffset = tPoint - a;
+            mCollision.eWhat = Collision_t::EWhat::Fleck;
+            mCollision.nIndex = i;
+            return std::move(true);
         }
         ++i;
     }
-    return -1;
+    return false;
 }
 
 void CanvasArea::on_dropped_file(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
