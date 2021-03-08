@@ -62,31 +62,14 @@ protected:
     bool on_button_press_event(GdkEventButton* event) override;
     bool on_motion_notify_event(GdkEventMotion* event) override;
     bool on_button_release_event(GdkEventButton* event) override;
-
     void on_dropped_file(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y, const Gtk::SelectionData& selection_data, guint info, guint time);
 
 
     Point mCtxSize {.0, .0};
-
-
-
-
     Point mEventRelease {.0,.0};
 
-
-
-
-
-//    FleckVector mFleck {
-//            {30,30,20}, {300,300,50}, {500,200,40},
-//            {40,50,25}, {240,320,30}, {580,270,45}
-//    };
-
     ContentController<Rectangle_t> mContentController;
-//    RectangleVector mRectangles {
-//            {30,30,20, 20}, {300,300,50, 50}, {500,200,40, 40},
-//            {40,50,25, 25}, {240,320,30, 30}, {580,270,45, 45}
-//    };
+
 
 private:
     Glib::RefPtr<Gdk::Pixbuf> image;

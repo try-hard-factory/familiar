@@ -5,6 +5,9 @@
 #include "CanvasArea.h"
 #include <gdkmm/general.h> // set_source_pixbuf()
 #include <iostream>
+#include "Logger.h"
+
+extern Logger logger;
 
 bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     Gtk::Allocation allocation{ get_allocation() };
@@ -42,13 +45,15 @@ bool CanvasArea::on_scroll_event(GdkEventScroll* event) {
 }
 
 bool CanvasArea::on_button_press_event(GdkEventButton* event) {
+    LOG_DEBUG(logger, "BTN PRESS EVENT. X: ", event->x, ", Y: ", event->y);
     mContentController.buttonPressEvent(event);
     queue_draw();
     return true;
 }
 
 bool CanvasArea::on_button_release_event(GdkEventButton* event) {
-    mContentController.buttonPressEvent(event);
+    LOG_DEBUG(logger, "BTN RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+    mContentController.buttonReleaseEvent(event);
     queue_draw();
     return true;
 }

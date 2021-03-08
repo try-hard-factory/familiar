@@ -136,7 +136,6 @@ bool ContentController<T>::detectCollision(const Point &tPoint) {
 
 template<typename T>
 void ContentController<T>::scrollEvent(GdkEventScroll* event) {
-
     if ( event->delta_y>0 ) {
         mMouseColor = {.9, .0, .0};
     } else {
