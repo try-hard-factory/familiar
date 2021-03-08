@@ -66,7 +66,7 @@ protected:
 
 
     Point mCtxSize {.0, .0};
-    Point mEventRelease {.0,.0};
+
 
     ContentController<Rectangle_t> mContentController;
 

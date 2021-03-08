@@ -45,14 +45,12 @@ bool CanvasArea::on_scroll_event(GdkEventScroll* event) {
 }
 
 bool CanvasArea::on_button_press_event(GdkEventButton* event) {
-    LOG_DEBUG(logger, "BTN PRESS EVENT. X: ", event->x, ", Y: ", event->y);
     mContentController.buttonPressEvent(event);
     queue_draw();
     return true;
 }
 
 bool CanvasArea::on_button_release_event(GdkEventButton* event) {
-    LOG_DEBUG(logger, "BTN RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
     mContentController.buttonReleaseEvent(event);
     queue_draw();
     return true;

@@ -7,6 +7,9 @@
 #include <gtkmm/drawingarea.h>
 #include <glibmm.h>
 #include "Point.h"
+#include "Logger.h"
+
+extern Logger logger;
 
 struct Color {
     double r{0};
@@ -50,7 +53,8 @@ private:
     Point mMousePos;
     Point mShift {.0,.0};
     double mScale { 1.0 };
-    Point mEventPress {.0,.0};
+    Point mPressPoint {.0, .0};
+    Point mReleasePoint {.0,.0};
     Point mShiftStart {.0,.0};
     Color mMouseColor{ .5, .5, .5 };
     bool mShiftInit { true };
@@ -106,7 +110,7 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
                     array[mCollision.nIndex] = mMousePos - mCollision.tOffset;
                     break;
                 case Collision_t::EWhat::none:
-                    mShift = mShiftStart - (mEventPress - *event);
+                    mShift = mShiftStart - (mPressPoint - *event);
                     break;
             }
         } else {
@@ -153,18 +157,40 @@ template<typename T>
 void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
     mMouseColor = {.0,.0,.9};
     if (event->type == GDK_BUTTON_PRESS) {
-        mEventPress = *event;
+        mPressPoint = *event;
         mShiftStart = mShift;
     } else {
         detectCollision(mMousePos);
     }
 
-    if (event->button = 3) {
-        switch (mCollision.eWhat) {
-            case Collision_t::EWhat::Rect : break;
-            case Collision_t::EWhat::none : break;
+    if (event->type == GDK_BUTTON_PRESS) {
+        switch (event->button) {
+            case 1:
+                LOG_DEBUG(logger, "BTN1 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
+                if (event->state & GDK_SHIFT_MASK) {
+                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                }
+                break;
+            case 2:
+                LOG_DEBUG(logger, "BTN2 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
+                if (event->state & GDK_SHIFT_MASK) {
+                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                }
+                break;
+            case 3:
+                LOG_DEBUG(logger, "BTN3 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
+                if (event->state & GDK_SHIFT_MASK) {
+                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                }
+                break;
         }
     }
+//    if (event->button = 3) {
+//        switch (mCollision.eWhat) {
+//            case Collision_t::EWhat::Rect : break;
+//            case Collision_t::EWhat::none : break;
+//        }
+//    }
 }
 
 template<typename T>
@@ -174,6 +200,30 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
             mMouseColor = { .5,.5,.5 };
             //mMouseTrail.emplace_back( Point{ *event - mShift }/mScale );
         }
+    }
+
+    if (event->type & GDK_BUTTON_PRESS) {
+        switch (event->button) {
+            case 1:
+                LOG_DEBUG(logger, "BTN1 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+                if (event->state & GDK_SHIFT_MASK) {
+                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                }
+                break;
+            case 2:
+                LOG_DEBUG(logger, "BTN2 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+                if (event->state & GDK_SHIFT_MASK) {
+                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                }
+                break;
+            case 3:
+                LOG_DEBUG(logger, "BTN3 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+                if (event->state & GDK_SHIFT_MASK) {
+                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                }
+                break;
+        }
+
     }
 }
 
