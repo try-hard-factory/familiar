@@ -47,8 +47,11 @@ public:
     void buttonReleaseEvent(GdkEventButton* event);
 
     bool detectCollision(const Point& tPoint);
-
+    void checkFocus(const Point& tPoint);
+    void checkMultiFocus(const Point &tPoint);
 private:
+    void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr, const T& obj);
+
     TVector array;
     Point mMousePos;
     Point mShift {.0,.0};
@@ -84,6 +87,10 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
 
     int i{0};
     for (const auto& a : array) {
+        if (a.isFocused) {
+            drawFocus(cr, a);
+        }
+
         if ( ( mCollision.nIndex == i++ ) &&
              ( mCollision.eWhat == Collision_t::EWhat::Rect ) )
             cr->set_source_rgb( .9, .0, .0 );
@@ -103,14 +110,14 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
     mMousePos = (*event - mShift) / mScale;
 
     if (event->type & GDK_MOTION_NOTIFY ) {
-        if (event->state & GDK_BUTTON3_MASK) {
+        if (event->state & GDK_BUTTON1_MASK) {
             switch ( mCollision.eWhat  )
             {
                 case Collision_t::EWhat::Rect:
                     array[mCollision.nIndex] = mMousePos - mCollision.tOffset;
                     break;
                 case Collision_t::EWhat::none:
-                    mShift = mShiftStart - (mPressPoint - *event);
+                    //mShift = mShiftStart - (mPressPoint - *event);
                     break;
             }
         } else {
@@ -123,10 +130,8 @@ template<typename T>
 bool ContentController<T>::detectCollision(const Point &tPoint) {
     mCollision.eWhat = Collision_t::EWhat::none;
     int i{0};
-    for ( auto& a : array )
-    {
-        if ( isContainPoint(a, tPoint) )
-        {
+    for (auto& a : array) {
+        if (isContainPoint(a, tPoint)) {
             mCollision.tWhere = tPoint;
             mCollision.tOffset = tPoint - a;
             mCollision.eWhat = Collision_t::EWhat::Rect;
@@ -170,6 +175,7 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
                 if (event->state & GDK_SHIFT_MASK) {
                     LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                 }
+                checkFocus(mMousePos);
                 break;
             case 2:
                 LOG_DEBUG(logger, "BTN2 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
@@ -182,6 +188,7 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
                 if (event->state & GDK_SHIFT_MASK) {
                     LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                 }
+                //checkMultiFocus(mMousePos);
                 break;
         }
     }
@@ -206,8 +213,10 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
         switch (event->button) {
             case 1:
                 LOG_DEBUG(logger, "BTN1 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
-                if (event->state & GDK_SHIFT_MASK) {
+                if (event->state & GDK_SHIFT_MASK) { //need check it first and call checkMultiple focus function
                     LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                    //checkMultiFocus(mMousePos);
+                    break;
                 }
                 break;
             case 2:
@@ -225,6 +234,47 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
         }
 
     }
+}
+
+template<typename T>
+void ContentController<T>::checkFocus(const Point &tPoint) {
+    for (auto& a : array) { a.isFocused = false; }
+
+    for (auto& a : array) {
+        if (isContainPoint(a, tPoint)) {
+            a.isFocused = true;
+            return;
+        }
+    }
+}
+
+template<typename T>
+void ContentController<T>::checkMultiFocus(const Point &tPoint) {
+    for (auto& a : array) {
+        if (isContainPoint(a, tPoint)) {
+            if (a.isFocused == true) {
+                a.isFocused = false;
+                std::cout<<a.isFocused<<'\n';
+            } else {
+                a.isFocused = true;
+                std::cout<<a.isFocused<<'\n';
+            }
+        }
+    }
+}
+
+template<typename T>
+void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr, const T& obj) {
+    cr->set_source_rgb( .0, .0, .0 );
+    cr->set_line_width(4/mScale);
+
+    // line crossing the whole window
+    cr->move_to(    obj.x, obj.y);
+    cr->line_to(obj.x+obj.w, obj.y);
+    cr->line_to(obj.x+obj.w, obj.y + obj.h);
+    cr->line_to(obj.x, obj.y + obj.h);
+    cr->line_to(obj.x, obj.y);
+    cr->stroke();
 }
 
 #endif //FAMILIAR_CONTENTCONTROLLER_H
