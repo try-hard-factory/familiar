@@ -36,7 +36,7 @@ public:
 
 
     void addObject(const T& obj) {
-        array.emplace_back(obj);
+        renderArray.emplace_back(obj);
     }
 
     void draw(const Cairo::RefPtr<Cairo::Context> &cr, const Gdk::Rectangle& all, const Point& CtxSize);
@@ -50,9 +50,11 @@ public:
     void checkFocus(const Point& tPoint);
     void checkMultiFocus(const Point &tPoint);
 private:
-    void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr, const T& obj);
+    void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr);
+    uint16_t countOfFocusedObj() const;
+    void highlightFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
 
-    TVector array;
+    TVector renderArray;
     Point mMousePos;
     Point mShift {.0,.0};
     double mScale { 1.0 };
@@ -62,11 +64,13 @@ private:
     Color mMouseColor{ .5, .5, .5 };
     bool mShiftInit { true };
     Collision_t mCollision;
+
+    Point mCtxSize {.0, .0};
 };
 
 template<typename T>
 void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const Gdk::Rectangle& all, const Point& CtxSize) {
-
+    mCtxSize = CtxSize;
     auto tHome{ Point { CtxSize }/2 };
 
     if ( mShiftInit )
@@ -86,10 +90,8 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
     cr->transform(matrix);
 
     int i{0};
-    for (const auto& a : array) {
-        if (a.isFocused) {
-            drawFocus(cr, a);
-        }
+    for (const auto& a : renderArray) {
+        drawFocus(cr);
 
         if ( ( mCollision.nIndex == i++ ) &&
              ( mCollision.eWhat == Collision_t::EWhat::Rect ) )
@@ -114,7 +116,7 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
             switch ( mCollision.eWhat  )
             {
                 case Collision_t::EWhat::Rect:
-                    array[mCollision.nIndex] = mMousePos - mCollision.tOffset;
+                    renderArray[mCollision.nIndex] = mMousePos - mCollision.tOffset;
                     break;
                 case Collision_t::EWhat::none:
                     //mShift = mShiftStart - (mPressPoint - *event);
@@ -130,7 +132,7 @@ template<typename T>
 bool ContentController<T>::detectCollision(const Point &tPoint) {
     mCollision.eWhat = Collision_t::EWhat::none;
     int i{0};
-    for (auto& a : array) {
+    for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
             mCollision.tWhere = tPoint;
             mCollision.tOffset = tPoint - a;
@@ -174,8 +176,9 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
                 LOG_DEBUG(logger, "BTN1 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
                 if (event->state & GDK_SHIFT_MASK) {
                     LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+                } else {
+                    checkFocus(mMousePos);
                 }
-                checkFocus(mMousePos);
                 break;
             case 2:
                 LOG_DEBUG(logger, "BTN2 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
@@ -215,7 +218,7 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
                 LOG_DEBUG(logger, "BTN1 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
                 if (event->state & GDK_SHIFT_MASK) { //need check it first and call checkMultiple focus function
                     LOG_DEBUG(logger, "SHIFT PRESS EVENT");
-                    //checkMultiFocus(mMousePos);
+                    checkMultiFocus(mMousePos);
                     break;
                 }
                 break;
@@ -238,9 +241,9 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
 
 template<typename T>
 void ContentController<T>::checkFocus(const Point &tPoint) {
-    for (auto& a : array) { a.isFocused = false; }
+    for (auto& a : renderArray) { a.isFocused = false; }
 
-    for (auto& a : array) {
+    for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
             a.isFocused = true;
             return;
@@ -250,7 +253,7 @@ void ContentController<T>::checkFocus(const Point &tPoint) {
 
 template<typename T>
 void ContentController<T>::checkMultiFocus(const Point &tPoint) {
-    for (auto& a : array) {
+    for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
             if (a.isFocused == true) {
                 a.isFocused = false;
@@ -263,17 +266,46 @@ void ContentController<T>::checkMultiFocus(const Point &tPoint) {
     }
 }
 
-template<typename T>
-void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr, const T& obj) {
-    cr->set_source_rgb( .0, .0, .0 );
-    cr->set_line_width(4/mScale);
 
-    // line crossing the whole window
-    cr->move_to(    obj.x, obj.y);
-    cr->line_to(obj.x+obj.w, obj.y);
-    cr->line_to(obj.x+obj.w, obj.y + obj.h);
-    cr->line_to(obj.x, obj.y + obj.h);
-    cr->line_to(obj.x, obj.y);
+
+template<typename T>
+void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
+    cr->set_source_rgb( .0, .0, .0 );
+    cr->set_line_width(2/mScale);
+
+    double minx = mCtxSize.x;
+    double miny = mCtxSize.y;
+    double maxx = 0;
+    double maxy = 0;
+
+    for (const auto& obj : renderArray) {
+        if (!obj.isFocused) continue;
+        // line crossing the whole window
+        highlightFocus(cr, obj.x, obj.y, obj.w, obj.h);
+
+        minx = std::min(minx, obj.x);
+        miny = std::min(miny, obj.y);
+        maxx = std::max(maxx, obj.x + obj.w);
+        maxy = std::max(maxy, obj.y + obj.h);
+    }
+    //std::cout<<"COUNT OF FOCUSED: "<<countOfFocusedObj()<<'\n';
+    if (countOfFocusedObj() > 1) {
+        highlightFocus(cr, minx, miny, maxx - minx, maxy - miny);
+    }
+}
+
+template<typename T>
+uint16_t ContentController<T>::countOfFocusedObj() const {
+    return std::count_if(std::begin(renderArray), std::end(renderArray), [](const auto& obj){return obj.isFocused;});
+}
+
+template<typename T>
+void ContentController<T>::highlightFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h) {
+    cr->move_to(x, y);
+    cr->line_to(x + w, y);
+    cr->line_to(x + w, y + h);
+    cr->line_to(x, y + h);
+    cr->line_to(x, y);
     cr->stroke();
 }
 

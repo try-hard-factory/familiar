@@ -65,8 +65,6 @@ protected:
     void on_dropped_file(const Glib::RefPtr<Gdk::DragContext>& context, int x, int y, const Gtk::SelectionData& selection_data, guint info, guint time);
 
 
-    Point mCtxSize {.0, .0};
-
 
     ContentController<Rectangle_t> mContentController;
 
