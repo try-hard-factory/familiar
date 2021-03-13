@@ -9,6 +9,14 @@
 
 extern Logger logger;
 
+void CanvasArea::on_realize() {
+    Gtk::DrawingArea::on_realize();
+    Glib::RefPtr<Gdk::Display> display = get_display();
+    Glib::RefPtr<Gdk::Window> window = get_window();
+    mContentController.init(display, window);
+}
+
+
 bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     Gtk::Allocation allocation{ get_allocation() };
     auto const width { (double)allocation.get_width() };
@@ -26,6 +34,7 @@ bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     auto const all        { get_allocation() };
     auto const CtxSize { Point { (double)all.get_width(),
                                      (double)all.get_height() } };
+
 
     mContentController.draw(cr, all, CtxSize);
 

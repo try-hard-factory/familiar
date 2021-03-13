@@ -46,6 +46,13 @@ public:
     }
 
     void draw(const Cairo::RefPtr<Cairo::Context> &cr, const Gdk::Rectangle& all, const Point& CtxSize);
+    void init(const Glib::RefPtr<Gdk::Display>& d, const Glib::RefPtr<Gdk::Window>& w) {
+        display = d;
+        window = w;
+
+        auto new_cursor = Gdk::Cursor::create(display, Gdk::UMBRELLA);
+        window->set_cursor(new_cursor);
+    }
 
     void motionNotifyEvent(GdkEventMotion* event);
     void scrollEvent(GdkEventScroll* event);
@@ -75,6 +82,8 @@ private:
     Collision_t mCollision;
     EMovingState moving_state{EMovingState::eHold};
     Point mCtxSize {.0, .0};
+    Glib::RefPtr<Gdk::Display> display;
+    Glib::RefPtr<Gdk::Window> window;
 };
 
 template<typename T>
@@ -346,13 +355,13 @@ void ContentController<T>::highlightFocus(const Cairo::RefPtr<Cairo::Context> &c
 
 template<typename T>
 void ContentController<T>::highlightPointsOfFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h) {
-    cr->arc(x + w, y, 3, 0, 2*M_PI);
+    cr->arc(x + w, y, 3/mScale, 0, 2*M_PI);
     cr->fill();
-    cr->arc(x + w, y + h, 3, 0, 2*M_PI);
+    cr->arc(x + w, y + h, 3/mScale, 0, 2*M_PI);
     cr->fill();
-    cr->arc(x, y + h, 3, 0, 2*M_PI);
+    cr->arc(x, y + h, 3/mScale, 0, 2*M_PI);
     cr->fill();
-    cr->arc(x, y, 3, 0, 2*M_PI);
+    cr->arc(x, y, 3/mScale, 0, 2*M_PI);
     cr->fill();
 }
 
