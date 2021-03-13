@@ -17,7 +17,8 @@ struct Rectangle_t {
     Rectangle_t operator += (const P& p) { x += p.x; y += p.y; return *this; }
     template<typename P>
     Rectangle_t operator  = (const P& p) { x  = p.x; y  = p.y; return *this; }
-
+    template<typename P>
+    bool operator        == (const P& p) { return (x == p.x && y == p.y && w == p.w && h == p.h); }
     bool contain(const Point& p) const { return (p.x > x) && (p.y > y) && (p.x < x+w) && (p.y < y+h); }
 };
 

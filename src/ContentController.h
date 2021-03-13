@@ -117,6 +117,14 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
             {
                 case Collision_t::EWhat::Rect:
                     renderArray[mCollision.nIndex] = mMousePos - mCollision.tOffset;
+//                    //LOG_DEBUG(logger, mMousePos.x, " ", mMousePos.y);
+//                    LOG_DEBUG(logger, mPressPoint.x, " ", mPressPoint.y);
+//                    if (countOfFocusedObj() > 1) {
+//                        for (auto& a : renderArray) {
+//                            if (!a.isFocused || a == renderArray[mCollision.nIndex]) continue;
+//                            a = a + (mMousePos - ((mPressPoint - mShift)/mScale));
+//                        }
+//                    }
                     break;
                 case Collision_t::EWhat::none:
                     //mShift = mShiftStart - (mPressPoint - *event);
@@ -173,11 +181,13 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
     if (event->type == GDK_BUTTON_PRESS) {
         switch (event->button) {
             case 1:
-                LOG_DEBUG(logger, "BTN1 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
+//                LOG_DEBUG(logger, "BTN1 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
                 if (event->state & GDK_SHIFT_MASK) {
-                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+//                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                 } else {
-                    checkFocus(mMousePos);
+                    //if (countOfFocusedObj() <= 1) {
+                        checkFocus(mMousePos);
+                    //}
                 }
                 break;
             case 2:
@@ -215,9 +225,9 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
     if (event->type & GDK_BUTTON_PRESS) {
         switch (event->button) {
             case 1:
-                LOG_DEBUG(logger, "BTN1 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+//                LOG_DEBUG(logger, "BTN1 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
                 if (event->state & GDK_SHIFT_MASK) { //need check it first and call checkMultiple focus function
-                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+//                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                     checkMultiFocus(mMousePos);
                     break;
                 }
@@ -273,10 +283,10 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
     cr->set_source_rgb( .0, .0, .0 );
     cr->set_line_width(2/mScale);
 
-    double minx = mCtxSize.x;
-    double miny = mCtxSize.y;
-    double maxx = 0;
-    double maxy = 0;
+    double minx = 9999999999;// bad solution, need using screen coords
+    double miny = 9999999999;// bad solution, need using screen coords
+    double maxx = -9999999999;// bad solution, need using screen coords
+    double maxy = -9999999999;// bad solution, need using screen coords
 
     for (const auto& obj : renderArray) {
         if (!obj.isFocused) continue;
@@ -288,6 +298,7 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
         maxx = std::max(maxx, obj.x + obj.w);
         maxy = std::max(maxy, obj.y + obj.h);
     }
+
     //std::cout<<"COUNT OF FOCUSED: "<<countOfFocusedObj()<<'\n';
     if (countOfFocusedObj() > 1) {
         highlightFocus(cr, minx, miny, maxx - minx, maxy - miny);
