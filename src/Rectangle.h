@@ -10,6 +10,8 @@ struct Rectangle_t {
     double y{0};
     double w{0};
     double h{0};
+    double x_move_dir{0};
+    double y_move_dir{0};
     bool isFocused{false};
     template<typename P>
     Rectangle_t operator -= (const P& p) { x -= p.x; y -= p.y; return *this; }

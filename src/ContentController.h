@@ -53,7 +53,7 @@ private:
     void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr);
     uint16_t countOfFocusedObj() const;
     void highlightFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
-
+    void calcDirectionOfFocusedObjects();
     TVector renderArray;
     Point mMousePos;
     Point mShift {.0,.0};
@@ -119,12 +119,15 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
                     renderArray[mCollision.nIndex] = mMousePos - mCollision.tOffset;
 //                    //LOG_DEBUG(logger, mMousePos.x, " ", mMousePos.y);
 //                    LOG_DEBUG(logger, mPressPoint.x, " ", mPressPoint.y);
-//                    if (countOfFocusedObj() > 1) {
-//                        for (auto& a : renderArray) {
-//                            if (!a.isFocused || a == renderArray[mCollision.nIndex]) continue;
-//                            a = a + (mMousePos - ((mPressPoint - mShift)/mScale));
-//                        }
-//                    }
+                    if (countOfFocusedObj() > 1) {
+                        for (auto& obj : renderArray) {
+                            if (!obj.isFocused || obj == renderArray[mCollision.nIndex]) continue;
+
+                            obj.x = mMousePos.x + obj.x_move_dir;
+                            obj.y = mMousePos.y + obj.y_move_dir;
+                            //LOG_DEBUG(logger, offset.x, " ", offset.y);
+                        }
+                    }
                     break;
                 case Collision_t::EWhat::none:
                     //mShift = mShiftStart - (mPressPoint - *event);
@@ -171,14 +174,11 @@ void ContentController<T>::scrollEvent(GdkEventScroll* event) {
 template<typename T>
 void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
     mMouseColor = {.0,.0,.9};
-    if (event->type == GDK_BUTTON_PRESS) {
-        mPressPoint = *event;
-        mShiftStart = mShift;
-    } else {
-        detectCollision(mMousePos);
-    }
 
     if (event->type == GDK_BUTTON_PRESS) {
+        mPressPoint = *event;
+        calcDirectionOfFocusedObjects();
+        mShiftStart = mShift;
         switch (event->button) {
             case 1:
 //                LOG_DEBUG(logger, "BTN1 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
@@ -190,20 +190,22 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
                     }
                 }
                 break;
-            case 2:
-                LOG_DEBUG(logger, "BTN2 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
-                if (event->state & GDK_SHIFT_MASK) {
-                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
-                }
-                break;
-            case 3:
-                LOG_DEBUG(logger, "BTN3 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
-                if (event->state & GDK_SHIFT_MASK) {
-                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
-                }
-                //checkMultiFocus(mMousePos);
-                break;
+//            case 2:
+//                LOG_DEBUG(logger, "BTN2 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
+//                if (event->state & GDK_SHIFT_MASK) {
+//                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+//                }
+//                break;
+//            case 3:
+//                LOG_DEBUG(logger, "BTN3 PRESS EVENT. X: ", event->x, ", Y: ", event->y);
+//                if (event->state & GDK_SHIFT_MASK) {
+//                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+//                }
+//                //checkMultiFocus(mMousePos);
+//                break;
         }
+    } else {
+        detectCollision(mMousePos);
     }
 //    if (event->button = 3) {
 //        switch (mCollision.eWhat) {
@@ -236,18 +238,18 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
                     }
                 }
                 break;
-            case 2:
-                LOG_DEBUG(logger, "BTN2 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
-                if (event->state & GDK_SHIFT_MASK) {
-                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
-                }
-                break;
-            case 3:
-                LOG_DEBUG(logger, "BTN3 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
-                if (event->state & GDK_SHIFT_MASK) {
-                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
-                }
-                break;
+//            case 2:
+//                LOG_DEBUG(logger, "BTN2 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+//                if (event->state & GDK_SHIFT_MASK) {
+//                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+//                }
+//                break;
+//            case 3:
+//                LOG_DEBUG(logger, "BTN3 RELEASE EVENT. X: ", event->x, ", Y: ", event->y);
+//                if (event->state & GDK_SHIFT_MASK) {
+//                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
+//                }
+//                break;
         }
 
     }
@@ -322,6 +324,17 @@ void ContentController<T>::highlightFocus(const Cairo::RefPtr<Cairo::Context> &c
     cr->line_to(x, y + h);
     cr->line_to(x, y);
     cr->stroke();
+}
+
+template<typename T>
+void ContentController<T>::calcDirectionOfFocusedObjects() {
+    auto transformedPress = (mPressPoint - mShift)/mScale;
+
+    for (auto& obj : renderArray) {
+        if (!obj.isFocused) continue;
+        obj.x_move_dir = obj.x - transformedPress.x;
+        obj.y_move_dir = obj.y - transformedPress.y;
+    }
 }
 
 #endif //FAMILIAR_CONTENTCONTROLLER_H
