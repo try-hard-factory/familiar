@@ -61,6 +61,7 @@ private:
     void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr);
     uint16_t countOfFocusedObj() const;
     void highlightFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
+    void highlightPointsOfFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
     void calcDirectionOfFocusedObjects();
     TVector renderArray;
     Point mMousePos;
@@ -323,6 +324,7 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
     if (countOfFocusedObj() > 1) {
         highlightFocus(cr, minx, miny, maxx - minx, maxy - miny);
     }
+    highlightPointsOfFocus(cr, minx, miny, maxx - minx, maxy - miny);
 }
 
 template<typename T>
@@ -343,6 +345,18 @@ void ContentController<T>::highlightFocus(const Cairo::RefPtr<Cairo::Context> &c
 }
 
 template<typename T>
+void ContentController<T>::highlightPointsOfFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h) {
+    cr->arc(x + w, y, 3, 0, 2*M_PI);
+    cr->fill();
+    cr->arc(x + w, y + h, 3, 0, 2*M_PI);
+    cr->fill();
+    cr->arc(x, y + h, 3, 0, 2*M_PI);
+    cr->fill();
+    cr->arc(x, y, 3, 0, 2*M_PI);
+    cr->fill();
+}
+
+template<typename T>
 void ContentController<T>::calcDirectionOfFocusedObjects() {
     auto transformedPress = (mPressPoint - mShift)/mScale;
 
@@ -360,6 +374,7 @@ bool ContentController<T>::isObjectFocused(const Point &tPoint) {
            return obj.isFocused;
         }
     }
+    return false;
 }
 
 
