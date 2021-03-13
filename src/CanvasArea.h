@@ -51,11 +51,9 @@ public:
         mContentController.addObject({-200,-200,50, 50});
         mContentController.addObject({-100,-100,50, 50});
         mContentController.addObject({00,00,50, 50});
-//        mContentController.addObject({200,200,50, 50});
-//        mContentController.addObject({100,100,50, 50});
-//        mContentController.addObject({40,50,25, 25});
-//        mContentController.addObject({240,320,30, 30});
-//        mContentController.addObject({580,270,45, 45});
+        mContentController.addObject({200,200,50, 50});
+        mContentController.addObject({100,100,50, 50});
+
     }
     virtual ~CanvasArea() = default;
 protected:

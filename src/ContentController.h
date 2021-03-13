@@ -29,6 +29,12 @@ struct Collision_t {
     int nSubIx {0};	// L: P1, PM, P2
 };
 
+enum class EMovingState {
+    eHold,
+    eMultipleMove,
+    eSingleMove
+};
+
 template<typename T>
 class ContentController {
 public:
@@ -48,6 +54,8 @@ public:
 
     bool detectCollision(const Point& tPoint);
     void checkFocus(const Point& tPoint);
+    void resetAllFocuses();
+    bool isObjectFocused(const Point& tPoint);
     void checkMultiFocus(const Point &tPoint);
 private:
     void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr);
@@ -64,7 +72,7 @@ private:
     Color mMouseColor{ .5, .5, .5 };
     bool mShiftInit { true };
     Collision_t mCollision;
-
+    EMovingState moving_state{EMovingState::eHold};
     Point mCtxSize {.0, .0};
 };
 
@@ -115,16 +123,16 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
             switch ( mCollision.eWhat  )
             {
                 case Collision_t::EWhat::Rect:
+                    moving_state = EMovingState::eSingleMove;
                     renderArray[mCollision.nIndex] = mMousePos - mCollision.tOffset;
-//                    //LOG_DEBUG(logger, mMousePos.x, " ", mMousePos.y);
-//                    LOG_DEBUG(logger, mPressPoint.x, " ", mPressPoint.y);
+
                     if (countOfFocusedObj() > 1) {
+                        moving_state = EMovingState::eMultipleMove;
                         for (auto& obj : renderArray) {
                             if (!obj.isFocused || obj == renderArray[mCollision.nIndex]) continue;
 
                             obj.x = mMousePos.x + obj.x_move_dir;
                             obj.y = mMousePos.y + obj.y_move_dir;
-                            //LOG_DEBUG(logger, offset.x, " ", offset.y);
                         }
                     }
                     break;
@@ -184,7 +192,10 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
                 if (event->state & GDK_SHIFT_MASK) {
 //                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                 } else {
-                    if (countOfFocusedObj() <= 1) {
+                    if (mCollision.eWhat == Collision_t::EWhat::none) resetAllFocuses();
+                    if ((countOfFocusedObj() <= 1) ||
+                            (countOfFocusedObj() > 1 && mCollision.eWhat == Collision_t::EWhat::Rect && !isObjectFocused(mMousePos))) {
+                        resetAllFocuses();
                         checkFocus(mMousePos);
                     }
                 }
@@ -232,7 +243,9 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
                     checkMultiFocus(mMousePos);
                     break;
                 } else {
-                    if (countOfFocusedObj() > 1) {
+
+                    if (countOfFocusedObj() > 1 && moving_state != EMovingState::eMultipleMove) {
+                        resetAllFocuses();
                         checkFocus(mMousePos);
                     }
                 }
@@ -252,12 +265,16 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
         }
 
     }
+    moving_state = EMovingState::eHold;
+}
+
+template<typename T>
+void ContentController<T>::resetAllFocuses() {
+    for (auto& a : renderArray) { a.isFocused = false; }
 }
 
 template<typename T>
 void ContentController<T>::checkFocus(const Point &tPoint) {
-    for (auto& a : renderArray) { a.isFocused = false; }
-
     for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
             a.isFocused = true;
@@ -280,7 +297,6 @@ void ContentController<T>::checkMultiFocus(const Point &tPoint) {
         }
     }
 }
-
 
 
 template<typename T>
@@ -336,5 +352,15 @@ void ContentController<T>::calcDirectionOfFocusedObjects() {
         obj.y_move_dir = obj.y - transformedPress.y;
     }
 }
+
+template<typename T>
+bool ContentController<T>::isObjectFocused(const Point &tPoint) {
+    for (auto& obj : renderArray) {
+        if (isContainPoint(obj, tPoint)) {
+           return obj.isFocused;
+        }
+    }
+}
+
 
 #endif //FAMILIAR_CONTENTCONTROLLER_H
