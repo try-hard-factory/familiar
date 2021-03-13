@@ -185,9 +185,9 @@ void ContentController<T>::buttonPressEvent(GdkEventButton *event) {
                 if (event->state & GDK_SHIFT_MASK) {
 //                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                 } else {
-                    //if (countOfFocusedObj() <= 1) {
+                    if (countOfFocusedObj() <= 1) {
                         checkFocus(mMousePos);
-                    //}
+                    }
                 }
                 break;
             case 2:
@@ -230,6 +230,10 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
 //                    LOG_DEBUG(logger, "SHIFT PRESS EVENT");
                     checkMultiFocus(mMousePos);
                     break;
+                } else {
+                    if (countOfFocusedObj() > 1) {
+                        checkFocus(mMousePos);
+                    }
                 }
                 break;
             case 2:
@@ -298,7 +302,7 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
         maxx = std::max(maxx, obj.x + obj.w);
         maxy = std::max(maxy, obj.y + obj.h);
     }
-
+    //LOG_DEBUG(logger, minx, " ", miny, " ", maxx, " ", maxy);
     //std::cout<<"COUNT OF FOCUSED: "<<countOfFocusedObj()<<'\n';
     if (countOfFocusedObj() > 1) {
         highlightFocus(cr, minx, miny, maxx - minx, maxy - miny);
