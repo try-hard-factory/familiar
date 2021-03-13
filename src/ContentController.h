@@ -91,8 +91,6 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
 
     int i{0};
     for (const auto& a : renderArray) {
-        drawFocus(cr);
-
         if ( ( mCollision.nIndex == i++ ) &&
              ( mCollision.eWhat == Collision_t::EWhat::Rect ) )
             cr->set_source_rgb( .9, .0, .0 );
@@ -101,6 +99,7 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
         cr->rectangle(a.x, a.y, a.w, a.h);
         cr->fill();
     }
+    drawFocus(cr);
 
     cr->set_source_rgb( mMouseColor.r, mMouseColor.b, mMouseColor.b );
     cr->arc(mMousePos.x, mMousePos.y, 11, 0, 2*M_PI);
@@ -287,7 +286,6 @@ void ContentController<T>::checkMultiFocus(const Point &tPoint) {
 template<typename T>
 void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
     cr->set_source_rgb( .0, .0, .0 );
-    cr->set_line_width(2/mScale);
 
     double minx = 9999999999;// bad solution, need using screen coords
     double miny = 9999999999;// bad solution, need using screen coords
@@ -318,6 +316,8 @@ uint16_t ContentController<T>::countOfFocusedObj() const {
 
 template<typename T>
 void ContentController<T>::highlightFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h) {
+    auto line_w = 2/mScale;
+    cr->set_line_width(line_w);
     cr->move_to(x, y);
     cr->line_to(x + w, y);
     cr->line_to(x + w, y + h);
