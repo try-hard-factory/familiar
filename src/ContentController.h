@@ -10,8 +10,19 @@
 #include "Logger.h"
 #include "FocusPoints.h"
 #include "utils.h"
+#include "Rectangle.h"
 
 extern Logger logger;
+
+
+template<typename T>
+static bool isContainPoint(const T& primitive, const Point& p) {
+    return primitive.contain(p);
+}
+
+static bool isContainPoint(const std::shared_ptr<Rectangle_t>& primitive, const Point& p) {
+    return primitive->contain(p);
+}
 
 struct Color {
     double r{0};
@@ -41,10 +52,12 @@ enum class EMovingState {
 template<typename T>
 class ContentController {
 public:
-    using TVector = std::vector<T>;
+    using TVector = std::vector<std::shared_ptr<Rectangle_t>>;
 
 
-    void addObject(const T& obj) {
+    void addObject(const std::shared_ptr<Rectangle_t>& obj) {
+        obj->x = (obj->x - mShift.x) / mScale;
+        obj->y = (obj->y - mShift.y) / mScale;// \TODO: CanvasArea::on_dropped_file I should move thhis callback to ContentController class
         renderArray.emplace_back(obj);
     }
 
@@ -77,7 +90,7 @@ private:
     void highlightPointsOfFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
     void calcDirectionOfFocusedObjects();
     void renderCursor(const Point& mouse_pos);
-    TVector renderArray;
+    std::vector<std::shared_ptr<Rectangle_t>> renderArray;
     Point mMousePos;
     Point mShift {.0,.0};
     double mScale { 1.0 };
@@ -115,16 +128,15 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
     matrix.scale(mScale, mScale);
     matrix.translate(mShift.x/mScale, mShift.y/mScale);
     cr->transform(matrix);
-//    cr->rotate(45);
+
     int i{0};
-    for (const auto& a : renderArray) {
+    for (auto& a : renderArray) {
         if ( ( mCollision.nIndex == i++ ) &&
              ( mCollision.eWhat == Collision_t::EWhat::Rect ) )
             cr->set_source_rgb( .9, .0, .0 );
         else
             cr->set_source_rgb( .0, .9, .0 );
-        cr->rectangle(a.x, a.y, a.w, a.h);
-        cr->fill();
+        a->draw(cr);
     }
     drawFocus(cr);
 
@@ -144,15 +156,15 @@ void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
             {
                 case Collision_t::EWhat::Rect:
                     moving_state = EMovingState::eSingleMove;
-                    renderArray[mCollision.nIndex] = mMousePos - mCollision.tOffset;
+                    renderArray[mCollision.nIndex]->setNewPosition(mMousePos - mCollision.tOffset);
 
                     if (countOfFocusedObj() > 1) {
                         moving_state = EMovingState::eMultipleMove;
                         for (auto& obj : renderArray) {
-                            if (!obj.isFocused || obj == renderArray[mCollision.nIndex]) continue;
+                            if (!obj->isFocused || obj == renderArray[mCollision.nIndex]) continue;
 
-                            obj.x = mMousePos.x + obj.x_move_dir;
-                            obj.y = mMousePos.y + obj.y_move_dir;
+                            obj->x = mMousePos.x + obj->x_move_dir;
+                            obj->y = mMousePos.y + obj->y_move_dir;
                         }
                     }
                     break;
@@ -173,7 +185,7 @@ bool ContentController<T>::detectCollision(const Point &tPoint) {
     for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
             mCollision.tWhere = tPoint;
-            mCollision.tOffset = tPoint - a;
+            mCollision.tOffset = tPoint - *a.get();
             mCollision.eWhat = Collision_t::EWhat::Rect;
             mCollision.nIndex = i;
             return true;
@@ -290,7 +302,7 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
 
 template<typename T>
 void ContentController<T>::resetAllFocuses() {
-    for (auto& a : renderArray) { a.isFocused = false; }
+    for (auto& a : renderArray) { a->isFocused = false; }
     focus_points.resetFocusPoints();
 }
 
@@ -298,7 +310,7 @@ template<typename T>
 void ContentController<T>::checkFocus(const Point &tPoint) {
     for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
-            a.isFocused = true;
+            a->isFocused = true;
             return;
         }
     }
@@ -308,12 +320,12 @@ template<typename T>
 void ContentController<T>::checkMultiFocus(const Point &tPoint) {
     for (auto& a : renderArray) {
         if (isContainPoint(a, tPoint)) {
-            if (a.isFocused == true) {
-                a.isFocused = false;
-                std::cout<<a.isFocused<<'\n';
+            if (a->isFocused == true) {
+                a->isFocused = false;
+                std::cout<<a->isFocused<<'\n';
             } else {
-                a.isFocused = true;
-                std::cout<<a.isFocused<<'\n';
+                a->isFocused = true;
+                std::cout<<a->isFocused<<'\n';
             }
         }
     }
@@ -330,14 +342,14 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
     double maxy = INT_MIN;
 
     for (const auto& obj : renderArray) {
-        if (!obj.isFocused) continue;
+        if (!obj->isFocused) continue;
         // line crossing the whole window
-        highlightFocus(cr, obj.x, obj.y, obj.w, obj.h);
+        highlightFocus(cr, obj->x, obj->y, obj->w, obj->h);
 
-        minx = std::min(minx, obj.x);
-        miny = std::min(miny, obj.y);
-        maxx = std::max(maxx, obj.x + obj.w);
-        maxy = std::max(maxy, obj.y + obj.h);
+        minx = std::min(minx, obj->x);
+        miny = std::min(miny, obj->y);
+        maxx = std::max(maxx, obj->x + obj->w);
+        maxy = std::max(maxy, obj->y + obj->h);
     }
     //LOG_DEBUG(logger, minx, " ", miny, " ", maxx, " ", maxy);
     //std::cout<<"COUNT OF FOCUSED: "<<countOfFocusedObj()<<'\n';
@@ -351,7 +363,7 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
 
 template<typename T>
 uint16_t ContentController<T>::countOfFocusedObj() const {
-    return std::count_if(std::begin(renderArray), std::end(renderArray), [](const auto& obj){return obj.isFocused;});
+    return std::count_if(std::begin(renderArray), std::end(renderArray), [](const auto& obj){return obj->isFocused;});
 }
 
 template<typename T>
@@ -385,9 +397,9 @@ void ContentController<T>::calcDirectionOfFocusedObjects() {
     auto transformedPress = (mPressPoint - mShift)/mScale;
 
     for (auto& obj : renderArray) {
-        if (!obj.isFocused) continue;
-        obj.x_move_dir = obj.x - transformedPress.x;
-        obj.y_move_dir = obj.y - transformedPress.y;
+        if (!obj->isFocused) continue;
+        obj->x_move_dir = obj->x - transformedPress.x;
+        obj->y_move_dir = obj->y - transformedPress.y;
     }
 }
 
@@ -395,7 +407,7 @@ template<typename T>
 bool ContentController<T>::isObjectFocused(const Point &tPoint) {
     for (auto& obj : renderArray) {
         if (isContainPoint(obj, tPoint)) {
-           return obj.isFocused;
+           return obj->isFocused;
         }
     }
     return false;

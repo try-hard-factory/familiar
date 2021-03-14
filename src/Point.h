@@ -9,8 +9,10 @@ struct Point
 {
     Point() = default;
     Point(const Point& src) = default;
+
     template<typename T>
     Point(const T& x, const T& y) : x(x), y(y) {}
+
     template<typename T>
     Point(const T& t) : x(t.x), y(t.y) {}
 

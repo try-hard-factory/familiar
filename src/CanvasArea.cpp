@@ -6,6 +6,7 @@
 #include <gdkmm/general.h> // set_source_pixbuf()
 #include <iostream>
 #include "Logger.h"
+#include "ImageWidget.h"
 
 extern Logger logger;
 
@@ -22,10 +23,10 @@ bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     auto const height { (double)allocation.get_height() };
 
     // - scale picture to destination size
-    Glib::RefPtr<Gdk::Pixbuf>       imageS = image->scale_simple( 180, 180, Gdk::INTERP_BILINEAR);
+//    Glib::RefPtr<Gdk::Pixbuf>       imageS = image->scale_simple( 180, 180, Gdk::INTERP_BILINEAR);
     // - place scaled pictures to specified position in render context
 
-    Gdk::Cairo::set_source_pixbuf(cr, imageS, 0, 0 );
+    Gdk::Cairo::set_source_pixbuf(cr, image, 0, 0 );
     // - open a hole for the pixels
 
 
@@ -82,21 +83,23 @@ void CanvasArea::on_dropped_file(const Glib::RefPtr<Gdk::DragContext> &context, 
 
         file_list = selection_data.get_uris();
 
-        if (file_list.size() > 0)
-        {
+        if (file_list.size() > 0) {
+            int x_  = x;
             for (auto& it :file_list) {
                 auto path = Glib::filename_from_uri(it);
                 //do something here with the 'filename'. eg open the file for reading
                 std::cout << "PATH: " << path << '\n';
                 std::cout << "x: " << x << '\n';
                 std::cout << "y: " << y << '\n';
-                image.reset();
+//                image.reset();
                 context->drag_finish(true, false, time);
-                image  = Gdk::Pixbuf::create_from_file(path);
-                queue_draw();
+                auto image  = Gdk::Pixbuf::create_from_file(path);
+                auto image_widget = std::make_shared<ImageWidget>(x,y,image->get_width(),  image->get_height(), image);
+                mContentController.addObject(image_widget);
+                x_ += image->get_width();
+//                queue_draw();
             }
-
-            return;
+//            return;
         }
     }
 

@@ -12,19 +12,9 @@
 #include "Rectangle.h"
 #include "ContentController.h"
 
-
-
-template<typename T>
-bool isContainPoint(const T& primitive, const Point& p) {
-    return primitive.contain(p);
-}
-
-
-
 using PointsVector = std::vector<Point>;
 using FleckVector = std::vector<Fleck>;
 using RectangleVector = std::vector<Rectangle_t>;
-
 
 
 
@@ -49,11 +39,11 @@ public:
         // - load picture
         image  = Gdk::Pixbuf::create_from_file("../../src/ui/kot1.png");
 
-        mContentController.addObject({-200,-200,50, 50});
-        mContentController.addObject({-100,-100,50, 50});
-        mContentController.addObject({00,00,50, 50});
-        mContentController.addObject({200,200,50, 50});
-        mContentController.addObject({100,100,50, 50});
+//        mContentController.addObject(std::make{-200,-200,50, 50});
+//        mContentController.addObject({-100,-100,50, 50});
+//        mContentController.addObject({00,00,50, 50});
+//        mContentController.addObject({200,200,50, 50});
+//        mContentController.addObject({100,100,50, 50});
     }
     virtual ~CanvasArea() = default;
 protected:
