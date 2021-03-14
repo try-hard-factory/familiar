@@ -8,6 +8,8 @@
 #include <glibmm.h>
 #include "Point.h"
 #include "Logger.h"
+#include "FocusPoints.h"
+#include "utils.h"
 
 extern Logger logger;
 
@@ -35,6 +37,7 @@ enum class EMovingState {
     eSingleMove
 };
 
+
 template<typename T>
 class ContentController {
 public:
@@ -49,9 +52,6 @@ public:
     void init(const Glib::RefPtr<Gdk::Display>& d, const Glib::RefPtr<Gdk::Window>& w) {
         display = d;
         window = w;
-
-        auto new_cursor = Gdk::Cursor::create(display, Gdk::UMBRELLA);
-        window->set_cursor(new_cursor);
     }
 
     void motionNotifyEvent(GdkEventMotion* event);
@@ -65,11 +65,18 @@ public:
     bool isObjectFocused(const Point& tPoint);
     void checkMultiFocus(const Point &tPoint);
 private:
+    enum ECursorIdx {
+        eDefault = 0,
+        eNWSEresize = 1,
+        eNESWresize = 2,
+    };
+    static inline std::array<std::string, 3> cursors = {"default", "nwse-resize","nesw-resize"};
     void drawFocus(const Cairo::RefPtr<Cairo::Context> &cr);
     uint16_t countOfFocusedObj() const;
     void highlightFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
     void highlightPointsOfFocus(const Cairo::RefPtr<Cairo::Context> &cr, double x, double y, double w, double h);
     void calcDirectionOfFocusedObjects();
+    void renderCursor(const Point& mouse_pos);
     TVector renderArray;
     Point mMousePos;
     Point mShift {.0,.0};
@@ -82,8 +89,10 @@ private:
     Collision_t mCollision;
     EMovingState moving_state{EMovingState::eHold};
     Point mCtxSize {.0, .0};
+
     Glib::RefPtr<Gdk::Display> display;
     Glib::RefPtr<Gdk::Window> window;
+    FocusPoints  focus_points;
 };
 
 template<typename T>
@@ -106,7 +115,7 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
     matrix.scale(mScale, mScale);
     matrix.translate(mShift.x/mScale, mShift.y/mScale);
     cr->transform(matrix);
-
+//    cr->rotate(45);
     int i{0};
     for (const auto& a : renderArray) {
         if ( ( mCollision.nIndex == i++ ) &&
@@ -119,14 +128,15 @@ void ContentController<T>::draw(const Cairo::RefPtr<Cairo::Context> &cr, const G
     }
     drawFocus(cr);
 
-    cr->set_source_rgb( mMouseColor.r, mMouseColor.b, mMouseColor.b );
-    cr->arc(mMousePos.x, mMousePos.y, 11, 0, 2*M_PI);
-    cr->fill();
+//    cr->set_source_rgb( mMouseColor.r, mMouseColor.b, mMouseColor.b );
+//    cr->arc(mMousePos.x, mMousePos.y, 11, 0, 2*M_PI);
+//    cr->fill();
 }
 
 template<typename T>
 void ContentController<T>::motionNotifyEvent(GdkEventMotion *event) {
     mMousePos = (*event - mShift) / mScale;
+    renderCursor(mMousePos);
 
     if (event->type & GDK_MOTION_NOTIFY ) {
         if (event->state & GDK_BUTTON1_MASK) {
@@ -281,6 +291,7 @@ void ContentController<T>::buttonReleaseEvent(GdkEventButton *event) {
 template<typename T>
 void ContentController<T>::resetAllFocuses() {
     for (auto& a : renderArray) { a.isFocused = false; }
+    focus_points.resetFocusPoints();
 }
 
 template<typename T>
@@ -313,10 +324,10 @@ template<typename T>
 void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
     cr->set_source_rgb( .0, .0, .0 );
 
-    double minx = 9999999999;// bad solution, need using screen coords
-    double miny = 9999999999;// bad solution, need using screen coords
-    double maxx = -9999999999;// bad solution, need using screen coords
-    double maxy = -9999999999;// bad solution, need using screen coords
+    double minx = INT_MAX;
+    double miny = INT_MAX;
+    double maxx = INT_MIN;
+    double maxy = INT_MIN;
 
     for (const auto& obj : renderArray) {
         if (!obj.isFocused) continue;
@@ -333,7 +344,9 @@ void ContentController<T>::drawFocus(const Cairo::RefPtr<Cairo::Context> &cr) {
     if (countOfFocusedObj() > 1) {
         highlightFocus(cr, minx, miny, maxx - minx, maxy - miny);
     }
-    highlightPointsOfFocus(cr, minx, miny, maxx - minx, maxy - miny);
+    if (countOfFocusedObj()) {
+        highlightPointsOfFocus(cr, minx, miny, maxx - minx, maxy - miny);
+    }
 }
 
 template<typename T>
@@ -363,6 +376,8 @@ void ContentController<T>::highlightPointsOfFocus(const Cairo::RefPtr<Cairo::Con
     cr->fill();
     cr->arc(x, y, 3/mScale, 0, 2*M_PI);
     cr->fill();
+
+    focus_points.setFocusePoints({x, y + h}, {x, y}, {x + w, y}, {x + w, y + h});
 }
 
 template<typename T>
@@ -384,6 +399,22 @@ bool ContentController<T>::isObjectFocused(const Point &tPoint) {
         }
     }
     return false;
+}
+
+template<typename T>
+void ContentController<T>::renderCursor(const Point &mouse_pos) {
+    auto focus_point_idx = focus_points.isMouseNear(mouse_pos);
+    ECursorIdx cursor_idx = eDefault;
+    if (focus_point_idx.has_value()) {
+        if (focus_point_idx.value() % 2 == 0) {
+            cursor_idx = eNESWresize;
+        } else {
+            cursor_idx = eNWSEresize;
+        }
+    }
+
+    auto new_cursor = Gdk::Cursor::create(display, cursors[cursor_idx]);
+    window->set_cursor(new_cursor);
 }
 
 

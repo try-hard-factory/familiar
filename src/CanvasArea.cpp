@@ -16,7 +16,6 @@ void CanvasArea::on_realize() {
     mContentController.init(display, window);
 }
 
-
 bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     Gtk::Allocation allocation{ get_allocation() };
     auto const width { (double)allocation.get_width() };
@@ -25,9 +24,18 @@ bool CanvasArea::on_draw(const Cairo::RefPtr<Cairo::Context> &cr) {
     // - scale picture to destination size
     Glib::RefPtr<Gdk::Pixbuf>       imageS = image->scale_simple( 180, 180, Gdk::INTERP_BILINEAR);
     // - place scaled pictures to specified position in render context
-    Gdk::Cairo::set_source_pixbuf(cr, imageS, width/2-90, height/2-90 );
+
+    Gdk::Cairo::set_source_pixbuf(cr, imageS, 0, 0 );
     // - open a hole for the pixels
-    cr->rectangle( width/2-90, height/2-90, 180, 180 );
+
+
+    cr->set_line_width(3);
+    cr->move_to(100, 0);
+    cr->line_to(200, 100);
+    cr->line_to(100, 200);
+    cr->line_to(0, 100);
+
+    //cr->rectangle( width/2-90, height/2-90, 180, 180 );
     // - show the hole
     cr->fill();
 

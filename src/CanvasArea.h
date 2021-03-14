@@ -12,10 +12,7 @@
 #include "Rectangle.h"
 #include "ContentController.h"
 
-template<typename P, typename P1>
-double distance(const P& a, const P1& b) {
-    return sqrt( pow((a.x-b.x),2) + pow((a.y-b.y),2) );
-}
+
 
 template<typename T>
 bool isContainPoint(const T& primitive, const Point& p) {
@@ -57,8 +54,6 @@ public:
         mContentController.addObject({00,00,50, 50});
         mContentController.addObject({200,200,50, 50});
         mContentController.addObject({100,100,50, 50});
-
-
     }
     virtual ~CanvasArea() = default;
 protected:
