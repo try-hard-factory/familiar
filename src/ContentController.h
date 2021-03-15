@@ -4,6 +4,7 @@
 
 #ifndef FAMILIAR_CONTENTCONTROLLER_H
 #define FAMILIAR_CONTENTCONTROLLER_H
+#include <gdk/gdkkeysyms.h>
 #include <gtkmm/drawingarea.h>
 #include <glibmm.h>
 #include "Point.h"
@@ -11,6 +12,7 @@
 #include "FocusPoints.h"
 #include "utils.h"
 #include "Rectangle.h"
+#include "ImageWidget.h"
 
 extern Logger logger;
 
@@ -54,7 +56,9 @@ class ContentController {
 public:
     using TVector = std::vector<std::shared_ptr<Rectangle_t>>;
 
+    ContentController() {
 
+    }
     void addObject(const std::shared_ptr<Rectangle_t>& obj) {
         obj->x = (obj->x - mShift.x) / mScale;
         obj->y = (obj->y - mShift.y) / mScale;// \TODO: CanvasArea::on_dropped_file I should move thhis callback to ContentController class
@@ -62,9 +66,15 @@ public:
     }
 
     void draw(const Cairo::RefPtr<Cairo::Context> &cr, const Gdk::Rectangle& all, const Point& CtxSize);
+
     void init(const Glib::RefPtr<Gdk::Display>& d, const Glib::RefPtr<Gdk::Window>& w) {
         display = d;
         window = w;
+        listTargets.push_back(Gtk::TargetEntry("image/png"));
+        listTargets.push_back(Gtk::TargetEntry("text/plain"));
+        listTargets.push_back(Gtk::TargetEntry("text/uri-list"));
+
+        Gtk::Clipboard::get()->signal_owner_change().connect(sigc::mem_fun(*this, &ContentController<Rectangle_t>::on_clipboard_owner_change) );
     }
 
     void motionNotifyEvent(GdkEventMotion* event);
@@ -72,12 +82,23 @@ public:
     void buttonPressEvent(GdkEventButton* event);
     void buttonReleaseEvent(GdkEventButton* event);
 
+    void keyPressEvent(GdkEventKey* event);
+    void keyReleaseEvent(GdkEventKey* event);
+
     bool detectCollision(const Point& tPoint);
     void checkFocus(const Point& tPoint);
     void resetAllFocuses();
     bool isObjectFocused(const Point& tPoint);
     void checkMultiFocus(const Point &tPoint);
+
+    void on_clipboard_owner_change(GdkEventOwnerChange* event);
 private:
+    void onClipboardGet(Gtk::SelectionData& selection_data, guint);
+    void onClipboardClear();
+    void on_clipboard_received(const Gtk::SelectionData& selection_data);
+    void on_clipboard_received_targets(const std::vector<Glib::ustring>& targets);
+    void on_clipboard_image_received(const Glib::RefPtr<Gdk::Pixbuf> &pixbuf);
+
     enum ECursorIdx {
         eDefault = 0,
         eNWSEresize = 1,
@@ -106,6 +127,10 @@ private:
     Glib::RefPtr<Gdk::Display> display;
     Glib::RefPtr<Gdk::Window> window;
     FocusPoints  focus_points;
+    std::vector<Gtk::TargetEntry> listTargets;
+    bool insertFlag { false };
+
+
 };
 
 template<typename T>
@@ -427,6 +452,114 @@ void ContentController<T>::renderCursor(const Point &mouse_pos) {
 
     auto new_cursor = Gdk::Cursor::create(display, cursors[cursor_idx]);
     window->set_cursor(new_cursor);
+}
+
+template<typename T>
+void ContentController<T>::keyPressEvent(GdkEventKey *event) {
+    if (event->keyval == GDK_KEY_Shift_L) std::cout<<"L SHIFT press"<<'\n';
+}
+
+template<typename T>
+void ContentController<T>::keyReleaseEvent(GdkEventKey *event) {
+    if (event->keyval == GDK_KEY_Shift_L) {
+        std::cout<<"L SHIFT release"<<'\n';
+        if (insertFlag) {
+            Gtk::Clipboard::get()->request_contents("ContentController_INSERT",
+                                                    sigc::mem_fun(*this, &ContentController::on_clipboard_received));
+        }
+        //Gtk::Clipboard::get()->set(listTargets, sigc::mem_fun(*this, &ContentController::onClipboardGet), sigc::mem_fun(*this, &ContentController::onClipboardClear) );
+    }
+}
+
+
+template<typename T>
+void ContentController<T>::on_clipboard_received(const Gtk::SelectionData& selection_data)
+{
+    //Glib::ustring clipboard_data = selection_data.get_data_as_string();
+    //Do something with the pasted data.
+    const std::string target = selection_data.get_target();
+    if ("ContentController_INSERT" == target) {
+        Gtk::Clipboard::get()->request_image(sigc::mem_fun(*this, &ContentController::on_clipboard_image_received));
+    }
+
+    const std::string data_type = selection_data.get_data_type();
+    std::cout<<target<<" "<<selection_data.get_data_type()<<'\n';
+}
+
+template<typename T>
+void ContentController<T>::on_clipboard_image_received(const Glib::RefPtr<Gdk::Pixbuf>& pixbuf)
+{
+    std::cout<<"image, " <<pixbuf->get_width() << " " <<pixbuf->get_height() <<'\n';
+    auto image_widget = std::make_shared<ImageWidget>( 0,0,pixbuf->get_width(),  pixbuf->get_height(), pixbuf);
+    addObject(image_widget);
+}
+
+template<typename T>
+void ContentController<T>::onClipboardGet(Gtk::SelectionData& selection_data, guint)
+{
+    //info is meant to indicate the target, but it seems to be always 0,
+    //so we use the selection_data's target instead.
+
+    const std::string target = selection_data.get_target();
+    const std::string data_type = selection_data.get_data_type();
+    std::cout<<target<<" "<<selection_data.get_data_type()<<'\n';
+//    if(target == example_target_custom)
+//    {
+//        // This set() override uses an 8-bit text format for the data.
+//        selection_data.set(example_target_custom, m_ClipboardStore);
+//    }
+//    else if(target == example_target_text)
+//    {
+//        //Build some arbitrary text representation of the data,
+//        //so that people see something when they paste into a text editor:
+//        Glib::ustring text_representation;
+//
+//        text_representation += m_ButtonA1.get_active() ? "A1, " : "";
+//        text_representation += m_ButtonA2.get_active() ? "A2, " : "";
+//        text_representation += m_ButtonB1.get_active() ? "B1, " : "";
+//        text_representation += m_ButtonB2.get_active() ? "B2, " : "";
+//
+//        selection_data.set_text(text_representation);
+//    }
+//    else
+//    {
+//        g_warning("ExampleWindow::on_clipboard_get(): "
+//                  "Unexpected clipboard target format.");
+//    }
+}
+
+template<typename T>
+void ContentController<T>::onClipboardClear()
+{
+    //This isn't really necessary. I guess it might save memory.
+//    m_ClipboardStore.clear();
+}
+template<typename T>
+void ContentController<T>::on_clipboard_owner_change(GdkEventOwnerChange* event) {
+    std::cout << "Owner: " << event->owner
+              << ", window: " << event->window
+              << ", type: " << event->type
+              << std::endl;
+    auto refClipboard = Gtk::Clipboard::get();
+
+    //Discover what targets are available:
+    refClipboard->request_targets(sigc::mem_fun(*this, &ContentController::on_clipboard_received_targets) );
+//    std::vector<Gtk::TargetEntry> listTargets;
+//    listTargets.push_back(Gtk::TargetEntry("text/uri-list"));
+//    listTargets.push_back(Gtk::TargetEntry("image/png"));
+//    listTargets.push_back(Gtk::TargetEntry("image/jpeg"));
+//    listTargets.push_back(Gtk::TargetEntry("text/plain"));
+//    Gtk::Clipboard::get()->set(listTargets, sigc::mem_fun(*this, &CanvasArea::on_clipboard_get), sigc::mem_fun(*this, &CanvasArea::on_clipboard_clear) );
+//    Gtk::Clipboard::get()->request_text(sigc::mem_fun(*this, &CanvasArea::on_clipboard_text_received));
+//    Gtk::Clipboard::get()->request_image(sigc::mem_fun(*this, &CanvasArea::on_clipboard_image_received));
+    //gtk_selection_data_get_data_type()
+
+}
+
+template<typename T>
+void ContentController<T>::on_clipboard_received_targets(const std::vector<Glib::ustring> &targets) {
+    for (auto& it : targets) std::cout<<it<<'\n';
+    insertFlag = std::find(targets.begin(), targets.end(),"image/png") != targets.end();
 }
 
 

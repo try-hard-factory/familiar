@@ -63,6 +63,7 @@ bool CanvasArea::on_scroll_event(GdkEventScroll* event) {
 }
 
 bool CanvasArea::on_button_press_event(GdkEventButton* event) {
+    std::cout<<"on_button_press_event"<<'\n';
     mContentController.buttonPressEvent(event);
     queue_draw();
     return true;
@@ -77,11 +78,10 @@ bool CanvasArea::on_button_release_event(GdkEventButton* event) {
 
 void CanvasArea::on_dropped_file(const Glib::RefPtr<Gdk::DragContext> &context, int x, int y,
                                  const Gtk::SelectionData &selection_data, guint info, guint time) {
+    std::cout<<"on_dropped_file "<<selection_data.get_format() <<" " << selection_data.get_data_type() <<'\n';
     if ((selection_data.get_length() >= 0) && (selection_data.get_format() == 8))
     {
-        std::vector<Glib::ustring> file_list;
-
-        file_list = selection_data.get_uris();
+        std::vector<Glib::ustring> file_list = selection_data.get_uris();
 
         if (file_list.size() > 0) {
             int x_  = x;
@@ -92,16 +92,45 @@ void CanvasArea::on_dropped_file(const Glib::RefPtr<Gdk::DragContext> &context, 
                 std::cout << "x: " << x << '\n';
                 std::cout << "y: " << y << '\n';
 //                image.reset();
-                context->drag_finish(true, false, time);
+//                context->drag_finish(true, false, time);
                 auto image  = Gdk::Pixbuf::create_from_file(path);
-                auto image_widget = std::make_shared<ImageWidget>(x,y,image->get_width(),  image->get_height(), image);
+                auto image_widget = std::make_shared<ImageWidget>( x_,y,image->get_width(),  image->get_height(), image);
                 mContentController.addObject(image_widget);
                 x_ += image->get_width();
 //                queue_draw();
             }
-//            return;
+        } else {
+            std::cout<< selection_data.get_text()<<'\n';
+
+//           auto sd = selection_data.
+//            Glib::RefPtr<Gdk::Pixbuf> buffer = sd->get_pixbuf();
+//            auto image_widget = std::make_shared<ImageWidget>( x,y,buffer->get_width(),  buffer->get_height(), buffer);
+//            mContentController.addObject(image_widget);
         }
     }
 
     context->drag_finish(false, false, time);
+}
+
+
+
+
+
+void CanvasArea::on_clipboard_text_received(const Glib::ustring& text)
+{
+    std::cout<<"on_clipboard_text_received "<<text<<'\n';
+}
+
+
+
+bool CanvasArea::on_key_press_event(GdkEventKey *key_event){
+    std::cout<<"on_key_press_event"<<'\n';
+    mContentController.keyPressEvent(key_event);
+    return Widget::on_key_press_event(key_event);
+}
+
+bool CanvasArea::on_key_release_event(GdkEventKey *key_event){
+    std::cout<<"on_key_release_event"<<'\n';
+    mContentController.keyReleaseEvent(key_event);
+    return Widget::on_key_press_event(key_event);
 }
