@@ -5,7 +5,8 @@
 #ifndef FAMILIAR_CANVASAREA_H
 #define FAMILIAR_CANVASAREA_H
 
-
+#include <thread>
+#include <chrono>
 
 #include "Point.h"
 #include "Fleck.h"
@@ -49,8 +50,17 @@ public:
         // picture png quadratic
         // - load picture
         image  = Gdk::Pixbuf::create_from_file("../../src/ui/kot1.png");
+
+        redrawThread = new std::thread([this] {
+            doRedrawing();
+        });
+        refreshDrawingDispatcher.connect(sigc::mem_fun(*this, &CanvasArea::refreshDrawing));
     }
-    virtual ~CanvasArea() = default;
+    virtual ~CanvasArea() {
+        keepReDrawing = false;
+        redrawThread->join();
+        delete redrawThread;
+    }
 protected:
     bool on_key_press_event(GdkEventKey* key_event) override;
     bool on_key_release_event(GdkEventKey* key_event) override;
@@ -68,9 +78,22 @@ protected:
     void on_clipboard_text_received(const Glib::ustring& text);
 
     ContentController<Rectangle_t> mContentController;
-
+private:
+    void doRedrawing() {
+        using namespace std::chrono_literals;
+        while (keepReDrawing) {
+            refreshDrawingDispatcher.emit();
+            std::this_thread::sleep_for(50ms);
+        }
+    }
+    void refreshDrawing() {
+        queue_draw();
+    }
 
 private:
+    bool keepReDrawing{true};
+    std::thread* redrawThread;
+    Glib::Dispatcher refreshDrawingDispatcher;
     Glib::RefPtr<Gdk::Pixbuf> image;
 
 };
