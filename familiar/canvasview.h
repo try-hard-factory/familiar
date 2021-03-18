@@ -7,6 +7,8 @@
 #include <QGraphicsView>
 #include <QGraphicsPixmapItem>
 #include <QScrollBar>
+
+class CanvasScene;
 #define ZOOM_FACTOR 1.15
 
 class CanvasView : public QGraphicsView
@@ -28,12 +30,14 @@ protected:
     virtual QString setToolTipText(QPoint imageCoordinates);
     void drawBackground(QPainter *painter, const QRectF &rect) override;
 private:
-    QGraphicsScene* scene_;
+    CanvasScene* scene_;
     double zoomFactor_;
     bool pan_;
     bool panStartX_;
     bool panStartY_;
     uint64_t zCounter_ = 0;
+public slots:
+    void onSelectionChanged();
 };
 
 #endif // CANVASVIEW_H

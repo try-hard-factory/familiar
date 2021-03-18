@@ -1,4 +1,7 @@
 #include "moveitem.h"
+#include <QPen>
+
+//#define MOUSE_MOVE_DEBUG
 
 MoveItem::MoveItem(uint64_t& zc, QObject *parent) :
     QObject(parent), QGraphicsItem(), zCounter_(zc)
@@ -23,44 +26,52 @@ QRectF MoveItem::boundingRect() const
 
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    painter->setPen(Qt::red);
-//    painter->setBrush(Qt::green);
-    painter->drawRect(-1,-1,pixmap_.width()+1,pixmap_.height()+1);
     QPointF point(0, 0);
     QRectF source(0, 0, pixmap_.width(),pixmap_.height());
     painter->drawPixmap(point, pixmap_, source);
-    Q_UNUSED(option);
+
+    if (option->state & QStyle::State_Selected) {
+        QPen p;
+        p.setWidth(2);
+        p.setColor(QColor(0, 160, 230));
+        painter->setPen(p);
+        painter->drawRect(-1,-1,pixmap_.width()+1,pixmap_.height()+1);
+    }
+
     Q_UNUSED(widget);
 }
 
 void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
+#ifdef MOUSE_MOVE_DEBUG
     qInfo()<<"MoveItem::mouseMoveEvent curent scale "<<this->scale()
           << ", EventPos: "<< event->pos()
           << ", Pos: "<<pos();
-
-    /* Устанавливаем позицию графического элемента
-     * в графической сцене, транслировав координаты
-     * курсора внутри графического элемента
-     * в координатную систему графической сцены
-     * */
+#endif
     this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
 }
 
 void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     setZValue(++zCounter_);
-    qInfo()<<"MoveItem::mousePressEvent curent scale "<<this->scale()\
+    shiftMouseCoords_ = (this->pos() - mapToScene(event->pos()))/scale();
+
+    qInfo()<<"MoveItem::mousePressEvent curent scale "<<this->scale()
           <<", Event->pos: "<<event->pos()
          <<", Pos: "<<pos()
          <<", Shift"<<shiftMouseCoords_;
 
-    /* При нажатии мышью на графический элемент
-     * заменяем курсор на руку, которая держит этот элемента
-     * */
-    shiftMouseCoords_ = (this->pos() - mapToScene(event->pos()))/scale();
+    if (event->button() == Qt::LeftButton) {
+        if (event->modifiers() == Qt::ShiftModifier) {
+            qDebug()<<"MoveItem::mousePressEvent. Left Mouse and Shift";
+//            setSelected(!isSelected());
+        } else {
+            QGraphicsItem::mousePressEvent(event);
+        }
+    }
+
     this->setCursor(QCursor(Qt::ClosedHandCursor));
-    Q_UNUSED(event);
+
 }
 
 void MoveItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -70,12 +81,16 @@ void MoveItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
          <<", Pos: "<<pos()
          <<", Shift"<<shiftMouseCoords_;
 
-    /* При отпускании мышью элемента
-     * заменяем на обычный курсор стрелку
-     * */
+    if (event->button() == Qt::LeftButton) {
+        if (event->modifiers() == Qt::ShiftModifier) {
+            qDebug()<<"MoveItem::mousePressEvent. Left Mouse and Shift";
+            setSelected(!isSelected());
+        } else {
+            QGraphicsItem::mousePressEvent(event);
+        }
+    }
 
     this->setCursor(QCursor(Qt::ArrowCursor));
-    Q_UNUSED(event);
 }
 
 void MoveItem::wheelEvent(QGraphicsSceneWheelEvent *event) {

@@ -5,6 +5,7 @@
 #include <QWheelEvent>
 #include <QGraphicsItem>
 #include <QPainter>
+#include <QStyleOptionGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
 #include <QDebug>
 #include <QCursor>

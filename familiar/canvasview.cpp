@@ -1,11 +1,14 @@
 #include "canvasview.h"
 #include "moveitem.h"
 #include "movepixmapitem.h"
+#include "canvasscene.h"
+//#define MOUSE_MOVE_DEBUG
 CanvasView::CanvasView(QWidget* parent) :
     QGraphicsView(parent)
 {
     zoomFactor_ = ZOOM_FACTOR;
-    scene_ = new QGraphicsScene();
+    scene_ = new CanvasScene();
+//    connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
 //    scene_->setItemIndexMethod(QGraphicsScene::NoIndex);
     setMouseTracking(true);
     setScene(scene_);
@@ -14,7 +17,7 @@ CanvasView::CanvasView(QWidget* parent) :
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
     // When zooming, the view stay centered over the mouse
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-
+    setDragMode(QGraphicsView::RubberBandDrag);
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
 }
 
@@ -29,10 +32,12 @@ void CanvasView::addImage(const QImage &image, QPointF point)
 {
 
     MoveItem* item = new MoveItem(zCounter_);
+    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+//    item->setFlag(QGraphicsItem::ItemIsMovable, true);
+//    item->setFlag(QGraphicsItem::ItemIsFocusable, true);
 //    MovePixmapItem* item = new MovePixmapItem();
 
     item->setPos(point);
-    item->setFlag(QGraphicsItem::ItemIsMovable, true);
     scene_->addItem(item);
     //    QPixmap myPixmap("kot.png"); // создаем картинку
     //    QGraphicsPixmapItem *item = new QGraphicsPixmapItem(myPixmap);
@@ -41,8 +46,9 @@ void CanvasView::addImage(const QImage &image, QPointF point)
 
 void CanvasView::mouseMoveEvent(QMouseEvent *event)
 {
-//    qInfo()<<"CanvasView::mouseMoveEvent: "<<event->position();
-
+#ifdef MOUSE_MOVE_DEBUG
+    qInfo()<<"CanvasView::mouseMoveEvent: "<<event->position();
+#endif
     if (pan_) {
 //        horizontalScrollBar()->setValue(horizontalScrollBar()->value() - (event->position().x() - panStartX_));
 //        verticalScrollBar()->setValue(verticalScrollBar()->value() - (event->position().y() - panStartY_));
@@ -69,12 +75,10 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
          pan_ = true;
          panStartX_ = event->position().x();
          panStartY_ = event->position().y();
- //        setCursor(Qt::ClosedHandCursor);
-    viewport()->setCursor(Qt::ClosedHandCursor);
+         viewport()->setCursor(Qt::ClosedHandCursor);
          event->accept();
-//         return;
+
      }
-//     event->ignore();
     //    if (event->button() == Qt::RightButton) this->fitImage();
     QGraphicsView::mousePressEvent(event);
 }
@@ -83,20 +87,17 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
 void CanvasView::mouseReleaseEvent(QMouseEvent *event)
 {
     qInfo()<<"CanvasView::mouseReleaseEvent: "<<event->position();
-//      event->ignore();
 
     QGraphicsView::mouseReleaseEvent(event);
     if (event->button() == Qt::LeftButton) {
-          pan_ = false;
-    viewport()->setCursor(Qt::ArrowCursor);
-//          setCursor(Qt::ArrowCursor);
-          event->accept();
+        pan_ = false;
+        viewport()->setCursor(Qt::ArrowCursor);
+        event->accept();
       }
 }
 
 void CanvasView::wheelEvent(QWheelEvent *event)
 {
-
     // When zooming, the view stay centered over the mouse
     this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
@@ -112,6 +113,7 @@ void CanvasView::wheelEvent(QWheelEvent *event)
     // The event is processed
     event->accept();
 }
+
 
 void CanvasView::resizeEvent(QResizeEvent *event)
 {
@@ -144,4 +146,9 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
     painter->setPen( QPen(Qt::darkGray,1) );
     painter->drawRect(scene_->sceneRect());
     painter->restore();
+}
+
+void CanvasView::onSelectionChanged()
+{
+    qInfo()<<"!!!!!!CanvasView::onSelectionChanged";
 }
