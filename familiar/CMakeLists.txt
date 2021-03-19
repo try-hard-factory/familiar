@@ -40,6 +40,11 @@ set(PROJECT_SOURCES
         movepixmapitem.h
         canvasscene.cpp
         canvasscene.h
+        itemgroup.cpp
+        itemgroup.h
+        mainselectedarea.cpp
+        mainselectedarea.h
+        debug_macros.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

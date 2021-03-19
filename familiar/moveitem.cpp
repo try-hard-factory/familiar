@@ -21,7 +21,6 @@ MoveItem::~MoveItem()
 QRectF MoveItem::boundingRect() const
 {
     return QRectF (0,0,pixmap_.width(),pixmap_.height());
-//    return QRectF (0,0,100,100);
 }
 
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -32,10 +31,11 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 
     if (option->state & QStyle::State_Selected) {
         QPen p;
-        p.setWidth(2);
+        int wsize = 2;
+        p.setWidth(wsize);
         p.setColor(QColor(0, 160, 230));
         painter->setPen(p);
-        painter->drawRect(-1,-1,pixmap_.width()+1,pixmap_.height()+1);
+        painter->drawRect(-1,-1,pixmap_.width()+wsize,pixmap_.height()+wsize);
     }
 
     Q_UNUSED(widget);
@@ -69,9 +69,6 @@ void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
             QGraphicsItem::mousePressEvent(event);
         }
     }
-
-    this->setCursor(QCursor(Qt::ClosedHandCursor));
-
 }
 
 void MoveItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -89,8 +86,6 @@ void MoveItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             QGraphicsItem::mousePressEvent(event);
         }
     }
-
-    this->setCursor(QCursor(Qt::ArrowCursor));
 }
 
 void MoveItem::wheelEvent(QGraphicsSceneWheelEvent *event) {

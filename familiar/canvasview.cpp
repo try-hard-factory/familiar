@@ -7,8 +7,8 @@ CanvasView::CanvasView(QWidget* parent) :
     QGraphicsView(parent)
 {
     zoomFactor_ = ZOOM_FACTOR;
-    scene_ = new CanvasScene();
-//    connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
+    scene_ = new CanvasScene(zCounter_);
+    connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
 //    scene_->setItemIndexMethod(QGraphicsScene::NoIndex);
     setMouseTracking(true);
     setScene(scene_);
@@ -70,12 +70,11 @@ void CanvasView::mouseMoveEvent(QMouseEvent *event)
 
 void CanvasView::mousePressEvent(QMouseEvent *event)
 {
-    qInfo()<<"CanvasView::mousePressEvent: "<<event->position();
+//    qInfo()<<"CanvasView::mousePressEvent: "<<event->position();
     if (event->button() == Qt::LeftButton) {
          pan_ = true;
          panStartX_ = event->position().x();
          panStartY_ = event->position().y();
-         viewport()->setCursor(Qt::ClosedHandCursor);
          event->accept();
 
      }
@@ -86,12 +85,11 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
 
 void CanvasView::mouseReleaseEvent(QMouseEvent *event)
 {
-    qInfo()<<"CanvasView::mouseReleaseEvent: "<<event->position();
+//    qInfo()<<"CanvasView::mouseReleaseEvent: "<<event->position();
 
     QGraphicsView::mouseReleaseEvent(event);
     if (event->button() == Qt::LeftButton) {
         pan_ = false;
-        viewport()->setCursor(Qt::ArrowCursor);
         event->accept();
       }
 }
@@ -102,7 +100,7 @@ void CanvasView::wheelEvent(QWheelEvent *event)
     this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
     auto numPixels = event->angleDelta();
-    qInfo()<<"CanvasView::wheelEvent: "<<numPixels.x()<<' '<<numPixels.y();
+//    qInfo()<<"CanvasView::wheelEvent: "<<numPixels.x()<<' '<<numPixels.y();
     double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
     if (numPixels.y() > 0) {
         scale(factor, factor);
@@ -150,5 +148,5 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
 
 void CanvasView::onSelectionChanged()
 {
-    qInfo()<<"!!!!!!CanvasView::onSelectionChanged";
+    scene_->onSelectionChanged();
 }
