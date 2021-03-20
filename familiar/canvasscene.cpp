@@ -55,7 +55,10 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                     itemGroup_->clearItemGroup();
                     itemGroup_->addToGroup(item);
                     mainSelArea_.setReady(true);
-                }
+                }                
+            } else {
+                itemGroup_->clearItemGroup();
+                mainSelArea_.setReady(false);
             }
         }
     }
@@ -76,14 +79,20 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
             if (item) {
                 if (itemGroup_->isContain(item)) {
-                    itemGroup_->clearItemGroup();
-                    item->setZValue(++zCounter_);
-                    itemGroup_->addToGroup(item);
+                    if (!isMoving) {
+                        itemGroup_->clearItemGroup();
+                        isMoving = false;
+                        item->setZValue(++zCounter_);
+                        itemGroup_->addToGroup(item);
+                    }
+
+
                     mainSelArea_.setReady(true);
+                    isMoving = false;
                 }
 
             } else {
-
+                itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
             }
         }
@@ -97,7 +106,10 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 #ifdef MOUSE_MOVE_DEBUG
     LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 #endif
-
+    if ( (event->buttons() & Qt::LeftButton) &&
+         itemGroup_->isUnderMouse()) {
+        isMoving = true;
+    }
 
     QGraphicsScene::mouseMoveEvent(event);
 }
