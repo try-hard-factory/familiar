@@ -29,7 +29,7 @@ private:
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
-    bool isMoving = false;
+    bool isGroupMoving = false;
 };
 
 #endif // CANVASSCENE_H

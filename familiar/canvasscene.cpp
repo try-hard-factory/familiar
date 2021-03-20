@@ -75,20 +75,14 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         if (event->modifiers() != Qt::ShiftModifier) {
 
-
-
             if (item) {
-                if (itemGroup_->isContain(item)) {
-                    if (!isMoving) {
-                        itemGroup_->clearItemGroup();
-                        isMoving = false;
-                        item->setZValue(++zCounter_);
-                        itemGroup_->addToGroup(item);
-                    }
 
-
+                if (!isGroupMoving) {
+                    itemGroup_->clearItemGroup();
+                    isGroupMoving = false;
+                    item->setZValue(++zCounter_);
+                    itemGroup_->addToGroup(item);
                     mainSelArea_.setReady(true);
-                    isMoving = false;
                 }
 
             } else {
@@ -108,7 +102,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 #endif
     if ( (event->buttons() & Qt::LeftButton) &&
          itemGroup_->isUnderMouse()) {
-        isMoving = true;
+        isGroupMoving = true;
     }
 
     QGraphicsScene::mouseMoveEvent(event);
