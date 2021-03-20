@@ -11,8 +11,9 @@ extern Logger logger;
 #define MOUSE_MOVE_DEBUG
 ItemGroup::ItemGroup(uint64_t& zc) : zCounter_(zc), m_cornerFlags(0)
 {
-
+    setAcceptHoverEvents(true);
 }
+
 
 void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -59,6 +60,7 @@ void ItemGroup::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
     qreal dby = pt.y() - boundingRect().top();      // Distance between the mouse and the top
     qreal dty = pt.y() - boundingRect().bottom();   // Distance between the mouse and the bottom
 
+    LOG_WARNING(logger, drx, " ", dlx, " ", dby, " ", dty);
     // If the mouse position is within a radius of 7
     // to a certain side( top, left, bottom or right)
     // we set the Flag in the Corner Flags Register

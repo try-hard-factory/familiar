@@ -13,6 +13,7 @@
 class MoveItem : public QObject, public QGraphicsItem
 {
     Q_OBJECT
+    Q_INTERFACES(QGraphicsItem)
 public:
     explicit MoveItem(uint64_t& zc, QObject *parent = 0);
     ~MoveItem();
