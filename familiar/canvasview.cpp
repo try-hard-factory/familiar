@@ -30,7 +30,7 @@ CanvasView::~CanvasView()
 
 void CanvasView::addImage(const QImage &image, QPointF point)
 {
-
+    ++zCounter_;
     MoveItem* item = new MoveItem(zCounter_);
     item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 //    item->setFlag(QGraphicsItem::ItemIsMovable, true);

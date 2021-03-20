@@ -1,6 +1,9 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <Logger.h>
+
+Logger logger;
 
 int main(int argc, char *argv[])
 {

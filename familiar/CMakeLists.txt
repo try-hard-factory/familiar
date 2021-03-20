@@ -45,6 +45,10 @@ set(PROJECT_SOURCES
         mainselectedarea.cpp
         mainselectedarea.h
         debug_macros.h
+        Logger.h
+        SysLogger.cpp
+        SysLogger.h
+        MessageBuilder.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)

@@ -2,6 +2,11 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 
+#include "Logger.h"
+
+extern Logger logger;
+
+
 #define MOUSE_MOVE_DEBUG
 ItemGroup::ItemGroup(uint64_t& zc) : zCounter_(zc)
 {
@@ -11,9 +16,7 @@ ItemGroup::ItemGroup(uint64_t& zc) : zCounter_(zc)
 void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
 #ifdef MOUSE_MOVE_DEBUG
-    qInfo()<<"ItemGroup::mouseMoveEvent curent scale "<<this->scale()
-          << ", EventPos: "<< event->pos()
-          << ", Pos: "<<pos();
+    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
 #endif
     this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
 }
@@ -23,10 +26,7 @@ void ItemGroup::mousePressEvent(QGraphicsSceneMouseEvent *event)
     setZValue(++zCounter_);
     shiftMouseCoords_ = (this->pos() - mapToScene(event->pos()))/scale();
 
-    qInfo()<<"ItemGroup::mousePressEvent curent scale "<<this->scale()
-          <<", Event->pos: "<<event->pos()
-         <<", Pos: "<<pos()
-         <<", Shift"<<shiftMouseCoords_;
+    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
 }
 
 void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -53,4 +53,25 @@ void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 //    QRectF r(tl, br);
 //    painter->drawRect(r);
 //    painter->restore();
+}
+
+void ItemGroup::clearItemGroup()
+{
+    auto childs = childItems();
+    for (auto& it : childs) {
+        removeFromGroup(it);
+    }
+}
+
+bool ItemGroup::isContain(const QGraphicsItem *item) const
+{
+    if (this == item->parentItem()) return true;
+
+    return false;
+}
+
+bool ItemGroup::isEmpty() const
+{
+    auto childs = childItems();
+    return childs.empty();
 }

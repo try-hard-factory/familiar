@@ -14,6 +14,7 @@ public:
 
 public:
     void onSelectionChanged();
+    QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -24,11 +25,10 @@ protected:
 
 private:
     bool isAnySelectedUnderCursor() const;
-    void clearItemGroup();
+
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
-    QGraphicsRectItem* visualSel_;
 };
 
 #endif // CANVASSCENE_H
