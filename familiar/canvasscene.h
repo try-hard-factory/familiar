@@ -6,6 +6,13 @@
 #include <itemgroup.h>
 #include "mainselectedarea.h"
 
+enum EState {
+    eMouseMoving        = 0x0000,
+    eMouseSelection     = 0x0001,
+    eGroupItemMoving    = 0x0002,
+    eOneItemMoving      = 0x0004,
+};
+
 class CanvasScene : public QGraphicsScene
 {
 public:
@@ -29,7 +36,9 @@ private:
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
-    bool isGroupMoving = false;
+
+
+    EState state_;
 };
 
 #endif // CANVASSCENE_H

@@ -40,6 +40,7 @@ void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
 void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+//    LOG_WARNING(logger, "!");
 //    auto childs = childItems();
 //    if (childs.empty()) return;
 //    qInfo()<<"ItemGroup::paint";

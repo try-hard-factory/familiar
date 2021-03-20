@@ -43,12 +43,6 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         if (event->modifiers() == Qt::ShiftModifier) {
 
 
-//            if (item) {
-//                item->setZValue(++zCounter_);
-//                itemGroup_->addToGroup(item);
-//                mainSelArea_.setReady(true);
-//            }
-
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
                 if (!itemGroup_->isContain(item)) {
@@ -59,6 +53,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             } else {
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
+                state_ = eMouseSelection;
             }
         }
     }
@@ -76,12 +71,10 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         if (event->modifiers() == Qt::ShiftModifier) {
             if (item) { // add to group
                 if (!itemGroup_->isContain(item)) {
-                    LOG_DEBUG(logger, "add to group ", item);
                     item->setZValue(++zCounter_);
                     itemGroup_->addToGroup(item);
                     mainSelArea_.setReady(true);
                 } else {
-                    LOG_WARNING(logger, "already exist! removing...");
                     itemGroup_->removeFromGroup(item);
                     if (itemGroup_->isEmpty()) mainSelArea_.setReady(false);
                 }
@@ -89,20 +82,20 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
                 if (itemGroup_->isContain(item)) {
-                    if (!isGroupMoving) {
+                    if (state_ != eGroupItemMoving) {
                         itemGroup_->clearItemGroup();
-                        isGroupMoving = false;
                         item->setZValue(++zCounter_);
                         itemGroup_->addToGroup(item);
                         mainSelArea_.setReady(true);
                     }
 
-                    isGroupMoving = false;
+                    state_ = eMouseMoving;
                 }
 
             } else {
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
+                state_ = eMouseMoving;
             }
         }
     }
@@ -115,9 +108,10 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 #ifdef MOUSE_MOVE_DEBUG
     LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 #endif
-    if ( (event->buttons() & Qt::LeftButton) &&
-         itemGroup_->isUnderMouse()) {
-        isGroupMoving = true;
+    if ( (event->buttons() & Qt::LeftButton)) {
+        if (itemGroup_->isUnderMouse()) {
+            state_ = eGroupItemMoving;
+        }
     }
 
     QGraphicsScene::mouseMoveEvent(event);
@@ -148,17 +142,21 @@ bool CanvasScene::isAnySelectedUnderCursor() const
 
 void CanvasScene::onSelectionChanged()
 {
-//    clearItemGroup();
+//    itemGroup_->clearItemGroup();
 
     auto selItems = selectedItems();
-    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
-//    QRectF result;
+
 //    for (auto& it : selItems) {
 //        itemGroup_->addToGroup(it);
-//        result = result.united(it->boundingRect());
 //    }
+    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
+    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
 
-
+//    if (itemGroup_->isEmpty()) {
+//        mainSelArea_.setReady(false);
+//    } else {
+//        mainSelArea_.setReady(true);
+//    }
 //    QDEBUG<<" 2 Selected Items = "<<selItems.size();
 //    mainSelArea_.setReady(selItems.empty());
 //    mainSelArea_.setRect(result);
@@ -171,6 +169,7 @@ void CanvasScene::onSelectionChanged()
 void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
     if (!mainSelArea_.isReady()) return;
+    LOG_WARNING(logger, "!");
     painter->save();
     painter->setPen( QPen(Qt::black, 2) );
     auto r = itemGroup_->sceneBoundingRect();
