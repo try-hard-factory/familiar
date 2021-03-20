@@ -10,7 +10,6 @@ enum EState {
     eMouseMoving        = 0x0000,
     eMouseSelection     = 0x0001,
     eGroupItemMoving    = 0x0002,
-    eOneItemMoving      = 0x0004,
 };
 
 class CanvasScene : public QGraphicsScene
@@ -38,7 +37,7 @@ private:
     MainSelectedArea mainSelArea_;
 
 
-    EState state_;
+    EState state_ = eMouseMoving;
 };
 
 #endif // CANVASSCENE_H

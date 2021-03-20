@@ -23,10 +23,14 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
 void CanvasScene::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Delete) {
-        qDebug() << "Selected items "<< selectedItems().size();
-        for (auto it : selectedItems()) {
+
+//        qDebug() << "Selected items "<< selectedItems().size();
+        mainSelArea_.setReady(false);
+        for (auto it : itemGroup_->childItems()) {
+            itemGroup_->removeFromGroup(it);
             removeItem(it);
         }
+
     } else {
         QGraphicsScene::keyPressEvent(event);
     }
@@ -106,12 +110,29 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
 #ifdef MOUSE_MOVE_DEBUG
-    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
+    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")", " State: ", state_);
 #endif
+
     if ( (event->buttons() & Qt::LeftButton)) {
-        if (itemGroup_->isUnderMouse()) {
+        if (itemGroup_->isUnderMouse() && state_ != eMouseSelection) {
             state_ = eGroupItemMoving;
         }
+
+//        if (state_ == eMouseSelection) {
+//            itemGroup_->clearItemGroup();
+//            auto selItems = selectedItems();
+
+////            for (auto& it : selItems) {
+////                itemGroup_->addToGroup(it);
+////            }
+//            LOG_DEBUG(logger, "Selected Items: ", selItems.size());
+//            LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
+//                if (itemGroup_->isEmpty()) {
+//                    mainSelArea_.setReady(false);
+//                } else {
+//                    mainSelArea_.setReady(true);
+//                }
+//        }
     }
 
     QGraphicsScene::mouseMoveEvent(event);
@@ -144,13 +165,13 @@ void CanvasScene::onSelectionChanged()
 {
 //    itemGroup_->clearItemGroup();
 
-    auto selItems = selectedItems();
+//    auto selItems = selectedItems();
 
 //    for (auto& it : selItems) {
 //        itemGroup_->addToGroup(it);
 //    }
-    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
-    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
+//    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
+//    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
 
 //    if (itemGroup_->isEmpty()) {
 //        mainSelArea_.setReady(false);
@@ -169,7 +190,7 @@ void CanvasScene::onSelectionChanged()
 void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
     if (!mainSelArea_.isReady()) return;
-    LOG_WARNING(logger, "!");
+//    LOG_WARNING(logger, "!");
     painter->save();
     painter->setPen( QPen(Qt::black, 2) );
     auto r = itemGroup_->sceneBoundingRect();
