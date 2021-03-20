@@ -15,6 +15,7 @@ public:
     void clearItemGroup();
     bool isContain(const QGraphicsItem* item) const;
     bool isEmpty() const;
+
 protected:
 //    QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;

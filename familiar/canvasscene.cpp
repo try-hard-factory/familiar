@@ -43,11 +43,11 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         if (event->modifiers() == Qt::ShiftModifier) {
 
 
-            if (item) {
-                item->setZValue(++zCounter_);
-                itemGroup_->addToGroup(item);
-                mainSelArea_.setReady(true);
-            }
+//            if (item) {
+//                item->setZValue(++zCounter_);
+//                itemGroup_->addToGroup(item);
+//                mainSelArea_.setReady(true);
+//            }
 
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
@@ -73,16 +73,31 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     auto item = getFirstItemUnderCursor(event->scenePos());
 
     if (event->button() == Qt::LeftButton) {
-        if (event->modifiers() != Qt::ShiftModifier) {
-
-            if (item) {
-
-                if (!isGroupMoving) {
-                    itemGroup_->clearItemGroup();
-                    isGroupMoving = false;
+        if (event->modifiers() == Qt::ShiftModifier) {
+            if (item) { // add to group
+                if (!itemGroup_->isContain(item)) {
+                    LOG_DEBUG(logger, "add to group ", item);
                     item->setZValue(++zCounter_);
                     itemGroup_->addToGroup(item);
                     mainSelArea_.setReady(true);
+                } else {
+                    LOG_WARNING(logger, "already exist! removing...");
+                    itemGroup_->removeFromGroup(item);
+                    if (itemGroup_->isEmpty()) mainSelArea_.setReady(false);
+                }
+            }
+        } else if (event->modifiers() != Qt::ShiftModifier) {
+            if (item) {
+                if (itemGroup_->isContain(item)) {
+                    if (!isGroupMoving) {
+                        itemGroup_->clearItemGroup();
+                        isGroupMoving = false;
+                        item->setZValue(++zCounter_);
+                        itemGroup_->addToGroup(item);
+                        mainSelArea_.setReady(true);
+                    }
+
+                    isGroupMoving = false;
                 }
 
             } else {
