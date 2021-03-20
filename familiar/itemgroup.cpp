@@ -60,6 +60,7 @@ void ItemGroup::clearItemGroup()
 {
     auto childs = childItems();
     for (auto& it : childs) {
+        LOG_DEBUG(logger, "REMOVE ", it);
         removeFromGroup(it);
     }
 }
@@ -75,4 +76,9 @@ bool ItemGroup::isEmpty() const
 {
     auto childs = childItems();
     return childs.empty();
+}
+
+bool ItemGroup::incZ()
+{
+    setZValue(++zCounter_);
 }

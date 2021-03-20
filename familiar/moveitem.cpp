@@ -13,7 +13,8 @@ MoveItem::MoveItem(uint64_t& zc, QObject *parent) :
 {
     setZValue(zCounter_);
     auto qimage = QImage("kot.png");
-    qInfo() << qimage.width() << ' ' <<qimage.height();
+//    auto qimage = QImage("kot.jpg");
+//    qInfo() << qimage.width() << ' ' <<qimage.height();
     pixmap_ = QPixmap::fromImage(qimage);
     setAcceptHoverEvents(true);
 }

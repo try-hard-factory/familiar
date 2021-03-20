@@ -16,6 +16,7 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
 {
     (void)scene;
     itemGroup_ = new ItemGroup(zc);
+    LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
     addItem(itemGroup_);
 }
@@ -39,9 +40,8 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
-
     auto item = getFirstItemUnderCursor(event->scenePos());
+    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {
         if (event->modifiers() == Qt::ShiftModifier) {
@@ -52,6 +52,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                 if (!itemGroup_->isContain(item)) {
                     itemGroup_->clearItemGroup();
                     itemGroup_->addToGroup(item);
+                    itemGroup_->incZ();
                     mainSelArea_.setReady(true);
                 }                
             } else {
@@ -77,6 +78,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 if (!itemGroup_->isContain(item)) {
                     item->setZValue(++zCounter_);
                     itemGroup_->addToGroup(item);
+                    itemGroup_->incZ();
                     mainSelArea_.setReady(true);
                 } else {
                     itemGroup_->removeFromGroup(item);
@@ -118,30 +120,36 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             state_ = eGroupItemMoving;
         }
 
-//        if (state_ == eMouseSelection) {
+        if (state_ == eMouseSelection) {
+//            if (!itemGroup_->isUnderMouse()) {itemGroup_->setSelected(false); }
 //            itemGroup_->clearItemGroup();
 //            auto selItems = selectedItems();
 
-////            for (auto& it : selItems) {
-////                itemGroup_->addToGroup(it);
-////            }
+//            for (auto& it : selItems) {
+//                itemGroup_->addToGroup(it);
+//                it->setSelected(false);
+//                LOG_DEBUG(logger, "Selected address: ", it);
+//            }
+//            LOG_DEBUG(logger, "itemGroup_ address: ", itemGroup_);
 //            LOG_DEBUG(logger, "Selected Items: ", selItems.size());
 //            LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
-//                if (itemGroup_->isEmpty()) {
-//                    mainSelArea_.setReady(false);
-//                } else {
-//                    mainSelArea_.setReady(true);
-//                }
-//        }
+////                if (itemGroup_->isEmpty()) {
+////                    mainSelArea_.setReady(false);
+////                } else {
+////                    mainSelArea_.setReady(true);
+////                }
+        }
     }
 
     QGraphicsScene::mouseMoveEvent(event);
 }
 
-QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p) {
-    auto childs = this->items(p);
+QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
+{
+    auto childs = this->items(p, Qt::IntersectsItemShape);//, Qt::AscendingOrder);
+
     for (auto& it : childs) {
-        if (it != itemGroup_) return it;
+        if (it != itemGroup_) {  return it; }
     }
 
     return nullptr;
@@ -170,7 +178,7 @@ void CanvasScene::onSelectionChanged()
 //    for (auto& it : selItems) {
 //        itemGroup_->addToGroup(it);
 //    }
-//    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
+//    LOG_WARNING(logger, "Selected Items: ", selItems.size());
 //    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
 
 //    if (itemGroup_->isEmpty()) {

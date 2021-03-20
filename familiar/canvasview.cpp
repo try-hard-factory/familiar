@@ -2,6 +2,11 @@
 #include "moveitem.h"
 #include "movepixmapitem.h"
 #include "canvasscene.h"
+
+#include "Logger.h"
+
+extern Logger logger;
+
 //#define MOUSE_MOVE_DEBUG
 CanvasView::CanvasView(QWidget* parent) :
     QGraphicsView(parent)
@@ -32,6 +37,7 @@ void CanvasView::addImage(const QImage &image, QPointF point)
 {
     ++zCounter_;
     MoveItem* item = new MoveItem(zCounter_);
+    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
     item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 //    item->setFlag(QGraphicsItem::ItemIsMovable, true);
 //    item->setFlag(QGraphicsItem::ItemIsFocusable, true);
