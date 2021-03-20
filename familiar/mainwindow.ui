@@ -13,9 +13,44 @@
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
-  <widget class="QMenuBar" name="menubar"/>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>80</y>
+      <width>67</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>HELLO</string>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuddd">
+    <property name="title">
+     <string>ddd</string>
+    </property>
+    <addaction name="actiongggg"/>
+   </widget>
+   <addaction name="menuddd"/>
+  </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="actiongggg">
+   <property name="text">
+    <string>gggg</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>

@@ -78,7 +78,7 @@ bool ItemGroup::isEmpty() const
     return childs.empty();
 }
 
-bool ItemGroup::incZ()
+void ItemGroup::incZ()
 {
     setZValue(++zCounter_);
 }

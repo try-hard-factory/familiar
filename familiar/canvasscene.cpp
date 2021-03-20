@@ -92,6 +92,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
                         itemGroup_->addToGroup(item);
+                        itemGroup_->incZ();
                         mainSelArea_.setReady(true);
                     }
 
@@ -99,8 +100,25 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                 }
 
             } else {
-                itemGroup_->clearItemGroup();
-                mainSelArea_.setReady(false);
+                if (state_ == eMouseSelection) {
+                    itemGroup_->clearItemGroup();
+                    auto selItems = selectedItems();
+
+                    for (auto& it : selItems) {
+                        itemGroup_->addToGroup(it);
+        //                it->setSelected(false);
+                        LOG_DEBUG(logger, "Selected address: ", it);
+                    }
+                    itemGroup_->incZ();
+                    if (itemGroup_->isEmpty()) {
+                        mainSelArea_.setReady(false);
+                    } else {
+                        mainSelArea_.setReady(true);
+                    }
+                } else {
+                    itemGroup_->clearItemGroup();
+                    mainSelArea_.setReady(false);
+                }
                 state_ = eMouseMoving;
             }
         }
@@ -121,23 +139,29 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         }
 
         if (state_ == eMouseSelection) {
-//            if (!itemGroup_->isUnderMouse()) {itemGroup_->setSelected(false); }
+
+            /*
+             *  This part of realtime selection.
+             *
+             */
+////            if (!itemGroup_->isUnderMouse()) {itemGroup_->setSelected(false); }
 //            itemGroup_->clearItemGroup();
 //            auto selItems = selectedItems();
 
 //            for (auto& it : selItems) {
 //                itemGroup_->addToGroup(it);
-//                it->setSelected(false);
+////                it->setSelected(false);
 //                LOG_DEBUG(logger, "Selected address: ", it);
 //            }
+//            itemGroup_->incZ();
 //            LOG_DEBUG(logger, "itemGroup_ address: ", itemGroup_);
 //            LOG_DEBUG(logger, "Selected Items: ", selItems.size());
 //            LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
-////                if (itemGroup_->isEmpty()) {
-////                    mainSelArea_.setReady(false);
-////                } else {
-////                    mainSelArea_.setReady(true);
-////                }
+//                if (itemGroup_->isEmpty()) {
+//                    mainSelArea_.setReady(false);
+//                } else {
+//                    mainSelArea_.setReady(true);
+//                }
         }
     }
 
@@ -146,7 +170,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
 {
-    auto childs = this->items(p, Qt::IntersectsItemShape);//, Qt::AscendingOrder);
+    auto childs = this->items(p, Qt::IntersectsItemShape);
 
     for (auto& it : childs) {
         if (it != itemGroup_) {  return it; }
@@ -155,6 +179,14 @@ QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
     return nullptr;
 }
 
+
+void CanvasScene::deselectItems()
+{
+    foreach (QGraphicsItem *item, selectedItems()) {
+        item->setSelected(false);
+    }
+    selectedItems().clear();
+}
 
 bool CanvasScene::isAnySelectedUnderCursor() const
 {
@@ -173,12 +205,12 @@ void CanvasScene::onSelectionChanged()
 {
 //    itemGroup_->clearItemGroup();
 
-//    auto selItems = selectedItems();
+    auto selItems = selectedItems();
 
 //    for (auto& it : selItems) {
 //        itemGroup_->addToGroup(it);
 //    }
-//    LOG_WARNING(logger, "Selected Items: ", selItems.size());
+    LOG_WARNING(logger, "Selected Items: ", selItems.size());
 //    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
 
 //    if (itemGroup_->isEmpty()) {

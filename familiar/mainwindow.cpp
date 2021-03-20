@@ -20,7 +20,7 @@ MainWindow::MainWindow(QWidget *parent)
 //    for (int i=0;i<100;++i)
 //        canvasWidget->addImage(qimage,{(double)i*100,(double)i*100});
 
-    canvasWidget->setBackgroundBrush(QBrush(QColor(0xFF,0xFF,0xFF)));
+//    canvasWidget->setBackgroundBrush(QBrush(QColor(0xFF,0xFF,0xFF)));
     setCentralWidget(canvasWidget);
 
 }

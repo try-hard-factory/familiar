@@ -31,6 +31,7 @@ protected:
 
 private:
     bool isAnySelectedUnderCursor() const;
+    void deselectItems();
 
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
