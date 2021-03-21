@@ -9,6 +9,10 @@ public:
     ItemGroup(uint64_t& zc);
 public:
 
+    enum ActionStates {
+        ResizeState = 0x01,
+        RotationState = 0x02
+    };
     enum CornerFlags {
         Top = 0x01,
         Bottom = 0x02,
@@ -34,10 +38,16 @@ protected:
 
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
+    void resizeLeft( const QPointF &pt);
+    void resizeRight( const QPointF &pt);
+    void resizeBottom(const QPointF &pt);
+    void resizeTop(const QPointF &pt);
+
 private:
     QPointF shiftMouseCoords_;
     uint64_t& zCounter_;
-    unsigned int m_cornerFlags;
+    unsigned int cornerFlags_;
+    unsigned int actionFlags_;
 };
 
 #endif // ITEMGROUP_H
