@@ -37,8 +37,8 @@ void MovableCircle::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
-    painter->setBrush(QBrush(Qt::red));
-    painter->setPen(QPen(Qt::black));
+    painter->setBrush(QBrush(QColor(0, 160, 230)));
+    painter->setPen(QPen(QColor(0, 160, 230)));
     painter->drawEllipse(-5, -5, 10, 10);
 }
 
@@ -53,21 +53,29 @@ void MovableCircle::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     auto pos = mapToScene(event->pos() + _shiftMouseCoords);
 //    pos.setX(qMin(pos.x(), pos.y()));
 //    pos.setY(qMin(pos.x(), pos.y()));
-
-//    LOG_WARNING(logger, "Circle Pos: ", circlePos_, ", ", pos.x(), " ", pos.y());
+    qreal xl = (pos.x() == 0) ? 1 : pos.x();
+    qreal yl = (pos.y() == 0) ? 1 : pos.y();
+    qreal arl = qAbs(xl / yl);
 
     if (circlePos_ == eBottomRight) {
-        double arl = pos.x()/pos.y();
+        if (arl > aspectRatio_) {
+            pos.setX(yl * aspectRatio_);
+        } else {
+            pos.setY(xl / aspectRatio_);
 
+        }
+    }
+
+    if (circlePos_ == eTopLeft) {
         LOG_WARNING(logger, "Circle Pos: ", circlePos_, ", ", pos.x(), " ", pos.y());
         LOG_WARNING(logger, "Init Ar: ", aspectRatio_, ", Current Ar:", arl);
         if (arl > aspectRatio_) {
             LOG_DEBUG(logger, "> Before: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
-            pos.setX(pos.y() * aspectRatio_);
+            pos.setY(xl / aspectRatio_);
             LOG_DEBUG(logger, "> After: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
         } else {
             LOG_DEBUG(logger, "< Before: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
-            pos.setY(pos.x() / aspectRatio_);
+            pos.setX(yl * aspectRatio_);
             LOG_DEBUG(logger, "< After: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
         }
     }
@@ -169,7 +177,7 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
      painter->drawImage(boundingRect(), qimage_);
 //    painter->drawPixmap(point, pixmap_, boundingRect());
 //    painter->setBrush(QBrush(Qt::blue));
-     painter->setPen(QPen(Qt::black,5));
+     painter->setPen(QPen(QColor(0, 160, 230),2));
      painter->drawRect(rect_);
 
 //    if (option->state & QStyle::State_Selected) {
