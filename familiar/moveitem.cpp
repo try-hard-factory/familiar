@@ -51,10 +51,10 @@ void MovableCircle::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void MovableCircle::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     auto pos = mapToScene(event->pos() + _shiftMouseCoords);
-//    pos.setX(qMin(pos.x(), pos.y()));
-//    pos.setY(qMin(pos.x(), pos.y()));
-    qreal xl = (pos.x() == 0) ? 1 : pos.x();
-    qreal yl = (pos.y() == 0) ? 1 : pos.y();
+
+    qreal xl = (pos.x() == 0) ? .1 : pos.x();
+    qreal yl = (pos.y() == 0) ? .1 : pos.y();
+
     qreal arl = qAbs(xl / yl);
 
     if (circlePos_ == eBottomRight) {
@@ -68,15 +68,15 @@ void MovableCircle::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
     if (circlePos_ == eTopLeft) {
         LOG_WARNING(logger, "Circle Pos: ", circlePos_, ", ", pos.x(), " ", pos.y());
-        LOG_WARNING(logger, "Init Ar: ", aspectRatio_, ", Current Ar:", arl);
+        LOG_WARNING(logger, "Init Aspect Ratio: ", aspectRatio_, ", Current AspectRatio:", arl);
         if (arl > aspectRatio_) {
-            LOG_DEBUG(logger, "> Before: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
+            LOG_DEBUG(logger, "> Before: ", pos.x(), ", ", pos.y());
             pos.setY(xl / aspectRatio_);
-            LOG_DEBUG(logger, "> After: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
+            LOG_DEBUG(logger, "> After: ", pos.x(), ", ", pos.y());
         } else {
-            LOG_DEBUG(logger, "< Before: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
+            LOG_DEBUG(logger, "< Before: ", pos.x(), ", ", pos.y());
             pos.setX(yl * aspectRatio_);
-            LOG_DEBUG(logger, "< After: ", pos.x(), ", ", pos.y(), " |", pos.y() * arl);
+            LOG_DEBUG(logger, "< After: ", pos.x(), ", ", pos.y());
         }
     }
 
@@ -178,7 +178,7 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 //    painter->drawPixmap(point, pixmap_, boundingRect());
 //    painter->setBrush(QBrush(Qt::blue));
      painter->setPen(QPen(QColor(0, 160, 230),2));
-     painter->drawRect(rect_);
+     painter->drawRect(boundingRect());
 
 //    if (option->state & QStyle::State_Selected) {
 //        QPen p;
