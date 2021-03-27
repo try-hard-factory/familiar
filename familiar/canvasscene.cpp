@@ -5,6 +5,7 @@
 #include <QGraphicsItem>
 #include <QPen>
 #include <QPainter>
+#include <QMimeData>
 
 #include "Logger.h"
 
@@ -37,6 +38,49 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
     }
 }
 
+void CanvasScene::dragMoveEvent(QGraphicsSceneDragDropEvent *event)
+{
+//    qDebug()<<"dragMoveEvent";
+    event->accept();
+}
+
+void CanvasScene::dragEnterEvent(QGraphicsSceneDragDropEvent *event)
+{
+
+    if (event->mimeData()->hasUrls()) {
+        qDebug()<<"dragEnterEvent hasUrls";
+        event->acceptProposedAction();
+    }
+
+    event->accept();
+}
+
+void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
+{
+    const QMimeData *mimeData = event->mimeData();
+    if (!mimeData) { return; }
+
+    if (mimeData->hasHtml()) {
+        qDebug()<<"dropEvent html"<<mimeData->html();
+        qDebug()<<"dropEvent url"<<mimeData->urls();
+    } else if (mimeData->hasUrls()) {
+        foreach (const QUrl &url, event->mimeData()->urls()) {
+            QString fileName = url.toLocalFile();
+            qDebug() << "Dropped file:" << fileName<<
+                        ", formats: "<< event->mimeData()->formats();
+        }
+    } else if (mimeData->hasText()) {
+        qDebug()<<"dropEvent text"<<mimeData->text();
+    } else {
+        qDebug() <<"Cannot display data";
+    }
+
+
+        // access myData's data directly (not through QMimeData's API)
+//                  if (event->mimeData()->hasImage()) {
+//                      QImage image = qvariant_cast<QImage>(event->mimeData()->imageData());
+//                  }
+}
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
