@@ -84,6 +84,8 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
+    QGraphicsScene::mousePressEvent(event);
+    return;
     auto item = getFirstItemUnderCursor(event->scenePos());
     LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
