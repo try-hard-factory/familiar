@@ -12,10 +12,10 @@ MainWindow::MainWindow(QWidget *parent)
     auto qimage = QImage("kot.jpg");
     qInfo() << qimage.width() << ' ' <<qimage.height();
 
-    canvasWidget->addImage(qimage, {0,0});
-    canvasWidget->addImage(qimage, {100,100});
-    canvasWidget->addImage(qimage, {200,200});
-    canvasWidget->addImage(qimage, {300,300});
+    canvasWidget->addImage("kot.png", {0,0});
+    canvasWidget->addImage("bender.png", {100,100});
+    canvasWidget->addImage("kot.png", {200,200});
+    canvasWidget->addImage("bender.png", {300,300});
 
 //    for (int i=0;i<100;++i)
 //        canvasWidget->addImage(qimage,{(double)i*100,(double)i*100});

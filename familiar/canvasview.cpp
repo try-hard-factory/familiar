@@ -33,10 +33,10 @@ CanvasView::~CanvasView()
 }
 
 
-void CanvasView::addImage(const QImage &image, QPointF point)
+void CanvasView::addImage(const QString& path, QPointF point)
 {
     ++zCounter_;
-    MoveItem* item = new MoveItem(zCounter_);
+    MoveItem* item = new MoveItem(path, zCounter_);
     LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
     item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 //    item->setFlag(QGraphicsItem::ItemIsMovable, true);

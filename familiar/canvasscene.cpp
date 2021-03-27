@@ -1,5 +1,6 @@
 #include "debug_macros.h"
 #include "canvasscene.h"
+#include "moveitem.h"
 
 #include <QKeyEvent>
 #include <QGraphicsItem>
@@ -64,10 +65,19 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
         qDebug()<<"dropEvent html"<<mimeData->html();
         qDebug()<<"dropEvent url"<<mimeData->urls();
     } else if (mimeData->hasUrls()) {
+        qreal x = 0;
         foreach (const QUrl &url, event->mimeData()->urls()) {
             QString fileName = url.toLocalFile();
             qDebug() << "Dropped file:" << fileName<<
                         ", formats: "<< event->mimeData()->formats();
+
+            ++zCounter_;
+            MoveItem* item = new MoveItem(fileName, zCounter_);
+            qreal new_x = event->scenePos().x();
+            qreal new_y = event->scenePos().y();
+            item->setPos({new_x+x, new_y});
+            x += item->getRect().width();
+            addItem(item);
         }
     } else if (mimeData->hasText()) {
         qDebug()<<"dropEvent text"<<mimeData->text();

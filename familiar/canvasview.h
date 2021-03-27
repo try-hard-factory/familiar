@@ -18,7 +18,7 @@ public:
     CanvasView(QWidget* parent = 0);
     ~CanvasView();
 
-    void addImage(const QImage& image, QPointF point);
+    void addImage(const QString& path, QPointF point);
     void setZoomFactor(double factor) { zoomFactor_ = factor; }
 
 protected:
