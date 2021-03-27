@@ -51,6 +51,7 @@ set(PROJECT_SOURCES
         MessageBuilder.h
         borderdot.cpp
         borderdot.h
+        Vec2d.h
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
