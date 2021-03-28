@@ -44,7 +44,8 @@ class MoveItem : public QObject, public QGraphicsItem//public QGraphicsObject
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
 public:
-    MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent = 0);
+    MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent = nullptr);
+    MoveItem(const QImage& img, uint64_t& zc, QGraphicsItem *parent = nullptr);
     ~MoveItem();
     QRectF getRect() const { return boundingRect(); }
 signals:

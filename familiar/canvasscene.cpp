@@ -21,6 +21,7 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
     addItem(itemGroup_);
+    imgdownloader_ = new ImageDownloader(*this);
 }
 
 void CanvasScene::keyPressEvent(QKeyEvent *event)
@@ -64,6 +65,7 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
     if (mimeData->hasHtml()) {
         qDebug()<<"dropEvent html"<<mimeData->html();
         qDebug()<<"dropEvent url"<<mimeData->urls();
+        imgdownloader_->setFile(mimeData->urls()[0].toString());
     } else if (mimeData->hasUrls()) {
         qreal x = 0;
         foreach (const QUrl &url, event->mimeData()->urls()) {

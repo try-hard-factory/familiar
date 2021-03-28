@@ -226,6 +226,57 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent) :
      });
 }
 
+MoveItem::MoveItem(const QImage& img, uint64_t& zc, QGraphicsItem *parent) :
+    QGraphicsItem(parent), qimage_(img), zCounter_(zc)
+{
+    setZValue(zCounter_);
+    pixmap_ = QPixmap::fromImage(qimage_);
+    _size = pixmap_.size();
+    rect_ = qimage_.rect();
+
+    setAcceptHoverEvents(true);
+    setFlag(QGraphicsItem::ItemIsMovable, true);
+
+     // Top Left
+     _topLeftCircle = new MovableCircle(MovableCircle::eTopLeft, this);
+     _topLeftCircle->setPos(0, 0);
+     // Top Right
+     _topRightCircle = new MovableCircle(MovableCircle::eTopRight, this);
+     _topRightCircle->setPos(_size.width(), 0);
+     // Bottom Right
+     _bottomRightCircle = new MovableCircle(MovableCircle::eBottomRight, this);
+     _bottomRightCircle->setPos(_size.width(), _size.height());
+     // Bottom Left
+     _bottomLeftCircle = new MovableCircle(MovableCircle::eBottomLeft, this);
+     _bottomLeftCircle->setPos(0, _size.height());
+     // Signals
+     // If a delimiter point has been moved, so force the item to redraw
+
+     connect(_topLeftCircle, &MovableCircle::circleMoved, this, [this](){
+         _bottomLeftCircle->setPos( _topLeftCircle->pos().x(), _bottomLeftCircle->pos().y());
+         _topRightCircle->setPos(_topRightCircle->pos().x(), _topLeftCircle->pos().y());
+         update(); // force to Repaint
+     });
+
+     connect(_topRightCircle, &MovableCircle::circleMoved, this, [this](){
+         _topLeftCircle->setPos(_topLeftCircle->pos().x(), _topRightCircle->pos().y());
+         _bottomRightCircle->setPos(_topRightCircle->pos().x(), _bottomRightCircle->pos().y());
+         update(); // force to Repaint
+     });
+
+     connect(_bottomLeftCircle, &MovableCircle::circleMoved, this, [this](){
+         _topLeftCircle->setPos(_bottomLeftCircle->pos().x(), _topLeftCircle->pos().y());
+         _bottomRightCircle->setPos(_bottomRightCircle->pos().x(), _bottomLeftCircle->pos().y());
+         update(); // force to Repaint
+     });
+
+     connect(_bottomRightCircle, &MovableCircle::circleMoved, this, [this](){
+         _bottomLeftCircle->setPos(_bottomLeftCircle->pos().x(), _bottomRightCircle->pos().y());
+         _topRightCircle->setPos(_bottomRightCircle->pos().x(), _topRightCircle->pos().y());
+         update(); // force to Repaint
+     });
+}
+
 MoveItem::~MoveItem()
 {
 

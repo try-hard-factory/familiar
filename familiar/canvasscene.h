@@ -5,7 +5,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <itemgroup.h>
 #include "mainselectedarea.h"
-
+#include "image_downloader.h"
 enum EState {
     eMouseMoving        = 0x0000,
     eMouseSelection     = 0x0001,
@@ -42,6 +42,8 @@ private:
 
 
     EState state_ = eMouseMoving;
+
+    ImageDownloader* imgdownloader_ = nullptr;
 };
 
 #endif // CANVASSCENE_H
