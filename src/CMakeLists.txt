@@ -1,18 +1,47 @@
-link_directories(
-        ${GTKMM_LIBRARY_DIRS}  )
 
-include_directories(
-        ${GTKMM_INCLUDE_DIRS}  )
-
-add_executable(familiar # name of the executable on Windows will be example.exe
+set(PROJECT_SOURCES
         main.cpp
+        mainwindow.cpp
+        mainwindow.h
+        mainwindow.ui
+        canvasview.cpp
+        canvasview.h
+        moveitem.cpp
+        moveitem.h
+        movepixmapitem.cpp
+        movepixmapitem.h
+        canvasscene.cpp
+        canvasscene.h
+        itemgroup.cpp
+        itemgroup.h
+        mainselectedarea.cpp
+        mainselectedarea.h
+        debug_macros.h
+        Logger.h
         SysLogger.cpp
-        radiobuttons.cpp
-        radiobuttons.h
-        main_window.cpp
-        main_window.h
-        ImagesArea.cpp
-        ImagesArea.h CanvasArea.cpp CanvasArea.h Point.h Fleck.h ContentController.h Rectangle.h ContentController.cpp FocusPoints.cpp FocusPoints.h utils.h ImageWidget.cpp ImageWidget.h Rectangle.cpp)
+        SysLogger.h
+        MessageBuilder.h
+        borderdot.cpp
+        borderdot.h
+        Vec2d.h
+        image_downloader.cpp
+        image_downloader.h
+)
 
-target_link_libraries(familiar
-        ${GTKMM_LIBRARIES} pthread )
+if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
+    qt_add_executable(familiar
+        ${PROJECT_SOURCES}
+    )
+else()
+    if(ANDROID)
+        add_library(familiar SHARED
+            ${PROJECT_SOURCES}
+        )
+    else()
+        add_executable(familiar
+            ${PROJECT_SOURCES}
+        )
+    endif()
+endif()
+
+target_link_libraries(familiar PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network)

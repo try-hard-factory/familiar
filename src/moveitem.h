@@ -22,7 +22,7 @@ public:
         eBottomLeft,
     };
 
-    explicit MovableCircle(ECirclePos cp, double ar, QGraphicsItem *parent = 0);
+    explicit MovableCircle(ECirclePos cp, QGraphicsItem *parent = 0);
 
 private:
     QRectF boundingRect() const;
@@ -34,7 +34,6 @@ private:
     QPointF _shiftMouseCoords;
 
 private:
-    double aspectRatio_;
     ECirclePos circlePos_;
 signals:
     void circleMoved();
@@ -45,9 +44,10 @@ class MoveItem : public QObject, public QGraphicsItem//public QGraphicsObject
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
 public:
-    explicit MoveItem(uint64_t& zc, QGraphicsItem *parent = 0);
+    MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent = nullptr);
+    MoveItem(const QImage& img, uint64_t& zc, QGraphicsItem *parent = nullptr);
     ~MoveItem();
-
+    QRectF getRect() const { return boundingRect(); }
 signals:
 protected:
     QRectF boundingRect() const override;

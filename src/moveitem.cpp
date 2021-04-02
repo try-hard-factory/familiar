@@ -10,10 +10,9 @@ extern Logger logger;
 
 #define MOUSE_MOVE_DEBUG
 
-MovableCircle::MovableCircle(ECirclePos cp, double ar, QGraphicsItem *parent) :
-    QGraphicsObject(parent), aspectRatio_(ar), circlePos_(cp)
+MovableCircle::MovableCircle(ECirclePos cp, QGraphicsItem *parent) :
+    QGraphicsObject(parent), circlePos_(cp)
 {
-//    aspectRatio_ = parent->boundingRect().height() / parent->boundingRect().width();
     setFlag(ItemClipsToShape, true);
     setCursor(QCursor(Qt::PointingHandCursor));
 }
@@ -63,7 +62,6 @@ void MovableCircle::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     QPointF c(rect.x() + rect.width(), rect.y() + rect.height());
     QPointF d(rect.x(), rect.y() + rect.height());
 
-    qreal arl = qAbs(xl / yl);
 
     if (circlePos_ == eTopRight) {
         Vec2d dc(c.x()-d.x(), c.y()-d.y());
@@ -173,12 +171,12 @@ void MovableCircle::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 /*********************************************************************/
 
 
-MoveItem::MoveItem(uint64_t& zc, QGraphicsItem *parent) :
+MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent) :
     QGraphicsItem(parent), zCounter_(zc)
 {
     setZValue(zCounter_);
 //    qimage_ = QImage("bender.png");
-    qimage_ = QImage("kot.png");
+    qimage_ = QImage(path);
 //    auto qimage = QImage("kot.jpg");
 //    qInfo() << qimage.width() << ' ' <<qimage.height();
     pixmap_ = QPixmap::fromImage(qimage_);
@@ -188,18 +186,68 @@ MoveItem::MoveItem(uint64_t& zc, QGraphicsItem *parent) :
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemIsMovable, true);
 
-     double ar = _size.width() / _size.height();
      // Top Left
-     _topLeftCircle = new MovableCircle(MovableCircle::eTopLeft, ar, this);
+     _topLeftCircle = new MovableCircle(MovableCircle::eTopLeft, this);
      _topLeftCircle->setPos(0, 0);
      // Top Right
-     _topRightCircle = new MovableCircle(MovableCircle::eTopRight, ar, this);
+     _topRightCircle = new MovableCircle(MovableCircle::eTopRight, this);
      _topRightCircle->setPos(_size.width(), 0);
      // Bottom Right
-     _bottomRightCircle = new MovableCircle(MovableCircle::eBottomRight, ar, this);
+     _bottomRightCircle = new MovableCircle(MovableCircle::eBottomRight, this);
      _bottomRightCircle->setPos(_size.width(), _size.height());
      // Bottom Left
-     _bottomLeftCircle = new MovableCircle(MovableCircle::eBottomLeft, ar, this);
+     _bottomLeftCircle = new MovableCircle(MovableCircle::eBottomLeft, this);
+     _bottomLeftCircle->setPos(0, _size.height());
+     // Signals
+     // If a delimiter point has been moved, so force the item to redraw
+
+     connect(_topLeftCircle, &MovableCircle::circleMoved, this, [this](){
+         _bottomLeftCircle->setPos( _topLeftCircle->pos().x(), _bottomLeftCircle->pos().y());
+         _topRightCircle->setPos(_topRightCircle->pos().x(), _topLeftCircle->pos().y());
+         update(); // force to Repaint
+     });
+
+     connect(_topRightCircle, &MovableCircle::circleMoved, this, [this](){
+         _topLeftCircle->setPos(_topLeftCircle->pos().x(), _topRightCircle->pos().y());
+         _bottomRightCircle->setPos(_topRightCircle->pos().x(), _bottomRightCircle->pos().y());
+         update(); // force to Repaint
+     });
+
+     connect(_bottomLeftCircle, &MovableCircle::circleMoved, this, [this](){
+         _topLeftCircle->setPos(_bottomLeftCircle->pos().x(), _topLeftCircle->pos().y());
+         _bottomRightCircle->setPos(_bottomRightCircle->pos().x(), _bottomLeftCircle->pos().y());
+         update(); // force to Repaint
+     });
+
+     connect(_bottomRightCircle, &MovableCircle::circleMoved, this, [this](){
+         _bottomLeftCircle->setPos(_bottomLeftCircle->pos().x(), _bottomRightCircle->pos().y());
+         _topRightCircle->setPos(_bottomRightCircle->pos().x(), _topRightCircle->pos().y());
+         update(); // force to Repaint
+     });
+}
+
+MoveItem::MoveItem(const QImage& img, uint64_t& zc, QGraphicsItem *parent) :
+    QGraphicsItem(parent), qimage_(img), zCounter_(zc)
+{
+    setZValue(zCounter_);
+    pixmap_ = QPixmap::fromImage(qimage_);
+    _size = pixmap_.size();
+    rect_ = qimage_.rect();
+
+    setAcceptHoverEvents(true);
+    setFlag(QGraphicsItem::ItemIsMovable, true);
+
+     // Top Left
+     _topLeftCircle = new MovableCircle(MovableCircle::eTopLeft, this);
+     _topLeftCircle->setPos(0, 0);
+     // Top Right
+     _topRightCircle = new MovableCircle(MovableCircle::eTopRight, this);
+     _topRightCircle->setPos(_size.width(), 0);
+     // Bottom Right
+     _bottomRightCircle = new MovableCircle(MovableCircle::eBottomRight, this);
+     _bottomRightCircle->setPos(_size.width(), _size.height());
+     // Bottom Left
+     _bottomLeftCircle = new MovableCircle(MovableCircle::eBottomLeft, this);
      _bottomLeftCircle->setPos(0, _size.height());
      // Signals
      // If a delimiter point has been moved, so force the item to redraw
