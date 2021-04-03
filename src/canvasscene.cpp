@@ -2,6 +2,9 @@
 #include "canvasscene.h"
 #include "moveitem.h"
 
+#include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
 #include <QKeyEvent>
 #include <QGraphicsItem>
 #include <QPen>
@@ -37,6 +40,41 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
 
     } else {
         QGraphicsScene::keyPressEvent(event);
+    }
+
+
+    switch (event->key()) {
+    case (Qt::Key_Insert):
+        if (event->modifiers() & Qt::ShiftModifier) {
+            pasteFromClipboard();
+        }
+        break;
+    default:
+        QGraphicsScene::keyPressEvent(event);
+        break;
+    }
+}
+
+void CanvasScene::pasteFromClipboard()
+{
+    const QClipboard *clipboard = QApplication::clipboard();
+    const QMimeData *mimedata = clipboard->mimeData();
+
+    if (mimedata->hasImage()) {
+        LOG_DEBUG(logger, "IMAGE");
+        QImage image = qvariant_cast<QImage>(mimedata->imageData());
+        qDebug()<<image.rect();
+        ++zCounter_;
+        MoveItem* item = new MoveItem(image, zCounter_);
+        item->setPos(100, 100);
+        addItem(item);
+//        mimedata->
+    } else if (mimedata->hasHtml()) {
+        LOG_DEBUG(logger, "HTML");
+    } else if (mimedata->hasText()) {
+        LOG_DEBUG(logger, "TEXT\n ", mimedata->text().toStdString());
+    } else {
+        LOG_DEBUG(logger, "CANNOT DISPLAY DATA");
     }
 }
 

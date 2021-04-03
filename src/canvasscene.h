@@ -19,6 +19,7 @@ public:
     ~CanvasScene() = default;
 
 public:
+    void pasteFromClipboard();
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
 
