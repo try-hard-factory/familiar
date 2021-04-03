@@ -31,7 +31,7 @@ protected:
     void dragEnterEvent(QGraphicsSceneDragDropEvent *event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent *event) override;
     void dropEvent(QGraphicsSceneDragDropEvent *event) override;
-
+//    void drawBackground(QPainter *painter, const QRectF &rect) override;
 private:
     bool isAnySelectedUnderCursor() const;
     void deselectItems();

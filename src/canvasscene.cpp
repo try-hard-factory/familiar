@@ -300,3 +300,12 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     painter->drawPoint(r.x(), r.y() + r.height());
     painter->restore();
 }
+
+
+//void CanvasScene::drawBackground(QPainter *painter, const QRectF &rect)
+//{
+//    painter->save();
+//    setBackgroundBrush(QBrush(QColor(247, 0, 255)));
+//    painter->fillRect(rect, backgroundBrush());
+//    painter->restore();
+//}
