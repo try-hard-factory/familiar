@@ -30,6 +30,8 @@ private slots:
     void onReadyRead();
     void onReplyFinished();
     void onDownloadFileComplete(QNetworkReply*);
+    void errorOccurred(QNetworkReply::NetworkError err);
+    void finished();
 };
 
 #endif // IMAGE_DOWNLOADER_H

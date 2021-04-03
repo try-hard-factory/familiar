@@ -21,11 +21,43 @@ void ImageDownloader::setFile(QString url)
 
     QNetworkRequest req;
     req.setUrl(QUrl(url));
-    connect(manager_, SIGNAL(finished(QNetworkReply *)), this, SLOT(onDownloadFileComplete(QNetworkReply *)));
+    reply_ = manager_->get(req);
+    connect(reply_, SIGNAL(errorOccurred(QNetworkReply::NetworkError)),
+                this, SLOT(errorOccurred(QNetworkReply::NetworkError)));
+//    connect(reply_, SIGNAL(downloadProgress(qint64, qint64)),
+//                this, SLOT(updateProgress(qint64, qint64)));
+    connect(reply_, SIGNAL(finished()),
+                this, SLOT(finished()));
 
-    manager_->get(req);
-//    reply_ = manager_->get(req);
+//    connect(manager_, SIGNAL(finished(QNetworkReply *)), this, SLOT(onDownloadFileComplete(QNetworkReply *)));
 }
+
+void ImageDownloader::finished()
+{
+    QImage img;
+    img.loadFromData(reply_->readAll());
+    qDebug()<<" finished onDownloadFileComplete. "<<img.size();
+    uint64_t z = 9999;
+    MoveItem* item = new MoveItem(img, z);
+    item->setPos({0, 0});
+
+    scene_.addItem(item);
+    isReady_ = true;
+    reply_->deleteLater();
+    // done
+}
+
+void ImageDownloader::errorOccurred(QNetworkReply::NetworkError err)
+{
+    // Manage error here.
+    reply_->deleteLater();
+}
+
+
+
+/*
+ *UNUSED, delete it later
+ */
 
 
 void ImageDownloader::onDownloadProgress(qint64 bytesRead, qint64 bytesTotal)
@@ -36,7 +68,7 @@ void ImageDownloader::onDownloadProgress(qint64 bytesRead, qint64 bytesTotal)
 void ImageDownloader::onDownloadFileComplete(QNetworkReply *reply) {
 
     QImage img;
-    img.loadFromData(reply->readAll());
+    img.loadFromData(reply_->readAll());
     qDebug()<<"onDownloadFileComplete. "<<img.size();
     uint64_t z = 9999;
     MoveItem* item = new MoveItem(img, z);
@@ -44,7 +76,8 @@ void ImageDownloader::onDownloadFileComplete(QNetworkReply *reply) {
 
     scene_.addItem(item);
     isReady_ = true;
-
+    reply->deleteLater();
+    reply_->deleteLater();
 }
 
 void ImageDownloader::onFinished(QNetworkReply * reply)
