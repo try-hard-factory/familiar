@@ -132,6 +132,11 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 //    QGraphicsScene::mousePressEvent(event);
 //    return;
     auto item = getFirstItemUnderCursor(event->scenePos());
+    if (item->type() == eBorderDot) {
+        QGraphicsScene::mousePressEvent(event);
+        return;
+    }
+
     LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {
@@ -142,7 +147,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
             if (item) {
                 if (!itemGroup_->isContain(item)) {
                     itemGroup_->clearItemGroup();
-                    itemGroup_->addToGroup(item);
+                    itemGroup_->addItem(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
                 }                
@@ -168,7 +173,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             if (item) { // add to group
                 if (!itemGroup_->isContain(item)) {
                     item->setZValue(++zCounter_);
-                    itemGroup_->addToGroup(item);
+                    itemGroup_->addItem(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
                 } else {
@@ -182,7 +187,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                     if (state_ != eGroupItemMoving) {
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
-                        itemGroup_->addToGroup(item);
+                        itemGroup_->addItem(item);
                         itemGroup_->incZ();
                         mainSelArea_.setReady(true);
                     }
@@ -196,7 +201,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                     auto selItems = selectedItems();
 
                     for (auto& it : selItems) {
-                        itemGroup_->addToGroup(it);
+                        itemGroup_->addItem(it);
         //                it->setSelected(false);
                         LOG_DEBUG(logger, "Selected address: ", it);
                     }
@@ -240,7 +245,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //            auto selItems = selectedItems();
 
 //            for (auto& it : selItems) {
-//                itemGroup_->addToGroup(it);
+//                itemGroup_->addItem(it);
 ////                it->setSelected(false);
 //                LOG_DEBUG(logger, "Selected address: ", it);
 //            }
@@ -299,7 +304,7 @@ void CanvasScene::onSelectionChanged()
     auto selItems = selectedItems();
 
 //    for (auto& it : selItems) {
-//        itemGroup_->addToGroup(it);
+//        itemGroup_->addItem(it);
 //    }
     LOG_WARNING(logger, "Selected Items: ", selItems.size());
 //    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
@@ -326,10 +331,10 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     auto r = itemGroup_->sceneBoundingRect();
     painter->drawRect(r);
     painter->setPen( QPen(Qt::black, 10) );
-    painter->drawPoint(r.x(), r.y());
-    painter->drawPoint(r.x()+r.width(), r.y());
-    painter->drawPoint(r.x()+r.width(), r.y()+r.height());
-    painter->drawPoint(r.x(), r.y() + r.height());
+//    painter->drawPoint(r.x(), r.y());
+//    painter->drawPoint(r.x()+r.width(), r.y());
+//    painter->drawPoint(r.x()+r.width(), r.y()+r.height());
+//    painter->drawPoint(r.x(), r.y() + r.height());
     painter->restore();
 }
 

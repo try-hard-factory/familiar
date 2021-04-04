@@ -1,28 +1,55 @@
 #ifndef ITEMGROUP_H
 #define ITEMGROUP_H
 
+#include <QObject>
 #include <QGraphicsItemGroup>
 
-class ItemGroup : public QGraphicsItemGroup
+class MovableCircle : public QGraphicsObject
 {
+    Q_OBJECT
+    Q_INTERFACES(QGraphicsItem)
+public:
+    enum ECirclePos {
+        eTopLeft = 0,
+        eTopRight,
+        eBottomRight,
+        eBottomLeft,
+    };
+
+    explicit MovableCircle(ECirclePos cp, QGraphicsItem *parent = 0);
+
+    enum { Type = UserType + 1 };
+
+    int type() const override
+    {
+        return Type;
+    }
+
+private:
+    QRectF boundingRect() const;
+    QPainterPath shape() const;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
+    void mousePressEvent(QGraphicsSceneMouseEvent *event);
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
+    QPointF _shiftMouseCoords;
+
+private:
+    ECirclePos circlePos_;
+signals:
+    void circleMoved();
+};
+
+
+class ItemGroup : public QObject, public QGraphicsItemGroup
+{
+    Q_OBJECT
+    Q_INTERFACES(QGraphicsItem)
 public:
     ItemGroup(uint64_t& zc);
 public:
+    void addItem(QGraphicsItem* item);
 
-    enum ActionStates {
-        ResizeState = 0x01,
-        RotationState = 0x02
-    };
-    enum CornerFlags {
-        Top = 0x01,
-        Bottom = 0x02,
-        Left = 0x04,
-        Right = 0x08,
-        TopLeft = Top|Left,
-        TopRight = Top|Right,
-        BottomLeft = Bottom|Left,
-        BottomRight = Bottom|Right
-    };
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -30,24 +57,22 @@ public:
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
     void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
+
     void clearItemGroup();
     bool isContain(const QGraphicsItem* item) const;
     bool isEmpty() const;
     void incZ();
 protected:
-
+//    QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
-    void resizeLeft( const QPointF &pt);
-    void resizeRight( const QPointF &pt);
-    void resizeBottom(const QPointF &pt);
-    void resizeTop(const QPointF &pt);
+private:
+    void MovableCirclesSetVisible(bool visibility);
 
 private:
     QPointF shiftMouseCoords_;
     uint64_t& zCounter_;
-    unsigned int cornerFlags_;
-    unsigned int actionFlags_;
+    MovableCircle *_topLeftCircle, *_topRightCircle, *_bottomLeftCircle, *_bottomRightCircle;
 };
 
 #endif // ITEMGROUP_H

@@ -10,35 +10,6 @@
 #include <QDebug>
 #include <QCursor>
 
-class MovableCircle : public QGraphicsObject
-{
-    Q_OBJECT
-    Q_INTERFACES(QGraphicsItem)
-public:
-    enum ECirclePos {
-        eTopLeft = 0,
-        eTopRight,
-        eBottomRight,
-        eBottomLeft,
-    };
-
-    explicit MovableCircle(ECirclePos cp, QGraphicsItem *parent = 0);
-
-private:
-    QRectF boundingRect() const;
-    QPainterPath shape() const;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
-    void mousePressEvent(QGraphicsSceneMouseEvent *event);
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-    QPointF _shiftMouseCoords;
-
-private:
-    ECirclePos circlePos_;
-signals:
-    void circleMoved();
-};
-
 class MoveItem : public QObject, public QGraphicsItem//public QGraphicsObject
 {
     Q_OBJECT
@@ -64,7 +35,6 @@ private:
     QImage qimage_;
     QPixmap pixmap_;
     uint64_t& zCounter_;
-    MovableCircle *_topLeftCircle, *_topRightCircle, *_bottomLeftCircle, *_bottomRightCircle;
     QSizeF _size;
     QRectF rect_;
 public slots:
