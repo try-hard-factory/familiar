@@ -129,9 +129,12 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-//    QGraphicsScene::mousePressEvent(event);
-//    return;
     auto item = getFirstItemUnderCursor(event->scenePos());
+    if (item && item->type() == eBorderDot) {
+        QGraphicsScene::mousePressEvent(event);
+        return;
+    }
+
     LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {

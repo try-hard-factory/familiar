@@ -23,7 +23,12 @@ public:
     };
 
     explicit MovableCircle(ECirclePos cp, QGraphicsItem *parent = 0);
+    enum { Type = UserType + 1 };
 
+    int type() const override
+    {
+        return Type;
+    }
 private:
     QRectF boundingRect() const;
     QPainterPath shape() const;

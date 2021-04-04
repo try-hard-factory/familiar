@@ -52,7 +52,7 @@ void MovableCircle::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void MovableCircle::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     auto pos = mapToScene(event->pos() + _shiftMouseCoords);
-
+    auto parent = parentItem();
     auto rect = parentItem()->boundingRect();
 
     QPointF a(rect.x(), rect.y());
@@ -187,6 +187,7 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent) :
      // Top Left
      _topLeftCircle = new MovableCircle(MovableCircle::eTopLeft, this);
      _topLeftCircle->setPos(0, 0);
+     auto parent0 = _topLeftCircle->parentItem();
      // Top Right
      _topRightCircle = new MovableCircle(MovableCircle::eTopRight, this);
      _topRightCircle->setPos(_size.width(), 0);
