@@ -15,6 +15,7 @@ extern Logger logger;
 MovableCircle::MovableCircle(ECirclePos cp, QGraphicsItem *parent) :
     QGraphicsObject(parent), circlePos_(cp)
 {
+    qDebug()<<"PARENTADDR: "<<parent;
     setFlag(ItemClipsToShape, true);
     setCursor(QCursor(Qt::PointingHandCursor));
 }
@@ -39,7 +40,7 @@ void MovableCircle::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
-
+//    qDebug()<<"PARENTADDR: "<<parentItem();
     painter->setBrush(QBrush(QColor(0, 160, 230)));
     painter->setPen(QPen(QColor(0, 160, 230)));
     painter->drawEllipse(-5, -5, 10, 10);
@@ -171,8 +172,8 @@ void MovableCircle::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
 /*********************************************************************/
 
-ItemGroup::ItemGroup(uint64_t& zc) :
-    QGraphicsItemGroup(),
+ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
+    QGraphicsItemGroup(parent),
     zCounter_(zc)
 {
     setAcceptHoverEvents(true);
@@ -182,7 +183,7 @@ ItemGroup::ItemGroup(uint64_t& zc) :
      _topLeftCircle = new MovableCircle(MovableCircle::eTopLeft, this);
      _topLeftCircle->setPos(50, 50);
      _topLeftCircle->hide();
-         auto parent = _topLeftCircle->parentItem();
+         auto parent0 = _topLeftCircle->parentItem();
      // Top Right
      _topRightCircle = new MovableCircle(MovableCircle::eTopRight, this);
      _topRightCircle->setPos(0, 0);
@@ -233,6 +234,14 @@ void ItemGroup::addItem(QGraphicsItem* item)
     _bottomRightCircle->setPos(br.x()+br.width(), br.y()+br.height());
     _bottomLeftCircle->setPos(br.x(), br.y()+br.height());
     MovableCirclesSetVisible(true);
+}
+
+void ItemGroup::printChilds()
+{
+    auto childs = childItems();
+    for (auto& it : childs) {
+        LOG_DEBUG(logger, "CHILDREN: ", it);
+    }
 }
 
 //QRectF ItemGroup::boundingRect() const
@@ -346,9 +355,11 @@ void ItemGroup::clearItemGroup()
 {
     MovableCirclesSetVisible(false);
     auto childs = childItems();
-    for (auto& it : childs) {
-        LOG_DEBUG(logger, "REMOVE ", it);
-        removeFromGroup(it);
+    for (auto& it : childs) {        
+        if (it->type() != eBorderDot) {
+            removeFromGroup(it);
+            LOG_DEBUG(logger, "REMOVE ", it);
+        }
     }
 }
 
@@ -369,6 +380,7 @@ void ItemGroup::incZ()
 {
     setZValue(++zCounter_);
 }
+
 
 void ItemGroup::MovableCirclesSetVisible(bool visibility)
 {

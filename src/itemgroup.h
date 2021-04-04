@@ -46,10 +46,13 @@ class ItemGroup : public QObject, public QGraphicsItemGroup
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
 public:
-    ItemGroup(uint64_t& zc);
+    enum EItemsType {
+        eBorderDot = QGraphicsItem::UserType + 1,
+    };
+    ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent = nullptr);
 public:
     void addItem(QGraphicsItem* item);
-
+    void printChilds();
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

@@ -17,9 +17,6 @@ enum EState {
 class CanvasScene : public QGraphicsScene
 {
 public:
-    enum EItemsType {
-        eBorderDot = QGraphicsItem::UserType + 1,
-    };
 
     CanvasScene(uint64_t& zc, QGraphicsScene *scene = 0);
     ~CanvasScene() = default;

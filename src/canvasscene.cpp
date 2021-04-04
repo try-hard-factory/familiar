@@ -131,8 +131,9 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
 //    QGraphicsScene::mousePressEvent(event);
 //    return;
+    itemGroup_->printChilds();
     auto item = getFirstItemUnderCursor(event->scenePos());
-    if (item->type() == eBorderDot) {
+    if (item && item->type() == ItemGroup::eBorderDot) {
         QGraphicsScene::mousePressEvent(event);
         return;
     }
