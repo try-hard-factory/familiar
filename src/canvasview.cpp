@@ -17,7 +17,6 @@ CanvasView::CanvasView(QWidget* parent) :
 //    scene_->setItemIndexMethod(QGraphicsScene::NoIndex);
     setMouseTracking(true);
     setScene(scene_);
-
     // Update all the view port when needed, otherwise, the drawInViewPort may experience trouble
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
     // When zooming, the view stay centered over the mouse
@@ -147,7 +146,11 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
 {
     setCacheMode(CacheNone);
     painter->save();
-    painter->setPen( QPen(Qt::darkGray,1) );
+    setBackgroundBrush(QBrush(QColor(77, 77, 77)));
+    painter->fillRect(rect, backgroundBrush());
+    scene_->setBackgroundBrush(QBrush(QColor(158, 158, 158)));
+    painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
+    painter->setPen( QPen(QColor(247, 0, 255),2) );
     painter->drawRect(scene_->sceneRect());
     painter->restore();
 }

@@ -53,8 +53,6 @@ void MovableCircle::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     auto pos = mapToScene(event->pos() + _shiftMouseCoords);
 
-    qreal xl = pos.x();
-    qreal yl = pos.y();
     auto rect = parentItem()->boundingRect();
 
     QPointF a(rect.x(), rect.y());
@@ -344,6 +342,7 @@ void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
             QGraphicsItem::mousePressEvent(event);
         }
     }
+    qDebug()<<"!!!!!!!!!!";
 }
 
 void MoveItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
