@@ -32,10 +32,13 @@ protected:
     void dragEnterEvent(QGraphicsSceneDragDropEvent *event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent *event) override;
     void dropEvent(QGraphicsSceneDragDropEvent *event) override;
-//    void drawBackground(QPainter *painter, const QRectF &rect) override;
+
 private:
     bool isAnySelectedUnderCursor() const;
     void deselectItems();
+
+    void handleImageFromClipboard(const QImage& image);
+    void handleHtmlFromClipboard(const QString& html);
 
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
