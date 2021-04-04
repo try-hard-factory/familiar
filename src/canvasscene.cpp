@@ -2,6 +2,9 @@
 #include "canvasscene.h"
 #include "moveitem.h"
 
+#include <QApplication>
+#include <QClipboard>
+#include <QMimeData>
 #include <QKeyEvent>
 #include <QGraphicsItem>
 #include <QPen>
@@ -9,6 +12,8 @@
 #include <QMimeData>
 
 #include "Logger.h"
+
+#include <regex>
 
 extern Logger logger;
 
@@ -22,27 +27,55 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     itemGroup_->setHandlesChildEvents(true);
     addItem(itemGroup_);
     imgdownloader_ = new ImageDownloader(*this);
+
 }
+
 
 void CanvasScene::keyPressEvent(QKeyEvent *event)
 {
-    if (event->key() == Qt::Key_Delete) {
-
-//        qDebug() << "Selected items "<< selectedItems().size();
+    switch (event->key()) {
+    case (Qt::Key_Delete):
         mainSelArea_.setReady(false);
         for (auto it : itemGroup_->childItems()) {
             itemGroup_->removeFromGroup(it);
             removeItem(it);
         }
-
-    } else {
+        break;
+    case (Qt::Key_Insert):
+        if (event->modifiers() & Qt::ShiftModifier) {
+            pasteFromClipboard();
+        }
+        break;
+    default:
         QGraphicsScene::keyPressEvent(event);
+        break;
     }
 }
 
+
+void CanvasScene::pasteFromClipboard()
+{
+    const QClipboard *clipboard = QApplication::clipboard();
+    const QMimeData *mimedata = clipboard->mimeData(QClipboard::Clipboard);
+
+    if (mimedata->hasImage()) {
+        QImage image = qvariant_cast<QImage>(mimedata->imageData());
+        if (!image.isNull()) {
+            handleImageFromClipboard(image);
+        } else if (mimedata->hasHtml()) {
+            handleHtmlFromClipboard(mimedata->html());
+        }
+        if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
+        qDebug()<<image.rect();
+
+    } else {
+        LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
+    }
+}
+
+
 void CanvasScene::dragMoveEvent(QGraphicsSceneDragDropEvent *event)
 {
-//    qDebug()<<"dragMoveEvent";
     event->accept();
 }
 
@@ -57,6 +90,14 @@ void CanvasScene::dragEnterEvent(QGraphicsSceneDragDropEvent *event)
     event->accept();
 }
 
+void CanvasScene::addImageToSceneToPosition(QImage&& image, QPointF position)
+{
+    ++zCounter_;
+    MoveItem* item = new MoveItem(image, zCounter_);
+    item->setPos(position);
+    addItem(item);
+}
+
 void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 {
     const QMimeData *mimeData = event->mimeData();
@@ -65,15 +106,15 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
     if (mimeData->hasHtml()) {
         qDebug()<<"dropEvent html"<<mimeData->html();
         qDebug()<<"dropEvent url"<<mimeData->urls();
-        imgdownloader_->setFile(mimeData->urls()[0].toString());
+        imgdownloader_->download(mimeData->urls()[0].toString(), event->scenePos());
     } else if (mimeData->hasUrls()) {
         qreal x = 0;
+        ++zCounter_;
         foreach (const QUrl &url, event->mimeData()->urls()) {
             QString fileName = url.toLocalFile();
             qDebug() << "Dropped file:" << fileName<<
                         ", formats: "<< event->mimeData()->formats();
 
-            ++zCounter_;
             MoveItem* item = new MoveItem(fileName, zCounter_);
             qreal new_x = event->scenePos().x();
             qreal new_y = event->scenePos().y();
@@ -81,23 +122,15 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
             x += item->getRect().width();
             addItem(item);
         }
-    } else if (mimeData->hasText()) {
-        qDebug()<<"dropEvent text"<<mimeData->text();
     } else {
-        qDebug() <<"Cannot display data";
+        LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
-
-
-        // access myData's data directly (not through QMimeData's API)
-//                  if (event->mimeData()->hasImage()) {
-//                      QImage image = qvariant_cast<QImage>(event->mimeData()->imageData());
-//                  }
 }
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    QGraphicsScene::mousePressEvent(event);
-    return;
+//    QGraphicsScene::mousePressEvent(event);
+//    return;
     auto item = getFirstItemUnderCursor(event->scenePos());
     LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
@@ -288,7 +321,6 @@ void CanvasScene::onSelectionChanged()
 void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
     if (!mainSelArea_.isReady()) return;
-//    LOG_WARNING(logger, "!");
     painter->save();
     painter->setPen( QPen(Qt::black, 2) );
     auto r = itemGroup_->sceneBoundingRect();
@@ -302,10 +334,26 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 }
 
 
-//void CanvasScene::drawBackground(QPainter *painter, const QRectF &rect)
-//{
-//    painter->save();
-//    setBackgroundBrush(QBrush(QColor(247, 0, 255)));
-//    painter->fillRect(rect, backgroundBrush());
-//    painter->restore();
-//}
+void CanvasScene::handleImageFromClipboard(const QImage& image)
+{
+    ++zCounter_;
+    MoveItem* item = new MoveItem(image, zCounter_);
+    item->setPos(100, 100);
+    addItem(item);
+}
+
+
+void CanvasScene::handleHtmlFromClipboard(const QString& html)
+{
+    std::regex r("<img[^>]*src=['|\"](.*?)['|\"].*?>");
+    std::smatch results;
+    auto str = html.toStdString();
+    std::sregex_iterator it(std::begin(str), std::end(str), r);
+    std::sregex_iterator end;
+
+    if (it != end) {
+        imgdownloader_->download(QString::fromStdString((*it)[1].str()), {0,0});
+    } else {
+        LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
+    }
+}
