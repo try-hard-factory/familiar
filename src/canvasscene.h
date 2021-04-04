@@ -22,6 +22,7 @@ public:
     void pasteFromClipboard();
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
+    void addImageToSceneToPosition(QImage&& image, QPointF position);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;

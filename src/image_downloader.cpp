@@ -1,7 +1,8 @@
 #include "moveitem.h"
 #include "image_downloader.h"
+#include "canvasscene.h"
 
-ImageDownloader::ImageDownloader(QGraphicsScene& s, QObject *parent)
+ImageDownloader::ImageDownloader(CanvasScene& s, QObject *parent)
     : QObject(parent), scene_(s)
 {
     manager_ = new QNetworkAccessManager();
@@ -14,9 +15,10 @@ ImageDownloader::~ImageDownloader()
 }
 
 
-void ImageDownloader::setFile(QString url)
-{
+void ImageDownloader::download(QString url, QPointF position)
+{    
     if (!isReady_) return;
+    position_ = position;
     isReady_ = false;
 
     QNetworkRequest req;
@@ -37,11 +39,7 @@ void ImageDownloader::finished()
     QImage img;
     img.loadFromData(reply_->readAll());
     qDebug()<<" finished onDownloadFileComplete. "<<img.size();
-    uint64_t z = 9999;
-    MoveItem* item = new MoveItem(img, z);
-    item->setPos({0, 0});
-
-    scene_.addItem(item);
+    scene_.addImageToSceneToPosition(std::move(img), position_);
     isReady_ = true;
     reply_->deleteLater();
     // done
