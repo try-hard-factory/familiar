@@ -37,6 +37,10 @@ protected:
     void dragMoveEvent(QGraphicsSceneDragDropEvent *event) override;
     void dropEvent(QGraphicsSceneDragDropEvent *event) override;
 
+
+public slots:
+    void slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
+
 private:
     bool isAnySelectedUnderCursor() const;
     void deselectItems();

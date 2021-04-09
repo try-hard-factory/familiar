@@ -1,23 +1,25 @@
 #ifndef BORDERDOT_H
 #define BORDERDOT_H
 
-#include <QGraphicsSceneMouseEvent>
-#include <QGraphicsItem>
-#include <QCursor>
+#include <QObject>
+#include <QGraphicsRectItem>
 
-class BorderDot : public QGraphicsObject
+class QGraphicsSceneHoverEventPrivate;
+class QGraphicsSceneMouseEvent;
+
+class DotSignal : public QObject, public QGraphicsRectItem
 {
     Q_OBJECT
-    Q_INTERFACES(QGraphicsItem)
-public:
-    enum ECirclePos {
-        eTopLeft = 0,
-        eTopRight,
-        eBottomRight,
-        eBottomLeft,
-    };
+    Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE setPreviousPosition NOTIFY previousPositionChanged)
 
-    explicit BorderDot(ECirclePos cp, QGraphicsItem *parent = 0);
+public:
+    explicit DotSignal(QGraphicsItem *parentItem = 0, QObject *parent = 0);
+    explicit DotSignal(QPointF pos, QGraphicsItem *parentItem = 0, QObject *parent = 0);
+    ~DotSignal();
+
+    enum Flags {
+        Movable = 0x01
+    };
 
     enum { Type = UserType + 1 };
 
@@ -25,20 +27,28 @@ public:
     {
         return Type;
     }
+    QPointF previousPosition() const;
+    void setPreviousPosition(const QPointF previousPosition);
 
-private:
-    QRectF boundingRect() const;
-    QPainterPath shape() const;
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget);
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event);
-    void mousePressEvent(QGraphicsSceneMouseEvent *event);
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event);
-    QPointF _shiftMouseCoords;
+    void setDotFlags(unsigned int flags);
 
-private:
-    ECirclePos circlePos_;
 signals:
-    void circleMoved();
+    void previousPositionChanged();
+    void signalMouseRelease();
+    void signalMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
+
+protected:
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+
+public slots:
+
+private:
+    unsigned int m_flags;
+    QPointF m_previousPosition;
 };
 
 #endif // BORDERDOT_H

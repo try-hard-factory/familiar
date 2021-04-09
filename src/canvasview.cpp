@@ -44,8 +44,6 @@ void CanvasView::addImage(const QString& path, QPointF point)
 
     item->setPos(point);
     scene_->addItem(item);
-    //    QPixmap myPixmap("kot.png"); // создаем картинку
-    //    QGraphicsPixmapItem *item = new QGraphicsPixmapItem(myPixmap);
 }
 
 

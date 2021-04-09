@@ -76,13 +76,13 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     Q_UNUSED(widget);
 }
 
-void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
-{
-#ifdef MOUSE_MOVE_DEBUG
-    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
-#endif
-    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
-}
+//void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+//{
+//#ifdef MOUSE_MOVE_DEBUG
+//    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
+//#endif
+//    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
+//}
 
 void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -125,17 +125,17 @@ void MoveItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
 //    setTransformOriginPoint(mapFromScene(event->scenePos()));
 }
 
-void MoveItem::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
-{
+//void MoveItem::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+//{
 //  qInfo()<<"MoveItem::hoverEnterEvent";
-}
+//}
 
-void MoveItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
-{
+//void MoveItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+//{
 //  qInfo()<<"MoveItem::hoverLeaveEvent";
-}
+//}
 
-void MoveItem::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
-{
+//void MoveItem::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
+//{
 //  qInfo()<<"MoveItem::hoverMoveEvent";
-}
+//}

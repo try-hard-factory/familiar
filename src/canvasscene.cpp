@@ -26,6 +26,7 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
     addItem(itemGroup_);
+    connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     imgdownloader_ = new ImageDownloader(*this);
 
 }
@@ -328,10 +329,10 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
     if (!mainSelArea_.isReady()) return;
     painter->save();
-    painter->setPen( QPen(Qt::black, 2) );
-    auto r = itemGroup_->sceneBoundingRect();
-    painter->drawRect(r);
-    painter->setPen( QPen(Qt::black, 10) );
+//    painter->setPen( QPen(Qt::black, 2) );
+//    auto r = itemGroup_->sceneBoundingRect();
+//    painter->drawRect(r);
+//    painter->setPen( QPen(Qt::black, 10) );
 //    painter->drawPoint(r.x(), r.y());
 //    painter->drawPoint(r.x()+r.width(), r.y());
 //    painter->drawPoint(r.x()+r.width(), r.y()+r.height());
@@ -361,5 +362,15 @@ void CanvasScene::handleHtmlFromClipboard(const QString& html)
         imgdownloader_->download(QString::fromStdString((*it)[1].str()), {0,0});
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
+    }
+}
+
+//ItemGroup
+void CanvasScene::slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy)
+{
+    foreach (QGraphicsItem *item, selectedItems()) {
+        if(item != signalOwner) {
+            item->moveBy(dx,dy);
+        }
     }
 }

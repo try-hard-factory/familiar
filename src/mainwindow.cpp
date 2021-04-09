@@ -12,7 +12,7 @@ MainWindow::MainWindow(QWidget *parent)
     auto qimage = QImage("kot.jpg");
     qInfo() << qimage.width() << ' ' <<qimage.height();
 
-    canvasWidget->addImage("kot.png", {0,0});
+    canvasWidget->addImage("kot.png", {700,50});
     canvasWidget->addImage("bender.png", {100,100});
     canvasWidget->addImage("kot.png", {200,200});
     canvasWidget->addImage("bender.png", {300,300});
