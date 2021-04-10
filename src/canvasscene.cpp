@@ -139,21 +139,27 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
 
-    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
+    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {
+        LOG_WARNING(logger,"HUI ", __LINE__);
         if (event->modifiers() == Qt::ShiftModifier) {
-
+        LOG_WARNING(logger,"HUI ", __LINE__);
 
         } else if (event->modifiers() != Qt::ShiftModifier) {
+            LOG_WARNING(logger,"HUI ", __LINE__);
             if (item) {
+                LOG_WARNING(logger,"HUI ", __LINE__);
                 if (!itemGroup_->isContain(item)) {
+                    LOG_WARNING(logger,"HUI ", __LINE__);
                     itemGroup_->clearItemGroup();
                     itemGroup_->addItem(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
-                }                
+                }
+                LOG_WARNING(logger,"HUI ", __LINE__);
             } else {
+                LOG_WARNING(logger,"HUI ", __LINE__);
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
                 state_ = eMouseSelection;
@@ -268,10 +274,10 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
 {
-    auto childs = this->items(p, Qt::IntersectsItemShape);
+    auto childs = this->items(Qt::DescendingOrder);
 
     for (auto& it : childs) {
-        if (it != itemGroup_) {  return it; }
+        if (it != itemGroup_ && it->sceneBoundingRect().contains(p)) {  return it; }
     }
 
     return nullptr;

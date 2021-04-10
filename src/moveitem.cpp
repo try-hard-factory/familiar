@@ -14,8 +14,8 @@ extern Logger logger;
 /*********************************************************************/
 
 
-MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent) :
-    QGraphicsItem(parent), zCounter_(zc)
+MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem *parent) :
+    QGraphicsRectItem(parent), zCounter_(zc)
 {
     setZValue(zCounter_);
 //    qimage_ = QImage("bender.png");
@@ -30,8 +30,8 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent) :
     setFlag(QGraphicsItem::ItemIsMovable, true);
 }
 
-MoveItem::MoveItem(const QImage& img, uint64_t& zc, QGraphicsItem *parent) :
-    QGraphicsItem(parent), qimage_(img), zCounter_(zc)
+MoveItem::MoveItem(const QImage& img, uint64_t& zc, QGraphicsRectItem *parent) :
+    QGraphicsRectItem(parent), qimage_(img), zCounter_(zc)
 {
     setZValue(zCounter_);
     pixmap_ = QPixmap::fromImage(qimage_);

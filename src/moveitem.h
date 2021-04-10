@@ -10,13 +10,13 @@
 #include <QDebug>
 #include <QCursor>
 
-class MoveItem : public QObject, public QGraphicsItem//public QGraphicsObject
+class MoveItem : public QObject, public QGraphicsRectItem
 {
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
 public:
-    MoveItem(const QString& path, uint64_t& zc, QGraphicsItem *parent = nullptr);
-    MoveItem(const QImage& img, uint64_t& zc, QGraphicsItem *parent = nullptr);
+    MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem *parent = nullptr);
+    MoveItem(const QImage& img, uint64_t& zc, QGraphicsRectItem *parent = nullptr);
     ~MoveItem();
     QRectF getRect() const { return boundingRect(); }
 signals:

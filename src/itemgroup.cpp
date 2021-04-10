@@ -37,7 +37,7 @@ static qreal normalizeAngle(qreal angle)
 
 ItemGroup::~ItemGroup()
 {
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         delete cornerGrabber[i];
     }
 }
@@ -66,7 +66,7 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
 {
     setAcceptHoverEvents(true);
     setFlags(ItemIsSelectable|ItemSendsGeometryChanges);
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         cornerGrabber[i] = new DotSignal(this);
     }
     setPositionGrabbers();
@@ -74,7 +74,13 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
 
 void ItemGroup::addItem(QGraphicsItem* item)
 {
+    LOG_DEBUG(logger, "ItemGroup::addItem: ", item);
     addToGroup(item);
+
+    if (item->type() != eBorderDot) {
+        items_.emplace_back(item);
+    }
+
     auto childs = childItems();
     auto tmp = childs.first()->sceneBoundingRect();
     for (auto& it : childs) {
@@ -82,6 +88,7 @@ void ItemGroup::addItem(QGraphicsItem* item)
         tmp = tmp.united(it->sceneBoundingRect());
     }
     m_tmpRect = tmp;
+
 }
 
 void ItemGroup::printChilds()
@@ -102,21 +109,22 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     QPointF pt = event->pos();
     if(m_actionFlags == ResizeState){
         switch (m_cornerFlags) {
-        case Top:
-            resizeTop(pt);
-            break;
-        case Bottom:
-            resizeBottom(pt);
-            break;
-        case Left:
-            resizeLeft(pt);
-            break;
-        case Right:
-            resizeRight(pt);
-            break;
+//        case Top:
+//            resizeTop(pt);
+//            break;
+//        case Bottom:
+//            resizeBottom(pt);
+//            break;
+//        case Left:
+//            resizeLeft(pt);
+//            break;
+//        case Right:
+//            resizeRight(pt);
+//            break;
         case TopLeft:
-            resizeTop(pt);
-            resizeLeft(pt);
+            resizeTopLeft(pt);
+//            resizeTop(pt);
+//            resizeLeft(pt);
             break;
         case TopRight:
             resizeTop(pt);
@@ -281,13 +289,16 @@ void ItemGroup::resizeLeft(const QPointF &pt)
 
 void ItemGroup::resizeRight(const QPointF &pt)
 {
+    for (auto& it : items_) {
+        it->setPos(it->pos().x() - 1, it->pos().y());
+    }
     QRectF tmpRect = boundingRect();
     if( pt.x() < tmpRect.left() )
         return;
     qreal widthOffset =  ( pt.x() - tmpRect.left() );
     if( widthOffset < 10 ) /// limit
         return;
-    if( widthOffset < 10)
+    if( widthOffset < 0)
         tmpRect.setWidth( -widthOffset );
     else
         tmpRect.setWidth( widthOffset );
@@ -317,6 +328,9 @@ void ItemGroup::resizeBottom(const QPointF &pt)
 
 void ItemGroup::resizeTop(const QPointF &pt)
 {
+    for (auto& it : items_) {
+        it->setPos(it->pos().x() , it->pos().y() -1);
+    }
     QRectF tmpRect = boundingRect();
     if( pt.y() > tmpRect.bottom() )
         return;
@@ -332,6 +346,60 @@ void ItemGroup::resizeTop(const QPointF &pt)
     m_tmpRect = tmpRect;
     update();
     setPositionGrabbers();
+}
+
+void ItemGroup::resizeTopLeft(const QPointF &pt)
+{
+    auto pos = pt;
+    auto rect = boundingRect();
+
+    QPointF a(rect.x(), rect.y());
+    QPointF b(rect.x() + rect.width(), rect.y());
+    QPointF c(rect.x() + rect.width(), rect.y() + rect.height());
+    QPointF d(rect.x(), rect.y() + rect.height());
+
+    Vec2d cb(b.x()-c.x(), b.y()-c.y());
+    Vec2d ba(a.x()-b.x(), a.y()-b.y());
+    Vec2d ca(a.x()-c.x(), a.y()-c.y());
+    Vec2d ck(pos.x()-c.x(), pos.y()-c.y());
+
+    auto cb_len = cb.length();
+    auto ba_len = ba.length();
+    auto ca_len = ca.length();
+    auto ck_len = ck.length();
+
+    auto ckca_dot = Vec2d<qreal>::dot(ca, ck);
+    auto cos_kca = ckca_dot/(ca_len*ck_len);
+    auto cd2_len = ck_len * cos_kca;
+
+    auto y =(cd2_len * cb_len) / (std::sqrt(ba_len * ba_len + cb_len * cb_len));
+    auto x = std::sqrt(cd2_len * cd2_len - y * y);
+
+    if (x < 10 || y < 10) return;
+    pos.setX(c.x()-x);
+    pos.setY(c.y()-y);
+
+    QRectF tmpRect = boundingRect();
+
+    qreal heightOffset = ( pos.y() - rect.bottom() );
+    if( heightOffset < 0)
+        tmpRect.setHeight( -heightOffset );
+    else
+        tmpRect.setHeight( heightOffset );
+
+    qreal widthOffset = ( pos.x() - rect.right() );
+    if( widthOffset < 0)
+        tmpRect.setWidth( -widthOffset );
+    else
+        tmpRect.setWidth( widthOffset );
+
+    tmpRect.translate( boundingRect().width() - tmpRect.width() , boundingRect().height() - tmpRect.height() );
+
+    prepareGeometryChange();
+    m_tmpRect = tmpRect;
+    update();
+    setPositionGrabbers();
+//    cornerGrabber[GrabberTopLeft]->setPos(pos);
 }
 
 void ItemGroup::rotateItem(const QPointF &pt)
@@ -383,10 +451,10 @@ void ItemGroup::rotateItem(const QPointF &pt)
 void ItemGroup::setPositionGrabbers()
 {
     QRectF tmpRect = boundingRect();
-    cornerGrabber[GrabberTop]->setPos(tmpRect.left() + tmpRect.width()/2, tmpRect.top());
-    cornerGrabber[GrabberBottom]->setPos(tmpRect.left() + tmpRect.width()/2, tmpRect.bottom());
-    cornerGrabber[GrabberLeft]->setPos(tmpRect.left(), tmpRect.top() + tmpRect.height()/2);
-    cornerGrabber[GrabberRight]->setPos(tmpRect.right(), tmpRect.top() + tmpRect.height()/2);
+//    cornerGrabber[GrabberTop]->setPos(tmpRect.left() + tmpRect.width()/2, tmpRect.top());
+//    cornerGrabber[GrabberBottom]->setPos(tmpRect.left() + tmpRect.width()/2, tmpRect.bottom());
+//    cornerGrabber[GrabberLeft]->setPos(tmpRect.left(), tmpRect.top() + tmpRect.height()/2);
+//    cornerGrabber[GrabberRight]->setPos(tmpRect.right(), tmpRect.top() + tmpRect.height()/2);
     cornerGrabber[GrabberTopLeft]->setPos(tmpRect.topLeft().x(), tmpRect.topLeft().y());
     cornerGrabber[GrabberTopRight]->setPos(tmpRect.topRight().x(), tmpRect.topRight().y());
     cornerGrabber[GrabberBottomLeft]->setPos(tmpRect.bottomLeft().x(), tmpRect.bottomLeft().y());
@@ -400,22 +468,22 @@ void ItemGroup::setVisibilityGrabbers()
     cornerGrabber[GrabberBottomLeft]->setVisible(true);
     cornerGrabber[GrabberBottomRight]->setVisible(true);
 
-    if(m_actionFlags == ResizeState){
-        cornerGrabber[GrabberTop]->setVisible(true);
-        cornerGrabber[GrabberBottom]->setVisible(true);
-        cornerGrabber[GrabberLeft]->setVisible(true);
-        cornerGrabber[GrabberRight]->setVisible(true);
-    } else {
-        cornerGrabber[GrabberTop]->setVisible(false);
-        cornerGrabber[GrabberBottom]->setVisible(false);
-        cornerGrabber[GrabberLeft]->setVisible(false);
-        cornerGrabber[GrabberRight]->setVisible(false);
-    }
+//    if(m_actionFlags == ResizeState){
+//        cornerGrabber[GrabberTop]->setVisible(true);
+//        cornerGrabber[GrabberBottom]->setVisible(true);
+//        cornerGrabber[GrabberLeft]->setVisible(true);
+//        cornerGrabber[GrabberRight]->setVisible(true);
+//    } else {
+//        cornerGrabber[GrabberTop]->setVisible(false);
+//        cornerGrabber[GrabberBottom]->setVisible(false);
+//        cornerGrabber[GrabberLeft]->setVisible(false);
+//        cornerGrabber[GrabberRight]->setVisible(false);
+//    }
 }
 
 void ItemGroup::hideGrabbers()
 {
-    for(int i = 0; i < 8; i++){
+    for(int i = 0; i < 4; i++){
         cornerGrabber[i]->setVisible(false);
     }
 }

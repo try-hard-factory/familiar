@@ -36,11 +36,11 @@ public:
     };
 
     enum CornerGrabbers {
-        GrabberTop = 0,
-        GrabberBottom,
-        GrabberLeft,
-        GrabberRight,
-        GrabberTopLeft,
+//        GrabberTop = 0,
+//        GrabberBottom,
+//        GrabberLeft,
+//        GrabberRight,
+        GrabberTopLeft = 0,
         GrabberTopRight,
         GrabberBottomLeft,
         GrabberBottomRight
@@ -83,18 +83,20 @@ private:
     QPointF shiftMouseCoords_;
     uint64_t& zCounter_;
     QRectF m_tmpRect;
+    QVector<QGraphicsItem*> items_;
 
 private:
     unsigned int m_cornerFlags;
     unsigned int m_actionFlags;
     QPointF m_previousPosition;
     bool m_leftMouseButtonPressed;
-    DotSignal *cornerGrabber[8];
+    DotSignal *cornerGrabber[4];
 
     void resizeLeft( const QPointF &pt);
     void resizeRight( const QPointF &pt);
     void resizeBottom(const QPointF &pt);
     void resizeTop(const QPointF &pt);
+    void resizeTopLeft(const QPointF &pt);
 
     void rotateItem(const QPointF &pt);
     void setPositionGrabbers();
