@@ -401,10 +401,45 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
     for (auto& it : items_) {
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
 
-        qDebug()<<"Widget left "<<widget->sceneBoundingRect().left();
-        qDebug()<<"tmpRect left "<<boundingRect().left();
+
         if (widget->sceneBoundingRect().left() == boundingRect().left()) {
+            qDebug()<<"Widget sceneBoundingRect "<<widget->sceneBoundingRect();
+            qDebug()<<"m_tmpRect "<<m_tmpRect;
+            qDebug()<<"tmpRect "<<tmpRect;
+
             widget->setX(tmpRect.topLeft().x());
+
+            qreal aa = abs(widget->sceneBoundingRect().top() - m_tmpRect.bottom());
+            qDebug()<<"aa "<< aa;
+            qreal bb = m_tmpRect.width();
+            qDebug()<<"bb "<< bb;
+            qreal cc = tmpRect.width();
+            qDebug()<<"cc "<< cc;
+            qreal yy = (aa*cc)/bb;
+            qDebug()<<"yy "<< yy;
+            qreal y_delta = abs(tmpRect.height() - yy);
+            qDebug()<<"ydelta "<< y_delta;
+
+            qreal new_y = tmpRect.topLeft().y() + y_delta;
+            qDebug()<<"new_y "<< new_y;
+            widget->setY(new_y);
+
+            qreal w_h = widget->sceneBoundingRect().height();
+            qreal w_w = widget->sceneBoundingRect().width();
+            qDebug()<<"w_h "<< w_h;
+            qDebug()<<"w_w "<< w_w;
+
+            qreal z_ =0;//abs(widget->sceneBoundingRect().bottom() - m_tmpRect.bottom());
+            qreal zz = (cc*z_)/bb;
+            qDebug()<<"z_ "<< z_;
+            qDebug()<<"zz "<< zz;
+            qDebug()<< "tmpRect.height() "<< tmpRect.height();
+            qreal nw_h = tmpRect.bottom() - (tmpRect.topLeft().y() + y_delta) - zz;
+            qreal nw_w = (w_w*nw_h)/w_h;
+            qDebug()<<"nw_h "<< nw_h;
+            qDebug()<<"nw_w "<< nw_w;
+
+            widget->setRect(tmpRect.topLeft().x(), new_y, nw_w, nw_h );
 
         }
         if (widget->sceneBoundingRect().top() == boundingRect().top()) {
@@ -413,6 +448,9 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
 //        widget->setRect(m_tmpRect);
 //        widget->setPos(tmpRect.topLeft());
     }
+
+
+
     m_tmpRect = tmpRect;
     update();
     setPositionGrabbers();
