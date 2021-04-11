@@ -21,6 +21,7 @@ extern Logger logger;
 #include <QGraphicsRectItem>
 #include <math.h>
 #include "borderdot.h"
+#include "moveitem.h"
 
 static const double Pi = 3.14159265358979323846264338327950288419717;
 static double TwoPi = 2.0 * Pi;
@@ -396,10 +397,25 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
     tmpRect.translate( boundingRect().width() - tmpRect.width() , boundingRect().height() - tmpRect.height() );
 
     prepareGeometryChange();
+
+    for (auto& it : items_) {
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+
+        qDebug()<<"Widget left "<<widget->sceneBoundingRect().left();
+        qDebug()<<"tmpRect left "<<boundingRect().left();
+        if (widget->sceneBoundingRect().left() == boundingRect().left()) {
+            widget->setX(tmpRect.topLeft().x());
+
+        }
+        if (widget->sceneBoundingRect().top() == boundingRect().top()) {
+            widget->setY(tmpRect.topLeft().y());
+        }
+//        widget->setRect(m_tmpRect);
+//        widget->setPos(tmpRect.topLeft());
+    }
     m_tmpRect = tmpRect;
     update();
     setPositionGrabbers();
-//    cornerGrabber[GrabberTopLeft]->setPos(pos);
 }
 
 void ItemGroup::rotateItem(const QPointF &pt)

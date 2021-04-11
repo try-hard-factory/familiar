@@ -19,6 +19,8 @@ public:
     MoveItem(const QImage& img, uint64_t& zc, QGraphicsRectItem *parent = nullptr);
     ~MoveItem();
     QRectF getRect() const { return boundingRect(); }
+    void setRect(qreal x, qreal y, qreal w, qreal h);
+    void setRect(const QRectF &rect);
 signals:
 protected:
     QRectF boundingRect() const override;

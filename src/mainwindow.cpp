@@ -14,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     canvasWidget->addImage("kot.png", {700,50});
 //    canvasWidget->addImage("bender.png", {100,100});
-//    canvasWidget->addImage("kot.png", {200,200});
+    canvasWidget->addImage("kot.png", {200,200});
 //    canvasWidget->addImage("bender.png", {300,300});
 
 //    for (int i=0;i<100;++i)

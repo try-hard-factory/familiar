@@ -50,7 +50,8 @@ MoveItem::~MoveItem()
 
 QRectF MoveItem::boundingRect() const
 {
-    return QRectF (0,0,pixmap_.width(),pixmap_.height());
+//    qDebug()<<rect_;
+    return QRectF (0, 0, rect_.width(), rect_.height());//pixmap_.width(),pixmap_.height());
 }
 
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
@@ -139,3 +140,15 @@ void MoveItem::wheelEvent(QGraphicsSceneWheelEvent *event) {
 //{
 //  qInfo()<<"MoveItem::hoverMoveEvent";
 //}
+
+void MoveItem::setRect(qreal x, qreal y, qreal w, qreal h)
+{
+    setRect(QRectF(x,y,w,h));
+}
+
+void MoveItem::setRect(const QRectF &rect)
+{
+    rect_ = rect;
+//    qDebug()<<rect_;
+    QGraphicsRectItem::setRect(rect);
+}
