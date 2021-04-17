@@ -96,7 +96,9 @@ private:
     void resizeRight( const QPointF &pt);
     void resizeBottom(const QPointF &pt);
     void resizeTop(const QPointF &pt);
+
     void resizeTopLeft(const QPointF &pt);
+    void resizeTopRight(const QPointF &pt);
 
     void rotateItem(const QPointF &pt);
     void setPositionGrabbers();

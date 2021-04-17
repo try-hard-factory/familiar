@@ -12,15 +12,16 @@ MainWindow::MainWindow(QWidget *parent)
     auto qimage = QImage("kot.jpg");
     qInfo() << qimage.width() << ' ' <<qimage.height();
 
-    canvasWidget->addImage("kot.png", {700,50});
-    canvasWidget->addImage("kot.png", {300,200});
-    canvasWidget->addImage("kot1.png", {200,600});
-    canvasWidget->addImage("kot1.png", {400,50});
-    canvasWidget->addImage("kot1.png", {200,50});
-    canvasWidget->addImage("kot1.png", {600,600});
-    canvasWidget->addImage("kot1.png", {1000,600});
-    canvasWidget->addImage("kot1.png", {1000,300});
-    canvasWidget->addImage("kot1.png", {600,400});
+    qreal x = 000;
+    canvasWidget->addImage("kot.png", {700,50-x});
+    canvasWidget->addImage("kot.png", {300,200-x});
+    canvasWidget->addImage("kot1.png", {200,600-x});
+    canvasWidget->addImage("kot1.png", {400,50-x});
+    canvasWidget->addImage("kot1.png", {200,50-x});
+    canvasWidget->addImage("kot1.png", {600,600-x});
+    canvasWidget->addImage("kot1.png", {1000,600-x});
+    canvasWidget->addImage("kot1.png", {1000,300-x});
+    canvasWidget->addImage("kot1.png", {600,400-x});
 //    canvasWidget->addImage("bender.png", {300,300});
 
 //    for (int i=0;i<100;++i)
