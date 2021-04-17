@@ -13,8 +13,14 @@ MainWindow::MainWindow(QWidget *parent)
     qInfo() << qimage.width() << ' ' <<qimage.height();
 
     canvasWidget->addImage("kot.png", {700,50});
-//    canvasWidget->addImage("bender.png", {100,100});
-    canvasWidget->addImage("kot.png", {200,200});
+    canvasWidget->addImage("kot.png", {300,200});
+    canvasWidget->addImage("kot1.png", {200,600});
+    canvasWidget->addImage("kot1.png", {400,50});
+    canvasWidget->addImage("kot1.png", {200,50});
+    canvasWidget->addImage("kot1.png", {600,600});
+    canvasWidget->addImage("kot1.png", {1000,600});
+    canvasWidget->addImage("kot1.png", {1000,300});
+    canvasWidget->addImage("kot1.png", {600,400});
 //    canvasWidget->addImage("bender.png", {300,300});
 
 //    for (int i=0;i<100;++i)
@@ -30,4 +36,3 @@ MainWindow::~MainWindow()
     delete ui;
     delete canvasWidget;
 }
-
