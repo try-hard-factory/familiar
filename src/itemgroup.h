@@ -82,7 +82,7 @@ protected:
 private:
     QPointF shiftMouseCoords_;
     uint64_t& zCounter_;
-    QRectF m_tmpRect;
+    QRectF rectItemGroup_;
     QVector<QGraphicsItem*> items_;
 
 private:
