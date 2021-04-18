@@ -133,10 +133,12 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //            resizeRight(pt);
             break;
         case BottomLeft:
+            resizeBottomLeft(pt);
 //            resizeBottom(pt);
 //            resizeLeft(pt);
             break;
         case BottomRight:
+            resizeBottomRight(pt);
 //            resizeBottom(pt);
 //            resizeRight(pt);
             break;
@@ -347,6 +349,7 @@ void ItemGroup::resizeTop(const QPointF &pt)
     setPositionGrabbers();
 }
 
+
 void ItemGroup::resizeTopLeft(const QPointF &pt)
 {
     auto pos = pt;
@@ -486,7 +489,7 @@ void ItemGroup::resizeTopRight(const QPointF &pt)
     else
         tmpRect.setHeight( heightOffset );
 
-    qreal widthOffset =  ( pos.x() - tmpRect.left() );
+    qreal widthOffset = ( pos.x() - tmpRect.left() );
     if( widthOffset < 10 ) /// limit
         return;
     if( widthOffset < 0)
@@ -548,6 +551,216 @@ void ItemGroup::resizeTopRight(const QPointF &pt)
     setPositionGrabbers();
 }
 
+void ItemGroup::resizeBottomLeft(const QPointF &pt)
+{
+    auto pos = pt;
+    auto rect = boundingRect();
+
+    QPointF a(rect.x(), rect.y());
+    QPointF b(rect.x() + rect.width(), rect.y());
+    QPointF c(rect.x() + rect.width(), rect.y() + rect.height());
+    QPointF d(rect.x(), rect.y() + rect.height());
+
+    Vec2d ba(a.x()-b.x(), a.y()-b.y());
+    Vec2d ad(d.x()-a.x(), d.y()-a.y());
+    Vec2d bd(d.x()-b.x(), d.y()-b.y());
+    Vec2d bk(pos.x()-b.x(), pos.y()-b.y());
+
+    auto ba_len = ba.length();
+    auto ad_len = ad.length();
+    auto bd_len = bd.length();
+    auto bk_len = bk.length();
+
+    auto bkbd_dot = Vec2d<qreal>::dot(bd, bk);
+    auto cos_kdb = bkbd_dot/(bd_len*bk_len);
+    auto bd2_len = bk_len * cos_kdb;
+
+    auto x =(bd2_len * ba_len) / (std::sqrt(ad_len * ad_len + ba_len * ba_len));
+    auto y = std::sqrt(bd2_len * bd2_len - x * x);
+
+    if (x < 10 || y < 10) return;
+    pos.setX(b.x()-x);
+    pos.setY(b.y()+y);
+
+
+    QRectF tmpRect = boundingRect();
+
+    qreal heightOffset =  ( pos.y() - tmpRect.top() );
+    if( heightOffset < 11 ) /// limit
+        return;
+    if( heightOffset < 0)
+        tmpRect.setHeight( -heightOffset );
+    else
+        tmpRect.setHeight( heightOffset );
+
+    qreal widthOffset = ( pos.x() - rect.right() );
+    if( widthOffset < 0)
+        tmpRect.setWidth( -widthOffset );
+    else
+        tmpRect.setWidth( widthOffset );
+
+
+    tmpRect.translate( boundingRect().width() - tmpRect.width() , 0 );
+    prepareGeometryChange();
+
+
+    for (auto& it : items_) {
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+
+        qreal old_ig_w = rectItemGroup_.width();
+        qreal old_ig_h = rectItemGroup_.height();
+        qreal new_ig_w = tmpRect.width();
+        qreal new_ig_h = tmpRect.height();
+
+        qreal old_h = abs(widget->sceneBoundingRect().bottom() -  widget->sceneBoundingRect().top());
+        qreal new_h = (old_h * new_ig_h) / old_ig_h;
+        qreal old_w = abs(widget->sceneBoundingRect().left() - widget->sceneBoundingRect().right());
+        qreal new_w = (old_w * new_h) / old_h;
+
+        qreal new_x = 0;
+        qreal new_y = 0;
+
+        if (widget->sceneBoundingRect().left() == boundingRect().left()) {
+            qreal aa = abs(widget->sceneBoundingRect().top() - rectItemGroup_.bottom());
+            qreal yy = (aa*new_ig_w)/old_ig_w;
+            qreal y_delta = abs(new_ig_h - yy);
+
+            new_x = tmpRect.topLeft().x();
+            new_y = tmpRect.topLeft().y() + y_delta;
+        } else if (widget->sceneBoundingRect().top() == boundingRect().top()) {
+            qreal aa = abs(widget->sceneBoundingRect().left() - rectItemGroup_.right());
+            qreal xx = (aa*new_ig_h)/old_ig_h;
+            qreal x_delta = abs(new_ig_w - xx);
+
+            new_x = tmpRect.topLeft().x() + x_delta;
+            new_y = tmpRect.topLeft().y();
+        } else  {
+            qreal qq = abs(rectItemGroup_.left() - widget->sceneBoundingRect().left());
+            qreal ww = abs(rectItemGroup_.top() - widget->sceneBoundingRect().top());
+            qreal new_x_delta = (new_ig_w * qq) / old_ig_w;
+            qreal new_y_delta = (new_ig_h * ww) / old_ig_h;
+
+            new_x = tmpRect.left() + new_x_delta;
+            new_y = tmpRect.top() + new_y_delta;
+        }
+
+        widget->setX(new_x);
+        widget->setY(new_y);
+        widget->setRect(new_x, new_y, new_w, new_h);
+    }
+
+
+    rectItemGroup_ = tmpRect;
+    update();
+    setPositionGrabbers();
+}
+
+void ItemGroup::resizeBottomRight(const QPointF &pt)
+{
+    auto pos = pt;
+    auto rect = boundingRect();
+
+    QPointF a(rect.x(), rect.y());
+    QPointF b(rect.x() + rect.width(), rect.y());
+    QPointF c(rect.x() + rect.width(), rect.y() + rect.height());
+    QPointF d(rect.x(), rect.y() + rect.height());
+
+    Vec2d ad(d.x()-a.x(), d.y()-a.y());
+    Vec2d dc(c.x()-d.x(), c.y()-d.y());
+    Vec2d ac(c.x()-a.x(), c.y()-a.y());
+    Vec2d ak(pos.x()-a.x(), pos.y()-a.y());
+
+    auto ad_len = ad.length();
+    auto dc_len = dc.length();
+    auto ac_len = ac.length();
+    auto ak_len = ak.length();
+
+    auto akac_dot = Vec2d<qreal>::dot(ac, ak);
+    auto cos_kac = akac_dot/(ac_len*ak_len);
+    auto ad2_len = ak_len * cos_kac;
+
+    auto x =(ad2_len * dc_len) / (std::sqrt(ad_len * ad_len + dc_len * dc_len));
+    auto y = std::sqrt(ad2_len * ad2_len - x * x);
+
+    if (x < 10 || y < 10) return;
+    pos.setX(a.x()+x);
+    pos.setY(a.y()+y);
+
+
+    QRectF tmpRect = boundingRect();
+    if( pos.y() < tmpRect.top() )
+        return;
+    qreal heightOffset =  ( pos.y() - tmpRect.top() );
+    if( heightOffset < 11 ) /// limit
+        return;
+    if( heightOffset < 0)
+        tmpRect.setHeight( -heightOffset );
+    else
+        tmpRect.setHeight( heightOffset );
+    if( pos.x() < tmpRect.left() )
+        return;
+    qreal widthOffset =  ( pos.x() - tmpRect.left() );
+    if( widthOffset < 10 ) /// limit
+        return;
+    if( widthOffset < 0)
+        tmpRect.setWidth( -widthOffset );
+    else
+        tmpRect.setWidth( widthOffset );
+
+
+    prepareGeometryChange();
+
+
+    for (auto& it : items_) {
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+
+        qreal old_ig_w = rectItemGroup_.width();
+        qreal old_ig_h = rectItemGroup_.height();
+        qreal new_ig_w = tmpRect.width();
+        qreal new_ig_h = tmpRect.height();
+
+        qreal old_h = abs(widget->sceneBoundingRect().bottom() -  widget->sceneBoundingRect().top());
+        qreal new_h = (old_h * new_ig_h) / old_ig_h;
+        qreal old_w = abs(widget->sceneBoundingRect().left() - widget->sceneBoundingRect().right());
+        qreal new_w = (old_w * new_h) / old_h;
+
+        qreal new_x = 0;
+        qreal new_y = 0;
+
+        if (widget->sceneBoundingRect().left() == boundingRect().left()) {
+            qreal aa = abs(widget->sceneBoundingRect().top() - rectItemGroup_.bottom());
+            qreal yy = (aa*new_ig_w)/old_ig_w;
+            qreal y_delta = abs(new_ig_h - yy);
+
+            new_x = tmpRect.topLeft().x();
+            new_y = tmpRect.topLeft().y() + y_delta;
+        } else if (widget->sceneBoundingRect().top() == boundingRect().top()) {
+            qreal aa = abs(widget->sceneBoundingRect().left() - rectItemGroup_.right());
+            qreal xx = (aa*new_ig_h)/old_ig_h;
+            qreal x_delta = abs(new_ig_w - xx);
+
+            new_x = tmpRect.topLeft().x() + x_delta;
+            new_y = tmpRect.topLeft().y();
+        } else  {
+            qreal qq = abs(rectItemGroup_.left() - widget->sceneBoundingRect().left());
+            qreal ww = abs(rectItemGroup_.top() - widget->sceneBoundingRect().top());
+            qreal new_x_delta = (new_ig_w * qq) / old_ig_w;
+            qreal new_y_delta = (new_ig_h * ww) / old_ig_h;
+
+            new_x = tmpRect.left() + new_x_delta;
+            new_y = tmpRect.top() + new_y_delta;
+        }
+
+        widget->setX(new_x);
+        widget->setY(new_y);
+        widget->setRect(new_x, new_y, new_w, new_h);
+    }
+
+
+    rectItemGroup_ = tmpRect;
+    update();
+    setPositionGrabbers();
+}
 
 void ItemGroup::rotateItem(const QPointF &pt)
 {
