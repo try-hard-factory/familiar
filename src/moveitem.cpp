@@ -58,11 +58,13 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 {
     QPointF point(0, 0);
     QRectF source(0, 0, pixmap_.width(),pixmap_.height());
-     painter->drawImage(boundingRect(), qimage_);
+    painter->setPen(QPen(QColor(0, 160, 230),2));
+    if (inGroup_) {
+        painter->drawRect(boundingRect());
+    }
+    painter->drawImage(boundingRect(), qimage_);
 //    painter->drawPixmap(point, pixmap_, boundingRect());
-//    painter->setBrush(QBrush(Qt::blue));
-     painter->setPen(QPen(QColor(0, 160, 230),2));
-     painter->drawRect(boundingRect());
+
 
 //    if (option->state & QStyle::State_Selected) {
 //        QPen p;

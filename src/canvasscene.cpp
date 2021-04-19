@@ -142,9 +142,8 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
     LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {
-        LOG_WARNING(logger,"HUI ", __LINE__);
         if (event->modifiers() == Qt::ShiftModifier) {
-        LOG_WARNING(logger,"HUI ", __LINE__);
+
 
         } else if (event->modifiers() != Qt::ShiftModifier) {
             LOG_WARNING(logger,"HUI ", __LINE__);
@@ -335,6 +334,16 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
     if (!mainSelArea_.isReady()) return;
     painter->save();
+    int wsize = 2;
+    painter->setPen( QPen(Qt::red, wsize) );
+    auto r = itemGroup_->sceneBoundingRect();
+    painter->drawRect(r);
+
+//    auto childs = itemGroup_->childItems();
+//    for (auto& it : childs) {
+//        if (it->type() == ItemGroup::eBorderDot) continue;
+//        painter->drawRect(it->sceneBoundingRect());
+//    }
 //    painter->setPen( QPen(Qt::black, 2) );
 //    auto r = itemGroup_->sceneBoundingRect();
 //    painter->drawRect(r);

@@ -21,6 +21,7 @@ public:
     QRectF getRect() const { return boundingRect(); }
     void setRect(qreal x, qreal y, qreal w, qreal h);
     void setRect(const QRectF &rect);
+    void setInGroup(bool f) { inGroup_ = f; }
 signals:
 protected:
     QRectF boundingRect() const override;
@@ -39,6 +40,7 @@ private:
     uint64_t& zCounter_;
     QSizeF _size;
     QRectF rect_;
+    bool inGroup_ = false;
 public slots:
 };
 

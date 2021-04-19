@@ -67,10 +67,12 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
 {
     setAcceptHoverEvents(true);
     setFlags(ItemIsSelectable|ItemSendsGeometryChanges);
+//    setFlags(ItemStacksBehindParent);
     for(int i = 0; i < 4; i++){
         cornerGrabber[i] = new DotSignal(this);
     }
     setPositionGrabbers();
+    hideGrabbers();
 }
 
 void ItemGroup::addItem(QGraphicsItem* item)
@@ -87,9 +89,13 @@ void ItemGroup::addItem(QGraphicsItem* item)
     for (auto& it : childs) {
         if (it->type() == eBorderDot) continue;
         tmp = tmp.united(it->sceneBoundingRect());
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+        widget->setInGroup(true);
     }
     rectItemGroup_ = tmp;
 
+    setPositionGrabbers();
+    setVisibilityGrabbers();
 }
 
 void ItemGroup::printChilds()
@@ -207,9 +213,9 @@ void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 
 void ItemGroup::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
-    qDebug()<<"ItemGroup::hoverEnterEvent";
-    setPositionGrabbers();
-    setVisibilityGrabbers();
+//    qDebug()<<"ItemGroup::hoverEnterEvent";
+//    setPositionGrabbers();
+//    setVisibilityGrabbers();
     QGraphicsItem::hoverEnterEvent(event);
 }
 
@@ -217,8 +223,8 @@ void ItemGroup::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 {
     qDebug()<<"ItemGroup::hoverLeaveEvent";
     m_cornerFlags = 0;
-    hideGrabbers();
-    setCursor(Qt::CrossCursor);
+//    hideGrabbers();
+//    setCursor(Qt::CrossCursor);
     QGraphicsItem::hoverLeaveEvent( event );
 }
 
@@ -856,8 +862,7 @@ void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 //    if (childs.empty()) return;
 //    qInfo()<<"ItemGroup::paint";
 //    painter->save();
-//    int wsize = 2;
-//    painter->setPen( QPen(Qt::red, wsize) );
+
 //    auto br = this->boundingRect().bottomRight();
 //    QPointF tl(-1, -1);
 ////    br.rx() += wsize;
