@@ -128,37 +128,48 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
     }
 }
 
+std::string stateText(int idx) {
+    switch (idx) {
+        case 0: return "eMouseMoving";
+        case 1: return "eMouseSelection";
+        case 2: return "eGroupItemMoving";
+    }
+    return "undefined";
+}
+
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
 //    QGraphicsScene::mousePressEvent(event);
 //    return;
-    itemGroup_->printChilds();
+//    itemGroup_->printChilds();
     auto item = getFirstItemUnderCursor(event->scenePos());
     if (item && item->type() == ItemGroup::eBorderDot) {
         QGraphicsScene::mousePressEvent(event);
         return;
     }
 
-    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
+//    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {
         if (event->modifiers() == Qt::ShiftModifier) {
 
 
         } else if (event->modifiers() != Qt::ShiftModifier) {
-            LOG_WARNING(logger,"HUI ", __LINE__);
+//            LOG_WARNING(logger,"HUI ", __LINE__);
             if (item) {
-                LOG_WARNING(logger,"HUI ", __LINE__);
+//                LOG_WARNING(logger,"HUI ", __LINE__);
                 if (!itemGroup_->isContain(item)) {
-                    LOG_WARNING(logger,"HUI ", __LINE__);
                     itemGroup_->clearItemGroup();
                     itemGroup_->addItem(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
+
+                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                 }
-                LOG_WARNING(logger,"HUI ", __LINE__);
+                state_ = eMouseSelection;
+//                LOG_WARNING(logger,"HUI ", __LINE__);
             } else {
-                LOG_WARNING(logger,"HUI ", __LINE__);
+//                LOG_WARNING(logger,"HUI ", __LINE__);
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
                 state_ = eMouseSelection;
@@ -191,7 +202,9 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
                 if (itemGroup_->isContain(item)) {
-                    if (state_ != eGroupItemMoving) {
+                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
+                    if (state_ != eGroupItemMoving && state_ != eMouseSelection) {
+                        LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
                         itemGroup_->addItem(item);
@@ -201,9 +214,11 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
                     state_ = eMouseMoving;
                 }
-
+                LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
             } else {
+                LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                 if (state_ == eMouseSelection) {
+                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                     itemGroup_->clearItemGroup();
                     auto selItems = selectedItems();
 
@@ -219,6 +234,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                         mainSelArea_.setReady(true);
                     }
                 } else {
+                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                     itemGroup_->clearItemGroup();
                     mainSelArea_.setReady(false);
                 }
@@ -228,6 +244,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     }
     QGraphicsScene::mouseReleaseEvent(event);
 }
+
 
 
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)

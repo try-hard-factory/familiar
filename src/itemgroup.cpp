@@ -97,7 +97,7 @@ void ItemGroup::addItem(QGraphicsItem* item)
     setPositionGrabbers();
     setVisibilityGrabbers();
 }
-
+//need add removeitem
 void ItemGroup::printChilds()
 {
     auto childs = childItems();
