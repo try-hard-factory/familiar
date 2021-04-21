@@ -100,6 +100,9 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
 
 void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
 {
+    items_.erase(std::remove_if(items_.begin(), items_.end(), [&](QGraphicsItem* i) { return i == item; }),
+                  items_.end());
+
     removeFromGroup(item);
     auto widget = qgraphicsitem_cast<MoveItem*>(item);
     widget->setInGroup(false);
@@ -158,6 +161,7 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             break;
         default:
             if (m_leftMouseButtonPressed) {
+//                                  LOG_DEBUG(logger, "MOVE: ");
                 setCursor(Qt::ClosedHandCursor);
                 auto dx = event->scenePos().x() - m_previousPosition.x();
                 auto dy = event->scenePos().y() - m_previousPosition.y();
@@ -178,12 +182,13 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         }
         default:
             if (m_leftMouseButtonPressed) {
-                setCursor(Qt::ClosedHandCursor);
-                auto dx = event->scenePos().x() - m_previousPosition.x();
-                auto dy = event->scenePos().y() - m_previousPosition.y();
-                moveBy(dx,dy);
-                setPreviousPosition(event->scenePos());
-                emit signalMove(this, dx, dy);
+                  LOG_DEBUG(logger, "MOVE: ");
+//                setCursor(Qt::ClosedHandCursor);
+//                auto dx = event->scenePos().x() - m_previousPosition.x();
+//                auto dy = event->scenePos().y() - m_previousPosition.y();
+//                moveBy(dx,dy);
+//                setPreviousPosition(event->scenePos());
+//                emit signalMove(this, dx, dy);
             }
             break;
         }
