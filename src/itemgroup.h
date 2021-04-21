@@ -47,7 +47,8 @@ public:
     };
 
 public:
-    void addItem(QGraphicsItem* item);
+    void addItemToGroup(QGraphicsItem* item);
+    void removeItemFromGroup(QGraphicsItem* item);
     void printChilds();
     QPointF previousPosition() const;
     void setPreviousPosition(const QPointF previousPosition);

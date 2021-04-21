@@ -38,7 +38,7 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
     case (Qt::Key_Delete):
         mainSelArea_.setReady(false);
         for (auto it : itemGroup_->childItems()) {
-            itemGroup_->removeFromGroup(it);
+            itemGroup_->removeItemFromGroup(it);
             removeItem(it);
         }
         break;
@@ -160,7 +160,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 //                LOG_WARNING(logger,"HUI ", __LINE__);
                 if (!itemGroup_->isContain(item)) {
                     itemGroup_->clearItemGroup();
-                    itemGroup_->addItem(item);
+                    itemGroup_->addItemToGroup(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
 
@@ -191,11 +191,11 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             if (item) { // add to group
                 if (!itemGroup_->isContain(item)) {
                     item->setZValue(++zCounter_);
-                    itemGroup_->addItem(item);
+                    itemGroup_->addItemToGroup(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
                 } else {
-                    itemGroup_->removeFromGroup(item);
+                    itemGroup_->removeItemFromGroup(item);
                     if (itemGroup_->isEmpty()) mainSelArea_.setReady(false);
                 }
             }
@@ -207,7 +207,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                         LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
-                        itemGroup_->addItem(item);
+                        itemGroup_->addItemToGroup(item);
                         itemGroup_->incZ();
                         mainSelArea_.setReady(true);
                     }
@@ -223,7 +223,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                     auto selItems = selectedItems();
 
                     for (auto& it : selItems) {
-                        itemGroup_->addItem(it);
+                        itemGroup_->addItemToGroup(it);
         //                it->setSelected(false);
                         LOG_DEBUG(logger, "Selected address: ", it);
                     }

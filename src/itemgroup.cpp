@@ -75,7 +75,7 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
     hideGrabbers();
 }
 
-void ItemGroup::addItem(QGraphicsItem* item)
+void ItemGroup::addItemToGroup(QGraphicsItem* item)
 {
     LOG_DEBUG(logger, "ItemGroup::addItem: ", item);
     addToGroup(item);
@@ -97,7 +97,15 @@ void ItemGroup::addItem(QGraphicsItem* item)
     setPositionGrabbers();
     setVisibilityGrabbers();
 }
-//need add removeitem
+
+void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
+{
+    removeFromGroup(item);
+    auto widget = qgraphicsitem_cast<MoveItem*>(item);
+    widget->setInGroup(false);
+}
+
+
 void ItemGroup::printChilds()
 {
     auto childs = childItems();
@@ -878,7 +886,7 @@ void ItemGroup::clearItemGroup()
     auto childs = childItems();
     for (auto& it : childs) {        
         if (it->type() != eBorderDot) {
-            removeFromGroup(it);
+            removeItemFromGroup(it);
             LOG_DEBUG(logger, "REMOVE ", it);
         }
     }
