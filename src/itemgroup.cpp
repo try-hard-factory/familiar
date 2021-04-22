@@ -846,6 +846,9 @@ void ItemGroup::setVisibilityGrabbers()
     cornerGrabber[GrabberTopRight]->setVisible(true);
     cornerGrabber[GrabberBottomLeft]->setVisible(true);
     cornerGrabber[GrabberBottomRight]->setVisible(true);
+    for(int i = 0; i < 4; i++){
+        cornerGrabber[i]->setEnabled(true);
+    }
 
 //    if(m_actionFlags == ResizeState){
 //        cornerGrabber[GrabberTop]->setVisible(true);
@@ -864,6 +867,7 @@ void ItemGroup::hideGrabbers()
 {
     for(int i = 0; i < 4; i++){
         cornerGrabber[i]->setVisible(false);
+        cornerGrabber[i]->setEnabled(false);
     }
 }
 

@@ -17,10 +17,10 @@ MainWindow::MainWindow(QWidget *parent)
     canvasWidget->addImage("kot.png", {300,200-x});
     canvasWidget->addImage("kot1.png", {200,600-x});
     canvasWidget->addImage("kot1.png", {400,50-x});
+    canvasWidget->addImage("kot1.png", {00,00-x});
     canvasWidget->addImage("kot1.png", {200,50-x});
-    canvasWidget->addImage("kot1.png", {600,600-x});
-    canvasWidget->addImage("kot1.png", {1000,600-x});
-    canvasWidget->addImage("kot1.png", {1000,300-x});
+    canvasWidget->addImage("kot1.png", {200,100-x});
+    canvasWidget->addImage("kot1.png", {200,150-x});
     canvasWidget->addImage("kot1.png", {600,400-x});
 //    canvasWidget->addImage("bender.png", {300,300});
 
