@@ -22,9 +22,9 @@ public:
     void setRect(qreal x, qreal y, qreal w, qreal h);
     void setRect(const QRectF &rect);
     void setInGroup(bool f) { inGroup_ = f; }
+    QRectF boundingRect() const override;
 signals:
 protected:
-    QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 //    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
