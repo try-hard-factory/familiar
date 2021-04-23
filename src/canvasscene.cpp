@@ -25,7 +25,19 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     itemGroup_ = new ItemGroup(zc);
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
+
+    QPointF p = {50,50};
+    itemGroup_->setPos(p);
     addItem(itemGroup_);
+
+
+    ++zCounter_;
+    MoveItem* item = new MoveItem("bender.png", zCounter_);
+    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
+    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+    item->setPos({50,50});
+    addItem(item);
+
     connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     imgdownloader_ = new ImageDownloader(*this);
 
@@ -349,6 +361,14 @@ void CanvasScene::onSelectionChanged()
 
 void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
+    painter->setPen( QPen(Qt::black, 1) );
+    int begin = -3000;
+    while (begin != 3000) {
+        painter->drawLine(-99999, begin, 9999, begin);
+        painter->drawLine(begin, -99999, begin, 99999);
+        begin += 100;
+    }
+
     if (!mainSelArea_.isReady()) return;
     painter->save();
     int wsize = 2;
@@ -356,6 +376,7 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     auto r = itemGroup_->sceneBoundingRect();
 //    itemGroup_->childrenBoundingRect()
     painter->drawRect(r);
+
 
 //    auto childs = itemGroup_->childItems();
 //    for (auto& it : childs) {
