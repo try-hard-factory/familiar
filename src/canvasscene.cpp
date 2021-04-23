@@ -201,7 +201,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             }
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
-                if (itemGroup_->isContain(item)) {
+                if (itemGroup_->isContain(item) && !itemGroup_->isThisDots(item)) {
                     LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                     if (state_ != eGroupItemMoving && state_ != eMouseSelection) {
                         LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
@@ -354,6 +354,7 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     int wsize = 2;
     painter->setPen( QPen(Qt::red, wsize) );
     auto r = itemGroup_->sceneBoundingRect();
+//    itemGroup_->childrenBoundingRect()
     painter->drawRect(r);
 
 //    auto childs = itemGroup_->childItems();

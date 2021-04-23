@@ -36,10 +36,6 @@ public:
     };
 
     enum CornerGrabbers {
-//        GrabberTop = 0,
-//        GrabberBottom,
-//        GrabberLeft,
-//        GrabberRight,
         GrabberTopLeft = 0,
         GrabberTopRight,
         GrabberBottomLeft,
@@ -52,7 +48,7 @@ public:
     void printChilds();
     QPointF previousPosition() const;
     void setPreviousPosition(const QPointF previousPosition);
-
+    QRectF boundingRect() const override;
 
 signals:
     void rectChanged(ItemGroup *rect);
@@ -72,17 +68,24 @@ protected:
 public:
     void clearItemGroup();
     bool isContain(const QGraphicsItem* item) const;
+    bool isThisDots(const QGraphicsItem *item) const;
     bool isEmpty() const;
     void incZ();
+    QRectF realRect() const {return rectItemGroup_;}
 protected:
-    QRectF boundingRect() const override;
+
+
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
+private:
+    QRectF currentSceneBoundingRect() const;
+    void printDotsCoords(const std::string& text) const;
 
 
 private:
     QPointF shiftMouseCoords_;
     uint64_t& zCounter_;
+    QRectF sceneRectItemGroup_;
     QRectF rectItemGroup_;
     QVector<QGraphicsItem*> items_;
 
@@ -91,12 +94,7 @@ private:
     unsigned int m_actionFlags;
     QPointF m_previousPosition;
     bool m_leftMouseButtonPressed;
-    DotSignal *cornerGrabber[4];
-
-    void resizeLeft( const QPointF &pt);
-    void resizeRight( const QPointF &pt);
-    void resizeBottom(const QPointF &pt);
-    void resizeTop(const QPointF &pt);
+    DotSignal *cornerGrabber[4] = {nullptr, nullptr, nullptr, nullptr};
 
     void resizeTopLeft(const QPointF &pt);
     void resizeTopRight(const QPointF &pt);
