@@ -50,42 +50,27 @@ MoveItem::~MoveItem()
 
 QRectF MoveItem::boundingRect() const
 {
-//    qDebug()<<rect_;
-    return QRectF (0, 0, rect_.width(), rect_.height());//pixmap_.width(),pixmap_.height());
+    return QRectF (0, 0, rect_.width(), rect_.height());
 }
 
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    QPointF point(0, 0);
-    QRectF source(0, 0, pixmap_.width(),pixmap_.height());
     painter->setPen(QPen(QColor(0, 160, 230),2));
     if (inGroup_) {
         painter->drawRect(boundingRect());
     }
     painter->drawImage(boundingRect(), qimage_);
-//    painter->drawPixmap(point, pixmap_, boundingRect());
-
-
-//    if (option->state & QStyle::State_Selected) {
-//        QPen p;
-//        int wsize = 2;
-//        p.setWidth(wsize);
-//        p.setColor(QColor(0, 160, 230));
-//        painter->setPen(p);
-////        painter->drawRect(boundingRect());
-//        painter->drawRect(1,1,pixmap_.width()+wsize,pixmap_.height()+wsize);
-//    }
 
     Q_UNUSED(widget);
 }
 
-//void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
-//{
-//#ifdef MOUSE_MOVE_DEBUG
-//    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
-//#endif
-//    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
-//}
+void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+{
+#ifdef MOUSE_MOVE_DEBUG
+    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
+#endif
+    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
+}
 
 void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
