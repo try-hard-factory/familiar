@@ -169,14 +169,18 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             break;
         default:
             if (m_leftMouseButtonPressed) {
-                setCursor(Qt::ClosedHandCursor);
+//                setCursor(Qt::ClosedHandCursor);
+                qDebug()<<'\n';
                 qDebug()<< "MOVE: "<< mapToScene(event->pos()+ shiftMouseCoords_);
-                this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
-//                auto dx = event->scenePos().x() - m_previousPosition.x();
-//                auto dy = event->scenePos().y() - m_previousPosition.y();
-//                moveBy(dx,dy);
-//                setPreviousPosition(event->scenePos());
-//                emit signalMove(this, dx, dy);
+                qDebug()<<"ItemGroup:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
+                qDebug()<<"ItemGroup:: itemGroup_ pos: "<<pos()<<", scenePos: "<<scenePos();
+                qDebug()<<'\n';
+//                this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
+                auto dx = event->scenePos().x() - m_previousPosition.x();
+                auto dy = event->scenePos().y() - m_previousPosition.y();
+                moveBy(dx,dy);
+                setPreviousPosition(event->scenePos());
+                emit signalMove(this, dx, dy);
             }
             break;
         }
@@ -192,12 +196,12 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         default:
             if (m_leftMouseButtonPressed) {
                   LOG_DEBUG(logger, "MOVE: ");
-//                setCursor(Qt::ClosedHandCursor);
-//                auto dx = event->scenePos().x() - m_previousPosition.x();
-//                auto dy = event->scenePos().y() - m_previousPosition.y();
-//                moveBy(dx,dy);
-//                setPreviousPosition(event->scenePos());
-//                emit signalMove(this, dx, dy);
+                setCursor(Qt::ClosedHandCursor);
+                auto dx = event->scenePos().x() - m_previousPosition.x();
+                auto dy = event->scenePos().y() - m_previousPosition.y();
+                moveBy(dx,dy);
+                setPreviousPosition(event->scenePos());
+                emit signalMove(this, dx, dy);
             }
             break;
         }

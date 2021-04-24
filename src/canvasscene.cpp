@@ -18,7 +18,7 @@
 extern Logger logger;
 
 
-//#define MOUSE_MOVE_DEBUG
+#define MOUSE_MOVE_DEBUG
 CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
 {
     (void)scene;
@@ -26,13 +26,11 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
 
-    QPointF p = {0,0};
-    itemGroup_->setPos(p);
-    itemGroup_->moveBy(25, 0);
+//    QPointF p = {25,0};
+//    itemGroup_->setPos(p);
     addItem(itemGroup_);
 
-
-    addRect(QRectF(25, 0, 100, 200), QPen(Qt::black), QBrush(Qt::green));
+    addEllipse(QRectF(25, 0, 3, 3), QPen(Qt::black), QBrush(Qt::green));
 
     ++zCounter_;
     MoveItem* item = new MoveItem("bender.png", zCounter_);
@@ -265,7 +263,10 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
 #ifdef MOUSE_MOVE_DEBUG
-    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")", " State: ", state_);
+    qDebug()<<'\n';
+    qDebug()<<"CanvasScene:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
+    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
+    qDebug()<<'\n';
 #endif
 
     if ( (event->buttons() & Qt::LeftButton)) {
