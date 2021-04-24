@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QGraphicsItemGroup>
 
-
+class MoveItem;
 class DotSignal;
 class QGraphicsSceneMouseEvent;
 
@@ -19,6 +19,13 @@ public:
     };
     ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent = nullptr);
     ~ItemGroup();
+
+    struct new_size_t {
+        qreal new_x = .0;
+        qreal new_y = .0;
+        qreal new_w = .0;
+        qreal new_h = .0;
+    };
     enum ActionStates {
         ResizeState = 0x01,
         RotationState = 0x02
@@ -81,6 +88,7 @@ private:
     QRectF currentSceneBoundingRect() const;
     void printDotsCoords(const std::string& text) const;
 
+    new_size_t calculateNewSize(const QRectF& tmpRect, MoveItem* widget);
 
 private:
     QPointF shiftMouseCoords_;

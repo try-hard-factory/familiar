@@ -26,10 +26,13 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
 
-    QPointF p = {50,50};
+    QPointF p = {0,0};
     itemGroup_->setPos(p);
+    itemGroup_->moveBy(25, 0);
     addItem(itemGroup_);
 
+
+    addRect(QRectF(25, 0, 100, 200), QPen(Qt::black), QBrush(Qt::green));
 
     ++zCounter_;
     MoveItem* item = new MoveItem("bender.png", zCounter_);
