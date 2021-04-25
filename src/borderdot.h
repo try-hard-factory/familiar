@@ -1,17 +1,54 @@
 #ifndef BORDERDOT_H
 #define BORDERDOT_H
 
-#include <QGraphicsItem>
+#include <QObject>
+#include <QGraphicsRectItem>
 
-class BorderDot : public QGraphicsItem
+class QGraphicsSceneHoverEventPrivate;
+class QGraphicsSceneMouseEvent;
+
+class DotSignal : public QObject, public QGraphicsRectItem
 {
+    Q_OBJECT
+    Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE setPreviousPosition NOTIFY previousPositionChanged)
+
 public:
-    BorderDot(QGraphicsItem * parent);
+    explicit DotSignal(QGraphicsItem *parentItem = 0, QObject *parent = 0);
+    explicit DotSignal(QPointF pos, QGraphicsItem *parentItem = 0, QObject *parent = 0);
+    ~DotSignal();
+
+    enum Flags {
+        Movable = 0x01
+    };
+
+    enum { Type = UserType + 1 };
+
+    int type() const override
+    {
+        return Type;
+    }
+    QPointF previousPosition() const;
+    void setPreviousPosition(const QPointF previousPosition);
+
+    void setDotFlags(unsigned int flags);
+
+signals:
+    void previousPositionChanged();
+    void signalMouseRelease();
+    void signalMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
+
 protected:
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
 
-    QVariant itemChange(GraphicsItemChange change, const QVariant & value) override;
+public slots:
 
+private:
+    unsigned int m_flags;
+    QPointF m_previousPosition;
 };
 
 #endif // BORDERDOT_H

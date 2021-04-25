@@ -1,29 +1,102 @@
 #include "borderdot.h"
-#include <QPainter>
-BorderDot::BorderDot(QGraphicsItem * parent) :
-    QGraphicsItem(parent)
+
+
+#include <QBrush>
+#include <QColor>
+#include <QGraphicsSceneHoverEvent>
+#include <QGraphicsSceneMouseEvent>
+
+DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
+    QObject(parent)
 {
-    setFlag(ItemIsMovable);
-    setFlag(ItemIsSelectable);
-    setFlag(ItemSendsGeometryChanges);
+    setZValue(999999999);
+//    setFlags(ItemIsMovable);
+    setParentItem(parentItem);
+    setAcceptHoverEvents(true);
+    setBrush(QBrush(Qt::black));
+    setRect(-4,-4,8,8);
+    setDotFlags(0);
 }
 
-
-void BorderDot::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
+    QObject(parent)
 {
-    painter->setBrush(Qt::blue);
-    painter->setPen(Qt::darkGray);
-    painter->drawEllipse(-5,-5,10,10);
+    setZValue(999999999);
+//    setFlags(ItemIsMovable);
+    setParentItem(parentItem);
+    setAcceptHoverEvents(true);
+    setBrush(QBrush(Qt::black));
+    setRect(-4,-4,8,8);
+    setPos(pos);
+    setPreviousPosition(pos);
+    setDotFlags(0);
 }
 
-QVariant BorderDot::itemChange(GraphicsItemChange change, const QVariant & value)
+DotSignal::~DotSignal()
 {
-    switch(change) {
-        case QGraphicsItem::ItemSelectedHasChanged:
-            qWarning() << "vertex: " + value.toString(); // never happened
-            break;
-        default:
-            break;
+
+}
+
+QPointF DotSignal::previousPosition() const
+{
+    return m_previousPosition;
+}
+
+void DotSignal::setPreviousPosition(const QPointF previousPosition)
+{
+    if (m_previousPosition == previousPosition)
+        return;
+
+    m_previousPosition = previousPosition;
+    emit previousPositionChanged();
+}
+
+void DotSignal::setDotFlags(unsigned int flags)
+{
+    m_flags = flags;
+}
+
+void DotSignal::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+{
+    if(m_flags & Movable) {
+        qDebug()<<"DotSignal::mouseMoveEvent";
+        auto dx = event->scenePos().x() - m_previousPosition.x();
+        auto dy = event->scenePos().y() - m_previousPosition.y();
+        moveBy(dx,dy);
+        setPreviousPosition(event->scenePos());
+        emit signalMove(this, dx, dy);
+    } else {
+        qDebug()<<"else DotSignal::mouseMoveEvent";
+        QGraphicsItem::mouseMoveEvent(event);
     }
-    return QGraphicsItem::itemChange(change, value);
 }
+
+void DotSignal::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+    if(m_flags & Movable){
+        setPreviousPosition(event->scenePos());
+    } else {
+        QGraphicsItem::mousePressEvent(event);
+    }
+}
+
+void DotSignal::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+    emit signalMouseRelease();
+    QGraphicsItem::mouseReleaseEvent(event);
+}
+
+void DotSignal::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+{
+    qDebug()<<"DotSignal::hoverEnterEvent";
+    Q_UNUSED(event)
+    setBrush(QBrush(Qt::red));
+}
+
+void DotSignal::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
+    qDebug()<<"DotSignal::hoverLeaveEvent";
+    Q_UNUSED(event)
+    setBrush(QBrush(Qt::black));
+}
+

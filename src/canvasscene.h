@@ -2,10 +2,12 @@
 #define CANVASSCENE_H
 
 #include <QGraphicsScene>
+#include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
 #include <itemgroup.h>
 #include "mainselectedarea.h"
 #include "image_downloader.h"
+
 enum EState {
     eMouseMoving        = 0x0000,
     eMouseSelection     = 0x0001,
@@ -15,10 +17,6 @@ enum EState {
 class CanvasScene : public QGraphicsScene
 {
 public:
-    enum EItemsType {
-        eBorderDot = QGraphicsItem::UserType + 1,
-    };
-
     CanvasScene(uint64_t& zc, QGraphicsScene *scene = 0);
     ~CanvasScene() = default;
 
@@ -37,6 +35,10 @@ protected:
     void dragEnterEvent(QGraphicsSceneDragDropEvent *event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent *event) override;
     void dropEvent(QGraphicsSceneDragDropEvent *event) override;
+
+
+public slots:
+    void slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
 
 private:
     bool isAnySelectedUnderCursor() const;
