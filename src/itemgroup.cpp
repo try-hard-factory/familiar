@@ -72,6 +72,8 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
 
 QRectF ItemGroup::calcNewBr()
 {
+    if (items_.empty()) return QRectF();
+
     qreal min_x = items_.first()->pos().x();
     qreal min_y = items_.first()->pos().y();
     qreal max_x = items_.first()->pos().x() + items_.first()->boundingRect().width();
@@ -137,6 +139,8 @@ void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
                   items_.end());
 
     removeFromGroup(item);
+    rectItemGroup_ = calcNewBr();
+    setPositionGrabbers();
     //need remove from rects
     //check that empty and delete dots
 }
@@ -744,6 +748,7 @@ void ItemGroup::clearItemGroup()
     }
 
     for(int i = 0; i < 4; i++){
+        qDebug()<<"DEALLOCATE";
         delete cornerGrabber[i];
         cornerGrabber[i] = nullptr;
     }
