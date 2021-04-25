@@ -67,8 +67,8 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
 {
     setAcceptHoverEvents(true);
     setFlags(ItemIsSelectable|ItemSendsGeometryChanges);
-//    setFlags(ItemStacksBehindParent);
 }
+
 
 QRectF ItemGroup::calcNewBr()
 {
@@ -76,39 +76,26 @@ QRectF ItemGroup::calcNewBr()
     qreal min_y = items_.first()->pos().y();
     qreal max_x = items_.first()->pos().x() + items_.first()->boundingRect().width();
     qreal max_y = items_.first()->pos().y() + items_.first()->boundingRect().height();
-    for (auto& item : items_) {
 
+    for (auto& item : items_) {
         qreal cur_min_x = item->pos().x();
         qreal cur_min_y = item->pos().y();
         qreal cur_max_x = cur_min_x + item->boundingRect().width();
         qreal cur_max_y = cur_min_y + item->boundingRect().height();
-        qDebug()<<"0";
-        qDebug()<<"cur_min_x "<<cur_min_x;
-        qDebug()<<"cur_min_y "<<cur_min_y;
-        qDebug()<<"cur_max_x "<<cur_max_x;
-        qDebug()<<"cur_max_y "<<cur_max_y;
+
         if (cur_min_x < min_x) min_x = cur_min_x;
         if (cur_min_y < min_y) min_y = cur_min_y;
         if (max_x < cur_max_x) max_x = cur_max_x;
         if (max_y < cur_max_y) max_y = cur_max_y;
-        qDebug()<<"1";
-        qDebug()<<"cur_min_x "<<cur_min_x;
-        qDebug()<<"cur_min_y "<<cur_min_y;
-        qDebug()<<"cur_max_x "<<cur_max_x;
-        qDebug()<<"cur_max_y "<<cur_max_y;
     }
-    qDebug()<<"min_x "<<min_x;
-    qDebug()<<"min_y "<<min_y;
-    qDebug()<<"max_x "<<max_x;
-    qDebug()<<"max_y "<<max_y;
+
     return QRectF(min_x, min_y, max_x - min_x, max_y - min_y);
 }
 
+
 void ItemGroup::addItemToGroup(QGraphicsItem* item)
 {
-    qDebug()<<'\n';
     if (item == this || item->type() == eBorderDot) return;
-//    LOG_DEBUG(logger, "ItemGroup::addItem: ", item);
     addToGroup(item);
 
     if (item->type() != eBorderDot) {
@@ -117,48 +104,16 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
 
     auto childs = childItems();
     auto scene_tmp = childs.first()->sceneBoundingRect();
-    auto br = QRectF(
-                        childs.first()->pos().x(),
-                        childs.first()->pos().y(),
-                        childs.first()->boundingRect().width(),
-                        childs.first()->boundingRect().height());
 
     for (auto& it : childs) {
         if (it->type() == eBorderDot) continue;
         scene_tmp = scene_tmp.united(it->sceneBoundingRect());
-//        br = br.united(QRectF(item->pos().x(),
-//                              item->pos().y(),
-//                              item->boundingRect().width(),
-//                              item->boundingRect().height())
-//                       );
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
         widget->setInGroup(true);
-//        qDebug()<<"child:";
-//        qDebug()<<"widget->boundingRect(): "<<widget->boundingRect()<<", widget.pos:"<<widget->pos();
-//        qDebug()<<"widget->sceneBoundingRect(): "<<widget->sceneBoundingRect();
-//        qDebug()<<'\n';
-
     }
 
     sceneRectItemGroup_ = scene_tmp;
-    rectItemGroup_ = calcNewBr();//br;//QGraphicsItemGroup::boundingRect();
-    qDebug()<<"BR: "<< rectItemGroup_;
-    qDebug()<<"QGraphicsItemGroup: "<<QGraphicsItemGroup::boundingRect();
-    qDebug()<<"scene bounding rect: "<< sceneRectItemGroup_;
-    qDebug()<<"bounding rect: "<<this->boundingRect();
-
-
-//    QRectF itemRect = boundingRect() | childrenBoundingRect();
-//    qDebug()<<itemRect;
-//    itemRect = mapRectToScene(itemRect);
-//    qDebug()<<itemRect;
-
-
-//    qDebug()<<"SBR mod1: "<< mapRectFromParent(rectItemGroup_);
-//    qDebug()<<"SBR mod2: "<< mapRectFromScene(rectItemGroup_);
-//    qDebug()<<"SBR mod3: "<< mapRectToParent(rectItemGroup_);
-//    qDebug()<<"SBR mod4: "<< mapRectToScene(rectItemGroup_);
-
+    rectItemGroup_ = calcNewBr();
 
     if (!cornerGrabber[0]) {
         for(int i = 0; i < 4; i++){
@@ -166,12 +121,11 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
         }
         hideGrabbers();
     }
-//    printDotsCoords("addItemToGroup 0");
+
     setPositionGrabbers();
     setVisibilityGrabbers();
-//    printDotsCoords("addItemToGroup 1");
-    qDebug()<<'\n';
 }
+
 
 void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
 {
@@ -196,22 +150,17 @@ void ItemGroup::printChilds()
     }
 }
 
+
 QRectF ItemGroup::currentSceneBoundingRect() const {
     return boundingRect();
-    return sceneRectItemGroup_;
 }
+
+
 QRectF ItemGroup::boundingRect() const
 {
-
-//    qDebug()<<this->pos();
-//    qDebug()<<QGraphicsItemGroup::boundingRect();
-//    qDebug()<<"children bounding rect: "<<this->childrenBoundingRect();
-
-//    qDebug()<<br;
     return rectItemGroup_;
-//    return rectItemGroup_;
-//    return sceneRectItemGroup_;
 }
+
 
 void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -233,14 +182,6 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             break;
         default:
             if (m_leftMouseButtonPressed) {
-//                setCursor(Qt::ClosedHandCursor);
-//                qDebug()<<'\n';
-//                qDebug()<< "MOVE: "<< mapToScene(event->pos()+ shiftMouseCoords_)<<
-//                           " m_cornerFlags: "<<m_cornerFlags;
-//                qDebug()<<"ItemGroup:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
-//                qDebug()<<"ItemGroup:: itemGroup_ pos: "<<pos()<<", scenePos: "<<scenePos();
-//                qDebug()<<'\n';
-//                this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
                 auto dx = event->scenePos().x() - m_previousPosition.x();
                 auto dy = event->scenePos().y() - m_previousPosition.y();
                 moveBy(dx,dy);
@@ -274,19 +215,21 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
     QGraphicsItemGroup::mouseMoveEvent(event);
 }
 
+
 void ItemGroup::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     setZValue(++zCounter_);
     shiftMouseCoords_ = (this->pos() - mapToScene(event->pos()))/scale();
-//    qDebug()<<"shiftMouseCoords_: "<<shiftMouseCoords_;
+
     if (event->button() & Qt::LeftButton) {
         m_leftMouseButtonPressed = true;
         setPreviousPosition(event->scenePos());
         emit clicked(this);
     }
+
     QGraphicsItemGroup::mousePressEvent(event);
-//    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
 }
+
 
 void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -296,6 +239,7 @@ void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     QGraphicsItemGroup::mouseReleaseEvent(event);
 }
 
+
 void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 {
     m_actionFlags = (m_actionFlags == ResizeState)?RotationState:ResizeState;
@@ -303,16 +247,19 @@ void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
     QGraphicsItemGroup::mouseDoubleClickEvent(event);
 }
 
+
 void ItemGroup::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
     QGraphicsItem::hoverEnterEvent(event);
 }
+
 
 void ItemGroup::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 {
     m_cornerFlags = 0;
     QGraphicsItem::hoverLeaveEvent( event );
 }
+
 
 void ItemGroup::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 {
@@ -357,6 +304,7 @@ QVariant ItemGroup::itemChange(QGraphicsItem::GraphicsItemChange change, const Q
     return QGraphicsItemGroup::itemChange(change, value);
 }
 
+
 ItemGroup::new_size_t ItemGroup::calculateNewSize(const QRectF& tmpRect, MoveItem* widget)
 {
     qreal old_ig_w = boundingRect().width();
@@ -398,6 +346,7 @@ ItemGroup::new_size_t ItemGroup::calculateNewSize(const QRectF& tmpRect, MoveIte
 
     return {new_x, new_y, new_w, new_h};
 }
+
 
 void ItemGroup::resizeTopLeft(const QPointF &pt)
 {
@@ -462,6 +411,7 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
     update();
     setPositionGrabbers();
 }
+
 
 void ItemGroup::resizeTopRight(const QPointF &pt)
 {
@@ -530,6 +480,7 @@ void ItemGroup::resizeTopRight(const QPointF &pt)
     setPositionGrabbers();
 }
 
+
 void ItemGroup::resizeBottomLeft(const QPointF &pt)
 {
     auto pos = pt;
@@ -597,6 +548,7 @@ void ItemGroup::resizeBottomLeft(const QPointF &pt)
     update();
     setPositionGrabbers();
 }
+
 
 void ItemGroup::resizeBottomRight(const QPointF &pt)
 {
@@ -668,58 +620,59 @@ void ItemGroup::resizeBottomRight(const QPointF &pt)
     setPositionGrabbers();
 }
 
+
 void ItemGroup::rotateItem(const QPointF &pt)
 {
-//    QRectF tmpRect = currentSceneBoundingRect();
-//    QPointF center = currentSceneBoundingRect().center();
-//    QPointF corner;
-//    switch (m_cornerFlags) {
-//    case TopLeft:
-//        corner = tmpRect.topLeft();
-//        break;
-//    case TopRight:
-//        corner = tmpRect.topRight();
-//        break;
-//    case BottomLeft:
-//        corner = tmpRect.bottomLeft();
-//        break;
-//    case BottomRight:
-//        corner = tmpRect.bottomRight();
-//        break;
-//    default:
-//        break;
-//    }
+    QRectF tmpRect = currentSceneBoundingRect();
+    QPointF center = currentSceneBoundingRect().center();
+    QPointF corner;
+    switch (m_cornerFlags) {
+    case TopLeft:
+        corner = tmpRect.topLeft();
+        break;
+    case TopRight:
+        corner = tmpRect.topRight();
+        break;
+    case BottomLeft:
+        corner = tmpRect.bottomLeft();
+        break;
+    case BottomRight:
+        corner = tmpRect.bottomRight();
+        break;
+    default:
+        break;
+    }
 
-//    QLineF lineToTarget(center,corner);
-//    QLineF lineToCursor(center, pt);
-//    // Angle to Cursor and Corner Target points
-//    qreal angleToTarget = ::acos(lineToTarget.dx() / lineToTarget.length());
-//    qreal angleToCursor = ::acos(lineToCursor.dx() / lineToCursor.length());
+    QLineF lineToTarget(center,corner);
+    QLineF lineToCursor(center, pt);
+    // Angle to Cursor and Corner Target points
+    qreal angleToTarget = ::acos(lineToTarget.dx() / lineToTarget.length());
+    qreal angleToCursor = ::acos(lineToCursor.dx() / lineToCursor.length());
 
-//    if (lineToTarget.dy() < 0)
-//        angleToTarget = TwoPi - angleToTarget;
-//    angleToTarget = normalizeAngle((Pi - angleToTarget) + Pi / 2);
+    if (lineToTarget.dy() < 0)
+        angleToTarget = TwoPi - angleToTarget;
+    angleToTarget = normalizeAngle((Pi - angleToTarget) + Pi / 2);
 
-//    if (lineToCursor.dy() < 0)
-//        angleToCursor = TwoPi - angleToCursor;
-//    angleToCursor = normalizeAngle((Pi - angleToCursor) + Pi / 2);
+    if (lineToCursor.dy() < 0)
+        angleToCursor = TwoPi - angleToCursor;
+    angleToCursor = normalizeAngle((Pi - angleToCursor) + Pi / 2);
 
-//    // Result difference angle between Corner Target point and Cursor Point
-//    auto resultAngle = angleToTarget - angleToCursor;
+    // Result difference angle between Corner Target point and Cursor Point
+    auto resultAngle = angleToTarget - angleToCursor;
 
-//    QTransform trans = transform();
-//    trans.translate( center.x(), center.y());
-//    trans.rotateRadians(rotation() + resultAngle, Qt::ZAxis);
-//    trans.translate( -center.x(),  -center.y());
-//    setTransform(trans);
+    QTransform trans = transform();
+    trans.translate( center.x(), center.y());
+    trans.rotateRadians(rotation() + resultAngle, Qt::ZAxis);
+    trans.translate( -center.x(),  -center.y());
+    setTransform(trans);
 }
+
 
 void ItemGroup::setPositionGrabbers()
 {
     if (!cornerGrabber[0]) return;
 
     QRectF tmpRect = boundingRect();
-//    QRectF tmpRect = currentSceneBoundingRect();
 
     cornerGrabber[GrabberTopLeft]->setPos(tmpRect.topLeft().x(), tmpRect.topLeft().y());
     cornerGrabber[GrabberTopRight]->setPos(tmpRect.topRight().x(), tmpRect.topRight().y());
@@ -727,9 +680,11 @@ void ItemGroup::setPositionGrabbers()
     cornerGrabber[GrabberBottomRight]->setPos(tmpRect.bottomRight().x(), tmpRect.bottomRight().y());
 }
 
+
 void ItemGroup::setVisibilityGrabbers()
 {
     if (!cornerGrabber[0]) return;
+
     cornerGrabber[GrabberTopLeft]->setVisible(true);
     cornerGrabber[GrabberTopRight]->setVisible(true);
     cornerGrabber[GrabberBottomLeft]->setVisible(true);
@@ -751,6 +706,7 @@ void ItemGroup::hideGrabbers()
 
 void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+    painter->save();
     painter->setPen( QPen(Qt::green, 3) );
     painter->drawEllipse(this->pos(), 6,6);
     painter->drawEllipse(this->x(), this->y(), 6,6);
@@ -764,35 +720,19 @@ void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->setPen( QPen(Qt::darkRed, 1) );
     painter->drawLine(-99999, this->scenePos().y(), 9999, this->scenePos().y());
     painter->drawLine(this->scenePos().x(), -99999, this->scenePos().x(), 99999);
+    painter->restore();
+
     if (isEmpty()) return;
-//    qInfo()<<"ItemGroup::paint "<< items_.size();
-//    qInfo()<<"ItemGroup::boundingRect "<< this->boundingRect();
-
-//    painter->save();
-
-////    auto tl = this->realRect().topLeft();
-////    auto br = this->realRect().bottomRight();
-//    auto tl = this->boundingRect().topLeft();
-//    auto br = this->boundingRect().bottomRight();
-//    int wsize = 5;
-//    br.rx() += wsize;
-//    br.ry() += wsize;
-
-//    painter->setPen( QPen(Qt::green, wsize) );
-
-//    QRectF r(tl, br);
-//    painter->drawRect(r);
-//    painter->restore();
 }
+
 
 void ItemGroup::printDotsCoords(const std::string& text) const
 {
-    LOG_WARNING(logger, "! ", text);
     for(int i = 0; i < 4; i++){
         qDebug()<< cornerGrabber[i]->pos();
     }
-    LOG_WARNING(logger, "! ", text);
 }
+
 
 void ItemGroup::clearItemGroup()
 {
@@ -810,6 +750,7 @@ void ItemGroup::clearItemGroup()
     sceneRectItemGroup_ = QRectF();
 }
 
+
 bool ItemGroup::isContain(const QGraphicsItem *item) const
 {
     if (this == item->parentItem()) return true;
@@ -817,16 +758,19 @@ bool ItemGroup::isContain(const QGraphicsItem *item) const
     return false;
 }
 
+
 bool ItemGroup::isThisDots(const QGraphicsItem *item) const
 {
     if (item->type() == eBorderDot) return true;
     return false;
 }
 
+
 bool ItemGroup::isEmpty() const
 {
     return items_.empty();
 }
+
 
 void ItemGroup::incZ()
 {

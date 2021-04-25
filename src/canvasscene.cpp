@@ -29,16 +29,8 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     itemGroup_->setPos({0,0});
     addItem(itemGroup_);
 
-//    ++zCounter_;
-//    MoveItem* item = new MoveItem("bender.png", zCounter_);
-//    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
-//    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-//    item->setPos({100,50});
-//    addItem(item);
-
     connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     imgdownloader_ = new ImageDownloader(*this);
-
 }
 
 
