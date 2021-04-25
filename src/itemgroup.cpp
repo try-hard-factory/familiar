@@ -70,10 +70,45 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
 //    setFlags(ItemStacksBehindParent);
 }
 
+QRectF ItemGroup::calcNewBr()
+{
+    qreal min_x = items_.first()->pos().x();
+    qreal min_y = items_.first()->pos().y();
+    qreal max_x = items_.first()->pos().x() + items_.first()->boundingRect().width();
+    qreal max_y = items_.first()->pos().y() + items_.first()->boundingRect().height();
+    for (auto& item : items_) {
+
+        qreal cur_min_x = item->pos().x();
+        qreal cur_min_y = item->pos().y();
+        qreal cur_max_x = cur_min_x + item->boundingRect().width();
+        qreal cur_max_y = cur_min_y + item->boundingRect().height();
+        qDebug()<<"0";
+        qDebug()<<"cur_min_x "<<cur_min_x;
+        qDebug()<<"cur_min_y "<<cur_min_y;
+        qDebug()<<"cur_max_x "<<cur_max_x;
+        qDebug()<<"cur_max_y "<<cur_max_y;
+        if (cur_min_x < min_x) min_x = cur_min_x;
+        if (cur_min_y < min_y) min_y = cur_min_y;
+        if (max_x < cur_max_x) max_x = cur_max_x;
+        if (max_y < cur_max_y) max_y = cur_max_y;
+        qDebug()<<"1";
+        qDebug()<<"cur_min_x "<<cur_min_x;
+        qDebug()<<"cur_min_y "<<cur_min_y;
+        qDebug()<<"cur_max_x "<<cur_max_x;
+        qDebug()<<"cur_max_y "<<cur_max_y;
+    }
+    qDebug()<<"min_x "<<min_x;
+    qDebug()<<"min_y "<<min_y;
+    qDebug()<<"max_x "<<max_x;
+    qDebug()<<"max_y "<<max_y;
+    return QRectF(min_x, min_y, max_x - min_x, max_y - min_y);
+}
+
 void ItemGroup::addItemToGroup(QGraphicsItem* item)
 {
+    qDebug()<<'\n';
     if (item == this || item->type() == eBorderDot) return;
-    LOG_DEBUG(logger, "ItemGroup::addItem: ", item);
+//    LOG_DEBUG(logger, "ItemGroup::addItem: ", item);
     addToGroup(item);
 
     if (item->type() != eBorderDot) {
@@ -82,25 +117,47 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
 
     auto childs = childItems();
     auto scene_tmp = childs.first()->sceneBoundingRect();
+    auto br = QRectF(
+                        childs.first()->pos().x(),
+                        childs.first()->pos().y(),
+                        childs.first()->boundingRect().width(),
+                        childs.first()->boundingRect().height());
+
     for (auto& it : childs) {
         if (it->type() == eBorderDot) continue;
         scene_tmp = scene_tmp.united(it->sceneBoundingRect());
+//        br = br.united(QRectF(item->pos().x(),
+//                              item->pos().y(),
+//                              item->boundingRect().width(),
+//                              item->boundingRect().height())
+//                       );
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
         widget->setInGroup(true);
-        qDebug()<<"CHILD: "<< mapToScene(widget->boundingRect()).boundingRect();
-    }
-    sceneRectItemGroup_ = scene_tmp;
+//        qDebug()<<"child:";
+//        qDebug()<<"widget->boundingRect(): "<<widget->boundingRect()<<", widget.pos:"<<widget->pos();
+//        qDebug()<<"widget->sceneBoundingRect(): "<<widget->sceneBoundingRect();
+//        qDebug()<<'\n';
 
+    }
+
+    sceneRectItemGroup_ = scene_tmp;
+    rectItemGroup_ = calcNewBr();//br;//QGraphicsItemGroup::boundingRect();
     qDebug()<<"BR: "<< rectItemGroup_;
-    qDebug()<<"SBR: "<< sceneRectItemGroup_;
-    auto tmpRect = sceneRectItemGroup_;
-    tmpRect.translate( - sceneRectItemGroup_.topLeft().x() , - sceneRectItemGroup_.topLeft().y());
-    rectItemGroup_ = tmpRect;
-    qDebug()<<"tmpRect: "<<tmpRect;
-    qDebug()<<"SBR mod1: "<< mapRectFromParent(rectItemGroup_);
-    qDebug()<<"SBR mod2: "<< mapRectFromScene(rectItemGroup_);
-    qDebug()<<"SBR mod3: "<< mapRectToParent(rectItemGroup_);
-    qDebug()<<"SBR mod4: "<< mapRectToScene(rectItemGroup_);
+    qDebug()<<"QGraphicsItemGroup: "<<QGraphicsItemGroup::boundingRect();
+    qDebug()<<"scene bounding rect: "<< sceneRectItemGroup_;
+    qDebug()<<"bounding rect: "<<this->boundingRect();
+
+
+//    QRectF itemRect = boundingRect() | childrenBoundingRect();
+//    qDebug()<<itemRect;
+//    itemRect = mapRectToScene(itemRect);
+//    qDebug()<<itemRect;
+
+
+//    qDebug()<<"SBR mod1: "<< mapRectFromParent(rectItemGroup_);
+//    qDebug()<<"SBR mod2: "<< mapRectFromScene(rectItemGroup_);
+//    qDebug()<<"SBR mod3: "<< mapRectToParent(rectItemGroup_);
+//    qDebug()<<"SBR mod4: "<< mapRectToScene(rectItemGroup_);
 
 
     if (!cornerGrabber[0]) {
@@ -109,10 +166,11 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
         }
         hideGrabbers();
     }
-    printDotsCoords("addItemToGroup 0");
+//    printDotsCoords("addItemToGroup 0");
     setPositionGrabbers();
     setVisibilityGrabbers();
-    printDotsCoords("addItemToGroup 1");
+//    printDotsCoords("addItemToGroup 1");
+    qDebug()<<'\n';
 }
 
 void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
@@ -139,20 +197,26 @@ void ItemGroup::printChilds()
 }
 
 QRectF ItemGroup::currentSceneBoundingRect() const {
-//    return boundingRect();
+    return boundingRect();
     return sceneRectItemGroup_;
 }
 QRectF ItemGroup::boundingRect() const
 {
+
 //    qDebug()<<this->pos();
-//    return QGraphicsItemGroup::boundingRect();
+//    qDebug()<<QGraphicsItemGroup::boundingRect();
+//    qDebug()<<"children bounding rect: "<<this->childrenBoundingRect();
+
+//    qDebug()<<br;
+    return rectItemGroup_;
 //    return rectItemGroup_;
-    return sceneRectItemGroup_;
+//    return sceneRectItemGroup_;
 }
 
 void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
     QPointF pt = event->pos();
+
     if(m_actionFlags == ResizeState){
         switch (m_cornerFlags) {
         case TopLeft:
@@ -170,11 +234,12 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         default:
             if (m_leftMouseButtonPressed) {
 //                setCursor(Qt::ClosedHandCursor);
-                qDebug()<<'\n';
-                qDebug()<< "MOVE: "<< mapToScene(event->pos()+ shiftMouseCoords_);
-                qDebug()<<"ItemGroup:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
-                qDebug()<<"ItemGroup:: itemGroup_ pos: "<<pos()<<", scenePos: "<<scenePos();
-                qDebug()<<'\n';
+//                qDebug()<<'\n';
+//                qDebug()<< "MOVE: "<< mapToScene(event->pos()+ shiftMouseCoords_)<<
+//                           " m_cornerFlags: "<<m_cornerFlags;
+//                qDebug()<<"ItemGroup:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
+//                qDebug()<<"ItemGroup:: itemGroup_ pos: "<<pos()<<", scenePos: "<<scenePos();
+//                qDebug()<<'\n';
 //                this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
                 auto dx = event->scenePos().x() - m_previousPosition.x();
                 auto dy = event->scenePos().y() - m_previousPosition.y();
@@ -213,14 +278,14 @@ void ItemGroup::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     setZValue(++zCounter_);
     shiftMouseCoords_ = (this->pos() - mapToScene(event->pos()))/scale();
-    qDebug()<<"shiftMouseCoords_: "<<shiftMouseCoords_;
+//    qDebug()<<"shiftMouseCoords_: "<<shiftMouseCoords_;
     if (event->button() & Qt::LeftButton) {
         m_leftMouseButtonPressed = true;
         setPreviousPosition(event->scenePos());
         emit clicked(this);
     }
     QGraphicsItemGroup::mousePressEvent(event);
-    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
+//    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
 }
 
 void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
@@ -252,11 +317,11 @@ void ItemGroup::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 void ItemGroup::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
 {
     QPointF pt = event->pos();              // The current position of the mouse
-    qreal drx = pt.x() - currentSceneBoundingRect().right();    // Distance between the mouse and the right
-    qreal dlx = pt.x() - currentSceneBoundingRect().left();     // Distance between the mouse and the left
+    qreal drx = pt.x() - boundingRect().right();    // Distance between the mouse and the right
+    qreal dlx = pt.x() - boundingRect().left();     // Distance between the mouse and the left
 
-    qreal dby = pt.y() - currentSceneBoundingRect().top();      // Distance between the mouse and the top
-    qreal dty = pt.y() - currentSceneBoundingRect().bottom();   // Distance between the mouse and the bottom
+    qreal dby = pt.y() - boundingRect().top();      // Distance between the mouse and the top
+    qreal dty = pt.y() - boundingRect().bottom();   // Distance between the mouse and the bottom
 
 
     m_cornerFlags = 0;
@@ -294,36 +359,36 @@ QVariant ItemGroup::itemChange(QGraphicsItem::GraphicsItemChange change, const Q
 
 ItemGroup::new_size_t ItemGroup::calculateNewSize(const QRectF& tmpRect, MoveItem* widget)
 {
-    qreal old_ig_w = sceneRectItemGroup_.width();
-    qreal old_ig_h = sceneRectItemGroup_.height();
+    qreal old_ig_w = boundingRect().width();
+    qreal old_ig_h = boundingRect().height();
     qreal new_ig_w = tmpRect.width();
     qreal new_ig_h = tmpRect.height();
 
-    qreal old_h = abs(widget->sceneBoundingRect().bottom() -  widget->sceneBoundingRect().top());
+    qreal old_h = abs(widget->boundingRect().bottom() -  widget->boundingRect().top());
     qreal new_h = (old_h * new_ig_h) / old_ig_h;
-    qreal old_w = abs(widget->sceneBoundingRect().left() - widget->sceneBoundingRect().right());
+    qreal old_w = abs(widget->boundingRect().left() - widget->boundingRect().right());
     qreal new_w = (old_w * new_h) / old_h;
 
     qreal new_x = 0;
     qreal new_y = 0;
 
-    if (widget->sceneBoundingRect().left() == currentSceneBoundingRect().left()) {
-        qreal aa = abs(widget->sceneBoundingRect().top() - sceneRectItemGroup_.bottom());
+    if (widget->pos().x() == boundingRect().left()) {
+        qreal aa = abs(widget->pos().y() - boundingRect().bottom());
         qreal yy = (aa*new_ig_w)/old_ig_w;
         qreal y_delta = abs(new_ig_h - yy);
 
         new_x = tmpRect.topLeft().x();
         new_y = tmpRect.topLeft().y() + y_delta;
-    } else if (widget->sceneBoundingRect().top() == currentSceneBoundingRect().top()) {
-        qreal aa = abs(widget->sceneBoundingRect().left() - sceneRectItemGroup_.right());
+    } else if (widget->pos().y() == boundingRect().top()) {
+        qreal aa = abs(widget->pos().x() - boundingRect().right());
         qreal xx = (aa*new_ig_h)/old_ig_h;
         qreal x_delta = abs(new_ig_w - xx);
 
         new_x = tmpRect.topLeft().x() + x_delta;
         new_y = tmpRect.topLeft().y();
     } else  {
-        qreal qq = abs(sceneRectItemGroup_.left() - widget->sceneBoundingRect().left());
-        qreal ww = abs(sceneRectItemGroup_.top() - widget->sceneBoundingRect().top());
+        qreal qq = abs(boundingRect().left() - widget->pos().x());
+        qreal ww = abs(boundingRect().top() - widget->pos().y());
         qreal new_x_delta = (new_ig_w * qq) / old_ig_w;
         qreal new_y_delta = (new_ig_h * ww) / old_ig_h;
 
@@ -389,12 +454,11 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
 
         auto new_size = calculateNewSize(tmpRect, widget);
 
-        widget->setX(new_size.new_x);
-        widget->setY(new_size.new_y);
+        widget->setPos(new_size.new_x, new_size.new_y);
         widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
-    sceneRectItemGroup_ = tmpRect;
+    rectItemGroup_ = tmpRect;
     update();
     setPositionGrabbers();
 }
@@ -461,7 +525,7 @@ void ItemGroup::resizeTopRight(const QPointF &pt)
         widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
-    sceneRectItemGroup_ = tmpRect;
+    rectItemGroup_ = tmpRect;
     update();
     setPositionGrabbers();
 }
@@ -529,7 +593,7 @@ void ItemGroup::resizeBottomLeft(const QPointF &pt)
         widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
-    sceneRectItemGroup_ = tmpRect;
+    rectItemGroup_ = tmpRect;
     update();
     setPositionGrabbers();
 }
@@ -599,7 +663,7 @@ void ItemGroup::resizeBottomRight(const QPointF &pt)
         widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
-    sceneRectItemGroup_ = tmpRect;
+    rectItemGroup_ = tmpRect;
     update();
     setPositionGrabbers();
 }
@@ -654,7 +718,8 @@ void ItemGroup::setPositionGrabbers()
 {
     if (!cornerGrabber[0]) return;
 
-    QRectF tmpRect = currentSceneBoundingRect();
+    QRectF tmpRect = boundingRect();
+//    QRectF tmpRect = currentSceneBoundingRect();
 
     cornerGrabber[GrabberTopLeft]->setPos(tmpRect.topLeft().x(), tmpRect.topLeft().y());
     cornerGrabber[GrabberTopRight]->setPos(tmpRect.topRight().x(), tmpRect.topRight().y());
@@ -688,9 +753,11 @@ void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
 {
     painter->setPen( QPen(Qt::green, 3) );
     painter->drawEllipse(this->pos(), 6,6);
+    painter->drawEllipse(this->x(), this->y(), 6,6);
     painter->setPen( QPen(Qt::black, 1) );
     painter->drawLine(-99999, this->pos().y(), 9999, this->pos().y());
     painter->drawLine(this->pos().x(), -99999, this->pos().x(), 99999);
+
 
     painter->setPen( QPen(Qt::darkMagenta, 3) );
     painter->drawEllipse(this->scenePos(), 3,3);

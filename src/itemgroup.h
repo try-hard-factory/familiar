@@ -89,7 +89,7 @@ private:
     void printDotsCoords(const std::string& text) const;
 
     new_size_t calculateNewSize(const QRectF& tmpRect, MoveItem* widget);
-
+    QRectF calcNewBr();
 private:
     QPointF shiftMouseCoords_;
     uint64_t& zCounter_;
