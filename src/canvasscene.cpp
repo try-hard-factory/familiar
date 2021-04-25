@@ -141,11 +141,8 @@ std::string stateText(int idx) {
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-//    QGraphicsScene::mousePressEvent(event);
-//    return;
-//    itemGroup_->printChilds();
     auto item = getFirstItemUnderCursor(event->scenePos());
-    if (item && item->type() == ItemGroup::eBorderDot) {
+    if (item && item->type() == eBorderDot) {
         QGraphicsScene::mousePressEvent(event);
         return;
     }

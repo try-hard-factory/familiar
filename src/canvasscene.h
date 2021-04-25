@@ -17,7 +17,6 @@ enum EState {
 class CanvasScene : public QGraphicsScene
 {
 public:
-
     CanvasScene(uint64_t& zc, QGraphicsScene *scene = 0);
     ~CanvasScene() = default;
 
