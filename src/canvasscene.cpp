@@ -26,18 +26,15 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
     itemGroup_->setHandlesChildEvents(true);
 
-//    QPointF p = {25,0};
-//    itemGroup_->setPos(p);
+    itemGroup_->setPos({0,0});
     addItem(itemGroup_);
 
-    addEllipse(QRectF(25, 0, 3, 3), QPen(Qt::black), QBrush(Qt::green));
-
-    ++zCounter_;
-    MoveItem* item = new MoveItem("bender.png", zCounter_);
-    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
-    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-    item->setPos({50,50});
-    addItem(item);
+//    ++zCounter_;
+//    MoveItem* item = new MoveItem("bender.png", zCounter_);
+//    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
+//    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+//    item->setPos({100,50});
+//    addItem(item);
 
     connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     imgdownloader_ = new ImageDownloader(*this);
@@ -177,7 +174,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
 
-                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
+//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                 }
                 state_ = eMouseSelection;
 //                LOG_WARNING(logger,"HUI ", __LINE__);
@@ -195,7 +192,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
-    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
+//    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     auto item = getFirstItemUnderCursor(event->scenePos());
 
@@ -215,9 +212,9 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
                 if (itemGroup_->isContain(item) && !itemGroup_->isThisDots(item)) {
-                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
+//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                     if (state_ != eGroupItemMoving && state_ != eMouseSelection) {
-                        LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
+//                        LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
                         itemGroup_->addItemToGroup(item);
@@ -227,18 +224,18 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
                     state_ = eMouseMoving;
                 }
-                LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
+//                LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
             } else {
-                LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
+//                LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                 if (state_ == eMouseSelection) {
-                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
+//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                     itemGroup_->clearItemGroup();
                     auto selItems = selectedItems();
 
                     for (auto& it : selItems) {
                         itemGroup_->addItemToGroup(it);
         //                it->setSelected(false);
-                        LOG_DEBUG(logger, "Selected address: ", it);
+//                        LOG_DEBUG(logger, "Selected address: ", it);
                     }
                     itemGroup_->incZ();
                     if (itemGroup_->isEmpty()) {
@@ -247,7 +244,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                         mainSelArea_.setReady(true);
                     }
                 } else {
-                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
+//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
                     itemGroup_->clearItemGroup();
                     mainSelArea_.setReady(false);
                 }
@@ -263,10 +260,10 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
 #ifdef MOUSE_MOVE_DEBUG
-    qDebug()<<'\n';
-    qDebug()<<"CanvasScene:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
-    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
-    qDebug()<<'\n';
+//    qDebug()<<'\n';
+//    qDebug()<<"CanvasScene:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
+//    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
+//    qDebug()<<'\n';
 #endif
 
     if ( (event->buttons() & Qt::LeftButton)) {
@@ -327,7 +324,7 @@ void CanvasScene::deselectItems()
 bool CanvasScene::isAnySelectedUnderCursor() const
 {
     auto selItems = selectedItems();
-    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
+//    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
 
     for (auto& it : selItems) {
         if (it->isUnderMouse()) return true;
@@ -346,7 +343,7 @@ void CanvasScene::onSelectionChanged()
 //    for (auto& it : selItems) {
 //        itemGroup_->addItem(it);
 //    }
-    LOG_WARNING(logger, "Selected Items: ", selItems.size());
+//    LOG_WARNING(logger, "Selected Items: ", selItems.size());
 //    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
 
 //    if (itemGroup_->isEmpty()) {
@@ -365,6 +362,11 @@ void CanvasScene::onSelectionChanged()
 
 void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
+    painter->setPen( QPen(Qt::green, 3) );
+    painter->drawEllipse(itemGroup_->pos(), 6,6);
+    painter->setPen( QPen(Qt::red, 3) );
+    painter->drawEllipse(itemGroup_->scenePos(), 10,10);
+
     painter->setPen( QPen(Qt::black, 1) );
     int begin = -3000;
     while (begin != 3000) {
