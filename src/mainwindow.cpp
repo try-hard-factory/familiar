@@ -14,14 +14,22 @@ MainWindow::MainWindow(QWidget *parent)
 
     qreal x = 000;
     canvasWidget->addImage("kot.png", {-1000, -1000-x});
-//    canvasWidget->addImage("kot.png", {300,200-x});
-//    canvasWidget->addImage("kot1.png", {200,600-x});
-//    canvasWidget->addImage("kot1.png", {400,50-x});
-    canvasWidget->addImage("kot1.png", {50,50-x});
-    canvasWidget->addImage("kot1.png", {200,50-x});
-//    canvasWidget->addImage("kot1.png", {200,100-x});
-//    canvasWidget->addImage("kot1.png", {200,150-x});
-//    canvasWidget->addImage("kot1.png", {600,400-x});
+
+//    canvasWidget->addImage("kot1.png", {50,100-x});
+//    canvasWidget->addImage("kot1.png", {50,400-x});
+//    canvasWidget->addImage("kot1.png", {250,50-x});
+//    canvasWidget->addImage("kot1.png", {450,50-x});
+
+    canvasWidget->addImage("kot1.png", {200-x, 50-x});
+    canvasWidget->addImage("kot1.png", {450-x, 50-x});
+    canvasWidget->addImage("kot1.png", {1000-x, 250-x});
+    canvasWidget->addImage("kot1.png", {1000-x, 600-x});
+    canvasWidget->addImage("kot1.png", {600-x, 600-x});
+    canvasWidget->addImage("kot1.png", {200-x, 600-x});
+    canvasWidget->addImage("kot1.png", {800-x, 400-x});
+    canvasWidget->addImage("kot.png", {200-x, 200-x});
+    canvasWidget->addImage("kot.png", {700-x, 50-x});
+
     canvasWidget->addImage("bender.png", {1300,1300});
 
 //    for (int i=0;i<100;++i)
@@ -37,3 +45,4 @@ MainWindow::~MainWindow()
     delete ui;
     delete canvasWidget;
 }
+
