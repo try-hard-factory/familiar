@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(familiar LANGUAGES CXX)
+set(FAMILIAR_VERSION 0.0.1)
+
+project(familiar VERSION ${FAMILIAR_VERSION} LANGUAGES CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
