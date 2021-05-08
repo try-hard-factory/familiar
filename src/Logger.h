@@ -36,14 +36,17 @@ public:
 
         if (type < m_log_level.load()) return;
 
-        int64_t now_microseconds = 0;
+
         #ifdef _MSC_VER
+        int64_t now_microseconds = 0;
+        std::cout << ":" << now_microseconds << " | " << msg << "\n";
         #else
         auto now = std::chrono::high_resolution_clock::now();
         auto now_time_t = std::chrono::high_resolution_clock::to_time_t(now);
-        now_microseconds = getMicroseconds(now);
-        #endif
+        int64_t now_microseconds = getMicroseconds(now);
         std::cout << std::put_time(std::localtime(&now_time_t), "%H:%M:%S") << ":" << now_microseconds << " | " << msg << "\n";
+        #endif
+
     }
 
     static std::string stripFunctionName(const std::string& pretty_name) {
