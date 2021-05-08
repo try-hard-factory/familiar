@@ -18,8 +18,6 @@ set(PROJECT_SOURCES
         mainselectedarea.h
         debug_macros.h
         Logger.h
-        SysLogger.cpp
-        SysLogger.h
         MessageBuilder.h
         borderdot.cpp
         borderdot.h
