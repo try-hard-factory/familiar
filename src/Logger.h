@@ -9,7 +9,6 @@
 #include <iomanip>
 
 #include "MessageBuilder.h"
-#include "SysLogger.h"
 
 class Logger
 {
@@ -29,7 +28,6 @@ public:
     template<typename ...Args>
     void log(MessageType type, Args&& ...args) {
         auto msg = MessageBuilder::createMessage(std::forward<Args>(args)...);
-        m_sys_logger.log(msg);
 
         if (type < m_log_level.load()) return;
 
@@ -58,7 +56,6 @@ private:
     }
 private:
     std::atomic<MessageType> m_log_level = kDetail;
-    SysLogger m_sys_logger;
 };
 
 #define BOLD_GREEN "\033[1;32m"
