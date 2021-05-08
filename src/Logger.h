@@ -10,6 +10,12 @@
 
 #include "MessageBuilder.h"
 
+#ifdef _MSC_VER
+#define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
+
+#define QDEBUG qDebug()<<__PRETTY_FUNCTION__<<"| "
+
 class Logger
 {
 public:
@@ -32,7 +38,7 @@ public:
         if (type < m_log_level.load()) return;
 
         auto now = std::chrono::high_resolution_clock::now();
-        auto now_time_t = std::chrono::high_resolution_clock::to_time_t(now);
+        auto now_time_t = std::chrono::system_clock::to_time_t(now);
         auto now_microseconds = getMicroseconds(now);
 
         std::cout << std::put_time(std::localtime(&now_time_t), "%H:%M:%S") << ":" << now_microseconds << " | " << msg << "\n";
