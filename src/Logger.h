@@ -14,7 +14,6 @@
 #define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
-#define QDEBUG qDebug()<<__PRETTY_FUNCTION__<<"| "
 
 class Logger
 {
@@ -37,10 +36,13 @@ public:
 
         if (type < m_log_level.load()) return;
 
+        int64_t now_microseconds = 0;
+        #ifdef _MSC_VER
+        #else
         auto now = std::chrono::high_resolution_clock::now();
-        auto now_time_t = std::chrono::system_clock::to_time_t(now);
-        auto now_microseconds = getMicroseconds(now);
-
+        auto now_time_t = std::chrono::high_resolution_clock::to_time_t(now);
+        now_microseconds = getMicroseconds(now);
+        #endif
         std::cout << std::put_time(std::localtime(&now_time_t), "%H:%M:%S") << ":" << now_microseconds << " | " << msg << "\n";
     }
 
@@ -55,10 +57,14 @@ private:
     template<typename T>
     int64_t getMicroseconds(T time_point)
     {
+        #ifdef _MSC_VER
+        return 0;
+        #else
         auto now_in_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
         auto now_in_seconds = std::chrono::duration_cast<std::chrono::seconds>(time_point.time_since_epoch());
         auto now_microseconds = now_in_microseconds - now_in_seconds;
         return now_microseconds.count();
+        #endif
     }
 private:
     std::atomic<MessageType> m_log_level = kDetail;
@@ -80,5 +86,8 @@ private:
      logger.log(Logger::kWarning, BOLD_RED, METHOD_NAME, " | ", RESET_COLOR, __VA_ARGS__); \
      return; \
 }
+
+
+#define QDEBUG qDebug()<<__PRETTY_FUNCTION__<<"| "
 
 #endif
