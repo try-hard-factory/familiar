@@ -10,6 +10,7 @@ build_script:
 - cmd: >-
 
     echo ${CMAKE_PREFIX_PATH}
+
     cd build
     
     set QTDIR=%Qt6_INSTALL_DIR%
