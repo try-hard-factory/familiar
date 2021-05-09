@@ -8,7 +8,6 @@ environment:
 
 build_script:
 - cmd: >-
-    mkdir build
     cd build
     
     set QTDIR=%Qt6_INSTALL_DIR%
