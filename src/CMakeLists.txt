@@ -29,9 +29,6 @@ add_executable(familiar ${PROJECT_SOURCES})
 
 if (WIN32)
     set_property(TARGET familiar PROPERTY WIN32_EXECUTABLE true)
-    if (MSVC)
-        target_compile_options(familiar PRIVATE /source-charset:utf-8)
-    endif ()
 endif ()
 
 target_sources(
