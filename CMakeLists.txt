@@ -27,6 +27,9 @@ elseif(APPLE)
   set(CMAKE_MACOSX_BUNDLE ON)
   set(CMAKE_MACOSX_RPATH ON)
 endif()
+set(RUN_IN_PLACE
+        ${DEFAULT_RUN_IN_PLACE}
+        CACHE BOOL "Run directly in source directory structure")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 

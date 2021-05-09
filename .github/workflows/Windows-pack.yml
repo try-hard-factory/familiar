@@ -121,6 +121,7 @@ jobs:
           }
           ElseIf($env:TYPE -eq "portable")
           {
+            ls $env:GITHUB_WORKSPACE\build\Package
             cpack -G ZIP -B "$env:GITHUB_WORKSPACE\build\Package"
           }
         env:
