@@ -4,7 +4,8 @@ clone_folder: c:\projects\source
 
 environment:
   Qt6_INSTALL_DIR: 'C:\Qt\6.1.0\msvc2019_64'
-  PATH: '%Qt6_INSTALL_DIR%\bin;%PATH%'
+  CMAKE_PREFIX_PATH: 'C:\Qt\Qt6.1.0\6.1.0\msvc2019_64\'
+  PATH: '%CMAKE_PREFIX_PATH%;%Qt6_INSTALL_DIR%\bin;%PATH%'  
 
 build_script:
 - cmd: >-
