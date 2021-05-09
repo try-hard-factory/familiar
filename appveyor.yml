@@ -30,6 +30,10 @@ build_script:
 
     mkdir artifact
     
+    ls package
+
+    ls Release
+
     cp package/*.msi artifact/.
 
     cp Release/*.exe artifact/.
