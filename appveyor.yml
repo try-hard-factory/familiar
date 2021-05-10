@@ -32,7 +32,7 @@ build_script:
     
     ls package
 
-    ls Release
+    ls src/Release
 
     cp package/*.msi artifact/.
 
