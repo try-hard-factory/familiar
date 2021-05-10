@@ -36,14 +36,15 @@ build_script:
 
     cp package/*.msi artifact/.
 
-    cp Release/*.exe artifact/.
+    cp src/Release/*.exe artifact/.
 
     7z a -tzip artifact.zip artifact/
 
 artifacts:
 - path: build\package\*.msi
   name: installer
-- path: build\Release\*.exe
+- path: build\src\Release\*.exe
   name: executable
 - path: build\artifact.zip
   name: archive
+

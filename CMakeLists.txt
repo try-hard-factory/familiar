@@ -32,18 +32,17 @@ set(RUN_IN_PLACE
         CACHE BOOL "Run directly in source directory structure")
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
+option(GENERATE_TS "Regenerate translation source files" OFF)
 
-set(CMAKE_AUTOUIC ON)
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
+include(cmake/StandardProjectSettings.cmake)
 
+add_library(project_options INTERFACE)
+target_compile_features(project_options INTERFACE cxx_std_11)
+
+add_library(project_warnings INTERFACE)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-
-find_package(QT NAMES Qt6 COMPONENTS Widgets Network REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network REQUIRED)
-
+#set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory(src)
 
 # CPack
