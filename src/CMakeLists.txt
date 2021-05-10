@@ -63,6 +63,18 @@ if (WIN32)
     endif ()
 endif ()
 
+# ######################################################################################################################
+# Installation instructions
+
+# include(GNUInstallDirs)
+# set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Flameshot)
+
+# Install binary
+install(TARGETS familiar
+        EXPORT familiar-targets
+        BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 # windeployqt
 if (WIN32)
     if (EXISTS $ENV{QTDIR}/bin/windeployqt.exe)
