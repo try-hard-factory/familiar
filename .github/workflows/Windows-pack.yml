@@ -183,17 +183,20 @@ jobs:
         with:
           name: Windows-artifact
           path: ${{ github.workspace }}/build/Package/*
-      - name: Ls build
+      - name: Ls build portable
+        shell: bash
+        run: |
+          ls build/Package/portable
+      - name: Ls build installer
         shell: bash
         run: |
           ls build/Package/installer
-          ls build/Package/portable
       - name: Github Release upload
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            build/Package/installer/Familiar-${VERSION}-${{ matrix.config.pak_arch }}.msi
-            build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip
+            build/Package/installer/Familiar-$env:VERSION-${{ matrix.config.pak_arch }}.msi
+            build/Package/portable/familiar-$env:VERSION-${{ matrix.config.pak_arch }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.FAMILIAR_TOKEN }}
