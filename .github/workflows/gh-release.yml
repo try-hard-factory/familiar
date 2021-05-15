@@ -1,0 +1,21 @@
+name: Github(Release)
+
+# Only trigger, when the build workflow succeeded
+on:
+  workflow_run:
+    workflows: ["Building(CMake)","Packaging(Windows)"]
+    branches: '*'
+    types:
+      - completed
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/download-artifact@v2
+      with:
+        name: my-artifact
+
+    - name: Display structure of downloaded files
+      run: ls -R
