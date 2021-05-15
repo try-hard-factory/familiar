@@ -9,7 +9,11 @@
 #include <iomanip>
 
 #include "MessageBuilder.h"
-#include "SysLogger.h"
+
+#ifdef _MSC_VER
+#define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
+
 
 class Logger
 {
@@ -29,15 +33,20 @@ public:
     template<typename ...Args>
     void log(MessageType type, Args&& ...args) {
         auto msg = MessageBuilder::createMessage(std::forward<Args>(args)...);
-        m_sys_logger.log(msg);
 
         if (type < m_log_level.load()) return;
 
+
+        #ifdef _MSC_VER
+        int64_t now_microseconds = 0;
+        std::cout << ":" << now_microseconds << " | " << msg << "\n";
+        #else
         auto now = std::chrono::high_resolution_clock::now();
         auto now_time_t = std::chrono::high_resolution_clock::to_time_t(now);
-        auto now_microseconds = getMicroseconds(now);
-
+        int64_t now_microseconds = getMicroseconds(now);
         std::cout << std::put_time(std::localtime(&now_time_t), "%H:%M:%S") << ":" << now_microseconds << " | " << msg << "\n";
+        #endif
+
     }
 
     static std::string stripFunctionName(const std::string& pretty_name) {
@@ -51,14 +60,17 @@ private:
     template<typename T>
     int64_t getMicroseconds(T time_point)
     {
+        #ifdef _MSC_VER
+        return 0;
+        #else
         auto now_in_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time_point.time_since_epoch());
         auto now_in_seconds = std::chrono::duration_cast<std::chrono::seconds>(time_point.time_since_epoch());
         auto now_microseconds = now_in_microseconds - now_in_seconds;
         return now_microseconds.count();
+        #endif
     }
 private:
     std::atomic<MessageType> m_log_level = kDetail;
-    SysLogger m_sys_logger;
 };
 
 #define BOLD_GREEN "\033[1;32m"
@@ -77,5 +89,8 @@ private:
      logger.log(Logger::kWarning, BOLD_RED, METHOD_NAME, " | ", RESET_COLOR, __VA_ARGS__); \
      return; \
 }
+
+
+#define QDEBUG qDebug()<<__PRETTY_FUNCTION__<<"| "
 
 #endif

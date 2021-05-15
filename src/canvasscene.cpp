@@ -142,7 +142,7 @@ std::string stateText(int idx) {
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     auto item = getFirstItemUnderCursor(event->scenePos());
-    if (item && item->type() == eBorderDot) {
+    if (item && item->type() == ItemGroup::eBorderDot) {
         QGraphicsScene::mousePressEvent(event);
         return;
     }

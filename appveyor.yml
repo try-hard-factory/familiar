@@ -1,0 +1,50 @@
+image:
+  - Visual Studio 2019
+clone_folder: c:\projects\source
+
+environment:
+  Qt6_INSTALL_DIR: 'C:\Qt\6.0.1\msvc2019_64'
+  CMAKE_PREFIX_PATH: 'C:\Qt\Qt6.0.1\6.0.1\msvc2019_64\'
+  PATH: '%CMAKE_PREFIX_PATH%;%Qt6_INSTALL_DIR%\bin;%PATH%'  
+
+build_script:
+- cmd: >-
+
+    ls 'C:\Qt'
+
+    cd build
+    
+    set QTDIR=%Qt6_INSTALL_DIR%
+
+    set QT_DIR=%Qt6_INSTALL_DIR%
+
+    set "VCINSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC"
+
+    set "OPENSSL_ROOT_DIR=C:/OpenSSL-v111-Win64"
+
+    cmake c:\projects\source -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE:STRING=Release -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=OFF
+
+    cmake --build . --parallel 2 --config "Release"
+ 
+    cpack -G WIX -B package
+
+    mkdir artifact
+    
+    ls package
+
+    ls src/Release
+
+    cp package/*.msi artifact/.
+
+    cp src/Release/*.exe artifact/.
+
+    7z a -tzip artifact.zip artifact/
+
+artifacts:
+- path: build\package\*.msi
+  name: installer
+- path: build\src\Release\*.exe
+  name: executable
+- path: build\artifact.zip
+  name: archive
+
