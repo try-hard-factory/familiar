@@ -1,0 +1,7 @@
+Changes:
+  - NEW authentication algorithm 
+  - fix reconnect for ipv6
+  - fix dns names for ipv6
+  - remove old regacy callback for trudp protocol
+
+
