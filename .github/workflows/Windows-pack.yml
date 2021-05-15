@@ -190,10 +190,6 @@ jobs:
           ls build/Package/portable
       - name: Github Release upload
         uses: softprops/action-gh-release@v1
-        shell: bash
-        run: |
-          ls build/Package/installer
-          ls build/Package/portable
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
