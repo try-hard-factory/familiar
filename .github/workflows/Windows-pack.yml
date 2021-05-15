@@ -183,6 +183,11 @@ jobs:
         with:
           name: Windows-artifact
           path: ${{ github.workspace }}/build/Package/*
+      - name: Ls build
+        shell: bash
+        run: ls
+        run: ls build
+        run: lsbuild/Package
       - name: Github Release upload
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
