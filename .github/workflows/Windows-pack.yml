@@ -3,7 +3,9 @@ name: Packaging(Windows)
 on:
   push:
     branches:
-      - ci-build*
+      - '*'
+    tags:
+      - 'v[0-9].[0-9]+.[0-9]+'
     paths-ignore:
       - 'README.md'
       - 'LICENSE'

@@ -2,12 +2,12 @@ name: Building(CMake)
 
 on:
   push:
-    branches: [ ci-build ]
+    branches: '*'
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
   pull_request:
-    branches: [ ci-build ]
+    branches: '*'
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
