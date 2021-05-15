@@ -183,3 +183,13 @@ jobs:
         with:
           name: Windows-artifact
           path: ${{ github.workspace }}/build/Package/*
+
+     - name: Github Release upload
+       uses: softprops/action-gh-release@v1
+       if: startsWith(github.ref, 'refs/tags/')
+       with:
+         files: |
+           $GITHUB_WORKSPACE/build/Package/installer/Familiar-${VERSION}-${{ matrix.config.pak_arch }}.msi
+           $GITHUB_WORKSPACE/build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip
+       env:
+         GITHUB_TOKEN: ${{ secrets.FAMILIAR_TOKEN }}
