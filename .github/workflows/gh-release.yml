@@ -4,6 +4,7 @@ name: Github(Release)
 on:
   workflow_run:
     workflows: ["Building(CMake)","Packaging(Windows)"]
+    branches: '*'
     types:
       - completed
 jobs:
