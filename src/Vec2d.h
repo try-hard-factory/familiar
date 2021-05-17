@@ -1,3 +1,12 @@
+/** @file Vec2d.h
+ *  @brief 2d vector math function
+ *
+ * 2d vector math function
+ *
+ *  @author max (angelskie glazki)
+ *  @bug No known bugs.
+ */
+
 #ifndef Vec2dD_H
 #define Vec2dD_H
 
