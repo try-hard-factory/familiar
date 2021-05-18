@@ -8,11 +8,6 @@ on:
       - 'README.md'
       - 'LICENSE'
 
-  pull_request:
-    paths-ignore:
-      - 'README.md'
-      - 'LICENSE'
-
 env:
   PRODUCT: familiar
 
@@ -50,13 +45,6 @@ jobs:
         with:
           fetch-depth: 0
 #          ref: master
-
-      - name: Checkout Source code
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v2
-        with: 
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set env & Print familiar version
         shell: bash
