@@ -1,6 +1,7 @@
 /** @file Vec2d.h
  *  @brief 2d vector math function
  *
+ *
  * 2d vector math function
  *
  *  @author max (angelskie glazki)
