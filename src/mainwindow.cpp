@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QLayout>
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -8,6 +10,17 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     canvasWidget = new CanvasView();
+    fileDialog_ = new QFileDialog(this);
+    fileDialog_->setNameFilter(tr("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)"));
+    fileExt_["Familiar (*.fml)"] = ".fml";
+    fileExt_["SVG (*.svg)"] = ".svg";
+    fileExt_["Adobe (*.psd)"] = ".psd";
+//    connect(fileDialog_, &QFileDialog::filterSelected, this, SLOT(onFilterSelected()));
+    fileDialog_->setDirectory( QDir::homePath() );
+    fileDialog_->setOption(QFileDialog::DontUseNativeDialog, true);
+//    fileDialog_->setWindowModality(Qt::ApplicationModal);
+//    fileDialog_->setModal(true);
+//    fileDialog_->setWindowFlags(Qt::WindowStaysOnTopHint);
 
     auto qimage = QImage("kot.jpg");
     qInfo() << qimage.width() << ' ' <<qimage.height();
@@ -37,12 +50,42 @@ MainWindow::MainWindow(QWidget *parent)
 
 //    canvasWidget->setBackgroundBrush(QBrush(QColor(0xFF,0xFF,0xFF)));
     setCentralWidget(canvasWidget);
-
+    canvasWidget->show();
+//    QLayout* layout=this->layout();
+//    layout->addWidget(canvasWidget);
+//    this->setLayout(layout);
 }
 
 MainWindow::~MainWindow()
 {
+    delete fileDialog_;
     delete ui;
     delete canvasWidget;
 }
 
+
+void MainWindow::on_action_saveas_triggered()
+{
+    qDebug()<<"on_action_saveas_triggered";
+
+    fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
+    if (fileDialog_->exec() == QDialog::Accepted) {
+        qDebug()<< fileDialog_->selectedFiles().value(0)<< " " <<fileExt_.at(fileDialog_->selectedNameFilter());
+
+    }
+}
+
+void MainWindow::on_action_open_triggered()
+{
+    qDebug()<<"on_action_open_triggered "<<QDir::homePath();
+
+    fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
+    if (fileDialog_->exec() == QDialog::Accepted) {
+        qDebug()<< fileDialog_->selectedFiles().value(0);
+    }
+}
+
+void MainWindow::onFilterSelected()
+{
+    qDebug()<<"HUI!!!!!!!!!!";
+}
