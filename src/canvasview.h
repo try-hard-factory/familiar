@@ -20,6 +20,9 @@ public:
 
     void addImage(const QString& path, QPointF point);
     void setZoomFactor(double factor) { zoomFactor_ = factor; }
+public:
+    void openFile();
+    void saveAsFile();
 
 protected:
     void mouseMoveEvent(QMouseEvent* event) override;
