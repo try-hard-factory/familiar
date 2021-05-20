@@ -2,7 +2,8 @@
 #include "moveitem.h"
 #include "movepixmapitem.h"
 #include "canvasscene.h"
-
+#include <QFileDialog>
+#include <QMessageBox>
 #include "Logger.h"
 
 extern Logger logger;
@@ -31,6 +32,21 @@ CanvasView::~CanvasView()
     delete scene_;
 }
 
+void CanvasView::openFile()
+{
+    QString filename = QFileDialog::getOpenFileName(
+                this,
+                tr("Open File"),
+                QDir::homePath(),
+                "Familiar (*.fml)");
+    qDebug()<<filename;
+    QMessageBox::information(this, tr("File Name"), filename);
+}
+
+void CanvasView::saveAsFile()
+{
+
+}
 
 void CanvasView::addImage(const QString& path, QPointF point)
 {
