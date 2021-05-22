@@ -101,6 +101,43 @@ void CanvasScene::addImageToSceneToPosition(QImage&& image, QPointF position)
     addItem(item);
 }
 
+std::string CanvasScene::fml_header()
+{
+    std::string header;
+    auto items = this->items();
+    for (auto& it : items) {
+        // \TODO: type.h header with all types (image, textline, multitextline)
+        if (it->type() != 3) continue;
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+        header += ( QString::number(widget->scenePos().x()).toStdString() + ","
+                  + QString::number(widget->scenePos().y()).toStdString() + ","
+                  + QString::number(widget->boundingRect().height()).toStdString() + ","
+                  + QString::number(widget->boundingRect().width()).toStdString() + ","
+                  + QString::number(widget->qimage().sizeInBytes()).toStdString() + ","
+                  + QString::number(widget->format()).toStdString() ) ;
+        header += ";";
+    }
+
+    return header;
+}
+
+QByteArray CanvasScene::fml_payload()
+{
+    QByteArray arr;
+    QDataStream ds(&arr, QIODevice::ReadWrite);
+
+    auto items = this->items();
+    for (auto& it : items) {
+        // \TODO: type.h header with all types (image, textline, multitextline)
+        if (it->type() != 3) continue;
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+        qDebug()<<widget->qimage().sizeInBytes();
+        ds.writeRawData((const char*)widget->qimage().bits(), widget->qimage().sizeInBytes());
+    }
+    ds.device()->seek(0);
+    return arr;
+}
+
 void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 {
     const QMimeData *mimeData = event->mimeData();
