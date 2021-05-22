@@ -25,6 +25,8 @@ public:
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     void addImageToSceneToPosition(QImage&& image, QPointF position);
+    std::string fml_header();
+    QByteArray fml_payload();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
