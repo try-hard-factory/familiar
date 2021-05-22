@@ -57,6 +57,8 @@ set(PROJECT_SOURCES
         Vec2d.h
         image_downloader.cpp
         image_downloader.h
+        fml_file_buffer.cpp
+        fml_file_buffer.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
