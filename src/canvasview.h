@@ -19,11 +19,13 @@ public:
     ~CanvasView();
 
     void addImage(const QString& path, QPointF point);
+    void addImage(const QImage& img, QPointF point);
     void setZoomFactor(double factor) { zoomFactor_ = factor; }
 public:
     void openFile();
     void saveAsFile();
-
+    std::string fml_header();
+    QByteArray fml_payload();
 protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
