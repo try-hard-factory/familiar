@@ -48,6 +48,16 @@ void CanvasView::saveAsFile()
 
 }
 
+std::string CanvasView::fml_header()
+{
+    return scene_->fml_header();
+}
+
+QByteArray CanvasView::fml_payload()
+{
+    return scene_->fml_payload();
+}
+
 void CanvasView::addImage(const QString& path, QPointF point)
 {
     ++zCounter_;
@@ -62,6 +72,16 @@ void CanvasView::addImage(const QString& path, QPointF point)
     scene_->addItem(item);
 }
 
+void CanvasView::addImage(const QImage& img, QPointF point)
+{
+    ++zCounter_;
+    MoveItem* item = new MoveItem(img, zCounter_);
+    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
+    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+
+    item->setPos(point);
+    scene_->addItem(item);
+}
 
 void CanvasView::mouseMoveEvent(QMouseEvent *event)
 {
