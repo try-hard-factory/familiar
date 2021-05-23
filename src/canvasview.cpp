@@ -8,18 +8,19 @@
 
 extern Logger logger;
 
-//#define MOUSE_MOVE_DEBUG
+
 CanvasView::CanvasView(QWidget* parent) :
     QGraphicsView(parent)
 {
-    zoomFactor_ = ZOOM_FACTOR;
     scene_ = new CanvasScene(zCounter_);
     connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
-//    scene_->setItemIndexMethod(QGraphicsScene::NoIndex);
+
     setMouseTracking(true);
     setScene(scene_);
+
     // Update all the view port when needed, otherwise, the drawInViewPort may experience trouble
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
+
     // When zooming, the view stay centered over the mouse
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     setDragMode(QGraphicsView::RubberBandDrag);
@@ -32,45 +33,41 @@ CanvasView::~CanvasView()
     delete scene_;
 }
 
+
 void CanvasView::openFile()
 {
-    QString filename = QFileDialog::getOpenFileName(
-                this,
-                tr("Open File"),
-                QDir::homePath(),
-                "Familiar (*.fml)");
-    qDebug()<<filename;
-    QMessageBox::information(this, tr("File Name"), filename);
+
 }
+
 
 void CanvasView::saveAsFile()
 {
 
 }
 
+
 std::string CanvasView::fml_header()
 {
     return scene_->fml_header();
 }
+
 
 QByteArray CanvasView::fml_payload()
 {
     return scene_->fml_payload();
 }
 
+
 void CanvasView::addImage(const QString& path, QPointF point)
 {
     ++zCounter_;
     MoveItem* item = new MoveItem(path, zCounter_);
-    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
     item->setFlag(QGraphicsItem::ItemIsSelectable, true);
-//    item->setFlag(QGraphicsItem::ItemIsMovable, true);
-//    item->setFlag(QGraphicsItem::ItemIsFocusable, true);
-//    MovePixmapItem* item = new MovePixmapItem();
 
     item->setPos(point);
     scene_->addItem(item);
 }
+
 
 void CanvasView::addImage(const QImage& img, QPointF point)
 {
@@ -83,55 +80,40 @@ void CanvasView::addImage(const QImage& img, QPointF point)
     scene_->addItem(item);
 }
 
+
 void CanvasView::mouseMoveEvent(QMouseEvent *event)
 {
-#ifdef MOUSE_MOVE_DEBUG
-    qInfo()<<"CanvasView::mouseMoveEvent: "<<event->position();
-#endif
     if (pan_) {
-//        horizontalScrollBar()->setValue(horizontalScrollBar()->value() - (event->position().x() - panStartX_));
-//        verticalScrollBar()->setValue(verticalScrollBar()->value() - (event->position().y() - panStartY_));
         panStartX_ = event->position().x();
         panStartY_ = event->position().y();
         event->accept();
-//        return;
     }
-//    event->ignore();
 
-    // Get the coordinates of the mouse in the scene
-//    QPointF imagePoint = mapToScene(QPoint(event->position().x(), event->position().y() ));
-//    // Call the function that create the tool tip
-//    setToolTip(setToolTipText(QPoint((int)imagePoint.x(),(int)imagePoint.y())));
-    // Call the parent's function (for dragging)
     QGraphicsView::mouseMoveEvent(event);
 }
 
 
 void CanvasView::mousePressEvent(QMouseEvent *event)
 {
-//    qInfo()<<"CanvasView::mousePressEvent: "<<event->position();
     if (event->button() == Qt::LeftButton) {
-         pan_ = true;
-         panStartX_ = event->position().x();
-         panStartY_ = event->position().y();
-         event->accept();
-
-     }
-    //    if (event->button() == Qt::RightButton) this->fitImage();
+        pan_ = true;
+        panStartX_ = event->position().x();
+        panStartY_ = event->position().y();
+        event->accept();
+    }
     QGraphicsView::mousePressEvent(event);
 }
 
 
 void CanvasView::mouseReleaseEvent(QMouseEvent *event)
 {
-//    qInfo()<<"CanvasView::mouseReleaseEvent: "<<event->position();
-
-    QGraphicsView::mouseReleaseEvent(event);
     if (event->button() == Qt::LeftButton) {
         pan_ = false;
         event->accept();
-      }
+    }
+    QGraphicsView::mouseReleaseEvent(event);
 }
+
 
 void CanvasView::wheelEvent(QWheelEvent *event)
 {
@@ -139,7 +121,6 @@ void CanvasView::wheelEvent(QWheelEvent *event)
     this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
 
     auto numPixels = event->angleDelta();
-//    qInfo()<<"CanvasView::wheelEvent: "<<numPixels.x()<<' '<<numPixels.y();
     double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
     if (numPixels.y() > 0) {
         scale(factor, factor);
@@ -169,13 +150,6 @@ void CanvasView::resizeEvent(QResizeEvent *event)
 }
 
 
-QString CanvasView::setToolTipText(QPoint imageCoordinates)
-{
-    (void)imageCoordinates;
-    return QString("");
-
-}
-
 void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
 {
     setCacheMode(CacheNone);
@@ -188,6 +162,7 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
     painter->drawRect(scene_->sceneRect());
     painter->restore();
 }
+
 
 void CanvasView::onSelectionChanged()
 {
