@@ -29,14 +29,15 @@ class QFileDialog;
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
     /**
      * \~russian @brief конструктор
-     * \~russian @param parent - указатель на QWidget(может быть nullptr - это нормально)
+     * \~russian @param parent - указатель на QWidget(может быть nullptr - это
+     *                           нормально)
      *
      * \~english @brief main window class constructor
-     * \~english @param parent - pointer to QWidget parent(may be nullptr - it is normal)
+     * \~english @param parent - pointer to QWidget parent(may be nullptr - it
+     *                           is normal)
      */
     MainWindow(QWidget *parent = nullptr);
 
