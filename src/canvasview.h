@@ -20,7 +20,7 @@
 class CanvasScene;
 
 /**
- * \~russian @brief The CanvasView класс
+ * \~russian @brief CanvasView класс
  *
  * \~english @brief The CanvasView class
  */
