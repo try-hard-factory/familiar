@@ -37,12 +37,12 @@ DotSignal::~DotSignal()
 
 }
 
-QPointF DotSignal::previousPosition() const
+QPointF DotSignal::previousPosition() const noexcept
 {
     return m_previousPosition;
 }
 
-void DotSignal::setPreviousPosition(const QPointF previousPosition)
+void DotSignal::setPreviousPosition(const QPointF previousPosition) noexcept
 {
     if (m_previousPosition == previousPosition)
         return;
