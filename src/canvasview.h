@@ -86,46 +86,46 @@ public slots:
 protected:
     /**
      * \~russian @brief перегрузите эту функцию, для обработки движений мышки
-     * \~russian @param - событие движения мышки
+     * \~russian @param event - событие движения мышки
      *
      * \~english @brief overload this function to process mouse moves
-     * \~english @param - mouse move event
+     * \~english @param event - mouse move event
      */
     void mouseMoveEvent(QMouseEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки нажатий клавиш мышки
-     * \~russian @param - событие нажатий клавиш мышки
+     * \~russian @param event - событие нажатий клавиш мышки
      *
      * \~english @brief overload this function to process mouse button pressed
-     * \~english @param - mouse press event
+     * \~english @param event - mouse press event
      */
     void mousePressEvent(QMouseEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки отпускания клавиш мышки
-     * \~russian @param - событие отпускания клавиш мышки
+     * \~russian @param event - событие отпускания клавиш мышки
      *
      * \~english @brief overload this function to process mouse button released
-     * \~english @param - mouse release event
+     * \~english @param event - mouse release event
      */
     void mouseReleaseEvent(QMouseEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки колёсика мышки
-     * \~russian @param - событие колёсика мышки
+     * \~russian @param event - событие колёсика мышки
      *
      * \~english @brief overload this function to process mouse wheel
-     * \~english @param - mouse wheel event
+     * \~english @param event - mouse wheel event
      */
     void wheelEvent(QWheelEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки изменения размера
-     * \~russian @param - событие колёсика мышки
+     * \~russian @param event - событие колёсика мышки
      *
      * \~english @brief overload this function to process resize event
-     * \~english @param - resize event
+     * \~english @param event - resize event
      */
     void resizeEvent(QResizeEvent *event) override;
 
