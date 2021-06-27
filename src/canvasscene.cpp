@@ -115,6 +115,8 @@ std::string CanvasScene::fml_header()
                   + QString::number(widget->boundingRect().width()).toStdString() + ","
                   + QString::number(widget->qimage().sizeInBytes()).toStdString() + ","
                   + QString::number(widget->format()).toStdString() ) ;
+    qDebug()<<"format "<<widget->format();
+
         header += ";";
     }
 
@@ -131,10 +133,10 @@ QByteArray CanvasScene::fml_payload()
         // \TODO: type.h header with all types (image, textline, multitextline)
         if (it->type() != 3) continue;
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
-        qDebug()<<widget->qimage().sizeInBytes();
+        qDebug()<<"save sizeInBytes: "<<widget->qimage().sizeInBytes();
         ds.writeRawData((const char*)widget->qimage().bits(), widget->qimage().sizeInBytes());
     }
-    ds.device()->seek(0);
+//    ds.device()->seek(0);
     return arr;
 }
 

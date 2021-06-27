@@ -75,10 +75,13 @@ void MainWindow::on_action_saveas_triggered()
         auto header = fml_file_buffer::create_header(canvasWidget);
         QString header_=QString::fromStdString(fml_file_buffer::create_header(canvasWidget));
         QByteArray byteHeader = header_.toUtf8();
-        qDebug()<<header_;
+        qDebug()<<"Header "<<header_;
         QByteArray payload = fml_file_buffer::create_payload(canvasWidget);
 
         fml_file_buffer::save_to_file(out_file, byteHeader, payload);
+
+        QImage img((const unsigned char*)payload.data(), 200, 200, QImage::Format_ARGB32);
+        canvasWidget->addImage(img, {0, 0});
     }
 }
 
