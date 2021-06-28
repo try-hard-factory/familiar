@@ -18,24 +18,44 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem *parent)
 {
     setZValue(zCounter_);
 //    qimage_ = QImage("bender.png");
-    qimage_ = QImage(path);
+    qimage_ = new QImage(path);
 //    auto qimage = QImage("kot.jpg");
 //    qInfo() << qimage.width() << ' ' <<qimage.height();
-    pixmap_ = QPixmap::fromImage(qimage_);
+    pixmap_ = QPixmap::fromImage(*qimage_);
     _size = pixmap_.size();
-    rect_ = qimage_.rect();
+    rect_ = qimage_->rect();
 
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemIsMovable, true);
 }
 
-MoveItem::MoveItem(const QImage& img, uint64_t& zc, QGraphicsRectItem *parent) :
+MoveItem::MoveItem(QImage* img, uint64_t& zc, QGraphicsRectItem *parent) :
     QGraphicsRectItem(parent), qimage_(img), zCounter_(zc)
 {
     setZValue(zCounter_);
-    pixmap_ = QPixmap::fromImage(qimage_);
+    pixmap_ = QPixmap::fromImage(*qimage_);
+//    LOG_DEBUG(logger, "qimage addr: ", &qimage_);
+//    LOG_DEBUG(logger, "pixmap addr: ", &pixmap_);
+//    void* ptr = (void*)qimage_.bits();
+//    LOG_DEBUG(logger, "bits addr: ", ptr);
+
     _size = pixmap_.size();
-    rect_ = qimage_.rect();
+    rect_ = qimage_->rect();
+
+    setAcceptHoverEvents(true);
+    setFlag(QGraphicsItem::ItemIsMovable, true);
+}
+
+MoveItem::MoveItem(QByteArray ba, int w, int h, qsizetype bpl, QImage::Format f, uint64_t &zc, QGraphicsRectItem *parent) :
+    QGraphicsRectItem(parent), ba_(ba), zCounter_(zc)
+{
+    setZValue(zCounter_);
+    const uchar* bits = (const unsigned char*)ba_.data();
+    qimage_ = new QImage(bits, w, h, bpl, f);
+    pixmap_ = QPixmap::fromImage(*qimage_);
+
+    _size = pixmap_.size();
+    rect_ = qimage_->rect();
 
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemIsMovable, true);
@@ -43,7 +63,7 @@ MoveItem::MoveItem(const QImage& img, uint64_t& zc, QGraphicsRectItem *parent) :
 
 MoveItem::~MoveItem()
 {
-
+    delete qimage_;
 }
 
 
@@ -52,13 +72,14 @@ QRectF MoveItem::boundingRect() const
     return QRectF (0, 0, rect_.width(), rect_.height());
 }
 
+
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->setPen(QPen(QColor(0, 160, 230),2));
     if (inGroup_) {
         painter->drawRect(boundingRect());
     }
-    painter->drawImage(boundingRect(), qimage_);
+    painter->drawImage(boundingRect(), *qimage_);
 
     Q_UNUSED(widget);
 }

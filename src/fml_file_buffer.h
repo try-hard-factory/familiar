@@ -20,7 +20,7 @@ public:
     }
 
     static void save_to_file(QString filename, QByteArray& header, QByteArray& payload) {
-        qDebug()<<header.size();
+        qDebug()<<"Header size: "<<header.size();
         QFile file(filename);
         if (!file.open(QFile::WriteOnly)) {
            //      ...
@@ -30,28 +30,8 @@ public:
         uint32_t hs = header.size();
         file.write((const char*)&hs, sizeof (hs));
         file.write(header);
-        file.write(payload);
-        qDebug()<<payload;
+        file.write(payload, payload.size());
         file.close();
-
-//        {
-//            QFile file(filename);
-//            if (!file.open(QFile::ReadOnly)) {
-//                return;
-//            }
-
-//            uint32_t hs_ = 0;
-//            file.read((char *)&hs_, sizeof(hs_));
-
-//            if (hs_ != hs) exit(1);
-
-//            QByteArray header_b = file.read(hs);
-//            if (header != header_b) exit(1);
-
-//            QByteArray payload_ = file.readAll();
-//            if (payload != payload_) exit(1);
-//            file.close();
-//        }
     }
 
     template<typename T>
@@ -60,6 +40,8 @@ public:
         if (!file.open(QFile::ReadOnly)) {
             return;
         }
+
+
 
         uint32_t hs = 0;
         file.read((char *)&hs, sizeof(hs));
@@ -77,8 +59,10 @@ public:
             double y = img_info[1].toDouble();
             double h = img_info[2].toDouble();
             double w = img_info[3].toDouble();
-            size_t sizepix = img_info[4].toUInt();
-            QImage::Format format = (QImage::Format)img_info[5].toUInt();
+            double bh = img_info[4].toDouble();
+            double bw = img_info[5].toDouble();
+            size_t sizepix = img_info[6].toUInt();
+            QImage::Format format = (QImage::Format)img_info[7].toUInt();
             qDebug()<<x;
             qDebug()<<y;
             qDebug()<<w;
@@ -86,10 +70,10 @@ public:
             qDebug()<<sizepix;
             qDebug()<<format;
             QByteArray img_payload = file.read(sizepix);
-            qDebug()<<img_payload;
-            QImage img((uchar*)img_payload.data(), w, h, format);
-            obj->addImage(img, {x, y});
+            QRect br = QRect(x, y, bw, bh);
+            obj->addImage(img_payload, w, h, br, w*4, format);
         }
+
         file.close();
     }
 };
