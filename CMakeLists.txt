@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(FAMILIAR_VERSION 0.0.3)
+set(FAMILIAR_VERSION 0.0.4)
 
 set(GIT_API_URL "https://api.github.com/repos/try-hard-factory/familiar/releases/latest")
 
