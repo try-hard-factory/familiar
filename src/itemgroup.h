@@ -79,6 +79,8 @@ public:
     bool isEmpty() const;
     void incZ();
     QRectF realRect() const {return rectItemGroup_;}
+
+    void dumpBits(QString text);
 protected:
 
 

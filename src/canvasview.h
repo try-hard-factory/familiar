@@ -66,7 +66,9 @@ public:
      * \~english @param img - image
      * \~english @param point - coords of image on scene
      */
-    void addImage(const QImage& img, QPointF point);
+    void addImage(QImage* img, QPointF point);
+
+    void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
     void zoomFactor(double factor) noexcept { zoomFactor_ = factor; }
     double zoomFactor() const noexcept { return zoomFactor_; }
@@ -139,6 +141,7 @@ protected:
      * \~english @param rect - is the exposed rectangle.
      */
     void drawBackground(QPainter *painter, const QRectF &rect) override;
+
 private:
     CanvasScene* scene_;
     double zoomFactor_ = 1.15;

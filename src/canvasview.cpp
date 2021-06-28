@@ -69,14 +69,25 @@ void CanvasView::addImage(const QString& path, QPointF point)
 }
 
 
-void CanvasView::addImage(const QImage& img, QPointF point)
+void CanvasView::addImage(QImage* img, QPointF point)
 {
     ++zCounter_;
     MoveItem* item = new MoveItem(img, zCounter_);
-    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
     item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 
     item->setPos(point);
+    scene_->addItem(item);
+}
+
+void CanvasView::addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f)
+{
+    ++zCounter_;
+    MoveItem* item = new MoveItem(ba, w, h, bpl, f, zCounter_);
+    item->setRect(br);
+    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
+    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+
+    item->setPos(br.topLeft());
     scene_->addItem(item);
 }
 
