@@ -1,3 +1,22 @@
+Version v0.0.4
+==============
+
+  - fix save file feature
+  - some research
+  - borderdot: docs
+  - image_downloader: docs
+  - canvasview.h: add docs
+  - remove old comments
+  - add doc. clear comments
+  - update doxygen
+  - fml file
+  - cmake update
+  - save open handlers
+  - change ui
+  - some changes for build system
+  - fix windows pack script
+  - docs: init
+
 Version v0.0.3
 ==============
 
