@@ -69,7 +69,8 @@ void ImageDownloader::onDownloadFileComplete(QNetworkReply *reply) {
     img.loadFromData(reply_->readAll());
     qDebug()<<"onDownloadFileComplete. "<<img.size();
     uint64_t z = 9999;
-    MoveItem* item = new MoveItem(img, z);
+    QImage* img_ptr = new QImage(img);
+    MoveItem* item = new MoveItem(img_ptr, z);
     item->setPos({0, 0});
 
     scene_.addItem(item);
@@ -100,7 +101,8 @@ void ImageDownloader::onReadyRead()
     QImage img;
     img.loadFromData(reply_->readAll());
     uint64_t z = 9999;
-    MoveItem* item = new MoveItem(img, z);
+    QImage* img_ptr = new QImage(img);
+    MoveItem* item = new MoveItem(img_ptr, z);
     item->setPos({0, 0});
 
     scene_.addItem(item);

@@ -216,6 +216,7 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             break;
         }
     }
+
     QGraphicsItemGroup::mouseMoveEvent(event);
 }
 
@@ -780,4 +781,35 @@ bool ItemGroup::isEmpty() const
 void ItemGroup::incZ()
 {
     setZValue(++zCounter_);
+}
+
+void ItemGroup::dumpBits(QString text)
+{
+    auto childs = childItems();
+    auto scene_tmp = childs.first()->sceneBoundingRect();
+
+    for (auto& it : childs) {
+        if (it->type() == eBorderDot) continue;
+        scene_tmp = scene_tmp.united(it->sceneBoundingRect());
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+        qDebug()<<"\tdumpBits:" << text;
+        auto qimg = &widget->qimage();
+        auto qimg_ptr = widget->qimage_ptr();
+        void* ptr = (void*)(widget->qimage().constBits());
+        void* ptr0 = (void*)widget->qimage_ptr()->constBits();
+        const uchar* ptr1 = widget->qimage().constBits();
+        const uchar* bits = widget->qimage().constBits();
+
+        LOG_DEBUG(logger, "Adress: ", widget);
+        LOG_DEBUG(logger, "@ qimage addr: ", qimg);
+        LOG_DEBUG(logger, "@ qimageptr addr: ", qimg_ptr);
+        LOG_DEBUG(logger, "@ bits addr: ", ptr);
+        LOG_DEBUG(logger, "@ bits addr: ", ptr0);
+        LOG_DEBUG(logger, "@ bits addr: ", (void*)ptr1);
+        LOG_DEBUG(logger, "@ bits addr: ", (void*)bits);
+
+        for (int i = 0; i < 20; ++i) {
+            qDebug()<< bits[i];
+        }
+    }
 }

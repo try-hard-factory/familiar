@@ -27,31 +27,11 @@ public:
             return;
         }
 
-//        uint32_t hs = header.size();
-//        file.write((const char*)&hs, sizeof (hs));
-//        file.write(header);
+        uint32_t hs = header.size();
+        file.write((const char*)&hs, sizeof (hs));
+        file.write(header);
         file.write(payload, payload.size());
-//        qDebug()<<payload;
         file.close();
-
-//        {
-//            QFile file(filename);
-//            if (!file.open(QFile::ReadOnly)) {
-//                return;
-//            }
-
-//            uint32_t hs_ = 0;
-//            file.read((char *)&hs_, sizeof(hs_));
-
-//            if (hs_ != hs) exit(1);
-
-//            QByteArray header_b = file.read(hs);
-//            if (header != header_b) exit(1);
-
-//            QByteArray payload_ = file.readAll();
-//            if (payload != payload_) exit(1);
-//            file.close();
-//        }
     }
 
     template<typename T>
@@ -61,41 +41,38 @@ public:
             return;
         }
 
-        qDebug()<<"open sizeInBytes: "<<file.size();
-        QByteArray img_payload = file.read(160000);
-        QImage img((const unsigned char*)img_payload.data(), 200, 200, QImage::Format_ARGB32);
-        obj->addImage(img, {0, 0});
 
 
-//        uint32_t hs = 0;
-//        file.read((char *)&hs, sizeof(hs));
+        uint32_t hs = 0;
+        file.read((char *)&hs, sizeof(hs));
 
-//        QByteArray header_b = file.read(hs);
-//        QString header(header_b);
+        QByteArray header_b = file.read(hs);
+        QString header(header_b);
 
-//        qDebug()<<header;
-//        QStringList list = header.split(';');
-//        for (auto& it : list) {
-//            if (it.isEmpty()) break;
-//            qDebug()<<it;
-//            QStringList img_info = it.split(',');
-//            double x = img_info[0].toDouble();
-//            double y = img_info[1].toDouble();
-//            double h = img_info[2].toDouble();
-//            double w = img_info[3].toDouble();
-//            size_t sizepix = img_info[4].toUInt();
-//            QImage::Format format = (QImage::Format)img_info[5].toUInt();
-//            qDebug()<<x;
-//            qDebug()<<y;
-//            qDebug()<<w;
-//            qDebug()<<h;
-//            qDebug()<<sizepix;
-//            qDebug()<<format;
-//            QByteArray img_payload = file.read(sizepix);
-//            qDebug()<<img_payload;
-//            QImage img((uchar*)img_payload.data(), w, h, format);
-//            obj->addImage(img, {x, y});
-//        }
+        qDebug()<<header;
+        QStringList list = header.split(';');
+        for (auto& it : list) {
+            if (it.isEmpty()) break;
+            qDebug()<<it;
+            QStringList img_info = it.split(',');
+            double x = img_info[0].toDouble();
+            double y = img_info[1].toDouble();
+            double h = img_info[2].toDouble();
+            double w = img_info[3].toDouble();
+            double bh = img_info[4].toDouble();
+            double bw = img_info[5].toDouble();
+            size_t sizepix = img_info[6].toUInt();
+            QImage::Format format = (QImage::Format)img_info[7].toUInt();
+            qDebug()<<x;
+            qDebug()<<y;
+            qDebug()<<w;
+            qDebug()<<h;
+            qDebug()<<sizepix;
+            qDebug()<<format;
+            QByteArray img_payload = file.read(sizepix);
+            QRect br = QRect(x, y, bw, bh);
+            obj->addImage(img_payload, w, h, br, w*4, format);
+        }
 
         file.close();
     }
