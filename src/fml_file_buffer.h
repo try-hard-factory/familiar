@@ -1,10 +1,26 @@
 #ifndef FML_FILE_BUFFER_H
 #define FML_FILE_BUFFER_H
+
+/**
+ *  @file   fml_file_buffer.h
+ *  \~russian @brief  Модуль для работы с fml-файлом
+ *  \~russian @author angeleyes (mpano91@gmail.com)
+ *
+ *  \~english @brief  Module for working with fml-file
+ *  \~english @author angeleyes (mpano91@gmail.com)
+ */
+
 #include <QDebug>
 #include <QImage>
 #include <string>
 #include <QByteArray>
 #include <QFile>
+
+/**
+ * \~russian @brief The fml_file_buffer класс
+ *
+ * \~english @brief The fml_file_buffer class
+ */
 class fml_file_buffer
 {
 public:
