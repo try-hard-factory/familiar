@@ -208,11 +208,11 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                 }
-                state_ = eMouseSelection;
+//                state_ = eMouseSelection;
             } else {
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
-                state_ = eMouseSelection;
+//                state_ = eMouseSelection;
             }
         }
     }
@@ -227,7 +227,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
     LOG_DEBUG(logger, "\nDEBUG: mouseReleaseEvent mouse state: ", stateText(state_), "\n");
 
     if (state_ == eGroupItemResizing) {
-        state_ = eGroupItemMoving;
+        state_ = eMouseMoving;
         QGraphicsScene::mouseReleaseEvent(event);
         return;
     }
@@ -249,9 +249,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
                 if (itemGroup_->isContain(item) && !itemGroup_->isThisDots(item)) {
-//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
-                    if (state_ != eGroupItemMoving && state_ != eMouseSelection) {
-//                        LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
+                    if (state_ != eGroupItemMoving) {
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
                         itemGroup_->addItemToGroup(item);
@@ -261,30 +259,9 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
                     state_ = eMouseMoving;
                 }
-//                LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
             } else {
-//                LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
-                if (state_ == eMouseSelection) {
-//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
-                    itemGroup_->clearItemGroup();
-                    auto selItems = selectedItems();
-
-                    for (auto& it : selItems) {
-                        itemGroup_->addItemToGroup(it);
-        //                it->setSelected(false);
-//                        LOG_DEBUG(logger, "Selected address: ", it);
-                    }
-                    itemGroup_->incZ();
-                    if (itemGroup_->isEmpty()) {
-                        mainSelArea_.setReady(false);
-                    } else {
-                        mainSelArea_.setReady(true);
-                    }
-                } else {
-//                    LOG_DEBUG(logger, "DEBUG MESSAGE1 ", __LINE__);
-                    itemGroup_->clearItemGroup();
-                    mainSelArea_.setReady(false);
-                }
+                itemGroup_->clearItemGroup();
+                mainSelArea_.setReady(false);
                 state_ = eMouseMoving;
             }
         }
@@ -304,11 +281,11 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 #endif
     LOG_DEBUG(logger, "\nDEBUG: mouseMoveEvent mouse state: ", stateText(state_), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
-        if (itemGroup_->isUnderMouse() && state_ != eMouseSelection && state_ != eGroupItemResizing ) {
+        if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
         }
 
-        if (state_ == eMouseSelection) {
+//        if (state_ == eMouseSelection) {
 
             /*
              *  This part of realtime selection.
@@ -332,7 +309,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //                } else {
 //                    mainSelArea_.setReady(true);
 //                }
-        }
+//        }
     }
 
     QGraphicsScene::mouseMoveEvent(event);
