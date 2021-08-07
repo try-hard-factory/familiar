@@ -178,6 +178,7 @@ std::string stateText(int idx) {
         case 0: return "eMouseMoving";
         case 1: return "eMouseSelection";
         case 2: return "eGroupItemMoving";
+        case 3: return "eGroupItemResizing";
     }
     return "undefined";
 }
@@ -186,6 +187,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
     auto item = getFirstItemUnderCursor(event->scenePos());
     if (item && item->type() == ItemGroup::eBorderDot) {
+        state_ = eGroupItemResizing;
         QGraphicsScene::mousePressEvent(event);
         return;
     }
@@ -197,9 +199,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 
 
         } else if (event->modifiers() != Qt::ShiftModifier) {
-//            LOG_WARNING(logger,"HUI ", __LINE__);
             if (item) {
-//                LOG_WARNING(logger,"HUI ", __LINE__);
                 if (!itemGroup_->isContain(item)) {
                     itemGroup_->clearItemGroup();
                     itemGroup_->addItemToGroup(item);
@@ -209,9 +209,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                 }
                 state_ = eMouseSelection;
-//                LOG_WARNING(logger,"HUI ", __LINE__);
             } else {
-//                LOG_WARNING(logger,"HUI ", __LINE__);
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
                 state_ = eMouseSelection;
@@ -226,8 +224,15 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
 //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
-    auto item = getFirstItemUnderCursor(event->scenePos());
+    LOG_DEBUG(logger, "\nDEBUG: mouseReleaseEvent mouse state: ", stateText(state_), "\n");
 
+    if (state_ == eGroupItemResizing) {
+        state_ = eGroupItemMoving;
+        QGraphicsScene::mouseReleaseEvent(event);
+        return;
+    }
+
+    auto item = getFirstItemUnderCursor(event->scenePos());
     if (event->button() == Qt::LeftButton) {
         if (event->modifiers() == Qt::ShiftModifier) {
             if (item) { // add to group
@@ -297,9 +302,9 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
 //    qDebug()<<'\n';
 #endif
-
+    LOG_DEBUG(logger, "\nDEBUG: mouseMoveEvent mouse state: ", stateText(state_), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
-        if (itemGroup_->isUnderMouse() && state_ != eMouseSelection) {
+        if (itemGroup_->isUnderMouse() && state_ != eMouseSelection && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
         }
 

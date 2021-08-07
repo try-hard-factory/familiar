@@ -9,9 +9,10 @@
 #include "image_downloader.h"
 
 enum EState {
-    eMouseMoving        = 0x0000,
-    eMouseSelection     = 0x0001,
-    eGroupItemMoving    = 0x0002,
+    eMouseMoving          = 0x0000,
+    eMouseSelection       = 0x0001,
+    eGroupItemMoving      = 0x0002,
+    eGroupItemResizing    = 0x0003,
 };
 
 class CanvasScene : public QGraphicsScene

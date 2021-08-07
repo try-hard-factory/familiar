@@ -1,4 +1,4 @@
-#include "itemgroup.h"
+﻿#include "itemgroup.h"
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QCursor>
@@ -97,6 +97,7 @@ QRectF ItemGroup::calcNewBr()
 
 void ItemGroup::addItemToGroup(QGraphicsItem* item)
 {
+    qDebug()<<"Item pointer : "<< (void *)item;
     if (item == this || item->type() == eBorderDot) return;
     addToGroup(item);
 
@@ -120,6 +121,7 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
     if (!cornerGrabber[0]) {
         for(int i = 0; i < 4; i++){
             cornerGrabber[i] = new DotSignal(this);
+            qDebug()<<"ALLOCATE: "<< (void*)cornerGrabber[i];
         }
         hideGrabbers();
     }
@@ -134,6 +136,7 @@ void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
     if (item->type() != eBorderDot) {
         auto widget = qgraphicsitem_cast<MoveItem*>(item);
         widget->setInGroup(false);
+        LOG_DEBUG(logger, "REMOVE ", item, ", type = ", item->type());
     }
     items_.erase(std::remove_if(items_.begin(), items_.end(), [&](QGraphicsItem* i) { return i == item; }),
                   items_.end());
@@ -741,15 +744,16 @@ void ItemGroup::printDotsCoords(const std::string& text) const
 
 void ItemGroup::clearItemGroup()
 {
+    qDebug()<<"!!!! clearItemGroup";
     hideGrabbers();
     auto childs = childItems();
     for (auto& it : childs) {        
         removeItemFromGroup(it);
-        LOG_DEBUG(logger, "REMOVE ", it);
     }
 
     for(int i = 0; i < 4; i++){
-        qDebug()<<"DEALLOCATE";
+        if (cornerGrabber[i] == nullptr) continue;
+        qDebug()<<"DEALLOCATE: "<< (void*)cornerGrabber[i];
         delete cornerGrabber[i];
         cornerGrabber[i] = nullptr;
     }
