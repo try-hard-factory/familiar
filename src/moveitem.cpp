@@ -69,17 +69,25 @@ MoveItem::~MoveItem()
 
 QRectF MoveItem::boundingRect() const
 {
+    qreal wsize = 2;
     return QRectF (0, 0, rect_.width(), rect_.height());
 }
 
 
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    painter->setPen(QPen(QColor(0, 160, 230),2));
-    if (inGroup_) {
-        painter->drawRect(boundingRect());
-    }
     painter->drawImage(boundingRect(), *qimage_);
+    qreal wsize = 2;
+    QPen outline_pen{QColor(0, 160, 230), wsize};
+    outline_pen.setCosmetic(true);
+    painter->setPen(outline_pen);
+    if (inGroup_) {
+        painter->drawRect(boundingRect().topLeft().x() ,
+                          boundingRect().topLeft().y() ,
+                          boundingRect().bottomRight().x() ,
+                          boundingRect().bottomRight().y() );
+    }
+
 
     Q_UNUSED(widget);
 }
