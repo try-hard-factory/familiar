@@ -714,6 +714,7 @@ void ItemGroup::hideGrabbers()
 
 void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+#ifdef GRID_DEBUG
     painter->save();
     painter->setPen( QPen(Qt::green, 3) );
     painter->drawEllipse(this->pos(), 6,6);
@@ -729,7 +730,7 @@ void ItemGroup::paint(QPainter *painter, const QStyleOptionGraphicsItem *option,
     painter->drawLine(-99999, this->scenePos().y(), 9999, this->scenePos().y());
     painter->drawLine(this->scenePos().x(), -99999, this->scenePos().x(), 99999);
     painter->restore();
-
+#endif
     if (isEmpty()) return;
 }
 

@@ -144,7 +144,7 @@ protected:
 
 private:
     CanvasScene* scene_;
-    double zoomFactor_ = 1.15;
+    double zoomFactor_ = 1.1;
     bool pan_;
     bool panStartX_;
     bool panStartY_;

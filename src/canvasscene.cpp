@@ -376,6 +376,7 @@ void CanvasScene::onSelectionChanged()
 
 void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
 {
+#ifdef GRID_DEBUG
     painter->setPen( QPen(Qt::green, 3) );
     painter->drawEllipse(itemGroup_->pos(), 6,6);
     painter->setPen( QPen(Qt::red, 3) );
@@ -388,14 +389,16 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
         painter->drawLine(begin, -99999, begin, 99999);
         begin += 100;
     }
-
+#endif
     if (!mainSelArea_.isReady()) return;
     painter->save();
-    int wsize = 2;
-    painter->setPen( QPen(Qt::red, wsize) );
+    qreal wsize = 2;
+    QPen outline_pen{Qt::red, wsize};
+    outline_pen.setCosmetic(true);
+    painter->setPen( outline_pen );
     auto r = itemGroup_->sceneBoundingRect();
-//    itemGroup_->childrenBoundingRect()
     painter->drawRect(r);
+//    itemGroup_->childrenBoundingRect()
 
 
 //    auto childs = itemGroup_->childItems();
