@@ -393,7 +393,7 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     if (!mainSelArea_.isReady()) return;
     painter->save();
     qreal wsize = 2;
-    QPen outline_pen{Qt::red, wsize};
+    QPen outline_pen{QColor(0, 160, 230), wsize};
     outline_pen.setCosmetic(true);
     painter->setPen( outline_pen );
     auto r = itemGroup_->sceneBoundingRect();

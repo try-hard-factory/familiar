@@ -1,6 +1,6 @@
 #include "borderdot.h"
 
-
+#include <QPen>
 #include <QBrush>
 #include <QColor>
 #include <QGraphicsSceneHoverEvent>
@@ -13,9 +13,12 @@ DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
 //    setFlags(ItemIsMovable);
     setParentItem(parentItem);
     setAcceptHoverEvents(true);
-    setBrush(QBrush(Qt::black));
-    setRect(-4,-4,8,8);
+    setBrush(QBrush(QColor(0, 160, 230)));
+    QPen outline_pen{QColor(0, 160, 230), 0};
+    setPen(outline_pen);
+    setRect(-5,-5,10,10);
     setDotFlags(0);
+    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
 DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
@@ -25,11 +28,14 @@ DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
 //    setFlags(ItemIsMovable);
     setParentItem(parentItem);
     setAcceptHoverEvents(true);
-    setBrush(QBrush(Qt::black));
-    setRect(-4,-4,8,8);
+    setBrush(QBrush(QColor(0, 160, 230)));
+    QPen outline_pen{QColor(0, 160, 230), 0};
+    setPen(outline_pen);
+    setRect(-5,-5,10,10);
     setPos(pos);
     setPreviousPosition(pos);
     setDotFlags(0);
+    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
 DotSignal::~DotSignal()

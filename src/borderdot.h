@@ -12,7 +12,7 @@ class QGraphicsSceneMouseEvent;
  *
  * \~english @brief The DotSignal class
  */
-class DotSignal : public QObject, public QGraphicsRectItem
+class DotSignal : public QObject, public QGraphicsEllipseItem
 {
     Q_OBJECT
     Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE setPreviousPosition NOTIFY previousPositionChanged)
