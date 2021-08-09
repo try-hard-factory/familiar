@@ -24,6 +24,7 @@ public:
     void setRect(const QRectF &rect);
     void setInGroup(bool f) { inGroup_ = f; }
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
     int height() const noexcept { return qimage_->height(); }
     int width() const noexcept { return qimage_->width(); }
     QImage::Format format() const noexcept { return qimage_->format(); }

@@ -74,6 +74,14 @@ QRectF MoveItem::boundingRect() const
 }
 
 
+QPainterPath MoveItem::shape() const
+{
+    QPainterPath path;
+    path.addRect(boundingRect());
+    return path;
+}
+
+
 void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     painter->drawImage(boundingRect(), *qimage_);
@@ -81,11 +89,12 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     QPen outline_pen{QColor(0, 160, 230), wsize};
     outline_pen.setCosmetic(true);
     painter->setPen(outline_pen);
+
     if (inGroup_) {
-        painter->drawRect(boundingRect().topLeft().x() ,
-                          boundingRect().topLeft().y() ,
-                          boundingRect().bottomRight().x() ,
-                          boundingRect().bottomRight().y() );
+        QPainterPath path;
+        path.addPath(shape());
+
+        painter->drawPath(path);
     }
 
 
