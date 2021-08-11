@@ -24,7 +24,7 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     (void)scene;
     itemGroup_ = new ItemGroup(zc);
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
-    itemGroup_->setHandlesChildEvents(true);
+//    itemGroup_->setFiltersChildEvents(true);
 
     itemGroup_->setPos({0,0});
     addItem(itemGroup_);
@@ -266,6 +266,8 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
             }
         }
     }
+
+    itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
     QGraphicsScene::mouseReleaseEvent(event);
 }
 
@@ -311,8 +313,8 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //                }
 //        }
     }
-//    qDebug()<<"Scale factor = "<<parentViewScaleFactor_;
-    itemGroup_->notifyMousePos(event, parentViewScaleFactor_);
+
+    itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
     QGraphicsScene::mouseMoveEvent(event);
 }
 
