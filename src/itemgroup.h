@@ -56,7 +56,7 @@ public:
     QPointF previousPosition() const;
     void setPreviousPosition(const QPointF previousPosition);
     QRectF boundingRect() const override;
-    void notifyMousePos(QGraphicsSceneMouseEvent *event, qreal sf);
+    void notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf);
 signals:
     void rectChanged(ItemGroup *rect);
     void previousPositionChanged();
