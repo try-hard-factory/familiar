@@ -279,7 +279,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
 //    qDebug()<<'\n';
 #endif
-    LOG_DEBUG(logger, "\nDEBUG: mouseMoveEvent mouse state: ", stateText(state_), "\n");
+//    LOG_DEBUG(logger, "\nDEBUG: mouseMoveEvent mouse state: ", stateText(state_), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
         if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
@@ -311,7 +311,8 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //                }
 //        }
     }
-
+//    qDebug()<<"Scale factor = "<<parentViewScaleFactor_;
+    itemGroup_->notifyMousePos(event, parentViewScaleFactor_);
     QGraphicsScene::mouseMoveEvent(event);
 }
 

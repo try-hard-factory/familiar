@@ -28,7 +28,7 @@ public:
     void addImageToSceneToPosition(QImage&& image, QPointF position);
     std::string fml_header();
     QByteArray fml_payload();
-
+    void updateViewScaleFactor(qreal newval) { parentViewScaleFactor_ = newval; }
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
@@ -58,6 +58,8 @@ private:
     EState state_ = eMouseMoving;
 
     ImageDownloader* imgdownloader_ = nullptr;
+
+    qreal parentViewScaleFactor_ = 1;
 };
 
 #endif // CANVASSCENE_H

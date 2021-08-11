@@ -12,14 +12,14 @@ class QGraphicsSceneMouseEvent;
  *
  * \~english @brief The DotSignal class
  */
-class DotSignal : public QObject, public QGraphicsEllipseItem
+class DotSignal : public QObject, public QGraphicsRectItem//QGraphicsEllipseItem
 {
     Q_OBJECT
     Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE setPreviousPosition NOTIFY previousPositionChanged)
 
 public:
-    explicit DotSignal(QGraphicsItem *parentItem = 0, QObject *parent = 0);
-    explicit DotSignal(QPointF pos, QGraphicsItem *parentItem = 0, QObject *parent = 0);
+    explicit DotSignal(QGraphicsItemGroup *parentItem = 0, QObject *parent = 0);
+    explicit DotSignal(QPointF pos, QGraphicsItemGroup *parentItem = 0, QObject *parent = 0);
     ~DotSignal();
 
     enum Flags {

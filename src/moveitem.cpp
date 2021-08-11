@@ -103,10 +103,10 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 
 //void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //{
-//#ifdef MOUSE_MOVE_DEBUG
+
 //    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
-//#endif
-//    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
+
+////    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
 //}
 
 void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)

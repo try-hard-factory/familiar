@@ -1,4 +1,5 @@
 ﻿#include "itemgroup.h"
+#include <QGuiApplication>
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QCursor>
@@ -169,10 +170,67 @@ QRectF ItemGroup::boundingRect() const
 }
 
 
+void ItemGroup::notifyMousePos(QGraphicsSceneMouseEvent *event, qreal sf)
+{
+    if (!cornerGrabber[0]) return;
+    QPointF pt = event->scenePos();
+//    qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
+    qreal right = cornerGrabber[3]->scenePos().x();
+    qreal left = cornerGrabber[0]->scenePos().x();
+    qreal top = cornerGrabber[0]->scenePos().y();
+    qreal bottom = cornerGrabber[3]->scenePos().y();
+
+//    qDebug()<< "LEFT " << left;
+//    qDebug()<< "RIGHT " << right;
+//    qDebug()<< "TOP " << top;
+//    qDebug()<< "BOTTOM " << bottom;
+
+    qreal drx = pt.x() - right;    // Distance between the mouse and the right
+    qreal dlx = pt.x() - left;     // Distance between the mouse and the left
+
+    qreal dby = pt.y() - top;      // Distance between the mouse and the top
+    qreal dty = pt.y() - bottom;   // Distance between the mouse and the bottom
+
+//    qDebug()<< "DELTA left " << dlx;
+//    qDebug()<< "DELTA top " << dby;
+//    qDebug()<< "[" << -5 / sf << "; "<< 5 / sf << "]";
+
+    if ( (event->buttons() & Qt::LeftButton) == 0) {
+        m_cornerFlags = 0;
+        if( (dby < (5 / sf)) && (dby > (-5 / sf)) ) m_cornerFlags |= Top;       // Top side
+        if( (dty < (5 / sf)) && (dty > (-5 / sf)) ) m_cornerFlags |= Bottom;    // Bottom side
+        if( (drx < (5 / sf)) && (drx > (-5 / sf)) ) m_cornerFlags |= Right;     // Right side
+        if( (dlx < (5 / sf)) && (dlx > (-5 / sf)) ) m_cornerFlags |= Left;      // Left side
+    }
+
+    //qInfo()<<"ItemGroup::mouseMoveEvent, DTY = "<< dty <<", DRX = " << drx << ", FLAG = " << m_cornerFlags;
+
+    switch (m_cornerFlags) {
+    case TopLeft:
+    case BottomRight:  {
+        if (sem_ == 0) {
+            QGuiApplication::setOverrideCursor(QCursor(Qt::SizeFDiagCursor));
+            sem_ = 1;
+        }
+
+    } break;
+    case TopRight:
+    case BottomLeft: {
+        if (sem_ == 0) {
+            QGuiApplication::setOverrideCursor(QCursor(Qt::SizeBDiagCursor));
+            sem_ = 2;
+        }
+    } break;
+    default:
+        sem_ = 0;
+        QGuiApplication::restoreOverrideCursor();
+        break;
+    }
+}
+
 void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
-    QPointF pt = event->pos();
-
+    QPointF pt = event->pos();              // The current position of the mouse
     if(m_actionFlags == ResizeState){
         switch (m_cornerFlags) {
         case TopLeft:
@@ -258,46 +316,52 @@ void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 
 void ItemGroup::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
-    QGraphicsItem::hoverEnterEvent(event);
+    Q_UNUSED(event)
+//    QGraphicsItemGroup::hoverEnterEvent(event);
 }
 
 
 void ItemGroup::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 {
-    m_cornerFlags = 0;
-    QGraphicsItem::hoverLeaveEvent( event );
+    Q_UNUSED(event)
+//    m_cornerFlags = 0;
+//    QGraphicsItemGroup::hoverLeaveEvent( event );
 }
 
 
-void ItemGroup::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
-{
-    QPointF pt = event->pos();              // The current position of the mouse
-    qreal drx = pt.x() - boundingRect().right();    // Distance between the mouse and the right
-    qreal dlx = pt.x() - boundingRect().left();     // Distance between the mouse and the left
+//void ItemGroup::hoverMoveEvent(QGraphicsSceneHoverEvent *event)
+//{
+//    QPointF pt = event->pos();              // The current position of the mouse
+//    qreal drx = pt.x() - boundingRect().right();    // Distance between the mouse and the right
+//    qreal dlx = pt.x() - boundingRect().left();     // Distance between the mouse and the left
 
-    qreal dby = pt.y() - boundingRect().top();      // Distance between the mouse and the top
-    qreal dty = pt.y() - boundingRect().bottom();   // Distance between the mouse and the bottom
+//    qreal dby = pt.y() - boundingRect().top();      // Distance between the mouse and the top
+//    qreal dty = pt.y() - boundingRect().bottom();   // Distance between the mouse and the bottom
 
 
-    m_cornerFlags = 0;
-    if( dby < 10 && dby > -10 ) m_cornerFlags |= Top;       // Top side
-    if( dty < 10 && dty > -10 ) m_cornerFlags |= Bottom;    // Bottom side
-    if( drx < 10 && drx > -10 ) m_cornerFlags |= Right;     // Right side
-    if( dlx < 10 && dlx > -10 ) m_cornerFlags |= Left;      // Left side
 
-    switch (m_cornerFlags) {
-    case TopLeft:
-    case TopRight:
-    case BottomLeft:
-    case BottomRight: {
-        setCursor(Qt::BusyCursor);
-        break;
-    }
-    default:
-        setCursor(Qt::CrossCursor);
-        break;
-    }
-}
+//    m_cornerFlags = 0;
+//    if( dby < 10 && dby > -10 ) m_cornerFlags |= Top;       // Top side
+//    if( dty < 10 && dty > -10 ) m_cornerFlags |= Bottom;    // Bottom side
+//    if( drx < 10 && drx > -10 ) m_cornerFlags |= Right;     // Right side
+//    if( dlx < 10 && dlx > -10 ) m_cornerFlags |= Left;      // Left side
+
+//    qInfo()<<"ItemGroup::hoverMoveEvent, DTY = "<< dty <<", DRX = " << drx << ", FLAG = " << m_cornerFlags;
+
+//    switch (m_cornerFlags) {
+//    case TopLeft:
+//    case BottomRight:  {
+//        setCursor(Qt::SizeFDiagCursor);
+//    } break;
+//    case TopRight:
+//    case BottomLeft: {
+//        setCursor(Qt::SizeBDiagCursor);
+//    } break;
+//    default:
+//    setCursor(Qt::ClosedHandCursor);
+//    break;
+//    }
+//}
 
 
 QVariant ItemGroup::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value)

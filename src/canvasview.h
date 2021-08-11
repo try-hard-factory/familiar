@@ -70,6 +70,9 @@ public:
 
     void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
+    void SetScale(qreal qrScale);
+    void ScaleView(qreal qFactor);
+
     void zoomFactor(double factor) noexcept { zoomFactor_ = factor; }
     double zoomFactor() const noexcept { return zoomFactor_; }
     void openFile();
