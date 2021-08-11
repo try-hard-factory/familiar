@@ -56,7 +56,7 @@ public:
     QPointF previousPosition() const;
     void setPreviousPosition(const QPointF previousPosition);
     QRectF boundingRect() const override;
-
+    void notifyMousePos(QGraphicsSceneMouseEvent *event, qreal sf);
 signals:
     void rectChanged(ItemGroup *rect);
     void previousPositionChanged();
@@ -70,7 +70,7 @@ protected:
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override;
     void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
-    void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
+//    void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
 public:
     void clearItemGroup();
@@ -115,6 +115,8 @@ private:
     void setPositionGrabbers();
     void setVisibilityGrabbers();
     void hideGrabbers();
+
+    int sem_ = 0;
 };
 
 #endif // ITEMGROUP_H

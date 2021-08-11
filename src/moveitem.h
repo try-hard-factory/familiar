@@ -37,7 +37,7 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
     void wheelEvent(QGraphicsSceneWheelEvent *event) override;
-
+//    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
 private:
     QPointF shiftMouseCoords_;
     QImage* qimage_;

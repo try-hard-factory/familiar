@@ -6,7 +6,7 @@
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
 
-DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
+DotSignal::DotSignal(QGraphicsItemGroup *parentItem, QObject *parent) :
     QObject(parent)
 {
     setZValue(999999999);
@@ -16,12 +16,13 @@ DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
     setBrush(QBrush(QColor(0, 160, 230)));
     QPen outline_pen{QColor(0, 160, 230), 0};
     setPen(outline_pen);
-    setRect(-5,-5,10,10);
+    int x = 10;
+    setRect(-x,-x,2*x,2*x);
     setDotFlags(0);
     setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
-DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
+DotSignal::DotSignal(QPointF pos, QGraphicsItemGroup *parentItem, QObject *parent) :
     QObject(parent)
 {
     setZValue(999999999);
@@ -31,7 +32,8 @@ DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
     setBrush(QBrush(QColor(0, 160, 230)));
     QPen outline_pen{QColor(0, 160, 230), 0};
     setPen(outline_pen);
-    setRect(-5,-5,10,10);
+    int x = 10;
+    setRect(-x,-x,2*x,2*x);
     setPos(pos);
     setPreviousPosition(pos);
     setDotFlags(0);
@@ -94,14 +96,12 @@ void DotSignal::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
 void DotSignal::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 {
-    qDebug()<<"DotSignal::hoverEnterEvent";
     Q_UNUSED(event)
     setBrush(QBrush(Qt::red));
 }
 
 void DotSignal::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 {
-    qDebug()<<"DotSignal::hoverLeaveEvent";
     Q_UNUSED(event)
     setBrush(QBrush(Qt::black));
 }

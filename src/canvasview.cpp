@@ -5,7 +5,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include "Logger.h"
-
+#include <QtMath>
 extern Logger logger;
 
 
@@ -125,19 +125,52 @@ void CanvasView::mouseReleaseEvent(QMouseEvent *event)
     QGraphicsView::mouseReleaseEvent(event);
 }
 
+void CanvasView::ScaleView(qreal qFactor)
+{
+    QTransform matrix = this->transform();
+    qreal qrCurrTx = 0.0, qCurrTy = 0.0;
+    matrix.map(1.0, 1.0, &qrCurrTx, &qCurrTy);
+    double dbCurrentFactor = (qrCurrTx + qCurrTy) * 0.5;
+
+    qreal qrNewTx = 0.0, qrNewTy = 0.0;
+    matrix.scale(qFactor, qFactor).map(1.0, 1.0, &qrNewTx, &qrNewTy);
+    double dbNewFactor = (qrNewTx + qrNewTy) * 0.5;
+
+    if ((0.07 <= dbNewFactor <= 100.0) ||
+        ((dbCurrentFactor < 0.07) && (dbNewFactor > dbCurrentFactor)) ||
+        ((dbCurrentFactor > 100.0) && (dbNewFactor < dbCurrentFactor)))
+    {
+        scale(qFactor, qFactor);
+//        emit SetZoomText(qFactor);
+    }
+}
+
+void CanvasView::SetScale(qreal qrScale)
+{
+    QTransform old_matrix = this->transform();
+    resetTransform();
+    translate(old_matrix.dx(), old_matrix.dy());
+    scale(qrScale, qrScale);
+//    emit SetZoomText(qrScale);
+}
 
 void CanvasView::wheelEvent(QWheelEvent *event)
 {
     // When zooming, the view stay centered over the mouse
     this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
 
-    auto numPixels = event->angleDelta();
-    double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
-    if (numPixels.y() > 0) {
-        scale(factor, factor);
-    } else {
-        scale(1/factor, 1/factor);
-    }
+    ScaleView(qrValue);
+//    auto numPixels = event->angleDelta();
+//    double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
+//    if (numPixels.y() > 0) {
+//        scale(factor, factor);
+//    } else {
+//        scale(1/factor, 1/factor);
+//    }
+
+
+    scene_->updateViewScaleFactor(transform().m11());
 
     // The event is processed
     event->accept();
