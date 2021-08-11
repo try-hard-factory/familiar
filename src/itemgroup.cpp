@@ -66,7 +66,8 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
     m_cornerFlags(0),
     m_actionFlags(ResizeState)
 {
-    setAcceptHoverEvents(true);
+    setAcceptHoverEvents(false);
+    setFiltersChildEvents(false);
     setFlags(ItemIsSelectable|ItemSendsGeometryChanges);
 }
 
@@ -170,8 +171,9 @@ QRectF ItemGroup::boundingRect() const
 }
 
 
-void ItemGroup::notifyMousePos(QGraphicsSceneMouseEvent *event, qreal sf)
+void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
 {
+    if ( (event->buttons() & Qt::LeftButton) == 0) {
     if (!cornerGrabber[0]) return;
     QPointF pt = event->scenePos();
 //    qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
@@ -195,12 +197,12 @@ void ItemGroup::notifyMousePos(QGraphicsSceneMouseEvent *event, qreal sf)
 //    qDebug()<< "DELTA top " << dby;
 //    qDebug()<< "[" << -5 / sf << "; "<< 5 / sf << "]";
 
-    if ( (event->buttons() & Qt::LeftButton) == 0) {
         m_cornerFlags = 0;
-        if( (dby < (5 / sf)) && (dby > (-5 / sf)) ) m_cornerFlags |= Top;       // Top side
-        if( (dty < (5 / sf)) && (dty > (-5 / sf)) ) m_cornerFlags |= Bottom;    // Bottom side
-        if( (drx < (5 / sf)) && (drx > (-5 / sf)) ) m_cornerFlags |= Right;     // Right side
-        if( (dlx < (5 / sf)) && (dlx > (-5 / sf)) ) m_cornerFlags |= Left;      // Left side
+        int x = 10;
+        if( (dby < (x / sf)) && (dby > (-x / sf)) ) m_cornerFlags |= Top;       // Top side
+        if( (dty < (x / sf)) && (dty > (-x / sf)) ) m_cornerFlags |= Bottom;    // Bottom side
+        if( (drx < (x / sf)) && (drx > (-x / sf)) ) m_cornerFlags |= Right;     // Right side
+        if( (dlx < (x / sf)) && (dlx > (-x / sf)) ) m_cornerFlags |= Left;      // Left side
     }
 
     //qInfo()<<"ItemGroup::mouseMoveEvent, DTY = "<< dty <<", DRX = " << drx << ", FLAG = " << m_cornerFlags;
@@ -221,10 +223,10 @@ void ItemGroup::notifyMousePos(QGraphicsSceneMouseEvent *event, qreal sf)
             sem_ = 2;
         }
     } break;
-    default:
+    default: {
         sem_ = 0;
         QGuiApplication::restoreOverrideCursor();
-        break;
+    } break;
     }
 }
 

@@ -6,7 +6,7 @@
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
 
-DotSignal::DotSignal(QGraphicsItemGroup *parentItem, QObject *parent) :
+DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
     QObject(parent)
 {
     setZValue(999999999);
@@ -22,7 +22,7 @@ DotSignal::DotSignal(QGraphicsItemGroup *parentItem, QObject *parent) :
     setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
-DotSignal::DotSignal(QPointF pos, QGraphicsItemGroup *parentItem, QObject *parent) :
+DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
     QObject(parent)
 {
     setZValue(999999999);
