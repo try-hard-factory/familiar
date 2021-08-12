@@ -174,50 +174,28 @@ QRectF ItemGroup::boundingRect() const
 void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
 {
     if ( (event->buttons() & Qt::LeftButton) == 0) {
-    if (!cornerGrabber[0]) return;
-    QPointF pt = event->scenePos();
-    qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
-//    qreal right = cornerGrabber[3]->scenePos().x();
-//    qreal left = cornerGrabber[0]->scenePos().x();
-//    qreal top = cornerGrabber[0]->scenePos().y();
-//    qreal bottom = cornerGrabber[3]->scenePos().y();
+        if (!cornerGrabber[0]) return;
+        QPointF pt = event->scenePos();
+        qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
 
-    auto tlPoint = pt - cornerGrabber[0]->scenePos();
-    auto trPoint = pt - cornerGrabber[1]->scenePos();
-    auto blPoint = pt - cornerGrabber[2]->scenePos();
-    auto brPoint = pt - cornerGrabber[3]->scenePos();
+        auto tlPoint = pt - cornerGrabber[0]->scenePos();
+        auto trPoint = pt - cornerGrabber[1]->scenePos();
+        auto blPoint = pt - cornerGrabber[2]->scenePos();
+        auto brPoint = pt - cornerGrabber[3]->scenePos();
 
-    auto tlLen = std::sqrt(std::pow(tlPoint.x(), 2) + std::pow(tlPoint.y(), 2));
-    auto trLen = std::sqrt(std::pow(trPoint.x(), 2) + std::pow(trPoint.y(), 2));
-    auto blLen = std::sqrt(std::pow(blPoint.x(), 2) + std::pow(blPoint.y(), 2));
-    auto brLen = std::sqrt(std::pow(brPoint.x(), 2) + std::pow(brPoint.y(), 2));
-    qDebug()<< "tlLen = " << tlLen << ", after sf = " << tlLen * sf;
-    qDebug()<< "trLen = " << trLen << ", after sf = " << trLen * sf;
-    qDebug()<< "blLen = " << blLen << ", after sf = " << blLen * sf;
-    qDebug()<< "brLen = " << brLen << ", after sf = " << brLen * sf;
-
-//    qreal drx = pt.x() - right;    // Distance between the mouse and the right
-//    qreal dlx = pt.x() - left;     // Distance between the mouse and the left
-//    qreal dby = pt.y() - top;      // Distance between the mouse and the top
-//    qreal dty = pt.y() - bottom;   // Distance between the mouse and the bottom
-
-//    qDebug()<< "DELTA left " << dlx;
-//    qDebug()<< "DELTA top " << dby;
-//    qDebug()<< "[" << -5 / sf << "; "<< 5 / sf << "]";
+        auto tlLen = std::sqrt(std::pow(tlPoint.x(), 2) + std::pow(tlPoint.y(), 2));
+        auto trLen = std::sqrt(std::pow(trPoint.x(), 2) + std::pow(trPoint.y(), 2));
+        auto blLen = std::sqrt(std::pow(blPoint.x(), 2) + std::pow(blPoint.y(), 2));
+        auto brLen = std::sqrt(std::pow(brPoint.x(), 2) + std::pow(brPoint.y(), 2));
 
         m_cornerFlags = 0;
-        int x = 10;
+        int x = 4;
         if ( (tlLen * sf - x) < 0  ) m_cornerFlags = (Top|Left);
         if (trLen * sf < x) m_cornerFlags = (Top|Right);
         if (blLen * sf < x) m_cornerFlags = (Bottom|Left);
         if (brLen * sf < x) m_cornerFlags = (Bottom|Right);
-//        if( (dby < (x / sf)) && (dby > (-x / sf)) ) m_cornerFlags |= Top;       // Top side
-//        if( (dty < (x / sf)) && (dty > (-x / sf)) ) m_cornerFlags |= Bottom;    // Bottom side
-//        if( (drx < (x / sf)) && (drx > (-x / sf)) ) m_cornerFlags |= Right;     // Right side
-//        if( (dlx < (x / sf)) && (dlx > (-x / sf)) ) m_cornerFlags |= Left;      // Left side
     }
 
-    //qInfo()<<"ItemGroup::mouseMoveEvent, DTY = "<< dty <<", DRX = " << drx << ", FLAG = " << m_cornerFlags;
 
     switch (m_cornerFlags) {
     case TopLeft:
@@ -461,7 +439,11 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
     auto y =(cd2_len * cb_len) / (std::sqrt(ba_len * ba_len + cb_len * cb_len));
     auto x = std::sqrt(cd2_len * cd2_len - y * y);
 
-    if (x < 10 || y < 10) return;
+    qDebug()<<x<<" "<<y;
+    if (x < 10 || y < 10) {
+        return;
+    }
+
     pos.setX(c.x()-x);
     pos.setY(c.y()-y);
 
