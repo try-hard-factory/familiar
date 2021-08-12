@@ -13,10 +13,10 @@ DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
 //    setFlags(ItemIsMovable);
     setParentItem(parentItem);
     setAcceptHoverEvents(true);
-    setBrush(QBrush(QColor(0, 160, 230)));
-    QPen outline_pen{QColor(0, 160, 230), 0};
+    setBrush(QBrush(QColor(22, 142, 153)));
+    QPen outline_pen{QColor(22, 142, 153), 0};
     setPen(outline_pen);
-    int x = 10;
+    int x = 4;
     setRect(-x,-x,2*x,2*x);
     setDotFlags(0);
     setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
@@ -29,10 +29,10 @@ DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
 //    setFlags(ItemIsMovable);
     setParentItem(parentItem);
     setAcceptHoverEvents(true);
-    setBrush(QBrush(QColor(0, 160, 230)));
-    QPen outline_pen{QColor(0, 160, 230), 0};
+    setBrush(QBrush(QColor(22, 142, 153)));
+    QPen outline_pen{QColor(22, 142, 153), 0};
     setPen(outline_pen);
-    int x = 10;
+    int x = 4;
     setRect(-x,-x,2*x,2*x);
     setPos(pos);
     setPreviousPosition(pos);

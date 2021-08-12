@@ -198,9 +198,9 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
 {
     setCacheMode(CacheNone);
     painter->save();
-    setBackgroundBrush(QBrush(QColor(77, 77, 77)));
+    setBackgroundBrush(QBrush(QColor(32, 32, 32)));
     painter->fillRect(rect, backgroundBrush());
-    scene_->setBackgroundBrush(QBrush(QColor(158, 158, 158)));
+    scene_->setBackgroundBrush(QBrush(QColor(42, 42, 42)));
     painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
     painter->setPen( QPen(QColor(247, 0, 255),2) );
     painter->drawRect(scene_->sceneRect());

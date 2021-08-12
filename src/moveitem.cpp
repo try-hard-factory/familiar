@@ -85,7 +85,7 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
 {
     painter->drawImage(boundingRect(), *qimage_);
     qreal wsize = 2;
-    QPen outline_pen{QColor(0, 160, 230), wsize};
+    QPen outline_pen{QColor(22, 142, 153), wsize};
     outline_pen.setCosmetic(true);
     painter->setPen(outline_pen);
 
