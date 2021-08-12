@@ -129,6 +129,7 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
     }
 
     setPositionGrabbers();
+    updateScaleControl();
     setVisibilityGrabbers();
 }
 
@@ -876,4 +877,20 @@ void ItemGroup::dumpBits(QString text)
             qDebug()<< bits[i];
         }
     }
+}
+
+void ItemGroup::setScaleControlFactor(qreal sf)
+{
+    controlScaleFactor_ = sf;
+
+    updateScaleControl();
+}
+
+void ItemGroup::updateScaleControl()
+{
+    if (!cornerGrabber[0]) return;
+    cornerGrabber[0]->SetScale(1/controlScaleFactor_);
+    cornerGrabber[1]->SetScale(1/controlScaleFactor_);
+    cornerGrabber[2]->SetScale(1/controlScaleFactor_);
+    cornerGrabber[3]->SetScale(1/controlScaleFactor_);
 }

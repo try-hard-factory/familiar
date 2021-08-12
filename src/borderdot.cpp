@@ -19,7 +19,7 @@ DotSignal::DotSignal(QGraphicsItem *parentItem, QObject *parent) :
     int x = 4;
     setRect(-x,-x,2*x,2*x);
     setDotFlags(0);
-    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+//    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
 DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
@@ -37,7 +37,7 @@ DotSignal::DotSignal(QPointF pos, QGraphicsItem *parentItem, QObject *parent) :
     setPos(pos);
     setPreviousPosition(pos);
     setDotFlags(0);
-    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+//    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
 DotSignal::~DotSignal()
@@ -45,6 +45,12 @@ DotSignal::~DotSignal()
 
 }
 
+void DotSignal::SetScale(qreal qrScale)
+{
+    qDebug()<<scale();
+    resetTransform();
+    setScale(qrScale);
+}
 
 QPointF DotSignal::previousPosition() const noexcept
 {

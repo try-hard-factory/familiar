@@ -57,6 +57,8 @@ public:
     void setPreviousPosition(const QPointF previousPosition);
     QRectF boundingRect() const override;
     void notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf);
+    void setScaleControlFactor(qreal sf);
+
 signals:
     void rectChanged(ItemGroup *rect);
     void previousPositionChanged();
@@ -87,6 +89,7 @@ protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
 private:
+    void updateScaleControl();
     QRectF currentSceneBoundingRect() const;
     void printDotsCoords(const std::string& text) const;
 
@@ -117,6 +120,7 @@ private:
     void hideGrabbers();
 
     int sem_ = 0;
+    qreal controlScaleFactor_ = 1;
 };
 
 #endif // ITEMGROUP_H
