@@ -66,8 +66,8 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup *parent) :
     m_cornerFlags(0),
     m_actionFlags(ResizeState)
 {
-    setAcceptHoverEvents(false);
-    setFiltersChildEvents(false);
+    setAcceptHoverEvents(true);
+    setFiltersChildEvents(true);
     setFlags(ItemIsSelectable|ItemSendsGeometryChanges);
 }
 
@@ -99,8 +99,8 @@ QRectF ItemGroup::calcNewBr()
 
 void ItemGroup::addItemToGroup(QGraphicsItem* item)
 {
-    qDebug()<<"Item pointer : "<< (void *)item;
     if (item == this || item->type() == eBorderDot) return;
+    qDebug()<<"Item pointer : "<< (void *)item;
     addToGroup(item);
 
     if (item->type() != eBorderDot) {
@@ -123,7 +123,7 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
     if (!cornerGrabber[0]) {
         for(int i = 0; i < 4; i++){
             cornerGrabber[i] = new DotSignal(this);
-            qDebug()<<"ALLOCATE: "<< (void*)cornerGrabber[i];
+//            qDebug()<<"ALLOCATE: "<< (void*)cornerGrabber[i];
         }
         hideGrabbers();
     }
@@ -176,22 +176,30 @@ void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
     if ( (event->buttons() & Qt::LeftButton) == 0) {
     if (!cornerGrabber[0]) return;
     QPointF pt = event->scenePos();
-//    qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
-    qreal right = cornerGrabber[3]->scenePos().x();
-    qreal left = cornerGrabber[0]->scenePos().x();
-    qreal top = cornerGrabber[0]->scenePos().y();
-    qreal bottom = cornerGrabber[3]->scenePos().y();
+    qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
+//    qreal right = cornerGrabber[3]->scenePos().x();
+//    qreal left = cornerGrabber[0]->scenePos().x();
+//    qreal top = cornerGrabber[0]->scenePos().y();
+//    qreal bottom = cornerGrabber[3]->scenePos().y();
 
-//    qDebug()<< "LEFT " << left;
-//    qDebug()<< "RIGHT " << right;
-//    qDebug()<< "TOP " << top;
-//    qDebug()<< "BOTTOM " << bottom;
+    auto tlPoint = pt - cornerGrabber[0]->scenePos();
+    auto trPoint = pt - cornerGrabber[1]->scenePos();
+    auto blPoint = pt - cornerGrabber[2]->scenePos();
+    auto brPoint = pt - cornerGrabber[3]->scenePos();
 
-    qreal drx = pt.x() - right;    // Distance between the mouse and the right
-    qreal dlx = pt.x() - left;     // Distance between the mouse and the left
+    auto tlLen = std::sqrt(std::pow(tlPoint.x(), 2) + std::pow(tlPoint.y(), 2));
+    auto trLen = std::sqrt(std::pow(trPoint.x(), 2) + std::pow(trPoint.y(), 2));
+    auto blLen = std::sqrt(std::pow(blPoint.x(), 2) + std::pow(blPoint.y(), 2));
+    auto brLen = std::sqrt(std::pow(brPoint.x(), 2) + std::pow(brPoint.y(), 2));
+    qDebug()<< "tlLen = " << tlLen << ", after sf = " << tlLen * sf;
+    qDebug()<< "trLen = " << trLen << ", after sf = " << trLen * sf;
+    qDebug()<< "blLen = " << blLen << ", after sf = " << blLen * sf;
+    qDebug()<< "brLen = " << brLen << ", after sf = " << brLen * sf;
 
-    qreal dby = pt.y() - top;      // Distance between the mouse and the top
-    qreal dty = pt.y() - bottom;   // Distance between the mouse and the bottom
+//    qreal drx = pt.x() - right;    // Distance between the mouse and the right
+//    qreal dlx = pt.x() - left;     // Distance between the mouse and the left
+//    qreal dby = pt.y() - top;      // Distance between the mouse and the top
+//    qreal dty = pt.y() - bottom;   // Distance between the mouse and the bottom
 
 //    qDebug()<< "DELTA left " << dlx;
 //    qDebug()<< "DELTA top " << dby;
@@ -199,10 +207,14 @@ void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
 
         m_cornerFlags = 0;
         int x = 10;
-        if( (dby < (x / sf)) && (dby > (-x / sf)) ) m_cornerFlags |= Top;       // Top side
-        if( (dty < (x / sf)) && (dty > (-x / sf)) ) m_cornerFlags |= Bottom;    // Bottom side
-        if( (drx < (x / sf)) && (drx > (-x / sf)) ) m_cornerFlags |= Right;     // Right side
-        if( (dlx < (x / sf)) && (dlx > (-x / sf)) ) m_cornerFlags |= Left;      // Left side
+        if ( (tlLen * sf - x) < 0  ) m_cornerFlags = (Top|Left);
+        if (trLen * sf < x) m_cornerFlags = (Top|Right);
+        if (blLen * sf < x) m_cornerFlags = (Bottom|Left);
+        if (brLen * sf < x) m_cornerFlags = (Bottom|Right);
+//        if( (dby < (x / sf)) && (dby > (-x / sf)) ) m_cornerFlags |= Top;       // Top side
+//        if( (dty < (x / sf)) && (dty > (-x / sf)) ) m_cornerFlags |= Bottom;    // Bottom side
+//        if( (drx < (x / sf)) && (drx > (-x / sf)) ) m_cornerFlags |= Right;     // Right side
+//        if( (dlx < (x / sf)) && (dlx > (-x / sf)) ) m_cornerFlags |= Left;      // Left side
     }
 
     //qInfo()<<"ItemGroup::mouseMoveEvent, DTY = "<< dty <<", DRX = " << drx << ", FLAG = " << m_cornerFlags;
@@ -811,7 +823,6 @@ void ItemGroup::printDotsCoords(const std::string& text) const
 
 void ItemGroup::clearItemGroup()
 {
-    qDebug()<<"!!!! clearItemGroup";
     hideGrabbers();
     auto childs = childItems();
     for (auto& it : childs) {        
@@ -820,7 +831,7 @@ void ItemGroup::clearItemGroup()
 
     for(int i = 0; i < 4; i++){
         if (cornerGrabber[i] == nullptr) continue;
-        qDebug()<<"DEALLOCATE: "<< (void*)cornerGrabber[i];
+//        qDebug()<<"DEALLOCATE: "<< (void*)cornerGrabber[i];
         delete cornerGrabber[i];
         cornerGrabber[i] = nullptr;
     }

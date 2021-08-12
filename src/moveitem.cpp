@@ -69,7 +69,6 @@ MoveItem::~MoveItem()
 
 QRectF MoveItem::boundingRect() const
 {
-    qreal wsize = 2;
     return QRectF (0, 0, rect_.width(), rect_.height());
 }
 

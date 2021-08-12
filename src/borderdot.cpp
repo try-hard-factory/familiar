@@ -45,6 +45,7 @@ DotSignal::~DotSignal()
 
 }
 
+
 QPointF DotSignal::previousPosition() const noexcept
 {
     return m_previousPosition;
