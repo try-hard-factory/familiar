@@ -185,9 +185,12 @@ std::string stateText(int idx) {
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
+    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
     auto item = getFirstItemUnderCursor(event->scenePos());
+    if (item) LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
     if (item && item->type() == ItemGroup::eBorderDot) {
         state_ = eGroupItemResizing;
+        LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
         QGraphicsScene::mousePressEvent(event);
         return;
     }
@@ -224,10 +227,12 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
 //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
-    LOG_DEBUG(logger, "\nDEBUG: mouseReleaseEvent mouse state: ", stateText(state_), "\n");
+    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
 
     if (state_ == eGroupItemResizing) {
         state_ = eMouseMoving;
+        LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+        itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
         QGraphicsScene::mouseReleaseEvent(event);
         return;
     }
@@ -258,11 +263,13 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
                     }
 
                     state_ = eMouseMoving;
+                    LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
                 }
             } else {
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
                 state_ = eMouseMoving;
+                LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
             }
         }
     }
@@ -281,10 +288,11 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
 //    qDebug()<<'\n';
 #endif
-//    LOG_DEBUG(logger, "\nDEBUG: mouseMoveEvent mouse state: ", stateText(state_), "\n");
+    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), ". Pos = ", event->scenePos().x(), ",",event->scenePos().y(), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
         if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
+//            LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
         }
 
 //        if (state_ == eMouseSelection) {
@@ -320,10 +328,24 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
 {
+    qDebug()<<"scene coords = "<<p;
     auto childs = this->items(Qt::DescendingOrder);
 
     for (auto& it : childs) {
-        if (it != itemGroup_ && it->sceneBoundingRect().contains(p)) {  return it; }
+        if (it == itemGroup_) continue;
+//        qDebug()<<"item type = "<<it->type()<<" BR ="<<it->sceneBoundingRect();
+        if (it->type() == 65537) {
+            //qDebug()<<it->scenePos();
+            auto point = p - it->scenePos();
+            auto len = std::sqrt(std::pow(point.x(), 2) + std::pow(point.y(), 2));
+            int x = 10;
+            qDebug()<<len << " " <<(len - x);
+            if ( (len * parentViewScaleFactor_ - x) < 0 ) return it;
+        } else {
+            if (it->sceneBoundingRect().contains(p)) {
+                return it;
+            }
+        }
     }
 
     return nullptr;
