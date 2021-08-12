@@ -288,7 +288,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
 //    qDebug()<<'\n';
 #endif
-    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), ". Pos = ", event->scenePos().x(), ",",event->scenePos().y(), "\n");
+//    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), ". Pos = ", event->scenePos().x(), ",",event->scenePos().y(), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
         if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
@@ -333,13 +333,10 @@ QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
 
     for (auto& it : childs) {
         if (it == itemGroup_) continue;
-//        qDebug()<<"item type = "<<it->type()<<" BR ="<<it->sceneBoundingRect();
         if (it->type() == 65537) {
-            //qDebug()<<it->scenePos();
             auto point = p - it->scenePos();
             auto len = std::sqrt(std::pow(point.x(), 2) + std::pow(point.y(), 2));
-            int x = 10;
-            qDebug()<<len << " " <<(len - x);
+            int x = 4;
             if ( (len * parentViewScaleFactor_ - x) < 0 ) return it;
         } else {
             if (it->sceneBoundingRect().contains(p)) {
@@ -418,7 +415,7 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     if (!mainSelArea_.isReady()) return;
     painter->save();
     qreal wsize = 2;
-    QPen outline_pen{QColor(0, 160, 230), wsize};
+    QPen outline_pen{QColor(22, 142, 153), wsize};
     outline_pen.setCosmetic(true);
     painter->setPen( outline_pen );
     auto r = itemGroup_->sceneBoundingRect();
