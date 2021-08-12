@@ -28,7 +28,11 @@ public:
     void addImageToSceneToPosition(QImage&& image, QPointF position);
     std::string fml_header();
     QByteArray fml_payload();
-    void updateViewScaleFactor(qreal newval) { parentViewScaleFactor_ = newval; }
+    void updateViewScaleFactor(qreal newval) {
+        itemGroup_->setScaleControlFactor(newval);
+        parentViewScaleFactor_ = newval;
+    }
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

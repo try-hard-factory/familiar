@@ -158,16 +158,16 @@ void CanvasView::wheelEvent(QWheelEvent *event)
 {
     // When zooming, the view stay centered over the mouse
     this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
+//    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
 
-    ScaleView(qrValue);
-//    auto numPixels = event->angleDelta();
-//    double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
-//    if (numPixels.y() > 0) {
-//        scale(factor, factor);
-//    } else {
-//        scale(1/factor, 1/factor);
-//    }
+//    ScaleView(qrValue);
+    auto numPixels = event->angleDelta();
+    double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
+    if (numPixels.y() > 0) {
+        scale(factor, factor);
+    } else {
+        scale(1/factor, 1/factor);
+    }
 
 
     scene_->updateViewScaleFactor(transform().m11());
