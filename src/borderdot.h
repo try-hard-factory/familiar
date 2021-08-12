@@ -36,7 +36,6 @@ public:
     void setPreviousPosition(const QPointF previousPosition) noexcept;
 
     void setDotFlags(unsigned int flags);
-
 signals:
     void previousPositionChanged();
     void signalMouseRelease();

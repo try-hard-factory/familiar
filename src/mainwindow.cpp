@@ -35,9 +35,9 @@ MainWindow::MainWindow(QWidget *parent)
 //    canvasWidget->addImage("kot1.png", {250,50-x});
 //    canvasWidget->addImage("kot1.png", {450,50-x});
 
-    canvasWidget->addImage("kot1.png", {200-x, 50-x});
+    canvasWidget->addImage("kot1.png", {200-x, 150-x});
     canvasWidget->addImage("kot1.png", {450-x, 50-x});
-    canvasWidget->addImage("kot.png", {700-x, 50-x});
+    canvasWidget->addImage("kot.png", {700-x, 0-x});
 
 //    canvasWidget->addImage("bender.png", {1300,1300});
 
