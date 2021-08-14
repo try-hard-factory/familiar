@@ -328,12 +328,14 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 
 QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
 {
-    qDebug()<<"scene coords = "<<p;
+
     auto childs = this->items(Qt::DescendingOrder);
 
     for (auto& it : childs) {
         if (it == itemGroup_) continue;
-        if (it->type() == 65537) {
+        if (it->type() == 65537) { // borderdot control
+            // NOTE: Maybe I must reimplement QGraphicsItem::contains,
+            //       but I don't know how yet.
             auto point = p - it->scenePos();
             auto len = std::sqrt(std::pow(point.x(), 2) + std::pow(point.y(), 2));
             int x = 4;

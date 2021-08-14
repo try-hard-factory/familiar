@@ -63,7 +63,10 @@ void MainWindow::on_action_saveas_triggered()
     fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
 
     if (fileDialog_->exec() == QDialog::Accepted) {
-        QString out_file(fileDialog_->selectedFiles().value(0) + fileExt_.at(fileDialog_->selectedNameFilter()));
+        QString out_file(fileDialog_->selectedFiles().value(0));
+        if (!out_file.contains(fileExt_.at(fileDialog_->selectedNameFilter()), Qt::CaseInsensitive)) {
+            out_file.append(fileExt_.at(fileDialog_->selectedNameFilter()));
+        }
         qDebug()<<out_file;
         qDebug()<<fileDialog_->directory();
         QString header_=QString::fromStdString(fml_file_buffer::create_header(canvasWidget));

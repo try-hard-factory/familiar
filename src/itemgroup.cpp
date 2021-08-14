@@ -177,7 +177,6 @@ void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
     if ( (event->buttons() & Qt::LeftButton) == 0) {
         if (!cornerGrabber[0]) return;
         QPointF pt = event->scenePos();
-        qDebug()<<"CanvasScene::notifyMousePos SF: "<<sf<<", scenePos: "<<event->scenePos();
 
         auto tlPoint = pt - cornerGrabber[0]->scenePos();
         auto trPoint = pt - cornerGrabber[1]->scenePos();
@@ -191,7 +190,7 @@ void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
 
         m_cornerFlags = 0;
         int x = 4;
-        if ( (tlLen * sf - x) < 0  ) m_cornerFlags = (Top|Left);
+        if ( (tlLen * sf - x) < 0 ) m_cornerFlags = (Top|Left);
         if (trLen * sf < x) m_cornerFlags = (Top|Right);
         if (blLen * sf < x) m_cornerFlags = (Bottom|Left);
         if (brLen * sf < x) m_cornerFlags = (Bottom|Right);
@@ -440,7 +439,6 @@ void ItemGroup::resizeTopLeft(const QPointF &pt)
     auto y =(cd2_len * cb_len) / (std::sqrt(ba_len * ba_len + cb_len * cb_len));
     auto x = std::sqrt(cd2_len * cd2_len - y * y);
 
-    qDebug()<<x<<" "<<y;
     if (x < 10 || y < 10) {
         return;
     }

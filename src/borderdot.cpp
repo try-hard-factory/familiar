@@ -47,7 +47,6 @@ DotSignal::~DotSignal()
 
 void DotSignal::SetScale(qreal qrScale)
 {
-    qDebug()<<scale();
     resetTransform();
     setScale(qrScale);
 }
