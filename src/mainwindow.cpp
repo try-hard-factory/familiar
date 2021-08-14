@@ -5,15 +5,23 @@
 #include <QLayout>
 
 #include "fml_file_buffer.h"
+#include "project_settings.h"
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+    : QMainWindow(parent,Qt::Window
+                  | Qt::CustomizeWindowHint
+                  | Qt::WindowSystemMenuHint
+                  | Qt::WindowMinimizeButtonHint
+                  | Qt::WindowMaximizeButtonHint
+                  | Qt::WindowCloseButtonHint)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
 
+    projectSettings_ = new project_settings(this);
     canvasWidget = new CanvasView();
     fileDialog_ = new QFileDialog(this);
+
     fileDialog_->setNameFilter(tr("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)"));
     fileExt_["Familiar (*.fml)"] = ".fml";
     fileExt_["SVG (*.svg)"] = ".svg";
@@ -21,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     fileDialog_->setDirectory( QDir::homePath() );
     fileDialog_->setOption(QFileDialog::DontUseNativeDialog, true);
+
 
     qreal x = 000;
 //    canvasWidget->addImage("kot.png", {-1000, -1000-x});
@@ -86,4 +95,10 @@ void MainWindow::on_action_open_triggered()
         qDebug()<< fileDialog_->selectedFiles().value(0);
         fml_file_buffer::open_file(canvasWidget, fileDialog_->selectedFiles().value(0));
     }
+}
+
+void MainWindow::on_action_quit_triggered()
+{
+    qDebug()<<"on_action_quit_triggered";
+    QApplication::quit();
 }
