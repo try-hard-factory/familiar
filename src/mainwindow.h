@@ -19,7 +19,7 @@ QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
 
-
+class project_settings;
 class QFileDialog;
 /**
  * \~russian @brief The MainWindow класс
@@ -49,6 +49,9 @@ public:
     ~MainWindow();
 
 private slots:
+    void on_action_quit_triggered();
+
+private slots:
     /**
      * \~russian @brief QT обработчик для кнопки открытия файла
      *
@@ -68,5 +71,6 @@ private:
     CanvasView* canvasWidget; ///< \~english app working place \~russian рабочее пространство приложения
     QFileDialog* fileDialog_; ///< \~english file dialog operations \~russian диалоговое окно для операций с файлами
     std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
+    project_settings* projectSettings_;
 };
 #endif // MAINWINDOW_H

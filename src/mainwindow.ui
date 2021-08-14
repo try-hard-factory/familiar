@@ -26,10 +26,13 @@
    </property>
    <widget class="QMenu" name="menu">
     <property name="title">
-     <string>file</string>
+     <string>menu</string>
     </property>
-    <addaction name="action_saveas"/>
     <addaction name="action_open"/>
+    <addaction name="action_save"/>
+    <addaction name="action_saveas"/>
+    <addaction name="action_settings"/>
+    <addaction name="action_quit"/>
    </widget>
    <addaction name="menu"/>
   </widget>
@@ -41,6 +44,21 @@
   <action name="action_open">
    <property name="text">
     <string>open</string>
+   </property>
+  </action>
+  <action name="action_quit">
+   <property name="text">
+    <string>quit</string>
+   </property>
+  </action>
+  <action name="action_save">
+   <property name="text">
+    <string>save</string>
+   </property>
+  </action>
+  <action name="action_settings">
+   <property name="text">
+    <string>settings</string>
    </property>
   </action>
  </widget>

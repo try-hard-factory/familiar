@@ -59,6 +59,8 @@ set(PROJECT_SOURCES
         image_downloader.h
         fml_file_buffer.cpp
         fml_file_buffer.h
+        project_settings.cpp
+        project_settings.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
