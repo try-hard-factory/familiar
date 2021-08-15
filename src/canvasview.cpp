@@ -6,6 +6,8 @@
 #include <QMessageBox>
 #include "Logger.h"
 #include <QtMath>
+#include "project_settings.h"
+
 extern Logger logger;
 
 
@@ -31,6 +33,11 @@ CanvasView::CanvasView(QWidget* parent) :
 CanvasView::~CanvasView()
 {
     delete scene_;
+}
+
+void CanvasView::setProjectSettings(project_settings* ps)
+{
+    scene_->setProjectSettings(ps);
 }
 
 

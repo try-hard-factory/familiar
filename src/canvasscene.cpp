@@ -14,6 +14,7 @@
 #include "Logger.h"
 
 #include <regex>
+#include "project_settings.h"
 
 extern Logger logger;
 
@@ -43,6 +44,7 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
             itemGroup_->removeItemFromGroup(it);
             removeItem(it);
         }
+        projectSettings_->change(true);
         break;
     case (Qt::Key_Insert):
         if (event->modifiers() & Qt::ShiftModifier) {
@@ -65,8 +67,10 @@ void CanvasScene::pasteFromClipboard()
         QImage image = qvariant_cast<QImage>(mimedata->imageData());
         if (!image.isNull()) {
             handleImageFromClipboard(image);
+            projectSettings_->change(true);
         } else if (mimedata->hasHtml()) {
             handleHtmlFromClipboard(mimedata->html());
+            projectSettings_->change(true);
         }
         if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
         qDebug()<<image.rect();
@@ -143,6 +147,11 @@ QByteArray CanvasScene::fml_payload()
     return arr;
 }
 
+void CanvasScene::setProjectSettings(project_settings* ps)
+{
+    projectSettings_ = ps;
+}
+
 
 void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 {
@@ -153,6 +162,7 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
         qDebug()<<"dropEvent html"<<mimeData->html();
         qDebug()<<"dropEvent url"<<mimeData->urls();
         imgdownloader_->download(mimeData->urls()[0].toString(), event->scenePos());
+        projectSettings_->change(true);
     } else if (mimeData->hasUrls()) {
         qreal x = 0;
         ++zCounter_;
@@ -168,6 +178,7 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
             x += item->getRect().width();
             addItem(item);
         }
+        projectSettings_->change(true);
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
