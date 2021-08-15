@@ -301,6 +301,9 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 #endif
 //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), ". Pos = ", event->scenePos().x(), ",",event->scenePos().y(), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
+        if (state_ == eGroupItemResizing || state_ == eGroupItemMoving) {
+            projectSettings_->change(true);
+        }
         if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
 //            LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
