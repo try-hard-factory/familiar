@@ -17,6 +17,7 @@
 #include <QGraphicsPixmapItem>
 #include <QScrollBar>
 
+class project_settings;
 class CanvasScene;
 
 /**
@@ -32,10 +33,12 @@ public:
      * \~russian @brief конструктор
      * \~russian @param parent - указатель на QWidget(может быть nullptr - это
      *                           нормально)
+     * \~russian @param ps - настройки проекта
      *
      * \~english @brief main window class constructor
      * \~english @param parent - pointer to QWidget parent(may be nullptr - it
      *                           is normal)
+     * \~english @param ps - project settings
      */
     CanvasView(QWidget* parent = 0);
 
@@ -45,6 +48,15 @@ public:
      * \~english @brief class destructor
      */
     ~CanvasView();
+
+    /**
+     * \~russian @brief setProjectSettings
+     * \~russian @param ps - настройки проекта
+     *
+     * \~english @brief setProjectSettings
+     * \~english @param ps - project settings
+     */
+    void setProjectSettings(project_settings* ps);
 
     /**
      * \~russian @brief добавить изображение на сцену

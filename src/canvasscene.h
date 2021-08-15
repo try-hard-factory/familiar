@@ -15,6 +15,8 @@ enum EState {
     eGroupItemResizing    = 0x0003,
 };
 
+class project_settings;
+
 class CanvasScene : public QGraphicsScene
 {
 public:
@@ -32,6 +34,8 @@ public:
         itemGroup_->setScaleControlFactor(newval);
         parentViewScaleFactor_ = newval;
     }
+
+    void setProjectSettings(project_settings* ps);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -64,6 +68,7 @@ private:
     ImageDownloader* imgdownloader_ = nullptr;
 
     qreal parentViewScaleFactor_ = 1;
+    project_settings* projectSettings_;
 };
 
 #endif // CANVASSCENE_H

@@ -49,6 +49,9 @@ public:
     ~MainWindow();
 
 private slots:
+    void on_action_save_triggered();
+
+private slots:
     void on_action_quit_triggered();
 
 private slots:
