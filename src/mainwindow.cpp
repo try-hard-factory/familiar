@@ -81,7 +81,7 @@ void MainWindow::on_action_saveas_triggered()
 
         QFileInfo fi(out_file);
         projectSettings_->title(fi.fileName());
-        projectSettings_->path(fi.absolutePath());
+        projectSettings_->path(fi.absoluteFilePath());
 
         qDebug()<<out_file;
         qDebug()<<fileDialog_->directory();
@@ -103,7 +103,7 @@ void MainWindow::on_action_open_triggered()
         QString file_name(fileDialog_->selectedFiles().value(0));
         QFileInfo fi(file_name);
         projectSettings_->title(fi.fileName());
-        projectSettings_->path(fi.absolutePath());
+        projectSettings_->path(fi.absoluteFilePath());
         projectSettings_->change(false);
 
         fml_file_buffer::open_file(canvasWidget, file_name);
@@ -126,7 +126,7 @@ void MainWindow::on_action_quit_triggered()
 
             QFileInfo fi(out_file);
             projectSettings_->title(fi.fileName());
-            projectSettings_->path(fi.absolutePath());
+            projectSettings_->path(fi.absoluteFilePath());
 
             qDebug()<<out_file;
             qDebug()<<fileDialog_->directory();
@@ -156,7 +156,7 @@ void MainWindow::on_action_save_triggered()
 
             QFileInfo fi(out_file);
             projectSettings_->title(fi.fileName());
-            projectSettings_->path(fi.absolutePath());
+            projectSettings_->path(fi.absoluteFilePath());
 
             qDebug()<<out_file;
             qDebug()<<fileDialog_->directory();
@@ -172,7 +172,7 @@ void MainWindow::on_action_save_triggered()
 
         }
     } else {
-        QString out_file(projectSettings_->path() + projectSettings_->title());
+        QString out_file(projectSettings_->path());
         projectSettings_->title(projectSettings_->title());
 
         QString header_=QString::fromStdString(fml_file_buffer::create_header(canvasWidget));

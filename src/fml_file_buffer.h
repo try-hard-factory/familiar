@@ -15,6 +15,7 @@
 #include <string>
 #include <QByteArray>
 #include <QFile>
+#include <QMessageBox>
 
 /**
  * \~russian @brief The fml_file_buffer класс
@@ -38,15 +39,16 @@ public:
     static void save_to_file(QString filename, QByteArray& header, QByteArray& payload) {
         qDebug()<<"Header size: "<<header.size();
         QFile file(filename);
-        if (!file.open(QFile::WriteOnly)) {
-           //      ...
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            qDebug()<<"Unnable to save file";
             return;
         }
-
+        qDebug()<<filename<<" "<<file.size();
         uint32_t hs = header.size();
         file.write((const char*)&hs, sizeof (hs));
         file.write(header);
         file.write(payload, payload.size());
+        qDebug()<<file.size();
         file.close();
     }
 
