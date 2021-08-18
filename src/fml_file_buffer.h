@@ -37,18 +37,17 @@ public:
     }
 
     static void save_to_file(QString filename, QByteArray& header, QByteArray& payload) {
-        qDebug()<<"Header size: "<<header.size();
         QFile file(filename);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
             qDebug()<<"Unnable to save file";
             return;
         }
-        qDebug()<<filename<<" "<<file.size();
+
         uint32_t hs = header.size();
         file.write((const char*)&hs, sizeof (hs));
         file.write(header);
         file.write(payload, payload.size());
-        qDebug()<<file.size();
+
         file.close();
     }
 
@@ -59,19 +58,16 @@ public:
             return;
         }
 
-
-
         uint32_t hs = 0;
         file.read((char *)&hs, sizeof(hs));
 
         QByteArray header_b = file.read(hs);
         QString header(header_b);
 
-        qDebug()<<header;
         QStringList list = header.split(';');
         for (auto& it : list) {
             if (it.isEmpty()) break;
-            qDebug()<<it;
+//            qDebug()<<it;
             QStringList img_info = it.split(',');
             double x = img_info[0].toDouble();
             double y = img_info[1].toDouble();
@@ -81,12 +77,12 @@ public:
             double bw = img_info[5].toDouble();
             size_t sizepix = img_info[6].toUInt();
             QImage::Format format = (QImage::Format)img_info[7].toUInt();
-            qDebug()<<x;
-            qDebug()<<y;
-            qDebug()<<w;
-            qDebug()<<h;
-            qDebug()<<sizepix;
-            qDebug()<<format;
+//            qDebug()<<x;
+//            qDebug()<<y;
+//            qDebug()<<w;
+//            qDebug()<<h;
+//            qDebug()<<sizepix;
+//            qDebug()<<format;
             QByteArray img_payload = file.read(sizepix);
             QRect br = QRect(x, y, bw, bh);
             obj->addImage(img_payload, w, h, br, w*4, format);
