@@ -1,3 +1,7 @@
+
+
+
+
 # familiar~
 cd build
 
@@ -5,6 +9,7 @@ cmake ..
 
 make
 
-## gif
-![Alt Text](https://media.giphy.com/media/oJzXVfELjT0jrl2mu1/giphy.gif)
+## example
+https://user-images.githubusercontent.com/9413534/129893087-aacb513a-322b-4bdb-b9e8-8482acb09689.mp4
+
 
