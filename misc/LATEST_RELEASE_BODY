@@ -1,6 +1,11 @@
 Changes:
-  - open/save file feature
-  - some research
-  - docs init
-
+  - right logic for close event
+  - Part of feature FileActions class
+  - cleanup workplace unction, fix z value
+  - chage flag for groupmoving
+  - some fix for save btn
+  - some logic for save/saveas/open/quit
+  - add project settings, window title
+  - some bugfix
+  - docs
 
