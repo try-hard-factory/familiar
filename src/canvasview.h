@@ -87,10 +87,11 @@ public:
 
     void zoomFactor(double factor) noexcept { zoomFactor_ = factor; }
     double zoomFactor() const noexcept { return zoomFactor_; }
-    void openFile();
-    void saveAsFile();
+
     std::string fml_header();
     QByteArray fml_payload();
+
+    void cleanupWorkplace();
 
 public slots:
     /**

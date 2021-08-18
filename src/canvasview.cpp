@@ -41,18 +41,6 @@ void CanvasView::setProjectSettings(project_settings* ps)
 }
 
 
-void CanvasView::openFile()
-{
-
-}
-
-
-void CanvasView::saveAsFile()
-{
-
-}
-
-
 std::string CanvasView::fml_header()
 {
     return scene_->fml_header();
@@ -212,6 +200,11 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
     painter->setPen( QPen(QColor(247, 0, 255),2) );
     painter->drawRect(scene_->sceneRect());
     painter->restore();
+}
+
+void CanvasView::cleanupWorkplace()
+{
+    scene_->cleanupWorkplace();
 }
 
 
