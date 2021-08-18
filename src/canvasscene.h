@@ -37,6 +37,7 @@ public:
 
     void setProjectSettings(project_settings* ps);
 
+    void cleanupWorkplace();
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
