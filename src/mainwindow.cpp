@@ -72,16 +72,17 @@ void MainWindow::openFile()
 {
     int ret = -1;
     if (projectSettings_->modified() == true) {
-        ret = messageShow("Warning!", "You have unsaved documents!\n"
-                "Do you wish to continue?", QMessageBox::Yes | QMessageBox::No);
+        ret = QMessageBox::warning( this, "Warning!",
+                                                    tr("Do you wish to continue?\n"),
+                                                    QMessageBox::Yes | QMessageBox::No,
+                                                    QMessageBox::No);
     }
 
     if (ret == QMessageBox::No) return;
 
-    cleanupWorkplace();
-
     fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
     if (fileDialog_->exec() == QDialog::Accepted) {
+        cleanupWorkplace();
         qDebug()<< fileDialog_->selectedFiles().value(0);
         QString file_name(fileDialog_->selectedFiles().value(0));
         QFileInfo fi(file_name);
@@ -101,12 +102,11 @@ void MainWindow::saveFile(const QString& path)
     fml_file_buffer::save_to_file(path, byteHeader, payload);
 }
 
-void MainWindow::saveFile()
+int MainWindow::saveFile()
 {
     QFile file(projectSettings_->path());
-    if (!file.exists()) {
-        saveFileAs();
-        return;
+    if (!file.exists()) {        
+        return saveFileAs();
     }
 
     QString out_file(projectSettings_->path());
@@ -115,13 +115,16 @@ void MainWindow::saveFile()
     saveFile(out_file);
 
     projectSettings_->modified(false);
+
+    return QDialog::Accepted;
 }
 
-void MainWindow::saveFileAs()
+int MainWindow::saveFileAs()
 {
     fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
+    auto retdialog = fileDialog_->exec();
 
-    if (fileDialog_->exec() == QDialog::Accepted) {
+    if (retdialog == QDialog::Accepted) {
         QString out_file(fileDialog_->selectedFiles().value(0));
         if (!out_file.contains(fileExt_.at(fileDialog_->selectedNameFilter()), Qt::CaseInsensitive)) {
             out_file.append(fileExt_.at(fileDialog_->selectedNameFilter()));
@@ -134,7 +137,10 @@ void MainWindow::saveFileAs()
         saveFile(out_file);
 
         projectSettings_->modified(false);
+        return QDialog::Accepted;
     }
+
+    return QDialog::Rejected;
 }
 
 void MainWindow::quitProject()
@@ -142,12 +148,17 @@ void MainWindow::quitProject()
     if (projectSettings_->modified() == false) {
         QApplication::quit();
     } else {
-        int ret = messageShow("Warning!", "You have unsaved documents!", QMessageBox::Save | QMessageBox::Cancel);
+        QMessageBox::StandardButton resBtn = QMessageBox::warning( this, "Warning!",
+                                                                    tr("You have unsaved documents!\n"),
+                                                                    QMessageBox::Save | QMessageBox::Cancel,
+                                                                    QMessageBox::Cancel);
 
-        if (ret == QMessageBox::Save) {
-            saveFile();
-            QApplication::quit();
-        } else if (ret == QMessageBox::Cancel) {
+        if (resBtn == QMessageBox::Save) {
+            if (saveFile() == QDialog::Accepted) {
+                projectSettings_->modified(false);
+                QApplication::quit();
+            }
+        } else if (resBtn == QMessageBox::Cancel) {
             return;
         }
     }
@@ -158,42 +169,26 @@ void MainWindow::cleanupWorkplace()
     canvasWidget->cleanupWorkplace();
 }
 
-void centerWidget(QWidget *widget, QWidget *host = Q_NULLPTR) {
-    if (!host) {
-        host = widget->parentWidget();
-    }
 
-    if (host) {
-        auto hostRect = host->geometry();
-        auto point = hostRect.center() - QPoint(widget->baseSize().width()/2,
-                                                widget->baseSize().height()/2);
-        widget->move(point);
-    } else {
-        QRect screenGeometry = QGuiApplication::screens()[0]->geometry();
-        int x = (screenGeometry.width() - widget->width()) / 2;
-        int y = (screenGeometry.height() - widget->height()) / 2;
-        widget->move(x, y);
-    }
-}
-
-
-int MainWindow::messageShow(const QString& title, const QString& text, QMessageBox::StandardButtons b)
+void MainWindow::closeEvent(QCloseEvent *event)
 {
-    QMessageBox msg;
-    msg.setBaseSize(QSize(300,140));// I don't think that it is correct way.
-                                    // But I have to use it because QMessageBox::size()
-                                    // method returns the wrong value that I expect = (640x480)
-                                    // I think i'll create custom messages window
-    msg.setWindowTitle(title);
-    msg.setIcon(QMessageBox::Warning);
-    msg.setText(text);
-
-    msg.setStandardButtons(b);
-    msg.setDefaultButton(QMessageBox::No);
-
-    centerWidget(&msg, this);
-
-    return msg.exec();
+    if (projectSettings_->modified() == false) {
+        event->accept();
+    } else {
+        QMessageBox::StandardButton resBtn = QMessageBox::warning( this, "Warning!",
+                                                                    tr("You have unsaved documents!\n"),
+                                                                    QMessageBox::Save | QMessageBox::Cancel,
+                                                                    QMessageBox::Cancel);
+        if (resBtn == QMessageBox::Save) {
+            if (saveFile() == QDialog::Accepted) {
+                projectSettings_->modified(false);
+                event->accept();
+            }
+            event->ignore();
+        } else if (resBtn == QMessageBox::Cancel) {
+            event->ignore();
+        }
+    }
 }
 
 
@@ -220,5 +215,5 @@ void MainWindow::on_action_save_triggered()
 
 void MainWindow::on_action_settings_triggered()
 {
-cleanupWorkplace();
+
 }
