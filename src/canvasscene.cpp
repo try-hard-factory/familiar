@@ -44,7 +44,7 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
             itemGroup_->removeItemFromGroup(it);
             removeItem(it);
         }
-        projectSettings_->change(true);
+        projectSettings_->modified(true);
         break;
     case (Qt::Key_Insert):
         if (event->modifiers() & Qt::ShiftModifier) {
@@ -67,10 +67,10 @@ void CanvasScene::pasteFromClipboard()
         QImage image = qvariant_cast<QImage>(mimedata->imageData());
         if (!image.isNull()) {
             handleImageFromClipboard(image);
-            projectSettings_->change(true);
+            projectSettings_->modified(true);
         } else if (mimedata->hasHtml()) {
             handleHtmlFromClipboard(mimedata->html());
-            projectSettings_->change(true);
+            projectSettings_->modified(true);
         }
         if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
         qDebug()<<image.rect();
@@ -152,6 +152,19 @@ void CanvasScene::setProjectSettings(project_settings* ps)
     projectSettings_ = ps;
 }
 
+void CanvasScene::cleanupWorkplace()
+{
+    itemGroup_->clearItemGroup();
+
+    auto childs = this->items(Qt::DescendingOrder);
+
+    for (auto& it : childs) {
+        if (it == itemGroup_) continue;
+        removeItem(it);
+//        delete it;
+    }
+}
+
 
 void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
 {
@@ -159,14 +172,16 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
     if (!mimeData) { return; }
 
     if (mimeData->hasHtml()) {
+        itemGroup_->clearItemGroup();
         qDebug()<<"dropEvent html"<<mimeData->html();
         qDebug()<<"dropEvent url"<<mimeData->urls();
         imgdownloader_->download(mimeData->urls()[0].toString(), event->scenePos());
-        projectSettings_->change(true);
+        projectSettings_->modified(true);
     } else if (mimeData->hasUrls()) {
+        itemGroup_->clearItemGroup();
         qreal x = 0;
-        ++zCounter_;
         foreach (const QUrl &url, event->mimeData()->urls()) {
+//            ++zCounter_;
             QString fileName = url.toLocalFile();
             qDebug() << "Dropped file:" << fileName<<
                         ", formats: "<< event->mimeData()->formats();
@@ -177,8 +192,11 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
             item->setPos({new_x+x, new_y});
             x += item->getRect().width();
             addItem(item);
+            itemGroup_->addItemToGroup(item);
         }
-        projectSettings_->change(true);
+        itemGroup_->incZ();
+        mainSelArea_.setReady(true);
+        projectSettings_->modified(true);
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
@@ -196,9 +214,13 @@ std::string stateText(int idx) {
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
+//    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
     auto item = getFirstItemUnderCursor(event->scenePos());
-    if (item) LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
+    if (item && item->type() != ItemGroup::eBorderDot) {
+        item->setZValue(++zCounter_);
+        qDebug()<<"zcounter="<<zCounter_<<", Z VALUE="<<item->zValue();
+//        LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
+    }
     if (item && item->type() == ItemGroup::eBorderDot) {
         state_ = eGroupItemResizing;
         LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
@@ -302,7 +324,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), ". Pos = ", event->scenePos().x(), ",",event->scenePos().y(), "\n");
     if ( (event->buttons() & Qt::LeftButton)) {
         if (state_ == eGroupItemResizing || state_ == eGroupItemMoving) {
-            projectSettings_->change(true);
+            projectSettings_->modified(true);
         }
         if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing ) {
             state_ = eGroupItemMoving;
