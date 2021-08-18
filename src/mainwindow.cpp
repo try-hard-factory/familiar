@@ -46,9 +46,9 @@ MainWindow::MainWindow(QWidget *parent)
 //    canvasWidget->addImage("kot1.png", {250,50-x});
 //    canvasWidget->addImage("kot1.png", {450,50-x});
 
-    canvasWidget->addImage("kot1.png", {200-x, 150-x});
-    canvasWidget->addImage("kot1.png", {450-x, 50-x});
-    canvasWidget->addImage("kot.png", {700-x, 0-x});
+//    canvasWidget->addImage("kot1.png", {200-x, 150-x});
+//    canvasWidget->addImage("kot1.png", {450-x, 50-x});
+//    canvasWidget->addImage("kot.png", {700-x, 0-x});
 
 //    canvasWidget->addImage("bender.png", {1300,1300});
 
@@ -73,7 +73,7 @@ void MainWindow::openFile()
     int ret = -1;
     if (projectSettings_->modified() == true) {
         ret = QMessageBox::warning( this, "Warning!",
-                                                    tr("Do you wish to continue?\n"),
+                                                    tr("You have unsaved documents!\nDo you wish to continue?\n"),
                                                     QMessageBox::Yes | QMessageBox::No,
                                                     QMessageBox::No);
     }
@@ -149,15 +149,18 @@ void MainWindow::quitProject()
         QApplication::quit();
     } else {
         QMessageBox::StandardButton resBtn = QMessageBox::warning( this, "Warning!",
-                                                                    tr("You have unsaved documents!\n"),
-                                                                    QMessageBox::Save | QMessageBox::Cancel,
+                                                                    tr("You have unsaved documents!\nDo you want to save it?"),
+                                                                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
                                                                     QMessageBox::Cancel);
 
-        if (resBtn == QMessageBox::Save) {
+        if (resBtn == QMessageBox::Yes) {
             if (saveFile() == QDialog::Accepted) {
                 projectSettings_->modified(false);
                 QApplication::quit();
             }
+        } else if (resBtn == QMessageBox::No) {
+            projectSettings_->modified(false);
+            QApplication::quit();
         } else if (resBtn == QMessageBox::Cancel) {
             return;
         }
@@ -176,16 +179,18 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->accept();
     } else {
         QMessageBox::StandardButton resBtn = QMessageBox::warning( this, "Warning!",
-                                                                    tr("You have unsaved documents!\n"),
-                                                                    QMessageBox::Save | QMessageBox::Cancel,
-                                                                    QMessageBox::Cancel);
-        if (resBtn == QMessageBox::Save) {
+                                                                    tr("You have unsaved documents!\nDo you want to save it?"),
+                                                                   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                                                                   QMessageBox::Cancel);
+        if (resBtn == QMessageBox::Yes) {
             if (saveFile() == QDialog::Accepted) {
                 projectSettings_->modified(false);
                 event->accept();
             }
             event->ignore();
-        } else if (resBtn == QMessageBox::Cancel) {
+        } else if (resBtn == QMessageBox::No) {
+            event->accept();
+        }  else if (resBtn == QMessageBox::Cancel) {
             event->ignore();
         }
     }
