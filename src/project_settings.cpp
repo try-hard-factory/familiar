@@ -18,7 +18,7 @@ void project_settings::path(QString p)
     path_ = p;
 }
 
-void project_settings::change(bool s)
+void project_settings::modified(bool s)
 {
     changed_ = s;
     if (changed_ == true) {

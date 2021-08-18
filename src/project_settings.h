@@ -16,8 +16,8 @@ public:
     void path(QString t);
     const QString& path() const noexcept  { return path_;}
 
-    void change(bool s);
-    bool change() const noexcept { return changed_; }
+    void modified(bool s);
+    bool modified() const noexcept { return changed_; }
 
     bool isDefaultProjectName() const { return (0 == title_.compare("Untitled project")); }
 private:
