@@ -13,6 +13,7 @@
  */
 
 #include <QMainWindow>
+#include <QMessageBox>
 #include <canvasview.h>
 
 QT_BEGIN_NAMESPACE
@@ -48,13 +49,26 @@ public:
      */
     ~MainWindow();
 
+    void centerWidgets(QWidget *widget, QWidget *host);
+
+    /* Part of feature FileActions class */
+    void openFile();
+    void saveFile();
+    void saveFileAs();
+    void quitProject();
+
+    void cleanupWorkplace();
+
+    int messageShow(const QString& title, const QString& text, QMessageBox::StandardButtons b);
+private slots:
+    void on_action_settings_triggered();
+
+private:
+    void saveFile(const QString& path);
+
 private slots:
     void on_action_save_triggered();
-
-private slots:
     void on_action_quit_triggered();
-
-private slots:
     /**
      * \~russian @brief QT обработчик для кнопки открытия файла
      *
