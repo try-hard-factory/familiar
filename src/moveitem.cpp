@@ -123,7 +123,7 @@ void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
             QGraphicsItem::mousePressEvent(event);
         }
     }
-    qDebug()<<"!!!!!!!!!!";
+
 }
 
 void MoveItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
