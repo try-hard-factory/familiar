@@ -3,10 +3,13 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QLayout>
+#include <QLabel>
+#include <QPushButton>
 
 #include "fml_file_buffer.h"
 #include "project_settings.h"
 #include "tabpane.h"
+#include "saveallwindow.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent,Qt::Window
@@ -181,6 +184,37 @@ void MainWindow::on_action_save_triggered()
 void MainWindow::on_action_settings_triggered()
 {
 
+//    QWidget *pLineEdit = new QWidget(this);
+//    pLineEdit->setWindowModality(Qt::ApplicationModal);
+//    pLineEdit->setWindowFlags(Qt::Tool | Qt::Dialog);
+//    pLineEdit->show ();
+
+//    QWidget* widget = new QWidget();
+//    widget->setWindowModality(Qt::ApplicationModal);
+//    widget->setWindowFlags(Qt::Tool | Qt::Dialog);
+//    widget->resize(320, 240);
+//    QVBoxLayout *l = new QVBoxLayout;
+//    l->setContentsMargins(0,0,0,0);
+//    widget->setLayout(l);
+//    QLabel *lab = new QLabel;
+//    lab->setText("Hui");
+//    l->addWidget(lab);
+//    QPushButton* pb = new QPushButton;
+//    pb->setText("close without save");
+
+//    l->addWidget(pb);
+//    qDebug()<<"on_action_settings_triggered "<<widget->size();
+//    {
+//        auto host = this;
+
+//        auto hostRect = host->geometry();
+//        auto point = hostRect.center() - QPoint(widget->size().width()/2,
+//                                                widget->size().height()/2);
+//        widget->move(point);
+//     }
+
+    SaveAllWindow* widget = new SaveAllWindow(this);
+    widget->show();
 }
 
 void MainWindow::on_action_new_triggered()
