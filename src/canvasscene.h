@@ -21,7 +21,7 @@ class CanvasScene : public QGraphicsScene
 {
 public:
     CanvasScene(uint64_t& zc, QGraphicsScene *scene = 0);
-    ~CanvasScene() = default;
+    ~CanvasScene();
 
 public:
     void pasteFromClipboard();
@@ -38,6 +38,13 @@ public:
     void setProjectSettings(project_settings* ps);
 
     void cleanupWorkplace();
+
+    QString path();
+    void setPath(const QString &path);
+    bool isModified();
+    void setModified(bool mod);
+    bool isUntitled();
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
