@@ -65,6 +65,8 @@ set(PROJECT_SOURCES
         tabpane.h
         file_actions.cpp
         file_actions.h
+        saveallwindow.cpp
+        saveallwindow.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
