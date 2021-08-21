@@ -93,6 +93,11 @@ public:
 
     void cleanupWorkplace();
 
+    QString path();
+    void setPath(const QString& path);
+    bool isModified();
+    void setModified(bool mod);
+    bool isUntitled();
 public slots:
     /**
      * \~russian @brief QT обработчик для события выбора элементов
