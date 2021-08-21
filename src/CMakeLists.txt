@@ -61,6 +61,10 @@ set(PROJECT_SOURCES
         fml_file_buffer.h
         project_settings.cpp
         project_settings.h
+        tabpane.cpp
+        tabpane.h
+        file_actions.cpp
+        file_actions.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
