@@ -207,6 +207,31 @@ void CanvasView::cleanupWorkplace()
     scene_->cleanupWorkplace();
 }
 
+QString CanvasView::path()
+{
+    return scene_->path();
+}
+
+void CanvasView::setPath(const QString &path)
+{
+    scene_->setPath(path);
+}
+
+bool CanvasView::isModified()
+{
+    return scene_->isModified();
+}
+
+void CanvasView::setModified(bool mod)
+{
+    scene_->setModified(mod);
+}
+
+bool CanvasView::isUntitled()
+{
+    return scene_->isUntitled();
+}
+
 
 void CanvasView::onSelectionChanged()
 {
