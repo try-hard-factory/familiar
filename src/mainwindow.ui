@@ -28,9 +28,11 @@
     <property name="title">
      <string>menu</string>
     </property>
+    <addaction name="action_new"/>
     <addaction name="action_open"/>
     <addaction name="action_save"/>
     <addaction name="action_saveas"/>
+    <addaction name="action_save_all"/>
     <addaction name="action_settings"/>
     <addaction name="action_quit"/>
    </widget>
@@ -59,6 +61,16 @@
   <action name="action_settings">
    <property name="text">
     <string>settings</string>
+   </property>
+  </action>
+  <action name="action_new">
+   <property name="text">
+    <string>new</string>
+   </property>
+  </action>
+  <action name="action_save_all">
+   <property name="text">
+    <string>save all</string>
    </property>
   </action>
  </widget>

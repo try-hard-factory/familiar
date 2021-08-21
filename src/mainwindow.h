@@ -15,6 +15,8 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <canvasview.h>
+#include "tabpane.h"
+#include "file_actions.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -22,6 +24,7 @@ QT_END_NAMESPACE
 
 class project_settings;
 class QFileDialog;
+
 /**
  * \~russian @brief The MainWindow класс
  *
@@ -51,6 +54,7 @@ public:
 
 
     /* Part of feature FileActions class */
+    void newFile();
     void openFile();
     int saveFile();
     int saveFileAs();
@@ -58,14 +62,17 @@ public:
 
     void cleanupWorkplace();
 
-
+    TabPane* tabPane();
 protected:
     void closeEvent(QCloseEvent *event) override;
 
 private:
     void saveFile(const QString& path);
+    bool checkSave();
 
 private slots:
+    void on_action_save_all_triggered();
+    void on_action_new_triggered();
     void on_action_settings_triggered();
     void on_action_save_triggered();
     void on_action_quit_triggered();
@@ -85,9 +92,11 @@ private slots:
 
 private:
     Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
-    CanvasView* canvasWidget; ///< \~english app working place \~russian рабочее пространство приложения
-    QFileDialog* fileDialog_; ///< \~english file dialog operations \~russian диалоговое окно для операций с файлами
+    TabPane* tabpane_;
+//    CanvasView* canvasWidget; ///< \~english app working place \~russian рабочее пространство приложения
+
+    FileActions* fileactions_;
     std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
-    project_settings* projectSettings_;
+    project_settings* projectSettings_; ///deprecated
 };
 #endif // MAINWINDOW_H
