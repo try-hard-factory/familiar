@@ -1,16 +1,17 @@
+#include <QFileInfo>
 #include "project_settings.h"
 #include "mainwindow.h"
 
-project_settings::project_settings(MainWindow *mw)
-    : mw_(mw)
+project_settings::project_settings(TabPane *tp)
+    : tp_(tp)
 {
-    mw_->setWindowTitle(title());
+//    mw_->setWindowTitle(title());
 }
 
 void project_settings::title(QString t)
 {
     title_ = t;
-    mw_->setWindowTitle(title_);
+    tp_->setCurrentTabTitle(title_);
 }
 
 void project_settings::path(QString p)
@@ -22,6 +23,8 @@ void project_settings::modified(bool s)
 {
     changed_ = s;
     if (changed_ == true) {
-        mw_->setWindowTitle("*"+title());
+        tp_->setCurrentTabTitle("*"+QFileInfo(path_).fileName());
+    } else {
+        tp_->setCurrentTabTitle(QFileInfo(path_).fileName());
     }
 }

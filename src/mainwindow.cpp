@@ -6,6 +6,7 @@
 
 #include "fml_file_buffer.h"
 #include "project_settings.h"
+#include "tabpane.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent,Qt::Window
@@ -17,23 +18,23 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    setWindowTitle("Familiar");
+//    projectSettings_ = new project_settings(this);
+//    canvasWidget = new CanvasView();
+//    fileDialog_ = new QFileDialog(this);
 
-    projectSettings_ = new project_settings(this);
-    canvasWidget = new CanvasView();
-    fileDialog_ = new QFileDialog(this);
+//    canvasWidget->setProjectSettings(projectSettings_);
 
-    canvasWidget->setProjectSettings(projectSettings_);
-
-    fileDialog_->setNameFilter(tr("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)"));
+//    fileDialog_->setNameFilter(tr("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)"));
     fileExt_["Familiar (*.fml)"] = ".fml";
     fileExt_["SVG (*.svg)"] = ".svg";
     fileExt_["Adobe (*.psd)"] = ".psd";
 
-    fileDialog_->setDirectory( QDir::homePath() );
-    fileDialog_->setOption(QFileDialog::DontUseNativeDialog, true);
+//    fileDialog_->setDirectory( QDir::homePath() );
+//    fileDialog_->setOption(QFileDialog::DontUseNativeDialog, true);
 
 
-    qreal x = 000;
+//    qreal x = 000;
 //    canvasWidget->addImage("kot.png", {-1000, -1000-x});
 
 //    canvasWidget->addImage("kot2.jpg", {50,100-x});
@@ -56,143 +57,102 @@ MainWindow::MainWindow(QWidget *parent)
 //        canvasWidget->addImage(qimage,{(double)i*100,(double)i*100});
 
 //    canvasWidget->setBackgroundBrush(QBrush(QColor(0xFF,0xFF,0xFF)));
-    setCentralWidget(canvasWidget);
-    canvasWidget->show();
+
+    fileactions_ = new FileActions(this);
+    tabpane_ = new TabPane(*fileactions_);
+    setCentralWidget(tabpane_);
 }
 
 
 MainWindow::~MainWindow()
 {
-    delete fileDialog_;
+    delete tabpane_;
     delete ui;
-    delete canvasWidget;
+}
+
+void MainWindow::newFile()
+{
+    fileactions_->newFile();
 }
 
 void MainWindow::openFile()
 {
-    int ret = -1;
-    if (projectSettings_->modified() == true) {
-        ret = QMessageBox::warning( this, "Warning!",
-                                                    tr("You have unsaved documents!\nDo you wish to continue?\n"),
-                                                    QMessageBox::Yes | QMessageBox::No,
-                                                    QMessageBox::No);
-    }
-
-    if (ret == QMessageBox::No) return;
-
-    fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
-    if (fileDialog_->exec() == QDialog::Accepted) {
-        cleanupWorkplace();
-        qDebug()<< fileDialog_->selectedFiles().value(0);
-        QString file_name(fileDialog_->selectedFiles().value(0));
-        QFileInfo fi(file_name);
-        projectSettings_->title(fi.fileName());
-        projectSettings_->path(fi.absoluteFilePath());
-        projectSettings_->modified(false);
-
-        fml_file_buffer::open_file(canvasWidget, file_name);
-    }
+    fileactions_->openFile();
 }
 
-void MainWindow::saveFile(const QString& path)
+
+bool MainWindow::checkSave()
 {
-    QString header_= QString::fromStdString(fml_file_buffer::create_header(canvasWidget));
-    QByteArray byteHeader = header_.toUtf8();
-    QByteArray payload = fml_file_buffer::create_payload(canvasWidget);
-    fml_file_buffer::save_to_file(path, byteHeader, payload);
+    bool found = false;
+    QStringList items;
+    int count = tabpane_->count();
+    for (int i = 0; i<count; i++) {
+        if (tabpane_->widgetAt(i)->isModified()) {
+            found = true;
+            items.push_back(tabpane_->widgetAt(i)->path());
+        }
+    }
+
+    if (found) {
+        QString details = "";
+        for (int i = 0; i<items.size(); i++) {
+            details+=items.at(i)+"\n";
+        }
+
+        QMessageBox msg(this);
+        msg.setWindowTitle("Warning!");
+        msg.setText("You have unsaved documents!\n"
+                    "Do you wish to exit?");
+        msg.setDetailedText(details);
+        msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msg.setDefaultButton(QMessageBox::No);
+        msg.setIcon(QMessageBox::Warning);
+
+        int ret = msg.exec();
+
+        if (ret==QMessageBox::Yes) {
+            return true;
+        }
+        return false;
+    }
+    return true;
 }
 
 int MainWindow::saveFile()
 {
-    QFile file(projectSettings_->path());
-    if (!file.exists()) {        
-        return saveFileAs();
-    }
-
-    QString out_file(projectSettings_->path());
-    projectSettings_->title(projectSettings_->title());
-
-    saveFile(out_file);
-
-    projectSettings_->modified(false);
-
-    return QDialog::Accepted;
+    return fileactions_->saveFile();
 }
 
 int MainWindow::saveFileAs()
 {
-    fileDialog_->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
-    auto retdialog = fileDialog_->exec();
-
-    if (retdialog == QDialog::Accepted) {
-        QString out_file(fileDialog_->selectedFiles().value(0));
-        if (!out_file.contains(fileExt_.at(fileDialog_->selectedNameFilter()), Qt::CaseInsensitive)) {
-            out_file.append(fileExt_.at(fileDialog_->selectedNameFilter()));
-        }
-
-        QFileInfo fi(out_file);
-        projectSettings_->title(fi.fileName());
-        projectSettings_->path(fi.absoluteFilePath());
-
-        saveFile(out_file);
-
-        projectSettings_->modified(false);
-        return QDialog::Accepted;
-    }
-
-    return QDialog::Rejected;
+    return fileactions_->saveFileAs();
 }
 
 void MainWindow::quitProject()
 {
-    if (projectSettings_->modified() == false) {
-        QApplication::quit();
-    } else {
-        QMessageBox::StandardButton resBtn = QMessageBox::warning( this, "Warning!",
-                                                                    tr("You have unsaved documents!\nDo you want to save it?"),
-                                                                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-                                                                    QMessageBox::Cancel);
-
-        if (resBtn == QMessageBox::Yes) {
-            if (saveFile() == QDialog::Accepted) {
-                projectSettings_->modified(false);
-                QApplication::quit();
-            }
-        } else if (resBtn == QMessageBox::No) {
-            projectSettings_->modified(false);
-            QApplication::quit();
-        } else if (resBtn == QMessageBox::Cancel) {
-            return;
-        }
+    if (checkSave()) {
+//        QApplication::quit();
+        qApp->exit(0); // Is it correct way?
     }
 }
 
 void MainWindow::cleanupWorkplace()
 {
-    canvasWidget->cleanupWorkplace();
+    //    canvasWidget->cleanupWorkplace();
+}
+
+TabPane *MainWindow::tabPane()
+{
+    return tabpane_;
 }
 
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
-    if (projectSettings_->modified() == false) {
+    if (checkSave()) {
         event->accept();
     } else {
-        QMessageBox::StandardButton resBtn = QMessageBox::warning( this, "Warning!",
-                                                                    tr("You have unsaved documents!\nDo you want to save it?"),
-                                                                   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-                                                                   QMessageBox::Cancel);
-        if (resBtn == QMessageBox::Yes) {
-            if (saveFile() == QDialog::Accepted) {
-                projectSettings_->modified(false);
-                event->accept();
-            }
-            event->ignore();
-        } else if (resBtn == QMessageBox::No) {
-            event->accept();
-        }  else if (resBtn == QMessageBox::Cancel) {
-            event->ignore();
-        }
+        event->ignore();
     }
 }
 
@@ -219,6 +179,16 @@ void MainWindow::on_action_save_triggered()
 }
 
 void MainWindow::on_action_settings_triggered()
+{
+
+}
+
+void MainWindow::on_action_new_triggered()
+{
+    newFile();
+}
+
+void MainWindow::on_action_save_all_triggered()
 {
 
 }

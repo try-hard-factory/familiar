@@ -3,12 +3,12 @@
 
 #include <QString>
 
-class MainWindow;
+class TabPane;
 
 class project_settings
 {
 public:
-    explicit project_settings(MainWindow* mw);
+    explicit project_settings(TabPane* tp);
 
     void title(QString t);
     const QString& title() const noexcept  { return title_;}
@@ -19,11 +19,11 @@ public:
     void modified(bool s);
     bool modified() const noexcept { return changed_; }
 
-    bool isDefaultProjectName() const { return (0 == title_.compare("Untitled project")); }
+    bool isDefaultProjectName() const { return (0 == path_.compare("untitled")); }
 private:
-    MainWindow* mw_;
-    QString title_ = "Untitled project";
-    QString path_;
+    TabPane* tp_;
+    QString title_ = "untitled";
+    QString path_ = "untitled";
     bool changed_ = false;
 };
 
