@@ -34,6 +34,11 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
     imgdownloader_ = new ImageDownloader(*this);
 }
 
+CanvasScene::~CanvasScene()
+{
+    delete projectSettings_;
+}
+
 
 void CanvasScene::keyPressEvent(QKeyEvent *event)
 {
@@ -163,6 +168,31 @@ void CanvasScene::cleanupWorkplace()
         removeItem(it);
 //        delete it;
     }
+}
+
+QString CanvasScene::path()
+{
+    return projectSettings_->path();
+}
+
+void CanvasScene::setPath(const QString &path)
+{
+    projectSettings_->path(path);
+}
+
+bool CanvasScene::isModified()
+{
+    return projectSettings_->modified();
+}
+
+void CanvasScene::setModified(bool mod)
+{
+    projectSettings_->modified(mod);
+}
+
+bool CanvasScene::isUntitled()
+{
+    return projectSettings_->isDefaultProjectName();
 }
 
 
