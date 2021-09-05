@@ -78,7 +78,7 @@ void CanvasScene::pasteFromClipboard()
             projectSettings_->modified(true);
         }
         if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
-        qDebug()<<image.rect();
+        qDebug()<<"image rect "<<image.rect();
 
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
