@@ -16,8 +16,10 @@ public:
     ~TabPane();
 
     void addNewTab(QString path);
+    void closeTabByIndex(int idx);
     void addNewUntitledTab();
     void setCurrentTabPath(QString path);
+    QString getCurrentTabPath();
     void setCurrentTabTitle(QString title);
     CanvasView* currentWidget();
     CanvasView* widgetAt(int index);
@@ -28,7 +30,6 @@ private slots:
     void onTabClosed(int index);
 
 private:
-//    MainWindow* window_;
     FileActions& fileActions_;
     QVBoxLayout* layout_;
     QTabWidget* tabs_;
