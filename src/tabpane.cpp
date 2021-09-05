@@ -40,6 +40,11 @@ void TabPane::addNewTab(QString path)
     tabs_->setCurrentIndex(count);
 }
 
+void TabPane::closeTabByIndex(int idx)
+{
+    tabs_->removeTab(idx);
+}
+
 void TabPane::addNewUntitledTab() {
     int count = tabs_->count();
 
@@ -55,6 +60,11 @@ void TabPane::addNewUntitledTab() {
 void TabPane::setCurrentTabPath(QString path)
 {
     currentWidget()->setPath(path);
+}
+
+QString TabPane::getCurrentTabPath()
+{
+    return currentWidget()->path();
 }
 
 void TabPane::onTabClosed(int index) {
