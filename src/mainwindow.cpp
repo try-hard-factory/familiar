@@ -10,6 +10,7 @@
 #include "project_settings.h"
 #include "tabpane.h"
 #include "saveallwindow.h"
+#include <map>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent,Qt::Window
@@ -87,35 +88,38 @@ void MainWindow::openFile()
 bool MainWindow::checkSave()
 {
     bool found = false;
-    QStringList items;
+    std::map<int, QString> items;
     int count = tabpane_->count();
     for (int i = 0; i<count; i++) {
         if (tabpane_->widgetAt(i)->isModified()) {
             found = true;
-            items.push_back(tabpane_->widgetAt(i)->path());
+            items.emplace(i, tabpane_->widgetAt(i)->path());
+
         }
     }
 
     if (found) {
         QString details = "";
-        for (int i = 0; i<items.size(); i++) {
-            details+=items.at(i)+"\n";
+        for (auto&[_, p] : items) {
+            details+=p+"\n";
         }
+        SaveAllWindow* widget = new SaveAllWindow(this, items);
+        widget->setAttribute( Qt::WA_DeleteOnClose );
+        widget->show();
+//        QMessageBox msg(this);
+//        msg.setWindowTitle("Warning!");
+//        msg.setText("You have unsaved documents!\n"
+//                    "Do you wish to exit?");
+//        msg.setDetailedText(details);
+//        msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+//        msg.setDefaultButton(QMessageBox::No);
+//        msg.setIcon(QMessageBox::Warning);
 
-        QMessageBox msg(this);
-        msg.setWindowTitle("Warning!");
-        msg.setText("You have unsaved documents!\n"
-                    "Do you wish to exit?");
-        msg.setDetailedText(details);
-        msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msg.setDefaultButton(QMessageBox::No);
-        msg.setIcon(QMessageBox::Warning);
+//        int ret = msg.exec();
 
-        int ret = msg.exec();
-
-        if (ret==QMessageBox::Yes) {
-            return true;
-        }
+//        if (ret==QMessageBox::Yes) {
+//            return true;
+//        }
         return false;
     }
     return true;
@@ -134,14 +138,46 @@ int MainWindow::saveFileAs()
 void MainWindow::quitProject()
 {
     if (checkSave()) {
-//        QApplication::quit();
-        qApp->exit(0); // Is it correct way?
+        exitProject();
     }
+}
+
+void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool> &&m)
+{
+    w->close();
+
+    int exit_flag = 1;
+
+    for (auto it = m.rbegin(); it != m.rend(); it++) {
+        if (!it->second) {
+            qDebug()<<"close ID = "<<it->first<<" "<<tabpane_->getCurrentTabPath();
+            tabpane_->closeTabByIndex(it->first);
+        }
+    }
+
+    for (int i = tabpane_->count()-1; i>=0; --i) {
+        qDebug()<<"save ID = "<<i<<" "<<tabpane_->getCurrentTabPath();
+        tabpane_->setCurrentIndex(i);
+
+        auto ret = fileactions_->saveFile();
+        if (ret == QDialog::Rejected) {
+            exit_flag = 0;
+        } else {
+            tabpane_->closeTabByIndex(i);
+        }
+
+    }
+    if (exit_flag) exitProject();
 }
 
 void MainWindow::cleanupWorkplace()
 {
     //    canvasWidget->cleanupWorkplace();
+}
+
+void MainWindow::exitProject()
+{
+    qApp->exit(0);// Is it correct way?
 }
 
 TabPane *MainWindow::tabPane()
@@ -184,37 +220,6 @@ void MainWindow::on_action_save_triggered()
 void MainWindow::on_action_settings_triggered()
 {
 
-//    QWidget *pLineEdit = new QWidget(this);
-//    pLineEdit->setWindowModality(Qt::ApplicationModal);
-//    pLineEdit->setWindowFlags(Qt::Tool | Qt::Dialog);
-//    pLineEdit->show ();
-
-//    QWidget* widget = new QWidget();
-//    widget->setWindowModality(Qt::ApplicationModal);
-//    widget->setWindowFlags(Qt::Tool | Qt::Dialog);
-//    widget->resize(320, 240);
-//    QVBoxLayout *l = new QVBoxLayout;
-//    l->setContentsMargins(0,0,0,0);
-//    widget->setLayout(l);
-//    QLabel *lab = new QLabel;
-//    lab->setText("Hui");
-//    l->addWidget(lab);
-//    QPushButton* pb = new QPushButton;
-//    pb->setText("close without save");
-
-//    l->addWidget(pb);
-//    qDebug()<<"on_action_settings_triggered "<<widget->size();
-//    {
-//        auto host = this;
-
-//        auto hostRect = host->geometry();
-//        auto point = hostRect.center() - QPoint(widget->size().width()/2,
-//                                                widget->size().height()/2);
-//        widget->move(point);
-//     }
-
-    SaveAllWindow* widget = new SaveAllWindow(this);
-    widget->show();
 }
 
 void MainWindow::on_action_new_triggered()
@@ -224,5 +229,10 @@ void MainWindow::on_action_new_triggered()
 
 void MainWindow::on_action_save_all_triggered()
 {
+    for (int i = tabpane_->count()-1; i>=0; --i) {
+        tabpane_->setCurrentIndex(i);
 
+        auto ret = fileactions_->saveFile();
+        (void) ret;
+    }
 }

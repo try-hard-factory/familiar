@@ -24,7 +24,7 @@ QT_END_NAMESPACE
 
 class project_settings;
 class QFileDialog;
-
+class SaveAllWindow;
 /**
  * \~russian @brief The MainWindow класс
  *
@@ -60,8 +60,9 @@ public:
     int saveFileAs();
     void quitProject();
 
+    void saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m);
     void cleanupWorkplace();
-
+    void exitProject();
     TabPane* tabPane();
 protected:
     void closeEvent(QCloseEvent *event) override;
