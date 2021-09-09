@@ -47,11 +47,6 @@ SaveAllWindow::SaveAllWindow(MainWindow *wm, std::map<int, QString> items, QWidg
     vlayout_->addLayout(hlayout_);
 
     centered_widget(window_, this);
-//    auto hostRect = window_->geometry();
-//    qDebug()<<"SIZE "<<size();
-//    auto point = hostRect.center() - QPoint(size().width()/2,
-//                                            size().height()/2);
-//    move(point);
 }
 
 SaveAllWindow::~SaveAllWindow()
