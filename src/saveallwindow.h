@@ -14,7 +14,7 @@ class SaveAllWindow : public QWidget
 {
     Q_OBJECT
 public:                                    // move semathics
-    explicit SaveAllWindow(MainWindow* wm, std::map<int, QString> items, QWidget *parent = nullptr);
+    SaveAllWindow(MainWindow* wm, std::map<int, QString> items, QWidget *parent = nullptr);
     ~SaveAllWindow();
 private slots:
     void onCloseWithoutSaveClicked();
