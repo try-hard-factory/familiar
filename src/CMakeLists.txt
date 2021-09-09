@@ -69,6 +69,8 @@ set(PROJECT_SOURCES
         saveallwindow.h
         savecheckbox.cpp
         savecheckbox.h
+        settings_window.cpp
+        settings_window.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
