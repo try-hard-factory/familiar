@@ -100,4 +100,12 @@ private:
     std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
     project_settings* projectSettings_; ///deprecated
 };
+
+template<typename M, typename S>
+void centered_widget(M* mw, S* w) {
+    auto hostRect = mw->geometry();
+    auto point = hostRect.center() - QPoint(w->size().width()/2,
+                                            w->size().height()/2);
+    w->move(point);
+}
 #endif // MAINWINDOW_H
