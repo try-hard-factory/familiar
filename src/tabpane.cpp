@@ -22,6 +22,7 @@ TabPane::TabPane(FileActions& fa) : fileActions_(fa)
 
 TabPane::~TabPane()
 {
+    delete tabs_;
     delete layout_;
 }
 
@@ -29,7 +30,7 @@ void TabPane::addNewTab(QString path)
 {
     int count = tabs_->count();
 
-    CanvasView* canvasView = new CanvasView();
+    CanvasView* canvasView = new CanvasView(fileActions_.mainWindow());
     project_settings* ps = new project_settings(this);
 
     ps->path(path);
@@ -48,7 +49,7 @@ void TabPane::closeTabByIndex(int idx)
 void TabPane::addNewUntitledTab() {
     int count = tabs_->count();
 
-    CanvasView* canvasWidget = new CanvasView();
+    CanvasView* canvasWidget = new CanvasView(fileActions_.mainWindow());
     project_settings* ps = new project_settings(this);
     canvasWidget->setProjectSettings(ps);
     canvasWidget->show();
