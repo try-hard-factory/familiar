@@ -10,6 +10,7 @@
 #include "project_settings.h"
 #include "tabpane.h"
 #include "saveallwindow.h"
+#include "settings_window.h"
 #include <map>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -19,51 +20,18 @@ MainWindow::MainWindow(QWidget *parent)
                   | Qt::WindowMinimizeButtonHint
                   | Qt::WindowMaximizeButtonHint
                   | Qt::WindowCloseButtonHint)
-    , ui(new Ui::MainWindow)
+    , ui(new Ui::MainWindow),
+      fileactions_(new FileActions(*this)),
+      tabpane_(new TabPane(*fileactions_))
 {
     ui->setupUi(this);
     setWindowTitle("Familiar");
-//    projectSettings_ = new project_settings(this);
-//    canvasWidget = new CanvasView();
-//    fileDialog_ = new QFileDialog(this);
+    //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
-//    canvasWidget->setProjectSettings(projectSettings_);
-
-//    fileDialog_->setNameFilter(tr("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)"));
     fileExt_["Familiar (*.fml)"] = ".fml";
     fileExt_["SVG (*.svg)"] = ".svg";
     fileExt_["Adobe (*.psd)"] = ".psd";
 
-//    fileDialog_->setDirectory( QDir::homePath() );
-//    fileDialog_->setOption(QFileDialog::DontUseNativeDialog, true);
-
-
-//    qreal x = 000;
-//    canvasWidget->addImage("kot.png", {-1000, -1000-x});
-
-//    canvasWidget->addImage("kot2.jpg", {50,100-x});
-//    canvasWidget->addImage("kot2.jpg", {50,400-x});
-//    canvasWidget->addImage("kot2.jpg", {250,50-x});
-//    canvasWidget->addImage("kot2.jpg", {450,50-x});
-
-//    canvasWidget->addImage("kot1.png", {50,100-x});
-//    canvasWidget->addImage("kot1.png", {50,400-x});
-//    canvasWidget->addImage("kot1.png", {250,50-x});
-//    canvasWidget->addImage("kot1.png", {450,50-x});
-
-//    canvasWidget->addImage("kot1.png", {200-x, 150-x});
-//    canvasWidget->addImage("kot1.png", {450-x, 50-x});
-//    canvasWidget->addImage("kot.png", {700-x, 0-x});
-
-//    canvasWidget->addImage("bender.png", {1300,1300});
-
-//    for (int i=0;i<100;++i)
-//        canvasWidget->addImage(qimage,{(double)i*100,(double)i*100});
-
-//    canvasWidget->setBackgroundBrush(QBrush(QColor(0xFF,0xFF,0xFF)));
-
-    fileactions_ = new FileActions(this);
-    tabpane_ = new TabPane(*fileactions_);
     setCentralWidget(tabpane_);
 }
 
@@ -106,20 +74,7 @@ bool MainWindow::checkSave()
         SaveAllWindow* widget = new SaveAllWindow(this, items);
         widget->setAttribute( Qt::WA_DeleteOnClose );
         widget->show();
-//        QMessageBox msg(this);
-//        msg.setWindowTitle("Warning!");
-//        msg.setText("You have unsaved documents!\n"
-//                    "Do you wish to exit?");
-//        msg.setDetailedText(details);
-//        msg.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-//        msg.setDefaultButton(QMessageBox::No);
-//        msg.setIcon(QMessageBox::Warning);
 
-//        int ret = msg.exec();
-
-//        if (ret==QMessageBox::Yes) {
-//            return true;
-//        }
         return false;
     }
     return true;
@@ -133,6 +88,13 @@ int MainWindow::saveFile()
 int MainWindow::saveFileAs()
 {
     return fileactions_->saveFileAs();
+}
+
+void MainWindow::settingsWindow()
+{
+    SettingsWindow* widget = new SettingsWindow(this);
+    widget->setAttribute( Qt::WA_DeleteOnClose );
+    widget->show();
 }
 
 void MainWindow::quitProject()
@@ -219,7 +181,7 @@ void MainWindow::on_action_save_triggered()
 
 void MainWindow::on_action_settings_triggered()
 {
-
+    settingsWindow();
 }
 
 void MainWindow::on_action_new_triggered()

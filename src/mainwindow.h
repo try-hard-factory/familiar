@@ -58,6 +58,7 @@ public:
     void openFile();
     int saveFile();
     int saveFileAs();
+    void settingsWindow();
     void quitProject();
 
     void saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m);
@@ -93,12 +94,9 @@ private slots:
 
 private:
     Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
-    TabPane* tabpane_;
-//    CanvasView* canvasWidget; ///< \~english app working place \~russian рабочее пространство приложения
-
     FileActions* fileactions_;
+    TabPane* tabpane_;
     std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
-    project_settings* projectSettings_; ///deprecated
 };
 
 template<typename M, typename S>
