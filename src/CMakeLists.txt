@@ -71,6 +71,8 @@ set(PROJECT_SOURCES
         savecheckbox.h
         settings_window.cpp
         settings_window.h
+        main_context_menu.cpp
+        main_context_menu.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
