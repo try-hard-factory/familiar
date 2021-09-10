@@ -64,7 +64,8 @@ public:
     void saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m);
     void cleanupWorkplace();
     void exitProject();
-    TabPane* tabPane();
+    TabPane& tabPane();
+    FileActions& fileActions();
 protected:
     void closeEvent(QCloseEvent *event) override;
 
@@ -96,7 +97,6 @@ private:
     Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
     FileActions* fileactions_;
     TabPane* tabpane_;
-    std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
 };
 
 template<typename M, typename S>
