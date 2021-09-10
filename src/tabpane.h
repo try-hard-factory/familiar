@@ -12,7 +12,7 @@ class TabPane : public QFrame
 {
     Q_OBJECT
 public:
-    TabPane(FileActions& fa);
+    explicit TabPane(MainWindow& mw);
     ~TabPane();
 
     void addNewTab(QString path);
@@ -30,7 +30,7 @@ private slots:
     void onTabClosed(int index);
 
 private:
-    FileActions& fileActions_;
+    MainWindow& mainwindow_;
     QVBoxLayout* layout_;
     QTabWidget* tabs_;
 };
