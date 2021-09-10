@@ -21,9 +21,8 @@ public:
     int saveFile(QString path);
     int saveFile();
     int saveFileAs();
-    MainWindow& mainWindow(){ return window_;}
 private:
-    MainWindow& window_;
+    MainWindow& mainwindow_;
     std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
 };
 
