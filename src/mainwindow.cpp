@@ -22,15 +22,12 @@ MainWindow::MainWindow(QWidget *parent)
                   | Qt::WindowCloseButtonHint)
     , ui(new Ui::MainWindow),
       fileactions_(new FileActions(*this)),
-      tabpane_(new TabPane(*fileactions_))
+      tabpane_(new TabPane(*this))
 {
     ui->setupUi(this);
     setWindowTitle("Familiar");
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
-    fileExt_["Familiar (*.fml)"] = ".fml";
-    fileExt_["SVG (*.svg)"] = ".svg";
-    fileExt_["Adobe (*.psd)"] = ".psd";
 
     setCentralWidget(tabpane_);
 }
@@ -142,9 +139,14 @@ void MainWindow::exitProject()
     qApp->exit(0);// Is it correct way?
 }
 
-TabPane *MainWindow::tabPane()
+TabPane& MainWindow::tabPane()
 {
-    return tabpane_;
+    return *tabpane_;
+}
+
+FileActions &MainWindow::fileActions()
+{
+    return *fileactions_;
 }
 
 
