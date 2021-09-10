@@ -8,11 +8,13 @@
 #include <QtMath>
 #include "project_settings.h"
 
+#include <main_context_menu.h>
+
 extern Logger logger;
 
 
-CanvasView::CanvasView(QWidget* parent) :
-    QGraphicsView(parent)
+CanvasView::CanvasView(MainWindow& mw, QWidget* parent) :
+    QGraphicsView(parent), mainwindow_(mw)
 {
     scene_ = new CanvasScene(zCounter_);
     connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
@@ -236,4 +238,10 @@ bool CanvasView::isUntitled()
 void CanvasView::onSelectionChanged()
 {
     scene_->onSelectionChanged();
+}
+
+void CanvasView::contextMenuEvent(QContextMenuEvent *event)
+{
+    MainContextMenu contextMenu(mainwindow_, this);
+    contextMenu.exec(event->globalPos());
 }

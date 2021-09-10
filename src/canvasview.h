@@ -17,6 +17,7 @@
 #include <QGraphicsPixmapItem>
 #include <QScrollBar>
 
+class MainWindow;
 class project_settings;
 class CanvasScene;
 
@@ -40,7 +41,7 @@ public:
      *                           is normal)
      * \~english @param ps - project settings
      */
-    CanvasView(QWidget* parent = 0);
+    CanvasView(MainWindow& mw, QWidget* parent = 0);
 
     /**
      * \~russian @brief деструктор
@@ -107,6 +108,7 @@ public slots:
     void onSelectionChanged();
 
 protected:
+    void contextMenuEvent(QContextMenuEvent *event) override;
     /**
      * \~russian @brief перегрузите эту функцию, для обработки движений мышки
      * \~russian @param event - событие движения мышки
@@ -164,6 +166,7 @@ protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;
 
 private:
+    MainWindow& mainwindow_;
     CanvasScene* scene_;
     double zoomFactor_ = 1.15;
     bool pan_;
