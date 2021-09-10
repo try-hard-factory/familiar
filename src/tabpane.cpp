@@ -5,7 +5,7 @@
 #include "project_settings.h"
 #include "fml_file_buffer.h"
 
-TabPane::TabPane(FileActions& fa) : fileActions_(fa)
+TabPane::TabPane(MainWindow &mw) : mainwindow_(mw)
 {
     layout_ = new QVBoxLayout; // try some other layout
     layout_->setContentsMargins(0,0,0,0);
@@ -30,7 +30,7 @@ void TabPane::addNewTab(QString path)
 {
     int count = tabs_->count();
 
-    CanvasView* canvasView = new CanvasView(fileActions_.mainWindow());
+    CanvasView* canvasView = new CanvasView(mainwindow_);
     project_settings* ps = new project_settings(this);
 
     ps->path(path);
@@ -49,7 +49,7 @@ void TabPane::closeTabByIndex(int idx)
 void TabPane::addNewUntitledTab() {
     int count = tabs_->count();
 
-    CanvasView* canvasWidget = new CanvasView(fileActions_.mainWindow());
+    CanvasView* canvasWidget = new CanvasView(mainwindow_);
     project_settings* ps = new project_settings(this);
     canvasWidget->setProjectSettings(ps);
     canvasWidget->show();
@@ -77,7 +77,7 @@ void TabPane::onTabClosed(int index) {
                                                                     QMessageBox::No);
 
         if (resBtn == QMessageBox::Yes) {
-            if (fileActions_.saveFile() == QDialog::Accepted) {
+            if (mainwindow_.fileActions().saveFile() == QDialog::Accepted) {
                 delete canvasview;
                 if (tabs_->count()==0) {
                     addNewUntitledTab();
