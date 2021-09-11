@@ -28,7 +28,6 @@ public:
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     void addImageToSceneToPosition(QImage&& image, QPointF position);
-    std::string fml_header();
     QByteArray fml_payload();
     void updateViewScaleFactor(qreal newval) {
         itemGroup_->setScaleControlFactor(newval);
@@ -60,6 +59,7 @@ public slots:
     void slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
 
 private:
+    qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;
     void deselectItems();
 
