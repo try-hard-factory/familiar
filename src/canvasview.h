@@ -168,9 +168,11 @@ private:
     MainWindow& mainwindow_;
     CanvasScene* scene_;
     double zoomFactor_ = 1.15;
-    bool pan_;
-    bool panStartX_;
-    bool panStartY_;
+    Qt::MouseButton pan_;
+    bool rightMoveflag_ = false;
+    QPoint shiftPoint_;
+    qreal panStartX_;
+    qreal panStartY_;
     uint64_t zCounter_ = 0;
 };
 
