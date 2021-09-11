@@ -43,12 +43,6 @@ void CanvasView::setProjectSettings(project_settings* ps)
 }
 
 
-std::string CanvasView::fml_header()
-{
-    return scene_->fml_header();
-}
-
-
 QByteArray CanvasView::fml_payload()
 {
     return scene_->fml_payload();
