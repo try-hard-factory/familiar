@@ -80,10 +80,8 @@ int FileActions::saveFile(QString path)
     }
 
     auto canvasWidget = mainwindow_.tabPane().currentWidget();
-    QString header_= QString::fromStdString(fml_file_buffer::create_header(canvasWidget));
-    QByteArray byteHeader = header_.toUtf8();
     QByteArray payload = fml_file_buffer::create_payload(canvasWidget);
-    fml_file_buffer::save_to_file(path, byteHeader, payload);
+    fml_file_buffer::save_to_file(path, payload);
 
     canvasWidget->setModified(false);
 

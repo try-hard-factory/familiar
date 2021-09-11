@@ -20,7 +20,7 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem *parent)
 //    qimage_ = QImage("bender.png");
     qimage_ = new QImage(path);
 //    auto qimage = QImage("kot.jpg");
-//    qInfo() << qimage.width() << ' ' <<qimage.height();
+    qInfo() << qimage_->width() << ' ' <<qimage_->height()<<" SIZE="<<qimage_->sizeInBytes();
     pixmap_ = QPixmap::fromImage(*qimage_);
     _size = pixmap_.size();
     rect_ = qimage_->rect();
