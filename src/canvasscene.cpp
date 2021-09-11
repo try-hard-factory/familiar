@@ -111,42 +111,34 @@ void CanvasScene::addImageToSceneToPosition(QImage&& image, QPointF position)
     addItem(item);
 }
 
-std::string CanvasScene::fml_header()
-{
-    std::string header;
-    auto items = this->items();
-    for (auto& it : items) {
-        // \TODO: type.h header with all types (image, textline, multitextline)
-        if (it->type() != 3) continue;
-        auto widget = qgraphicsitem_cast<MoveItem*>(it);
-        header += ( QString::number(widget->scenePos().x()).toStdString() + ","
-                  + QString::number(widget->scenePos().y()).toStdString() + ","
-                  + QString::number(widget->height()).toStdString() + ","
-                  + QString::number(widget->width()).toStdString() + ","
-                  + QString::number(widget->boundingRect().height()).toStdString() + ","
-                  + QString::number(widget->boundingRect().width()).toStdString() + ","
-                  + QString::number(widget->qimage().sizeInBytes()).toStdString() + ","
-                  + QString::number(widget->format()).toStdString() ) ;
-
-        header += ";";
-    }
-
-    return header;
-}
-
 
 QByteArray CanvasScene::fml_payload()
 {
     QByteArray arr;
     QDataStream ds(&arr, QIODevice::ReadWrite);
 
+    qint16 count = objectsCount();
+    ds << count;
     auto items = this->items();
     for (auto& it : items) {
         // \TODO: type.h header with all types (image, textline, multitextline)
         if (it->type() != 3) continue;
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
+
+        ds << widget->scenePos()
+           << (qint32)widget->height()
+           << (qint32)widget->width()
+           << widget->boundingRect()
+           << (quint16)widget->format();
+//           << (quint64)widget->qimage().sizeInBytes();
+        QByteArray compressed = qCompress(widget->qimage().constBits(),
+                                          widget->qimage().sizeInBytes(), 7);
+
+        qDebug()<<widget->qimage().sizeInBytes()<<" "<<compressed.size()<<" "<<widget->qimage().bitPlaneCount();
+
+        ds << (quint64)compressed.size();
         qDebug()<<"fml_payload::save sizeInBytes: "<<widget->qimage().sizeInBytes();
-        ds.writeRawData((const char*)widget->qimage().constBits(), widget->qimage().sizeInBytes());
+        ds.writeRawData((const char*)compressed.data(), compressed.size());
     }
 
     return arr;
@@ -541,4 +533,15 @@ void CanvasScene::slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy)
             item->moveBy(dx,dy);
         }
     }
+}
+
+qint16 CanvasScene::objectsCount() const
+{
+    qint16 count = 0;
+    for (auto& it : items()) {
+        // \TODO: type.h header with all types (image, textline, multitextline)
+        if (it->type() != 3) continue;
+        ++count;
+    }
+    return count;
 }
