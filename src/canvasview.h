@@ -172,6 +172,8 @@ private:
     bool rightMoveflag_ = false;
     QPoint shiftPoint_;
     QPoint pressPos_;
+    QPoint wndPos;
+    bool isMoving{false};;
     qreal panStartX_;
     qreal panStartY_;
     uint64_t zCounter_ = 0;
