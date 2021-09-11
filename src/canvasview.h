@@ -89,7 +89,6 @@ public:
     void zoomFactor(double factor) noexcept { zoomFactor_ = factor; }
     double zoomFactor() const noexcept { return zoomFactor_; }
 
-    std::string fml_header();
     QByteArray fml_payload();
 
     void cleanupWorkplace();
