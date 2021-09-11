@@ -171,6 +171,7 @@ private:
     Qt::MouseButton pan_;
     bool rightMoveflag_ = false;
     QPoint shiftPoint_;
+    QPoint pressPos_;
     qreal panStartX_;
     qreal panStartY_;
     uint64_t zCounter_ = 0;

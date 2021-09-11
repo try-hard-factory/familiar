@@ -88,10 +88,13 @@ void CanvasView::mouseMoveEvent(QMouseEvent *event)
 {
     if (pan_ == Qt::RightButton) {
         rightMoveflag_ = true;
-        mainwindow_.move(mapToGlobal(event->pos()) - shiftPoint_
-                         - QPoint(0, mainwindow_.frameGeometry().height() - mainwindow_.geometry().height())
-                         - QPoint(0, mainwindow_.geometry().height() - this->geometry().height())
-                         );
+//        mainwindow_.move(mapToGlobal(event->pos()) - shiftPoint_
+//                         - QPoint(0, mainwindow_.frameGeometry().height() - mainwindow_.geometry().height())
+//                         - QPoint(0, mainwindow_.geometry().height() - this->geometry().height())
+//                         );
+        QPoint diff= event->pos() - pressPos_;
+          //move the window by diff
+        mainwindow_.move(mainwindow_.pos()+diff);
         event->accept();
     } else if (pan_ == Qt::LeftButton) {
         panStartX_ = event->position().x();
@@ -114,6 +117,7 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
         setDragMode(QGraphicsView::NoDrag);
         pan_ = Qt::RightButton;
         shiftPoint_ = event->pos();
+        pressPos_ = event->pos();
         panStartX_ = event->position().x();
         panStartY_ = event->position().y();
         event->accept();
