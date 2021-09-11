@@ -9,6 +9,7 @@
 #include "project_settings.h"
 
 #include <main_context_menu.h>
+#include "mainwindow.h"
 
 extern Logger logger;
 
@@ -85,7 +86,14 @@ void CanvasView::addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, 
 
 void CanvasView::mouseMoveEvent(QMouseEvent *event)
 {
-    if (pan_) {
+    if (pan_ == Qt::RightButton) {
+        rightMoveflag_ = true;
+        mainwindow_.move(mapToGlobal(event->pos()) - shiftPoint_
+                         - QPoint(0, mainwindow_.frameGeometry().height() - mainwindow_.geometry().height())
+                         - QPoint(0, mainwindow_.geometry().height() - this->geometry().height())
+                         );
+        event->accept();
+    } else if (pan_ == Qt::LeftButton) {
         panStartX_ = event->position().x();
         panStartY_ = event->position().y();
         event->accept();
@@ -98,7 +106,14 @@ void CanvasView::mouseMoveEvent(QMouseEvent *event)
 void CanvasView::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
-        pan_ = true;
+        pan_ = Qt::LeftButton;
+        panStartX_ = event->position().x();
+        panStartY_ = event->position().y();
+        event->accept();
+    } else if (event->button() == Qt::RightButton) {
+        setDragMode(QGraphicsView::NoDrag);
+        pan_ = Qt::RightButton;
+        shiftPoint_ = event->pos();
         panStartX_ = event->position().x();
         panStartY_ = event->position().y();
         event->accept();
@@ -109,10 +124,21 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
 
 void CanvasView::mouseReleaseEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        pan_ = false;
+    if (event->button() == Qt::RightButton) {
+        if (!rightMoveflag_) {
+            MainContextMenu contextMenu(mainwindow_, this);
+            QPointF POS = mapToGlobal(event->pos());
+            contextMenu.exec( POS.toPoint());
+        } else {
+            rightMoveflag_ = false;
+        }
+        setDragMode(QGraphicsView::RubberBandDrag);
+        event->accept();
+    } else if (event->button() == Qt::LeftButton) {
         event->accept();
     }
+
+    pan_ = Qt::NoButton;
     QGraphicsView::mouseReleaseEvent(event);
 }
 
@@ -236,6 +262,6 @@ void CanvasView::onSelectionChanged()
 
 void CanvasView::contextMenuEvent(QContextMenuEvent *event)
 {
-    MainContextMenu contextMenu(mainwindow_, this);
-    contextMenu.exec(event->globalPos());
+//    MainContextMenu contextMenu(mainwindow_, this);
+//    contextMenu.exec(event->globalPos());
 }
