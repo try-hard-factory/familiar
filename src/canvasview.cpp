@@ -88,8 +88,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent *event)
 {
     if (pan_ == Qt::RightButton) {
         rightMoveflag_ = true;
-        if (isMoving)
-          mainwindow_.move(wndPos + (event->globalPosition().toPoint() - pressPos_));
+        if (isMoving_) {
+          mainwindow_.move(wndPos_ + (event->globalPosition().toPoint() - pressPos_));
+        }
         event->accept();
     } else if (pan_ == Qt::LeftButton) {
         panStartX_ = event->position().x();
@@ -114,10 +115,8 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
         panStartX_ = event->position().x();
         panStartY_ = event->position().y();
         pressPos_ = event->globalPosition().toPoint();
-        isMoving= true;
-        wndPos = mainwindow_.pos();
-//        QWidget *parent = parentWidget();
-//        if (parent) wndPos = parent->pos();
+        isMoving_ = true;
+        wndPos_ = mainwindow_.pos();
         event->accept();
     }
     QGraphicsView::mousePressEvent(event);
@@ -134,7 +133,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent *event)
         } else {
             rightMoveflag_ = false;
         }
-        isMoving= false;
+        isMoving_ = false;
         setDragMode(QGraphicsView::RubberBandDrag);
         event->accept();
     } else if (event->button() == Qt::LeftButton) {
