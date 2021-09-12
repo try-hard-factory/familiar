@@ -73,7 +73,7 @@ private:
 
     EState state_ = eMouseMoving;
 
-    ImageDownloader* imgdownloader_ = nullptr;//image loader need threads.!!!
+    ImageDownloader* imgdownloader_ = nullptr;//image loader need threads!!!
 
     qreal parentViewScaleFactor_ = 1;
     project_settings* projectSettings_;
