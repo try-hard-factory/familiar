@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
+#include <QRubberBand>
 #include <itemgroup.h>
 #include "mainselectedarea.h"
 #include "image_downloader.h"
@@ -77,6 +78,9 @@ private:
 
     qreal parentViewScaleFactor_ = 1;
     project_settings* projectSettings_;
+
+    QPointF origin_;
+    QRectF rubberBand_;
 };
 
 #endif // CANVASSCENE_H
