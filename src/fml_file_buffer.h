@@ -67,7 +67,7 @@ public:
             stream >> size;
             QByteArray zip_img_payload = file.read(size);
             QByteArray img_payload = qUncompress(zip_img_payload);
-            QRect br_ = QRect(scenePos.x(), scenePos.y(), w, h);
+            QRect br_ = QRect(scenePos.x(), scenePos.y(), br.width(), br.height());
             obj->addImage(img_payload, w, h, br_, w*4, QImage::Format(format));
         }
 
