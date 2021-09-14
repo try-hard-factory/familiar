@@ -78,7 +78,7 @@ void DotSignal::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         auto dy = event->scenePos().y() - m_previousPosition.y();
         moveBy(dx,dy);
         setPreviousPosition(event->scenePos());
-        emit signalMove(this, dx, dy);
+//        emit signalMove(this, dx, dy);
     } else {
         qDebug()<<"else DotSignal::mouseMoveEvent";
         QGraphicsItem::mouseMoveEvent(event);

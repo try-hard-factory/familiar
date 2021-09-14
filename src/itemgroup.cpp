@@ -100,7 +100,7 @@ QRectF ItemGroup::calcNewBr()
 void ItemGroup::addItemToGroup(QGraphicsItem* item)
 {
     if (item == this || item->type() == eBorderDot) return;
-    qDebug()<<"Item pointer : "<< (void *)item;
+//    qDebug()<<"Item pointer : "<< (void *)item;
     addToGroup(item);
 
     if (item->type() != eBorderDot) {
@@ -139,7 +139,7 @@ void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
     if (item->type() != eBorderDot) {
         auto widget = qgraphicsitem_cast<MoveItem*>(item);
         widget->setInGroup(false);
-        LOG_DEBUG(logger, "REMOVE ", item, ", type = ", item->type());
+//        LOG_DEBUG(logger, "REMOVE ", item, ", type = ", item->type());
     }
     items_.erase(std::remove_if(items_.begin(), items_.end(), [&](QGraphicsItem* i) { return i == item; }),
                   items_.end());
@@ -156,7 +156,8 @@ void ItemGroup::printChilds()
 {
     auto childs = childItems();
     for (auto& it : childs) {
-        LOG_DEBUG(logger, "CHILDREN: ", it);
+        qDebug()<<it->type()<<' '<<it->pos();
+        //LOG_DEBUG(logger, "CHILDREN: ", it), ;
     }
 }
 
@@ -222,6 +223,7 @@ void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent *event, qreal sf)
 
 void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 {
+
     QPointF pt = event->pos();              // The current position of the mouse
     if(m_actionFlags == ResizeState){
         switch (m_cornerFlags) {
@@ -237,13 +239,13 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         case BottomRight:
             resizeBottomRight(pt);
             break;
-        default:
+        default:                
             if (m_leftMouseButtonPressed) {
                 auto dx = event->scenePos().x() - m_previousPosition.x();
                 auto dy = event->scenePos().y() - m_previousPosition.y();
                 moveBy(dx,dy);
                 setPreviousPosition(event->scenePos());
-                emit signalMove(this, dx, dy);
+//                emit signalMove(this, dx, dy);
             }
             break;
         }
@@ -258,13 +260,12 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
         }
         default:
             if (m_leftMouseButtonPressed) {
-                  LOG_DEBUG(logger, "MOVE: ");
                 setCursor(Qt::ClosedHandCursor);
                 auto dx = event->scenePos().x() - m_previousPosition.x();
                 auto dy = event->scenePos().y() - m_previousPosition.y();
                 moveBy(dx,dy);
                 setPreviousPosition(event->scenePos());
-                emit signalMove(this, dx, dy);
+//                emit signalMove(this, dx, dy);
             }
             break;
         }
