@@ -100,13 +100,13 @@ void MoveItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, 
     Q_UNUSED(widget);
 }
 
-//void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
-//{
+void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+{
 
-//    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
+    LOG_DEBUG(logger, "EventPos: (", event->pos().x(),";",event->pos().y(), "), Pos: (", pos().x(),";",pos().y(),")");
 
-////    this->setPos(mapToScene(event->pos()+ shiftMouseCoords_));
-//}
+    QGraphicsItem::mouseMoveEvent(event);
+}
 
 void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
@@ -172,6 +172,5 @@ void MoveItem::setRect(qreal x, qreal y, qreal w, qreal h)
 void MoveItem::setRect(const QRectF &rect)
 {
     rect_ = rect;
-//    qDebug()<<rect_;
     QGraphicsRectItem::setRect(rect);
 }

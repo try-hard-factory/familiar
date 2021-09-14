@@ -249,12 +249,6 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
         return;
     }
 
-    if (!item) {
-        state_ = eMouseSelection;
-        origin_ = event->scenePos();
-        rubberBand_.setRect(origin_.x(), origin_.y(), 0, 0);
-    }
-
 //    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
     if (event->button() == Qt::LeftButton) {
@@ -268,11 +262,14 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
                     itemGroup_->addItemToGroup(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
-
+                    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
 //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                 }
 //                state_ = eMouseSelection;
             } else {
+                state_ = eMouseSelection;
+                origin_ = event->scenePos();
+                rubberBand_.setRect(origin_.x(), origin_.y(), 0, 0);
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
 //                state_ = eMouseSelection;
@@ -358,18 +355,17 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
             rubberBand_= tmp;
             rubberBand_ = rubberBand_.normalized();
 
-            qDebug()<<rubberBand_<<" "<<items(rubberBand_).size();
+//            qDebug()<<rubberBand_<<" "<<items(rubberBand_).size();
             itemGroup_->clearItemGroup();
             auto selItems = items(rubberBand_);
             for (auto& it : selItems) {
                 if (it->type() == 3) itemGroup_->addItemToGroup(it);
     //            it->setSelected(false);
-                LOG_DEBUG(logger, "Selected address: ", it);
             }
             itemGroup_->incZ();
 //            LOG_DEBUG(logger, "itemGroup_ address: ", itemGroup_);
 //            LOG_DEBUG(logger, "Selected Items: ", selItems.size());
-            LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
+//            LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
             if (itemGroup_->isEmpty()) {
                 mainSelArea_.setReady(false);
             } else {
@@ -437,27 +433,8 @@ bool CanvasScene::isAnySelectedUnderCursor() const
 
 void CanvasScene::onSelectionChanged()
 {
-//    itemGroup_->clearItemGroup();
-
     auto selItems = selectedItems();
-
-//    for (auto& it : selItems) {
-//        itemGroup_->addItem(it);
-//    }
-//    LOG_WARNING(logger, "Selected Items: ", selItems.size());
-//    LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
-
-//    if (itemGroup_->isEmpty()) {
-//        mainSelArea_.setReady(false);
-//    } else {
-//        mainSelArea_.setReady(true);
-//    }
-//    QDEBUG<<" 2 Selected Items = "<<selItems.size();
-//    mainSelArea_.setReady(selItems.empty());
-//    mainSelArea_.setRect(result);
-//    addRect(itemGroup_->childrenBoundingRect(), QPen(Qt::black, 2));
-
-//    itemGroup_->setZValue(++zCounter_);
+    (void)selItems;
 }
 
 
@@ -468,7 +445,8 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     painter->drawEllipse(itemGroup_->pos(), 6,6);
     painter->setPen( QPen(Qt::red, 3) );
     painter->drawEllipse(itemGroup_->scenePos(), 10,10);
-
+    painter->setPen( QPen(Qt::white, 3) );
+    painter->drawEllipse({0,0}, 2,2);
     painter->setPen( QPen(Qt::black, 1) );
     int begin = -3000;
     while (begin != 3000) {
@@ -477,11 +455,6 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
         begin += 100;
     }
 #endif
-
-    qreal _wsize = 5;
-    QPen _outline_pen{QColor(255, 142, 153), _wsize};
-    painter->drawRect(rubberBand_);
-
     if (!mainSelArea_.isReady()) return;
     painter->save();
     qreal wsize = 2;
@@ -490,24 +463,6 @@ void CanvasScene::drawForeground(QPainter *painter, const QRectF &rect)
     painter->setPen( outline_pen );
     auto r = itemGroup_->sceneBoundingRect();
     painter->drawRect(r);
-
-
-//    itemGroup_->childrenBoundingRect()
-
-
-//    auto childs = itemGroup_->childItems();
-//    for (auto& it : childs) {
-//        if (it->type() == ItemGroup::eBorderDot) continue;
-//        painter->drawRect(it->sceneBoundingRect());
-//    }
-//    painter->setPen( QPen(Qt::black, 2) );
-//    auto r = itemGroup_->sceneBoundingRect();
-//    painter->drawRect(r);
-//    painter->setPen( QPen(Qt::black, 10) );
-//    painter->drawPoint(r.x(), r.y());
-//    painter->drawPoint(r.x()+r.width(), r.y());
-//    painter->drawPoint(r.x()+r.width(), r.y()+r.height());
-//    painter->drawPoint(r.x(), r.y() + r.height());
     painter->restore();
 }
 
