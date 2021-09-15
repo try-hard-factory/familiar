@@ -103,6 +103,21 @@ void TabPane::setCurrentTabTitle(QString title)
     tabs_->setTabText(tabs_->currentIndex(),title);
 }
 
+QString TabPane::getCurrentTabTitle()
+{
+    return tabs_->tabText(tabs_->currentIndex());
+}
+
+void TabPane::setCurrentTabProjectName(QString pn)
+{
+    currentWidget()->setProjectName(pn);
+}
+
+QString TabPane::getCurrentTabProjectName()
+{
+    return currentWidget()->projectName();
+}
+
 CanvasView *TabPane::currentWidget()
 {
     return static_cast<CanvasView *>(tabs_->currentWidget());

@@ -8,15 +8,20 @@ project_settings::project_settings(TabPane *tp)
 //    mw_->setWindowTitle(title());
 }
 
-void project_settings::title(QString t)
+void project_settings::title(const QString& t)
 {
     title_ = t;
     tp_->setCurrentTabTitle(title_);
 }
 
-void project_settings::path(QString p)
+void project_settings::path(const QString& p)
 {
     path_ = p;
+}
+
+void project_settings::projectName(const QString& p)
+{
+    projectName_ = p;
 }
 
 void project_settings::modified(bool s)

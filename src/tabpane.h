@@ -18,9 +18,16 @@ public:
     void addNewTab(QString path);
     void closeTabByIndex(int idx);
     void addNewUntitledTab();
+
     void setCurrentTabPath(QString path);
     QString getCurrentTabPath();
+
     void setCurrentTabTitle(QString title);
+    QString getCurrentTabTitle();
+
+    void setCurrentTabProjectName(QString pn);
+    QString getCurrentTabProjectName();
+
     CanvasView* currentWidget();
     CanvasView* widgetAt(int index);
     void setCurrentIndex(int index);
