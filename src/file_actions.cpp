@@ -59,7 +59,7 @@ void FileActions::openFile()
     delete fileDialog;
 }
 
-void FileActions::processOpenFile(QString file)
+void FileActions::processOpenFile(const QString& file)
 {
     if ( mainwindow_.tabPane().currentWidget()->isUntitled() &&  mainwindow_.tabPane().currentWidget()->isModified() == false) {
         mainwindow_.tabPane().setCurrentTabPath(file);
@@ -73,7 +73,7 @@ void FileActions::processOpenFile(QString file)
     mainwindow_.tabPane().currentWidget()->setModified(false);
 }
 
-int FileActions::saveFile(QString path)
+int FileActions::saveFile(const QString& path)
 {
     QFile file(path);
     if (!file.exists()) {

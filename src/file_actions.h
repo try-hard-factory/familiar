@@ -16,9 +16,9 @@ public:
 
     void newFile();
     void openFile();
-    void processOpenFile(QString file);
+    void processOpenFile(const QString& file);
 
-    int saveFile(QString path);
+    int saveFile(const QString& path);
     int saveFile();
     int saveFileAs();
 private:
