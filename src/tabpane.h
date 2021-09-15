@@ -15,17 +15,17 @@ public:
     explicit TabPane(MainWindow& mw);
     ~TabPane();
 
-    void addNewTab(QString path);
+    void addNewTab(const QString& path);
     void closeTabByIndex(int idx);
     void addNewUntitledTab();
 
-    void setCurrentTabPath(QString path);
+    void setCurrentTabPath(const QString& path);
     QString getCurrentTabPath();
 
-    void setCurrentTabTitle(QString title);
+    void setCurrentTabTitle(const QString& title);
     QString getCurrentTabTitle();
 
-    void setCurrentTabProjectName(QString pn);
+    void setCurrentTabProjectName(const QString& pn);
     QString getCurrentTabProjectName();
 
     CanvasView* currentWidget();
