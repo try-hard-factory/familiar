@@ -95,6 +95,8 @@ public:
 
     QString path();
     void setPath(const QString& path);
+    QString projectName();
+    void setProjectName(const QString& pn);
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();

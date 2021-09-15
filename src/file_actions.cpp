@@ -64,6 +64,7 @@ void FileActions::processOpenFile(QString file)
     if ( mainwindow_.tabPane().currentWidget()->isUntitled() &&  mainwindow_.tabPane().currentWidget()->isModified() == false) {
         mainwindow_.tabPane().setCurrentTabPath(file);
         mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(file).fileName());
+        mainwindow_.tabPane().setCurrentTabProjectName(QFileInfo(file).fileName());
     } else {
         mainwindow_.tabPane().addNewTab(file);
     }
@@ -110,7 +111,8 @@ int FileActions::saveFileAs()
             selected.append(fileExt_.at(fileDialog->selectedNameFilter()));
         }
 
-        if (!mainwindow_.tabPane().currentWidget()->isUntitled()) {
+        if (!mainwindow_.tabPane().currentWidget()->isUntitled() &&
+                mainwindow_.tabPane().getCurrentTabProjectName() != QFileInfo(selected).fileName()) {
             auto canvasView = mainwindow_.tabPane().currentWidget();
             mainwindow_.tabPane().addNewTab(selected);
             fml_file_buffer::open_file(mainwindow_.tabPane().currentWidget(), canvasView->path());
@@ -118,6 +120,7 @@ int FileActions::saveFileAs()
 
         mainwindow_.tabPane().setCurrentTabPath(selected);
         mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(selected).fileName());
+        mainwindow_.tabPane().setCurrentTabProjectName(QFileInfo(selected).fileName());
 
         QFile(selected).open(QFile::ReadWrite);
         saveFile(selected);

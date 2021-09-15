@@ -241,6 +241,16 @@ void CanvasView::setPath(const QString &path)
     scene_->setPath(path);
 }
 
+QString CanvasView::projectName()
+{
+    return scene_->projectName();
+}
+
+void CanvasView::setProjectName(const QString &pn)
+{
+    scene_->setProjectName(pn);
+}
+
 bool CanvasView::isModified()
 {
     return scene_->isModified();
