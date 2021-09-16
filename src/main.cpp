@@ -34,6 +34,12 @@ Logger logger;
 
 int main(int argc, char *argv[])
 {
+#ifdef NDEBUG
+    qDebug()<<"NDEBUG DEFINED";
+#else
+    qDebug()<<"NDEBUG notDEFINED";
+#endif
+
     QApplication a(argc, argv);
     MainWindow w;
     w.show();
