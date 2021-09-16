@@ -17,6 +17,8 @@ extern Logger logger;
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent) :
     QGraphicsView(parent), mainwindow_(mw)
 {
+    setHorizontalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
+    setVerticalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
     scene_ = new CanvasScene(zCounter_);
     connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
 
