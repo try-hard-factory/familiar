@@ -83,6 +83,7 @@ private:
 
     QPointF origin_;
     QRectF rubberBand_;
+    QPointF lastClickedPoint_{0,0};
 };
 
 #endif // CANVASSCENE_H

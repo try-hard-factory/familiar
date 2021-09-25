@@ -56,6 +56,11 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
             pasteFromClipboard();
         }
         break;
+    case (Qt::Key_V):
+        if (event->modifiers() & Qt::ControlModifier) {
+            pasteFromClipboard();
+        }
+        break;
     default:
         QGraphicsScene::keyPressEvent(event);
         break;
@@ -80,6 +85,23 @@ void CanvasScene::pasteFromClipboard()
         if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
         qDebug()<<"image rect "<<image.rect();
 
+    } else if (mimedata->hasUrls()) {
+        itemGroup_->clearItemGroup();
+        qreal x = 0;
+        foreach (const QUrl &url, mimedata->urls()) {
+            QString fileName = url.toLocalFile();
+            qDebug() << "Dropped file:" << fileName<<
+                        ", formats: "<< mimedata->formats();
+
+            MoveItem* item = new MoveItem(fileName, zCounter_);
+            item->setPos({lastClickedPoint_.x()+x, lastClickedPoint_.y()});
+            x += item->getRect().width();
+            addItem(item);
+            itemGroup_->addItemToGroup(item);
+        }
+        itemGroup_->incZ();
+        mainSelArea_.setReady(true);
+        projectSettings_->modified(true);
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
@@ -293,7 +315,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
 //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
-
+    lastClickedPoint_ = event->scenePos();
     LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
 
     if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
