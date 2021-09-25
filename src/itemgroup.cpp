@@ -301,7 +301,6 @@ void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 
 void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 {
-    qDebug()<<"FOCUSED";
 //    m_actionFlags = (m_actionFlags == ResizeState)?RotationState:ResizeState;
 //    setVisibilityGrabbers();
     QGraphicsItemGroup::mouseDoubleClickEvent(event);
