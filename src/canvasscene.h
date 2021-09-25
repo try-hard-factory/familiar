@@ -46,6 +46,7 @@ public:
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
+    ItemGroup* itemGroup() const noexcept { return itemGroup_; }
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
