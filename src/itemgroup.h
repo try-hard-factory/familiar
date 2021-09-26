@@ -74,6 +74,7 @@ protected:
     void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
 //    void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 public:
     void clearItemGroup();
     bool isContain(const QGraphicsItem* item) const;
@@ -81,12 +82,12 @@ public:
     bool isEmpty() const;
     void incZ();
     QRectF realRect() const {return rectItemGroup_;}
-
     void dumpBits(QString text);
-protected:
+    QImage mergedImages();
 
+    void cloneItems();
+    QVector<QGraphicsItem*> tmpitems_;
 
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
 
 private:
     void updateScaleControl();
@@ -101,6 +102,7 @@ private:
     QRectF sceneRectItemGroup_;
     QRectF rectItemGroup_;
     QVector<QGraphicsItem*> items_;
+
 
 private:
     unsigned int m_cornerFlags;
