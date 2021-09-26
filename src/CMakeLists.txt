@@ -69,8 +69,8 @@ set(PROJECT_SOURCES
         saveallwindow.h
         savecheckbox.cpp
         savecheckbox.h
-        settings_window.cpp
-        settings_window.h
+        ui/settings_window.cpp
+        ui/settings_window.h
         main_context_menu.cpp
         main_context_menu.h
 )

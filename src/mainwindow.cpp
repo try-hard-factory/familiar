@@ -10,7 +10,7 @@
 #include "project_settings.h"
 #include "tabpane.h"
 #include "saveallwindow.h"
-#include "settings_window.h"
+#include "ui/settings_window.h"
 #include <map>
 
 MainWindow::MainWindow(QWidget *parent)
