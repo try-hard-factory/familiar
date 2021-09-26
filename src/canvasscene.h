@@ -16,16 +16,19 @@ enum EState {
     eGroupItemResizing    = 0x0003,
 };
 
+class MainWindow;
 class project_settings;
 
 class CanvasScene : public QGraphicsScene
 {
 public:
-    CanvasScene(uint64_t& zc, QGraphicsScene *scene = 0);
+    CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene *scene = 0);
     ~CanvasScene();
 
 public:
     void pasteFromClipboard();
+    void pasteFromTemp();
+    void copyToClipboard();
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     void addImageToSceneToPosition(QImage&& image, QPointF position);
@@ -61,7 +64,8 @@ protected:
 
 public slots:
     void slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
-
+private slots:
+    void clipboardChanged();
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;
@@ -70,6 +74,7 @@ private:
     void handleImageFromClipboard(const QImage& image);
     void handleHtmlFromClipboard(const QString& html);
 
+    MainWindow& mainwindow_;
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
@@ -84,6 +89,7 @@ private:
 
     QPointF origin_;
     QRectF rubberBand_;
+    QPointF lastClickedPoint_{0,0};
 };
 
 #endif // CANVASSCENE_H

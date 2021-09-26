@@ -66,6 +66,11 @@ public:
     void exitProject();
     TabPane& tabPane();
     FileActions& fileActions();
+
+    void clipboardItems(QVector<QGraphicsItem*> ci) noexcept { clipboardItems_ = ci; }
+    QVector<QGraphicsItem*>& clipboardItems() noexcept { return clipboardItems_; }
+    void clearClipboardItems() { clipboardItems_.clear();}
+
 protected:
     void closeEvent(QCloseEvent *event) override;
 
@@ -97,6 +102,7 @@ private:
     Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
     FileActions* fileactions_;
     TabPane* tabpane_;
+    QVector<QGraphicsItem*> clipboardItems_;
 };
 
 template<typename M, typename S>

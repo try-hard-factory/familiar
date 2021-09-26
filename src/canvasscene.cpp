@@ -1,6 +1,7 @@
 #include "debug_macros.h"
 #include "canvasscene.h"
 #include "moveitem.h"
+#include "mainwindow.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -20,7 +21,8 @@ extern Logger logger;
 
 
 #define MOUSE_MOVE_DEBUG
-CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
+CanvasScene::CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene *scene)
+    : mainwindow_(mw), zCounter_(zc)
 {
     (void)scene;
     itemGroup_ = new ItemGroup(zc);
@@ -32,6 +34,8 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
 
     connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     imgdownloader_ = new ImageDownloader(*this);
+
+    connect(QApplication::clipboard(), &QClipboard::dataChanged, this, &CanvasScene::clipboardChanged);
 }
 
 CanvasScene::~CanvasScene()
@@ -56,6 +60,16 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
             pasteFromClipboard();
         }
         break;
+    case (Qt::Key_V):
+        if (event->modifiers() & Qt::ControlModifier) {
+            pasteFromClipboard();
+        }
+        break;
+    case (Qt::Key_C):
+        if (event->modifiers() & Qt::ControlModifier) {
+            copyToClipboard();
+        }
+        break;
     default:
         QGraphicsScene::keyPressEvent(event);
         break;
@@ -68,7 +82,26 @@ void CanvasScene::pasteFromClipboard()
     const QClipboard *clipboard = QApplication::clipboard();
     const QMimeData *mimedata = clipboard->mimeData(QClipboard::Clipboard);
 
-    if (mimedata->hasImage()) {
+    if (! mainwindow_.clipboardItems().isEmpty()) {
+            pasteFromTemp();
+    } else if (mimedata->hasUrls()) {
+        itemGroup_->clearItemGroup();
+        qreal x = 0;
+        foreach (const QUrl &url, mimedata->urls()) {
+            QString fileName = url.toLocalFile();
+            qDebug() << "Dropped file:" << fileName<<
+                        ", formats: "<< mimedata->formats();
+
+            MoveItem* item = new MoveItem(fileName, zCounter_);
+            item->setPos({lastClickedPoint_.x()+x, lastClickedPoint_.y()});
+            x += item->getRect().width();
+            addItem(item);
+            itemGroup_->addItemToGroup(item);
+        }
+        itemGroup_->incZ();
+        mainSelArea_.setReady(true);
+        projectSettings_->modified(true);
+    } else if (mimedata->hasImage()) {
         QImage image = qvariant_cast<QImage>(mimedata->imageData());
         if (!image.isNull()) {
             handleImageFromClipboard(image);
@@ -83,6 +116,33 @@ void CanvasScene::pasteFromClipboard()
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
+}
+
+void CanvasScene::pasteFromTemp()
+{
+    itemGroup_->clearItemGroup();
+    for (auto& item : mainwindow_.clipboardItems()) {
+
+        auto widget = qgraphicsitem_cast<MoveItem*>(item);
+        MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(), widget->zcounter());
+        tmpitem->setPos(widget->pos());
+
+
+        qDebug()<<tmpitem->pos();
+        addItem(tmpitem);
+        itemGroup_->addItemToGroup(tmpitem);
+    }
+    itemGroup_->incZ();
+    mainSelArea_.setReady(true);
+    projectSettings_->modified(true);
+}
+
+void CanvasScene::copyToClipboard()
+{
+    if (itemGroup_->isEmpty()) return;
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setImage(itemGroup_->mergedImages());
+    mainwindow_.clipboardItems(itemGroup_->cloneItems());
 }
 
 
@@ -293,7 +353,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent *event)
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
 {
 //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
-
+    lastClickedPoint_ = event->scenePos();
     LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
 
     if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
@@ -482,7 +542,7 @@ void CanvasScene::handleImageFromClipboard(const QImage& image)
     ++zCounter_;
     QImage* img = new QImage(image);
     MoveItem* item = new MoveItem(img, zCounter_);
-    item->setPos(100, 100);
+    item->setPos(lastClickedPoint_);
     addItem(item);
 }
 
@@ -510,6 +570,11 @@ void CanvasScene::slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy)
             item->moveBy(dx,dy);
         }
     }
+}
+
+void CanvasScene::clipboardChanged()
+{
+    mainwindow_.clearClipboardItems();
 }
 
 qint16 CanvasScene::objectsCount() const

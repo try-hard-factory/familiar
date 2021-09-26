@@ -29,8 +29,9 @@ public:
     int width() const noexcept { return qimage_->width(); }
     QImage::Format format() const noexcept { return qimage_->format(); }
     const QImage& qimage() { return *qimage_; }
-    const QImage* qimage_ptr() { return qimage_; }
-
+    const QImage* qimage_ptr_const() { return qimage_; }
+    QImage* qimage_ptr() { return qimage_; }
+    uint64_t& zcounter() noexcept { return zCounter_; }
 signals:
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;

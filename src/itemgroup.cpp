@@ -878,6 +878,29 @@ void ItemGroup::dumpBits(QString text)
     }
 }
 
+QImage ItemGroup::mergedImages()
+{
+    QImage result(boundingRect().width(), boundingRect().height(), QImage::Format::Format_RGB32); // image to hold the join of image 1 & 2
+    result.fill(QColor(42,42,42));
+    QPainter painter(&result);
+
+    qDebug()<<boundingRect();
+
+    for (auto& it : items_) {
+        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+        qDebug()<<widget->pos()<<' '<<widget->boundingRect();
+        painter.drawImage(
+                    {widget->pos() - boundingRect().topLeft(), widget->boundingRect().size()},
+                    widget->qimage());
+    }
+    return result;
+}
+
+QVector<QGraphicsItem*> ItemGroup::cloneItems()
+{
+    return items_;
+}
+
 void ItemGroup::setScaleControlFactor(qreal sf)
 {
     controlScaleFactor_ = sf;

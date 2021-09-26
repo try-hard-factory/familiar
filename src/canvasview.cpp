@@ -19,7 +19,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent) :
 {
     setHorizontalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
     setVerticalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
-    scene_ = new CanvasScene(zCounter_);
+    scene_ = new CanvasScene(mw, zCounter_);
     connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
 
     setMouseTracking(true);
