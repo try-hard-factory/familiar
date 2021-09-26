@@ -17,6 +17,8 @@ extern Logger logger;
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent) :
     QGraphicsView(parent), mainwindow_(mw)
 {
+    setHorizontalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
+    setVerticalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
     scene_ = new CanvasScene(mw, zCounter_);
     connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
 
@@ -25,9 +27,6 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent) :
 
     // Update all the view port when needed, otherwise, the drawInViewPort may experience trouble
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
-
-    setHorizontalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
-    setVerticalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
 
     // When zooming, the view stay centered over the mouse
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
