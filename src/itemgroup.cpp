@@ -896,9 +896,9 @@ QImage ItemGroup::mergedImages()
     return result;
 }
 
-void ItemGroup::cloneItems()
+QVector<QGraphicsItem*> ItemGroup::cloneItems()
 {
-    tmpitems_ = items_;
+    return items_;
 }
 
 void ItemGroup::setScaleControlFactor(qreal sf)

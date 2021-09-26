@@ -16,12 +16,13 @@ enum EState {
     eGroupItemResizing    = 0x0003,
 };
 
+class MainWindow;
 class project_settings;
 
 class CanvasScene : public QGraphicsScene
 {
 public:
-    CanvasScene(uint64_t& zc, QGraphicsScene *scene = 0);
+    CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene *scene = 0);
     ~CanvasScene();
 
 public:
@@ -72,6 +73,7 @@ private:
     void handleImageFromClipboard(const QImage& image);
     void handleHtmlFromClipboard(const QString& html);
 
+    MainWindow& mainwindow_;
     uint64_t& zCounter_;
     ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;

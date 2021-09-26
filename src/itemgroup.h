@@ -85,8 +85,7 @@ public:
     void dumpBits(QString text);
     QImage mergedImages();
 
-    void cloneItems();
-    QVector<QGraphicsItem*> tmpitems_;
+    QVector<QGraphicsItem*> cloneItems();
 
 
 private:

@@ -1,6 +1,7 @@
 #include "debug_macros.h"
 #include "canvasscene.h"
 #include "moveitem.h"
+#include "mainwindow.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -20,7 +21,8 @@ extern Logger logger;
 
 
 #define MOUSE_MOVE_DEBUG
-CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
+CanvasScene::CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene *scene)
+    : mainwindow_(mw), zCounter_(zc)
 {
     (void)scene;
     itemGroup_ = new ItemGroup(zc);
@@ -55,22 +57,12 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
         break;
     case (Qt::Key_Insert):
         if (event->modifiers() & Qt::ShiftModifier) {
-            if (itemGroup_->tmpitems_.isEmpty()) {
-                pasteFromClipboard();
-            } else {
-                pasteFromTemp();
-            }
+            pasteFromClipboard();
         }
         break;
     case (Qt::Key_V):
-
         if (event->modifiers() & Qt::ControlModifier) {
             pasteFromClipboard();
-//            if (itemGroup_->tmpitems_.isEmpty()) {
-//                pasteFromClipboard();
-//            } else {
-//                pasteFromTemp();
-//            }
         }
         break;
     case (Qt::Key_C):
@@ -90,7 +82,7 @@ void CanvasScene::pasteFromClipboard()
     const QClipboard *clipboard = QApplication::clipboard();
     const QMimeData *mimedata = clipboard->mimeData(QClipboard::Clipboard);
 
-    if (! itemGroup_->tmpitems_.isEmpty()) {
+    if (! mainwindow_.clipboardItems().isEmpty()) {
             pasteFromTemp();
     } else if (mimedata->hasUrls()) {
         itemGroup_->clearItemGroup();
@@ -129,7 +121,7 @@ void CanvasScene::pasteFromClipboard()
 void CanvasScene::pasteFromTemp()
 {
     itemGroup_->clearItemGroup();
-    for (auto& item : itemGroup_->tmpitems_) {
+    for (auto& item : mainwindow_.clipboardItems()) {
 
         auto widget = qgraphicsitem_cast<MoveItem*>(item);
         MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(), widget->zcounter());
@@ -150,7 +142,7 @@ void CanvasScene::copyToClipboard()
     if (itemGroup_->isEmpty()) return;
     QClipboard *clipboard = QApplication::clipboard();
     clipboard->setImage(itemGroup_->mergedImages());
-    itemGroup_->cloneItems();
+    mainwindow_.clipboardItems(itemGroup_->cloneItems());
 }
 
 
@@ -582,8 +574,7 @@ void CanvasScene::slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy)
 
 void CanvasScene::clipboardChanged()
 {
-    qDebug()<<"clipboardChanged!!!!!!!!!!!!!!!!!!!!";
-    itemGroup_->tmpitems_.clear();
+    mainwindow_.clearClipboardItems();
 }
 
 qint16 CanvasScene::objectsCount() const
