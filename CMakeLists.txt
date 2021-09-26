@@ -8,6 +8,10 @@ project(familiar VERSION ${FAMILIAR_VERSION} LANGUAGES CXX)
 
 set(PROJECT_NAME_CAPITALIZED "Familiar")
 
+if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
+    add_definitions(-DNDEBUG)
+endif()
+
 if (APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 endif()

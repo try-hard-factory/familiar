@@ -136,7 +136,7 @@ protected:
      * \~english @param event - mouse release event
      */
     void mouseReleaseEvent(QMouseEvent* event) override;
-
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
     /**
      * \~russian @brief перегрузите эту функцию, для обработки колёсика мышки
      * \~russian @param event - событие колёсика мышки
@@ -178,6 +178,7 @@ private:
     qreal panStartX_;
     qreal panStartY_;
     uint64_t zCounter_ = 0;
+    bool fitViewF_{false};
 };
 
 #endif // CANVASVIEW_H

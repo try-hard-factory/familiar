@@ -146,6 +146,20 @@ void CanvasView::mouseReleaseEvent(QMouseEvent *event)
     QGraphicsView::mouseReleaseEvent(event);
 }
 
+void CanvasView::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if (!fitViewF_) {
+        fitViewF_ = true;
+        fitInView(scene_->itemGroup(), Qt::KeepAspectRatio);
+        scene_->updateViewScaleFactor(transform().m11());
+    } else {
+        fitViewF_ = false;
+        fitInView(scene_->sceneRect(), Qt::KeepAspectRatio);
+        scene_->updateViewScaleFactor(transform().m11());
+    }
+    QGraphicsView::mouseDoubleClickEvent(event);
+}
+
 void CanvasView::ScaleView(qreal qFactor)
 {
     QTransform matrix = this->transform();
