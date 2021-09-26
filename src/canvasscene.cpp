@@ -32,6 +32,8 @@ CanvasScene::CanvasScene(uint64_t& zc, QGraphicsScene *scene) : zCounter_(zc)
 
     connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     imgdownloader_ = new ImageDownloader(*this);
+
+    connect(QApplication::clipboard(), &QClipboard::dataChanged, this, &CanvasScene::clipboardChanged);
 }
 
 CanvasScene::~CanvasScene()
@@ -53,12 +55,27 @@ void CanvasScene::keyPressEvent(QKeyEvent *event)
         break;
     case (Qt::Key_Insert):
         if (event->modifiers() & Qt::ShiftModifier) {
-            pasteFromClipboard();
+            if (itemGroup_->tmpitems_.isEmpty()) {
+                pasteFromClipboard();
+            } else {
+                pasteFromTemp();
+            }
         }
         break;
     case (Qt::Key_V):
+
         if (event->modifiers() & Qt::ControlModifier) {
             pasteFromClipboard();
+//            if (itemGroup_->tmpitems_.isEmpty()) {
+//                pasteFromClipboard();
+//            } else {
+//                pasteFromTemp();
+//            }
+        }
+        break;
+    case (Qt::Key_C):
+        if (event->modifiers() & Qt::ControlModifier) {
+            copyToClipboard();
         }
         break;
     default:
@@ -73,18 +90,8 @@ void CanvasScene::pasteFromClipboard()
     const QClipboard *clipboard = QApplication::clipboard();
     const QMimeData *mimedata = clipboard->mimeData(QClipboard::Clipboard);
 
-    if (mimedata->hasImage()) {
-        QImage image = qvariant_cast<QImage>(mimedata->imageData());
-        if (!image.isNull()) {
-            handleImageFromClipboard(image);
-            projectSettings_->modified(true);
-        } else if (mimedata->hasHtml()) {
-            handleHtmlFromClipboard(mimedata->html());
-            projectSettings_->modified(true);
-        }
-        if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
-        qDebug()<<"image rect "<<image.rect();
-
+    if (! itemGroup_->tmpitems_.isEmpty()) {
+            pasteFromTemp();
     } else if (mimedata->hasUrls()) {
         itemGroup_->clearItemGroup();
         qreal x = 0;
@@ -102,9 +109,48 @@ void CanvasScene::pasteFromClipboard()
         itemGroup_->incZ();
         mainSelArea_.setReady(true);
         projectSettings_->modified(true);
+    } else if (mimedata->hasImage()) {
+        QImage image = qvariant_cast<QImage>(mimedata->imageData());
+        if (!image.isNull()) {
+            handleImageFromClipboard(image);
+            projectSettings_->modified(true);
+        } else if (mimedata->hasHtml()) {
+            handleHtmlFromClipboard(mimedata->html());
+            projectSettings_->modified(true);
+        }
+        if (image.isNull()) LOG_DEBUG(logger, "NULL IMAGE!!!!");
+        qDebug()<<"image rect "<<image.rect();
+
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
+}
+
+void CanvasScene::pasteFromTemp()
+{
+    itemGroup_->clearItemGroup();
+    for (auto& item : itemGroup_->tmpitems_) {
+
+        auto widget = qgraphicsitem_cast<MoveItem*>(item);
+        MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(), widget->zcounter());
+        tmpitem->setPos(widget->pos());
+
+
+        qDebug()<<tmpitem->pos();
+        addItem(tmpitem);
+        itemGroup_->addItemToGroup(tmpitem);
+    }
+    itemGroup_->incZ();
+    mainSelArea_.setReady(true);
+    projectSettings_->modified(true);
+}
+
+void CanvasScene::copyToClipboard()
+{
+    if (itemGroup_->isEmpty()) return;
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setImage(itemGroup_->mergedImages());
+    itemGroup_->cloneItems();
 }
 
 
@@ -504,7 +550,7 @@ void CanvasScene::handleImageFromClipboard(const QImage& image)
     ++zCounter_;
     QImage* img = new QImage(image);
     MoveItem* item = new MoveItem(img, zCounter_);
-    item->setPos(100, 100);
+    item->setPos(lastClickedPoint_);
     addItem(item);
 }
 
@@ -532,6 +578,12 @@ void CanvasScene::slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy)
             item->moveBy(dx,dy);
         }
     }
+}
+
+void CanvasScene::clipboardChanged()
+{
+    qDebug()<<"clipboardChanged!!!!!!!!!!!!!!!!!!!!";
+    itemGroup_->tmpitems_.clear();
 }
 
 qint16 CanvasScene::objectsCount() const

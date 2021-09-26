@@ -26,6 +26,8 @@ public:
 
 public:
     void pasteFromClipboard();
+    void pasteFromTemp();
+    void copyToClipboard();
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     void addImageToSceneToPosition(QImage&& image, QPointF position);
@@ -60,7 +62,8 @@ protected:
 
 public slots:
     void slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
-
+private slots:
+    void clipboardChanged();
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;
