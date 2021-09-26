@@ -30,9 +30,10 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem *parent)
 }
 
 MoveItem::MoveItem(QImage* img, uint64_t& zc, QGraphicsRectItem *parent) :
-    QGraphicsRectItem(parent), qimage_(img), zCounter_(zc)
+    QGraphicsRectItem(parent), qimage_(new QImage(*img)), zCounter_(zc)
 {
     setZValue(zCounter_);
+
     pixmap_ = QPixmap::fromImage(*qimage_);
 //    LOG_DEBUG(logger, "qimage addr: ", &qimage_);
 //    LOG_DEBUG(logger, "pixmap addr: ", &pixmap_);
@@ -64,6 +65,7 @@ MoveItem::MoveItem(QByteArray ba, int w, int h, qsizetype bpl, QImage::Format f,
 MoveItem::~MoveItem()
 {
     delete qimage_;
+
 }
 
 
