@@ -83,6 +83,19 @@ protected:
     virtual QVariant process(const QVariant& val);
 };
 
+class Bool : public ValueHandler
+{
+public:
+    Bool(bool def);
+    bool check(const QVariant& val) override;
+    QVariant fallback() override;
+    QString expected() override;
+
+private:
+    bool def_;
+};
+
+
 class KeySequence : public ValueHandler
 {
 public:
