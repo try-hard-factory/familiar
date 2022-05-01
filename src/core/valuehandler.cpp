@@ -31,6 +31,31 @@ QVariant ValueHandler::process(const QVariant& val)
     return val;
 }
 
+// BOOL
+
+Bool::Bool(bool def)
+  : def_(def)
+{}
+
+bool Bool::check(const QVariant& val)
+{
+    QString str = val.toString();
+    if (str != "true" && str != "false") {
+        return false;
+    }
+    return true;
+}
+
+QVariant Bool::fallback()
+{
+    return def_;
+}
+
+QString Bool::expected()
+{
+    return QStringLiteral("true or false");
+}
+
 // KEY SEQUENCE
 
 KeySequence::KeySequence(const QKeySequence& fallback)
