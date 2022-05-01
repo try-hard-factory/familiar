@@ -32,6 +32,8 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
@@ -71,6 +73,16 @@ set(PROJECT_SOURCES
         savecheckbox.h
         ui/settings_window.cpp
         ui/settings_window.h
+        ui/shortcuts_widget.cpp
+        ui/shortcuts_widget.h
+        core/qguiappcurrentscreen.cpp
+        core/qguiappcurrentscreen.h
+        ui/setshortcut_widget.cpp
+        ui/setshortcut_widget.h
+        core/settingshandler.cpp
+        core/settingshandler.h
+        core/valuehandler.cpp
+        core/valuehandler.h
         main_context_menu.cpp
         main_context_menu.h
 )
