@@ -1,6 +1,7 @@
 #include "settingshandler.h"
 #include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QFileSystemWatcher>
 
 #include <core/valuehandler.h>
@@ -8,6 +9,33 @@
 #include "Logger.h"
 
 extern Logger logger;
+
+#define OPTION(KEY, TYPE)                                                      \
+    {                                                                          \
+        QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE)            \
+    }
+
+#define SHORTCUT(NAME, DEFAULT_VALUE)                                          \
+    {                                                                          \
+        QStringLiteral(NAME), QSharedPointer<KeySequence>(new KeySequence(     \
+                                QKeySequence(QLatin1String(DEFAULT_VALUE))))   \
+    }
+
+static QMap<class QString, QSharedPointer<ValueHandler>>
+        recognizedGeneralOptions = {
+//         KEY                            TYPE                 DEFAULT_VALUE
+    OPTION("option0"                    ,Bool               ( true          )),
+    OPTION("option0"         ,Bool               ( true          )),
+
+};
+
+static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
+//           NAME                           DEFAULT_SHORTCUT
+    SHORTCUT("TYPE_SAVE"                ,   "Ctrl+S"                ),
+    SHORTCUT("TYPE_EXIT"                ,   "Ctrl+Q"                ),
+
+};
+
 
 SettingsHandler::SettingsHandler()
     : settings_(QSettings::IniFormat,
@@ -113,6 +141,15 @@ void SettingsHandler::setValue(const QString &key, const QVariant &value)
 }
 
 
+QSet<QString> &SettingsHandler::recognizedShortcutNames()
+{
+    auto keys = recognizedShortcuts.keys();
+    static QSet<QString> names = QSet<QString>(keys.begin(), keys.end());
+
+    return names;
+}
+
+
 void SettingsHandler::checkAndHandleError() const
 {
     if (!QFile(settings_.fileName()).exists()) {
@@ -154,6 +191,30 @@ void SettingsHandler::ensureFileWatched() const
     ) {
         settingsWatcher_->addPath(settings_.fileName());
     }
+}
+
+
+void SettingsHandler::assertKeyRecognized(const QString &key) const
+{
+    bool recognized = isShortcut(key)
+            ? recognizedShortcutNames().contains(baseName(key))
+            : ::recognizedGeneralOptions.contains(key);
+    if (!recognized) {
+        setErrorState(true);
+    }
+}
+
+
+bool SettingsHandler::isShortcut(const QString &key) const
+{
+    return settings_.group() == QStringLiteral(SETTINGS_GROUP_SHORTCUTS) ||
+              key.startsWith(QStringLiteral(SETTINGS_GROUP_SHORTCUTS "/"));
+}
+
+
+QString SettingsHandler::baseName(QString key) const
+{
+    return QFileInfo(key).baseName();
 }
 
 

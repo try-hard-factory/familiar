@@ -45,6 +45,9 @@ public:
     QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);
 
+    // INFO
+    static QSet<QString>& recognizedShortcutNames();
+
     // errors catching
     void checkAndHandleError() const;
     bool hasError() const;
@@ -53,11 +56,14 @@ public:
 
 signals:
     void fileChanged();
+    void error();
+    void errorResolved();
 
 private:
-    void error() const;
-    void errorResolved() const;
     void ensureFileWatched() const;
+    void assertKeyRecognized(const QString& key) const;
+    bool isShortcut(const QString& key) const;
+    QString baseName(QString key) const;
 
 private:
     mutable QSettings settings_;
