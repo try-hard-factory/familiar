@@ -5,12 +5,14 @@
 #include <QLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QShortcut>
 
 #include "fml_file_buffer.h"
 #include "project_settings.h"
 #include "tabpane.h"
 #include "saveallwindow.h"
-#include "ui/settings_window.h"
+#include <ui/settings_window.h>
+#include <core/settingshandler.h>
 #include <map>
 
 MainWindow::MainWindow(QWidget *parent)
@@ -29,7 +31,7 @@ MainWindow::MainWindow(QWidget *parent)
     statusBar()->hide();
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
-
+    initShortcuts();
     setCentralWidget(tabpane_);
 }
 
@@ -76,6 +78,32 @@ bool MainWindow::checkSave()
         return false;
     }
     return true;
+}
+
+void MainWindow::initShortcuts()
+{
+    newShortcut(
+      QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(on_action_save_triggered()));
+
+    newShortcut(
+      QKeySequence(SettingsHandler().shortcut("TYPE_EXIT")), this, SLOT(on_action_quit_triggered()));
+}
+
+QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key,
+                                             QWidget* parent,
+                                             const char* slot)
+{
+    QList<QShortcut*> shortcuts;
+    QString strKey = key.toString();
+    if (strKey.contains("Enter") || strKey.contains("Return")) {
+        strKey.replace("Enter", "Return");
+        shortcuts << new QShortcut(strKey, parent, slot);
+        strKey.replace("Return", "Enter");
+        shortcuts << new QShortcut(strKey, parent, slot);
+    } else {
+        shortcuts << new QShortcut(key, parent, slot);
+    }
+    return shortcuts;
 }
 
 int MainWindow::saveFile()

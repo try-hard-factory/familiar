@@ -11,6 +11,8 @@
 #include <QVector>
 #include <QWidget>
 
+#include <core/settingshandler.h>
+
 class QTableWidget;
 class QVBoxLayout;
 
@@ -30,6 +32,7 @@ private slots:
     void onShortcutCellClicked(int, int);
 
 private:
+    SettingsHandler config_;
     QTableWidget* table_ = nullptr;
     QVBoxLayout* layout_ = nullptr;
     QList<QStringList> shortcuts_;
