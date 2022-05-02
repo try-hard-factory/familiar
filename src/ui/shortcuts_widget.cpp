@@ -135,7 +135,7 @@ void ShortcutsWidget::loadShortCuts()
 {
     shortcuts_.clear();
     appendShortcut("TYPE_SAVE", "Save current file");
-    appendShortcut("TYPE_EXIT", "Quit application");
+    appendShortcut("TYPE_QUIT", "Quit application");
 }
 
 
