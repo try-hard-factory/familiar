@@ -1,8 +1,14 @@
 #include "settingshandler.h"
 #include <QCoreApplication>
+#include <QDebug>
+#include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QFileSystemWatcher>
+#include <QKeySequence>
+#include <QMap>
+#include <QSharedPointer>
+#include <QStandardPaths>
+#include <QVector>
 
 #include <core/valuehandler.h>
 
@@ -24,8 +30,8 @@ extern Logger logger;
 static QMap<class QString, QSharedPointer<ValueHandler>>
         recognizedGeneralOptions = {
 //         KEY                            TYPE                 DEFAULT_VALUE
-    OPTION("option0"                    ,Bool               ( true          )),
     OPTION("option0"         ,Bool               ( true          )),
+    OPTION("option1"         ,Bool               ( true          )),
 
 };
 
@@ -82,7 +88,7 @@ SettingsHandler* SettingsHandler::getInstance()
 
 bool SettingsHandler::setShortcut(const QString& actionName, const QString& shortcut)
 {
-    LOG_DEBUG(logger, shortcut);
+    LOG_DEBUG(logger, shortcut.toStdString());
     qDebug() << actionName;
     static QVector<QKeySequence> reservedShortcuts = {
         Qt::Key_Backspace,
@@ -126,7 +132,22 @@ done:
 
 QString SettingsHandler::shortcut(const QString& actionName)
 {
-
+    QString setting = SETTINGS_GROUP_SHORTCUTS "/" + actionName;
+    QString shortcut = value(setting).toString();
+    if (!settings_.contains(setting)) {
+        // The action uses a shortcut that is a flameshot default
+        // (not set explicitly by user)
+        settings_.beginGroup(SETTINGS_GROUP_SHORTCUTS);
+        for (auto& otherAction : settings_.allKeys()) {
+            if (settings_.value(otherAction) == shortcut) {
+                // We found an explicit shortcut - it will take precedence
+                settings_.endGroup();
+                return {};
+            }
+        }
+        settings_.endGroup();
+    }
+    return shortcut;
 }
 
 void SettingsHandler::setValue(const QString &key, const QVariant &value)
@@ -138,6 +159,26 @@ void SettingsHandler::setValue(const QString &key, const QVariant &value)
         auto val = valueHandler(key)->representation(value);
         settings_.setValue(key, val);
     }
+}
+
+
+QVariant SettingsHandler::value(const QString &key) const
+{
+    assertKeyRecognized(key);
+
+    auto val = settings_.value(key);
+
+    auto handler = valueHandler(key);
+
+    // Check the value for semantic errors
+    if (val.isValid() && !handler->check(val)) {
+        setErrorState(true);
+    }
+    if (hasError_) {
+        return handler->fallback();
+    }
+
+    return handler->value(val);
 }
 
 
@@ -218,6 +259,19 @@ QString SettingsHandler::baseName(QString key) const
 }
 
 
+QSharedPointer<ValueHandler> SettingsHandler::valueHandler(const QString &key) const
+{
+    QSharedPointer<ValueHandler> handler;
+    if (isShortcut(key)) {
+        handler = recognizedShortcuts.value(
+          baseName(key), QSharedPointer<KeySequence>(new KeySequence()));
+    } else { // General group
+        handler = ::recognizedGeneralOptions.value(key);
+    }
+    return handler;
+}
+
+
 void SettingsHandler::setErrorState(bool error) const
 {
     bool hadError = hasError_;
@@ -225,13 +279,21 @@ void SettingsHandler::setErrorState(bool error) const
     // Notify user every time m_hasError changes
     if (!hadError && hasError_) {
         QString msg = errorMessage();
-        LOG_WARNING(logger, msg);
+        LOG_WARNING(logger, msg.toStdString());
 //        AbstractLogger::error() << msg;
         emit getInstance()->error();
     } else if (hadError && !hasError_) {
         auto msg = tr("You have successfully resolved the configuration error.");
-        LOG_INFO(logger, msg);
+        LOG_INFO(logger, msg.toStdString());
 //        AbstractLogger::info() << msg;
         emit getInstance()->errorResolved();
     }
 }
+
+// STATIC MEMBER DEFINITIONS
+
+bool SettingsHandler::hasError_ = false;
+bool SettingsHandler::errorCheckPending_ = true;
+bool SettingsHandler::skipNextErrorCheck_ = false;
+
+QSharedPointer<QFileSystemWatcher> SettingsHandler::settingsWatcher_;

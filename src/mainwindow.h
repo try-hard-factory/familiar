@@ -25,6 +25,7 @@ QT_END_NAMESPACE
 class project_settings;
 class QFileDialog;
 class SaveAllWindow;
+class QShortcut;
 /**
  * \~russian @brief The MainWindow класс
  *
@@ -77,6 +78,10 @@ protected:
 private:
     void saveFile(const QString& path);
     bool checkSave();
+    void initShortcuts();
+    QList<QShortcut*> newShortcut(const QKeySequence& key,
+                                  QWidget* parent,
+                                  const char* slot);
 
 private slots:
     void on_action_save_all_triggered();

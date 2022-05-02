@@ -6,6 +6,7 @@
 
 class MainWindow;
 class ShortcutsWidget;
+class PreferencesConf;
 
 class SettingsWindow : public QWidget
 {
@@ -27,7 +28,7 @@ private:
     // VisualsEditor* visuals_ = nullptr;
     QWidget* visualsTab_ = nullptr;
 
-    // PreferencesConf* prefConfig_ = nullptr;
+    PreferencesConf* prefConfig_ = nullptr;
     QWidget* prefConfigTab_ = nullptr;
 
     ShortcutsWidget* shortcuts_ = nullptr;

@@ -18,69 +18,58 @@ SetShortcutDialog::SetShortcutDialog(QDialog* parent, QString shortcutName)
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     // setWindowIcon(QIcon(GlobalValues::iconPath()));
     setWindowTitle(tr("Set Shortcut"));
-    m_ks = QKeySequence();
+    ks_ = QKeySequence();
 
-    m_layout = new QVBoxLayout(this);
-    m_layout->setAlignment(Qt::AlignHCenter);
+    layout_ = new QVBoxLayout(this);
+    layout_->setAlignment(Qt::AlignHCenter);
 
     auto* infoTop = new QLabel(tr("Enter new shortcut to change "));
     infoTop->setMargin(10);
     infoTop->setAlignment(Qt::AlignCenter);
-    m_layout->addWidget(infoTop);
+    layout_->addWidget(infoTop);
 
     auto* infoIcon = new QLabel();
     infoIcon->setAlignment(Qt::AlignCenter);
     infoIcon->setPixmap(QPixmap(":/img/app/keyboard.svg"));
-    m_layout->addWidget(infoIcon);
+    layout_->addWidget(infoIcon);
 
-    m_layout->addWidget(infoIcon);
+    layout_->addWidget(infoIcon);
 
-    QString msg = "";
-#if defined(Q_OS_MAC)
-    msg = tr(
-      "Press Esc to cancel or ⌘+Backspace to disable the keyboard shortcut.");
-#else
-    msg =
-      tr("Press Esc to cancel or Backspace to disable the keyboard shortcut.");
-#endif
-    if (shortcutName == "TAKE_SCREENSHOT" ||
-        shortcutName == "SCREENSHOT_HISTORY") {
-        msg +=
-          "\n" + tr("Flameshot must be restarted for changes to take effect.");
-    }
+    QString msg = tr("Press Esc to cancel or Backspace to disable the keyboard shortcut.");
+
     auto* infoBottom = new QLabel(msg);
     infoBottom->setMargin(10);
     infoBottom->setAlignment(Qt::AlignCenter);
-    m_layout->addWidget(infoBottom);
+    layout_->addWidget(infoBottom);
 }
 
 const QKeySequence& SetShortcutDialog::shortcut()
 {
-    return m_ks;
+    return ks_;
 }
 
 void SetShortcutDialog::keyPressEvent(QKeyEvent* ke)
 {
     if (ke->modifiers() & Qt::ShiftModifier) {
-        m_modifier += "Shift+";
+        modifier_ += "Shift+";
     }
     if (ke->modifiers() & Qt::ControlModifier) {
-        m_modifier += "Ctrl+";
+        modifier_ += "Ctrl+";
     }
     if (ke->modifiers() & Qt::AltModifier) {
-        m_modifier += "Alt+";
+        modifier_ += "Alt+";
     }
     if (ke->modifiers() & Qt::MetaModifier) {
-        m_modifier += "Meta+";
+        modifier_ += "Meta+";
     }
 
     QString key = QKeySequence(ke->key()).toString();
-    m_ks = QKeySequence(m_modifier + key);
+    ks_ = QKeySequence(modifier_ + key);
 }
 
 void SetShortcutDialog::keyReleaseEvent(QKeyEvent* event)
 {
-    if (m_ks == QKeySequence(Qt::Key_Escape)) {
+    if (ks_ == QKeySequence(Qt::Key_Escape)) {
         reject();
     }
     accept();

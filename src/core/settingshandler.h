@@ -11,7 +11,7 @@
 #define SETTINGS_GROUP_SHORTCUTS "Shortcuts"
 
 class QFileSystemWatcher;
-//class ValueHandler;
+class ValueHandler;
 template<class T>
 class QSharedPointer;
 class QTextStream;
@@ -44,6 +44,7 @@ public:
     bool setShortcut(const QString& actionName, const QString& shortcut);
     QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);
+    QVariant value(const QString& key) const;
 
     // INFO
     static QSet<QString>& recognizedShortcutNames();
@@ -64,6 +65,7 @@ private:
     void assertKeyRecognized(const QString& key) const;
     bool isShortcut(const QString& key) const;
     QString baseName(QString key) const;
+    QSharedPointer<ValueHandler> valueHandler(const QString& key) const;
 
 private:
     mutable QSettings settings_;

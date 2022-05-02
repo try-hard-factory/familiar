@@ -83,6 +83,8 @@ set(PROJECT_SOURCES
         core/settingshandler.h
         core/valuehandler.cpp
         core/valuehandler.h
+        ui/preferencesconf.h
+        ui/preferencesconf.cpp
         main_context_menu.cpp
         main_context_menu.h
 )

@@ -31,7 +31,10 @@ ShortcutsWidget::ShortcutsWidget(QWidget* parent)
     layout_->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
     initInfoTable();
-    //connect confighandler
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::fileChanged,
+            this,
+            &ShortcutsWidget::populateInfoTable);
     show();
 }
 
@@ -75,7 +78,7 @@ void ShortcutsWidget::populateInfoTable()
         const auto description = current_sc.at(1); // maybe const auto & ????
         const auto key_sequence = current_sc.at(2); // maybe const auto & ????
 
-        table_->setItem(i, 0, new QTableWidgetItem());
+        table_->setItem(i, 0, new QTableWidgetItem(description));
 
         QTableWidgetItem* item = new QTableWidgetItem(key_sequence);
 
@@ -119,9 +122,9 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
                 shortcutValue = QKeySequence("");
             }
 
-//            if (m_config.setShortcut(shortcutName, shortcutValue.toString())) {
-//                populateInfoTable();
-//            }
+            if (config_.setShortcut(shortcutName, shortcutValue.toString())) {
+                populateInfoTable();
+            }
         }
         delete setShortcutDialog;
     }
@@ -131,14 +134,15 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
 void ShortcutsWidget::loadShortCuts()
 {
     shortcuts_.clear();
-
+    appendShortcut("TYPE_SAVE", "Save current file");
+    appendShortcut("TYPE_EXIT", "Quit application");
 }
 
 
 void ShortcutsWidget::appendShortcut(const QString& shortcutName,
                                      const QString& description)
 {
-    QString shortcut = ConfigHandler().shortcut(shortcutName);
+    QString shortcut = SettingsHandler().shortcut(shortcutName);
     shortcuts_ << (QStringList()
                     << shortcutName
                     << QObject::tr(description.toStdString().c_str())
