@@ -31,7 +31,11 @@ MainWindow::MainWindow(QWidget *parent)
     statusBar()->hide();
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
+    createActions();
+    createMenus();
+
     initShortcuts();
+
     setCentralWidget(tabpane_);
 }
 
@@ -42,14 +46,61 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+
+void MainWindow::quitProject()
+{
+    if (checkSave()) {
+        exitProject();
+    }
+}
+
+
+void MainWindow::saveAll()
+{
+    for (int i = tabpane_->count()-1; i>=0; --i) {
+        tabpane_->setCurrentIndex(i);
+
+        auto ret = fileactions_->saveFile();
+        (void) ret;
+    }
+}
+
+
 void MainWindow::newFile()
 {
     fileactions_->newFile();
 }
 
+
+void MainWindow::settingsWindow()
+{
+    SettingsWindow* widget = new SettingsWindow(this);
+    widget->setAttribute( Qt::WA_DeleteOnClose );
+    widget->show();
+    centered_widget(this, widget);
+}
+
+
+void MainWindow::saveFile()
+{
+    fileactions_->saveFile();
+}
+
+
+void MainWindow::quit()
+{
+    quitProject();
+}
+
 void MainWindow::openFile()
 {
     fileactions_->openFile();
+}
+
+
+void MainWindow::saveFileAs()
+{
+    fileactions_->saveFileAs();
 }
 
 
@@ -82,8 +133,8 @@ bool MainWindow::checkSave()
 
 void MainWindow::initShortcuts()
 {
-    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(on_action_save_triggered()));
-    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(on_action_quit_triggered()));
+    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
+    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
 }
 
 QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key, QWidget* parent, const char* slot)
@@ -101,30 +152,57 @@ QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key, QWidget* pare
     return shortcuts;
 }
 
-int MainWindow::saveFile()
+void MainWindow::createActions()
 {
-    return fileactions_->saveFile();
+    saveAllAction_ = new QAction(tr("Save all"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    saveAllAction_->setStatusTip(tr("Save all"));
+    connect(saveAllAction_, &QAction::triggered, this, &MainWindow::saveAll);
+
+    newAction_ = new QAction(tr("New"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    newAction_->setStatusTip(tr("New"));
+    connect(newAction_, &QAction::triggered, this, &MainWindow::newFile);
+
+    settingsAction_ = new QAction(tr("Settings"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    settingsAction_->setStatusTip(tr("Settings"));
+    connect(settingsAction_, &QAction::triggered, this, &MainWindow::settingsWindow);
+
+    saveAction_ = new QAction(tr("Save"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    saveAction_->setStatusTip(tr("Save"));
+    connect(saveAction_, &QAction::triggered, this, &MainWindow::saveFile);
+
+    quitAction_ = new QAction(tr("Quit"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    quitAction_->setStatusTip(tr("Quit"));
+    connect(quitAction_, &QAction::triggered, this, &MainWindow::quit);
+
+    openAction_ = new QAction(tr("Open"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    openAction_->setStatusTip(tr("Open"));
+    connect(openAction_, &QAction::triggered, this, &MainWindow::openFile);
+
+    saveAsAction_ = new QAction(tr("Save As"), this);
+//    saveAllAction_->setShortcuts(QKeySequence::New);
+    saveAsAction_->setStatusTip(tr("Save As"));
+    connect(saveAsAction_, &QAction::triggered, this, &MainWindow::saveFileAs);
 }
 
-int MainWindow::saveFileAs()
+void MainWindow::createMenus()
 {
-    return fileactions_->saveFileAs();
+    fileMenu_ = menuBar()->addMenu(tr("menu"));
+    fileMenu_->addAction(newAction_);
+    fileMenu_->addAction(openAction_);
+    fileMenu_->addAction(saveAction_);
+    fileMenu_->addAction(saveAsAction_);
+    fileMenu_->addAction(saveAllAction_);
+    fileMenu_->addAction(settingsAction_);
+    fileMenu_->addSeparator();
+    fileMenu_->addAction(quitAction_);
 }
 
-void MainWindow::settingsWindow()
-{
-    SettingsWindow* widget = new SettingsWindow(this);
-    widget->setAttribute( Qt::WA_DeleteOnClose );
-    widget->show();
-    centered_widget(this, widget);
-}
-
-void MainWindow::quitProject()
-{
-    if (checkSave()) {
-        exitProject();
-    }
-}
 
 void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool> &&m)
 {
@@ -184,44 +262,3 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 }
 
-
-void MainWindow::on_action_saveas_triggered()
-{
-    saveFileAs();
-}
-
-
-void MainWindow::on_action_open_triggered()
-{
-    openFile();
-}
-
-void MainWindow::on_action_quit_triggered()
-{
-    quitProject();
-}
-
-void MainWindow::on_action_save_triggered()
-{
-    saveFile();
-}
-
-void MainWindow::on_action_settings_triggered()
-{
-    settingsWindow();
-}
-
-void MainWindow::on_action_new_triggered()
-{
-    newFile();
-}
-
-void MainWindow::on_action_save_all_triggered()
-{
-    for (int i = tabpane_->count()-1; i>=0; --i) {
-        tabpane_->setCurrentIndex(i);
-
-        auto ret = fileactions_->saveFile();
-        (void) ret;
-    }
-}

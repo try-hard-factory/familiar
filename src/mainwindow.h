@@ -55,11 +55,6 @@ public:
 
 
     /* Part of feature FileActions class */
-    void newFile();
-    void openFile();
-    int saveFile();
-    int saveFileAs();
-    void settingsWindow();
     void quitProject();
 
     void saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m);
@@ -76,38 +71,38 @@ protected:
     void closeEvent(QCloseEvent *event) override;
 
 private:
-    void saveFile(const QString& path);
+//    void saveFile(const QString& path);
     bool checkSave();
     void initShortcuts();
     QList<QShortcut*> newShortcut(const QKeySequence& key,
                                   QWidget* parent,
                                   const char* slot);
+    void createActions();
+    void createMenus();
 
 private slots:
-    void on_action_save_all_triggered();
-    void on_action_new_triggered();
-    void on_action_settings_triggered();
-    void on_action_save_triggered();
-    void on_action_quit_triggered();
-    /**
-     * \~russian @brief QT обработчик для кнопки открытия файла
-     *
-     * \~english @brief QT slot-handler for "open file" button from main menu
-     */
-    void on_action_open_triggered();
-
-    /**
-     * \~russian @brief QT обработчик для кнопки "сохранить как"
-     *
-     * \~english @brief QT slot-handler for "save as" button from main menu
-     */
-    void on_action_saveas_triggered();
+    void saveAll();
+    void newFile();
+    void settingsWindow();
+    void saveFile();
+    void quit();
+    void openFile();
+    void saveFileAs();
 
 private:
     Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
-    FileActions* fileactions_;
-    TabPane* tabpane_;
+    FileActions* fileactions_ = nullptr;
+    TabPane* tabpane_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
+
+    QMenu* fileMenu_ = nullptr;
+    QAction* saveAllAction_ = nullptr;
+    QAction* newAction_ = nullptr;
+    QAction* settingsAction_ = nullptr;
+    QAction* saveAction_ = nullptr;
+    QAction* quitAction_ = nullptr;
+    QAction* openAction_ = nullptr;
+    QAction* saveAsAction_ = nullptr;
 };
 
 template<typename M, typename S>
