@@ -38,7 +38,7 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
 static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
 //           NAME                           DEFAULT_SHORTCUT
     SHORTCUT("TYPE_SAVE"                ,   "Ctrl+S"                ),
-    SHORTCUT("TYPE_EXIT"                ,   "Ctrl+Q"                ),
+    SHORTCUT("TYPE_QUIT"                ,   "Ctrl+Q"                ),
 
 };
 
@@ -49,6 +49,7 @@ SettingsHandler::SettingsHandler()
                    qApp->organizationName(),
                    qApp->applicationName())
 {
+    settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
         // check for error every time the file changes

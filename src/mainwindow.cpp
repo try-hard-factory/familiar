@@ -82,16 +82,11 @@ bool MainWindow::checkSave()
 
 void MainWindow::initShortcuts()
 {
-    newShortcut(
-      QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(on_action_save_triggered()));
-
-    newShortcut(
-      QKeySequence(SettingsHandler().shortcut("TYPE_EXIT")), this, SLOT(on_action_quit_triggered()));
+    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(on_action_save_triggered()));
+    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(on_action_quit_triggered()));
 }
 
-QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key,
-                                             QWidget* parent,
-                                             const char* slot)
+QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key, QWidget* parent, const char* slot)
 {
     QList<QShortcut*> shortcuts;
     QString strKey = key.toString();
@@ -121,6 +116,7 @@ void MainWindow::settingsWindow()
     SettingsWindow* widget = new SettingsWindow(this);
     widget->setAttribute( Qt::WA_DeleteOnClose );
     widget->show();
+    centered_widget(this, widget);
 }
 
 void MainWindow::quitProject()
@@ -153,8 +149,8 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool> &&m)
         } else {
             tabpane_->closeTabByIndex(i);
         }
-
     }
+
     if (exit_flag) exitProject();
 }
 
