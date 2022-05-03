@@ -49,7 +49,7 @@ SettingsHandler::SettingsHandler()
                    qApp->organizationName(),
                    qApp->applicationName())
 {
-    settings_.clear();
+//    settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
         // check for error every time the file changes
@@ -183,6 +183,18 @@ QVariant SettingsHandler::value(const QString &key) const
 }
 
 
+void SettingsHandler::remove(const QString &key)
+{
+    settings_.remove(key);
+}
+
+
+void SettingsHandler::resetValue(const QString &key)
+{
+    settings_.setValue(key, valueHandler(key)->fallback());
+}
+
+
 QSet<QString> &SettingsHandler::recognizedShortcutNames()
 {
     auto keys = recognizedShortcuts.keys();
@@ -191,13 +203,105 @@ QSet<QString> &SettingsHandler::recognizedShortcutNames()
     return names;
 }
 
+QSet<QString> SettingsHandler::keysFromGroup(const QString &group) const
+{
+    QSet<QString> keys;
+    for (const QString& key : settings_.allKeys()) {
+        if (group == SETTINGS_GROUP_GENERAL && !key.contains('/')) {
+            keys.insert(key);
+        } else if (key.startsWith(group + "/")) {
+            keys.insert(baseName(key));
+        }
+    }
+    return keys;
+}
+
+
+bool SettingsHandler::checkForErrors() const
+{
+    return checkUnrecognizedSettings() & checkShortcutConflicts() &
+            checkSemantics();
+}
+
+
+bool SettingsHandler::checkUnrecognizedSettings(QList<QString> *offenders) const
+{
+    // sort the config keys by group
+    QSet<QString> shortcutKeys = keysFromGroup(SETTINGS_GROUP_SHORTCUTS),
+                  recognizedShortcutKeys = recognizedShortcutNames();
+
+    // subtract recognized keys
+    shortcutKeys.subtract(recognizedShortcutKeys);
+
+    // what is left are the unrecognized keys - hopefully empty
+    bool ok = shortcutKeys.isEmpty();
+    if (offenders != nullptr) {
+        for (const QString& key : shortcutKeys) {
+            if (offenders) {
+                offenders->append(SETTINGS_GROUP_SHORTCUTS "/" + key);
+            }
+        }
+    }
+    return ok;
+}
+
+
+bool SettingsHandler::checkShortcutConflicts() const
+{
+    bool ok = true;
+    settings_.beginGroup(SETTINGS_GROUP_SHORTCUTS);
+    QStringList shortcuts = settings_.allKeys();
+    QStringList reportedInLog;
+    for (auto key1 = shortcuts.begin(); key1 != shortcuts.end(); ++key1) {
+        for (auto key2 = key1 + 1; key2 != shortcuts.end(); ++key2) {
+            // values stored in variables are useful when running debugger
+            QString value1 = settings_.value(*key1).toString(),
+                    value2 = settings_.value(*key2).toString();
+            // The check will pass if:
+            // - one shortcut is empty (the action doesn't use a shortcut)
+            // - or one of the settings is not found in m_settings, i.e.
+            //   user wants to use flameshot's default shortcut for the action
+            // - or the shortcuts for both actions are different
+            if (!(value1.isEmpty() || !settings_.contains(*key1) ||
+                  !settings_.contains(*key2) || value1 != value2)) {
+                ok = false;
+                break;
+            }
+        }
+    }
+    settings_.endGroup();
+    return ok;
+}
+
+
+bool SettingsHandler::checkSemantics(QList<QString> *offenders) const
+{
+    QStringList allKeys = settings_.allKeys();
+    bool ok = true;
+    for (const QString& key : allKeys) {
+        QVariant val = settings_.value(key);
+        auto valueHandler = this->valueHandler(key);
+        if (val.isValid() && !valueHandler->check(val)) {
+            // Key does not pass the check
+            ok = false;
+            if (offenders == nullptr) {
+                break;
+            }
+            if (offenders != nullptr) {
+                offenders->append(key);
+            }
+        }
+    }
+    return ok;
+}
+
 
 void SettingsHandler::checkAndHandleError() const
 {
     if (!QFile(settings_.fileName()).exists()) {
         setErrorState(false);
     } else {
-//        setErrorState(!checkForErrors());
+        setErrorState(!checkForErrors());
     }
 
     ensureFileWatched();

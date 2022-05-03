@@ -133,8 +133,8 @@ bool MainWindow::checkSave()
 
 void MainWindow::initShortcuts()
 {
-    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
-    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
+//    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
+//    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
 }
 
 QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key, QWidget* parent, const char* slot)
