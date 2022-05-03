@@ -45,15 +45,23 @@ public:
     QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);
     QVariant value(const QString& key) const;
+    void remove(const QString& key);
+    void resetValue(const QString& key);
 
     // INFO
     static QSet<QString>& recognizedShortcutNames();
+    QSet<QString> keysFromGroup(const QString& group) const;
 
     // errors catching
+    bool checkForErrors() const;
+    bool checkUnrecognizedSettings(QList<QString>* offenders = nullptr) const;
+    bool checkShortcutConflicts() const;
+    bool checkSemantics(QList<QString>* offenders = nullptr) const;
     void checkAndHandleError() const;
+    void setErrorState(bool error) const;
     bool hasError() const;
     QString errorMessage() const;
-    void setErrorState(bool error) const;
+
 
 signals:
     void fileChanged();
@@ -62,10 +70,10 @@ signals:
 
 private:
     void ensureFileWatched() const;
+    QSharedPointer<ValueHandler> valueHandler(const QString& key) const;
     void assertKeyRecognized(const QString& key) const;
     bool isShortcut(const QString& key) const;
     QString baseName(QString key) const;
-    QSharedPointer<ValueHandler> valueHandler(const QString& key) const;
 
 private:
     mutable QSettings settings_;
