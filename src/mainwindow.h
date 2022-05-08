@@ -26,6 +26,15 @@ class project_settings;
 class QFileDialog;
 class SaveAllWindow;
 class QShortcut;
+
+enum EShortcutButtons {
+    k_TYPE_NEW,
+    k_TYPE_OPEN,
+    k_TYPE_SAVE,
+    k_TYPE_QUIT,
+    k_ALL
+};
+
 /**
  * \~russian @brief The MainWindow класс
  *
@@ -74,7 +83,7 @@ private:
 //    void saveFile(const QString& path);
     bool checkSave();
     void initShortcuts();
-    QList<QShortcut*> newShortcut(const QKeySequence& key,
+    void newShortcut(EShortcutButtons as_key, const QKeySequence& key,
                                   QWidget* parent,
                                   const char* slot);
     void createActions();
@@ -88,6 +97,8 @@ private slots:
     void quit();
     void openFile();
     void saveFileAs();
+
+    void notifyShortcut(const QString& t);
 
 private:
     Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
@@ -103,6 +114,9 @@ private:
     QAction* quitAction_ = nullptr;
     QAction* openAction_ = nullptr;
     QAction* saveAsAction_ = nullptr;
+
+    QVarLengthArray<QAction*, EShortcutButtons::k_ALL> actionsArr_;
+    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
 };
 
 template<typename M, typename S>

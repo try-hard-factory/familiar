@@ -14,6 +14,8 @@ SettingsWindow::SettingsWindow(MainWindow *wm, QWidget *parent)
     tabWidget_->tabBar()->setUsesScrollButtons(false);
     layout->addWidget(tabWidget_);
 
+    resize(640, this->geometry().height());
+
     setAttribute(Qt::WA_DeleteOnClose);
 //    setWindowIcon(QIcon(GlobalValues::iconPath()));
     setWindowTitle(tr("Configuration"));
