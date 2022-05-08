@@ -85,6 +85,8 @@ set(PROJECT_SOURCES
         core/valuehandler.h
         ui/preferencesconf.h
         ui/preferencesconf.cpp
+        ui/colors_widget.h
+        ui/colors_widget.cpp
         main_context_menu.cpp
         main_context_menu.h
 )

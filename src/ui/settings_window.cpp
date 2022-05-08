@@ -3,6 +3,7 @@
 #include <core/settingshandler.h>
 #include <QTabBar>
 #include <ui/preferencesconf.h>
+#include <ui/colors_widget.h>
 #include <ui/shortcuts_widget.h>
 
 SettingsWindow::SettingsWindow(MainWindow *wm, QWidget *parent)
@@ -36,7 +37,15 @@ SettingsWindow::SettingsWindow(MainWindow *wm, QWidget *parent)
     auto* prefConfigLayout = new QVBoxLayout(prefConfigTab_);
     prefConfigTab_->setLayout(prefConfigLayout);
     prefConfigLayout->addWidget(prefConfig_);
-    tabWidget_->addTab(prefConfigTab_, tr("preferences"));
+    tabWidget_->addTab(prefConfigTab_, tr("Preferences"));
+
+    // colors
+    colors_ = new ColorsWidget();
+    colorsTab_ = new QWidget();
+    auto* colorsLayout = new QVBoxLayout(colorsTab_);
+    colorsTab_->setLayout(colorsLayout);
+    colorsLayout->addWidget(colors_);
+    tabWidget_->addTab(colorsTab_, tr("Colors"));
 
     // shortcuts
     shortcuts_ = new ShortcutsWidget();
