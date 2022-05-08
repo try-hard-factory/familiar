@@ -16,6 +16,10 @@
 #include <core/qguiappcurrentscreen.h>
 #include <ui/setshortcut_widget.h>
 
+#include "Logger.h"
+
+extern Logger logger;
+
 ShortcutsWidget::ShortcutsWidget(QWidget* parent)
     : QWidget(parent)
 {
@@ -119,10 +123,12 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
 
             // set no shortcut is Backspace
             if (shortcutValue == QKeySequence(Qt::Key_Backspace)) {
+                LOG_WARNING(logger, "BACKSPACE!!!!!!! ", shortcutName.toStdString());
                 shortcutValue = QKeySequence("");
             }
 
             if (config_.setShortcut(shortcutName, shortcutValue.toString())) {
+//                emit SettingsHandler::getInstance()->shortCutChanged(shortcutName);
                 populateInfoTable();
             }
         }

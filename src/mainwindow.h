@@ -28,11 +28,11 @@ class SaveAllWindow;
 class QShortcut;
 
 enum EShortcutButtons {
-    k_TYPE_NEW,
-    k_TYPE_OPEN,
-    k_TYPE_SAVE,
-    k_TYPE_QUIT,
-    k_ALL
+    k_TYPE_NEW = 0,
+    k_TYPE_OPEN = 1,
+    k_TYPE_SAVE = 2,
+    k_TYPE_QUIT = 3,
+    k_ALL = 4
 };
 
 /**
@@ -115,8 +115,8 @@ private:
     QAction* openAction_ = nullptr;
     QAction* saveAsAction_ = nullptr;
 
-    QVarLengthArray<QAction*, EShortcutButtons::k_ALL> actionsArr_;
-    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
+    QMap<int, QAction*> actionsArr_;
+//    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
 };
 
 template<typename M, typename S>

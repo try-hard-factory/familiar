@@ -51,7 +51,7 @@ SettingsHandler::SettingsHandler()
                    qApp->organizationName(),
                    qApp->applicationName())
 {
-    settings_.clear();
+//    settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
         // check for error every time the file changes
@@ -126,11 +126,10 @@ bool SettingsHandler::setShortcut(const QString& actionName, const QString& shor
             }
         }
         settings_.setValue(actionName, KeySequence().value(shortcut));
-        emit getInstance()->shortCutChanged(actionName);
     }
 done:
     settings_.endGroup();
-    qDebug() << actionName;
+    emit getInstance()->shortCutChanged(actionName);
     return !error;
 }
 
