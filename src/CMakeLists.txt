@@ -32,7 +32,11 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+message(${CMAKE_CURRENT_SOURCE_DIR}/include/kColorPicker/include/kColorPicker)
+include_directories(${CMAKE_SOURCE_DIR}/include/kColorPicker/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+message(${CMAKE_CURRENT_SOURCE_DIR}/src)
+include_directories(${CMAKE_BINARY_DIR})
 
 set(PROJECT_SOURCES
         main.cpp
@@ -89,6 +93,8 @@ set(PROJECT_SOURCES
         ui/colors_widget.cpp
         main_context_menu.cpp
         main_context_menu.h
+
+
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
@@ -103,7 +109,12 @@ target_sources(
         ${CMAKE_CURRENT_SOURCE_DIR}/../data/familiar.rc # windows binary icon resource file
         main.cpp)
 
-target_link_libraries(familiar PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt${QT_VERSION_MAJOR}::Network)
+target_link_libraries(familiar PRIVATE
+                                Qt${QT_VERSION_MAJOR}::Widgets
+                                Qt${QT_VERSION_MAJOR}::Network
+                                ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
+                                )
+
 
 if (WIN32)
     set(USE_OPENSSL FALSE)
