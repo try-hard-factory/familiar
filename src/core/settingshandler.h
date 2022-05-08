@@ -67,6 +67,7 @@ signals:
     void fileChanged();
     void error();
     void errorResolved();
+    void shortCutChanged(const QString& t);
 
 private:
     void ensureFileWatched() const;

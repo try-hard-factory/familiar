@@ -37,6 +37,8 @@ static QMap<class QString, QSharedPointer<ValueHandler>>
 
 static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
 //           NAME                           DEFAULT_SHORTCUT
+    SHORTCUT("TYPE_NEW"                 ,   "Ctrl+N"                ),
+    SHORTCUT("TYPE_OPEN"                ,   "Ctrl+O"                ),
     SHORTCUT("TYPE_SAVE"                ,   "Ctrl+S"                ),
     SHORTCUT("TYPE_QUIT"                ,   "Ctrl+Q"                ),
 
@@ -49,7 +51,7 @@ SettingsHandler::SettingsHandler()
                    qApp->organizationName(),
                    qApp->applicationName())
 {
-//    settings_.clear();
+    settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
         // check for error every time the file changes
@@ -90,7 +92,7 @@ SettingsHandler* SettingsHandler::getInstance()
 bool SettingsHandler::setShortcut(const QString& actionName, const QString& shortcut)
 {
     LOG_DEBUG(logger, shortcut.toStdString());
-    qDebug() << actionName;
+
     static QVector<QKeySequence> reservedShortcuts = {
         Qt::Key_Backspace,
         Qt::Key_Escape,
@@ -124,9 +126,11 @@ bool SettingsHandler::setShortcut(const QString& actionName, const QString& shor
             }
         }
         settings_.setValue(actionName, KeySequence().value(shortcut));
+        emit getInstance()->shortCutChanged(actionName);
     }
 done:
     settings_.endGroup();
+    qDebug() << actionName;
     return !error;
 }
 

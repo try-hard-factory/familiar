@@ -134,6 +134,8 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
 void ShortcutsWidget::loadShortCuts()
 {
     shortcuts_.clear();
+    appendShortcut("TYPE_NEW", "New workplace");
+    appendShortcut("TYPE_OPEN", "Open project");
     appendShortcut("TYPE_SAVE", "Save current file");
     appendShortcut("TYPE_QUIT", "Quit application");
 }

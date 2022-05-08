@@ -15,6 +15,18 @@
 #include <core/settingshandler.h>
 #include <map>
 
+#include "Logger.h"
+
+extern Logger logger;
+
+static QHash<QString, EShortcutButtons> recognizedShortcutsActions = {
+    {"TYPE_NEW", k_TYPE_NEW},
+    {"TYPE_OPEN", k_TYPE_OPEN},
+    {"TYPE_SAVE", k_TYPE_SAVE},
+    {"TYPE_QUIT", k_TYPE_QUIT},
+};
+
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent,Qt::Window
                   | Qt::CustomizeWindowHint
@@ -31,10 +43,12 @@ MainWindow::MainWindow(QWidget *parent)
     statusBar()->hide();
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
+    initShortcuts();
+
     createActions();
     createMenus();
 
-    initShortcuts();
+    connect(SettingsHandler::getInstance(), &SettingsHandler::shortCutChanged, this, &MainWindow::notifyShortcut);
 
     setCentralWidget(tabpane_);
 }
@@ -103,6 +117,13 @@ void MainWindow::saveFileAs()
     fileactions_->saveFileAs();
 }
 
+void MainWindow::notifyShortcut(const QString& actionName)
+{
+    LOG_WARNING(logger, "notifyShortcut ", actionName.toStdString());
+    auto idx = recognizedShortcutsActions[actionName];
+    actionsArr_[idx]->setShortcut(QKeySequence(SettingsHandler().shortcut(actionName)));
+}
+
 
 bool MainWindow::checkSave()
 {
@@ -133,23 +154,24 @@ bool MainWindow::checkSave()
 
 void MainWindow::initShortcuts()
 {
-    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
-    newShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
+//    newShortcut(k_TYPE_SAVE, QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
+//    newShortcut(k_TYPE_QUIT, QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
 }
 
-QList<QShortcut*> MainWindow::newShortcut(const QKeySequence& key, QWidget* parent, const char* slot)
+void MainWindow::newShortcut(EShortcutButtons as_key, const QKeySequence& key, QWidget* parent, const char* slot)
 {
-    QList<QShortcut*> shortcuts;
-    QString strKey = key.toString();
-    if (strKey.contains("Enter") || strKey.contains("Return")) {
-        strKey.replace("Enter", "Return");
-        shortcuts << new QShortcut(strKey, parent, slot);
-        strKey.replace("Return", "Enter");
-        shortcuts << new QShortcut(strKey, parent, slot);
-    } else {
-        shortcuts << new QShortcut(key, parent, slot);
-    }
-    return shortcuts;
+//    QString strKey = key.toString();
+//    QShortcut* sc = nullptr;
+//    if (strKey.contains("Enter") || strKey.contains("Return")) {
+//        strKey.replace("Enter", "Return");
+//        sc = new QShortcut(strKey, parent, slot);
+//        strKey.replace("Return", "Enter");
+//        sc = new QShortcut(strKey, parent, slot);
+//    } else {
+//        sc = new QShortcut(key, parent, slot);
+//    }
+
+//    shortcutArr_[as_key] = sc;
 }
 
 void MainWindow::createActions()
@@ -160,7 +182,7 @@ void MainWindow::createActions()
     connect(saveAllAction_, &QAction::triggered, this, &MainWindow::saveAll);
 
     newAction_ = new QAction(tr("New"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    newAction_->setShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_NEW")));
     newAction_->setStatusTip(tr("New"));
     connect(newAction_, &QAction::triggered, this, &MainWindow::newFile);
 
@@ -170,17 +192,19 @@ void MainWindow::createActions()
     connect(settingsAction_, &QAction::triggered, this, &MainWindow::settingsWindow);
 
     saveAction_ = new QAction(tr("Save"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    saveAction_->setShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")));
     saveAction_->setStatusTip(tr("Save"));
     connect(saveAction_, &QAction::triggered, this, &MainWindow::saveFile);
+    actionsArr_[k_TYPE_SAVE] = saveAction_;
 
     quitAction_ = new QAction(tr("Quit"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    quitAction_->setShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")));
     quitAction_->setStatusTip(tr("Quit"));
     connect(quitAction_, &QAction::triggered, this, &MainWindow::quit);
+    actionsArr_[k_TYPE_QUIT] = quitAction_;
 
     openAction_ = new QAction(tr("Open"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    openAction_->setShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_OPEN")));
     openAction_->setStatusTip(tr("Open"));
     connect(openAction_, &QAction::triggered, this, &MainWindow::openFile);
 
