@@ -115,7 +115,7 @@ private:
     QAction* openAction_ = nullptr;
     QAction* saveAsAction_ = nullptr;
 
-    QMap<int, QAction*> actionsArr_;
+    QVarLengthArray<QAction*, EShortcutButtons::k_ALL> actionsArr_ = { nullptr, nullptr, nullptr, nullptr};
 //    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
 };
 
