@@ -5,8 +5,9 @@
 #include <QWidget>
 
 class MainWindow;
-class ShortcutsWidget;
 class PreferencesConf;
+class ColorsWidget;
+class ShortcutsWidget;
 
 class SettingsWindow : public QWidget
 {
@@ -25,11 +26,11 @@ private:
 
     QTabWidget* tabWidget_ = nullptr;
 
-    // VisualsEditor* visuals_ = nullptr;
-    QWidget* visualsTab_ = nullptr;
-
     PreferencesConf* prefConfig_ = nullptr;
     QWidget* prefConfigTab_ = nullptr;
+
+    ColorsWidget* colors_ = nullptr;
+    QWidget* colorsTab_ = nullptr;
 
     ShortcutsWidget* shortcuts_ = nullptr;
     QWidget* shortcutsTab_ = nullptr;
