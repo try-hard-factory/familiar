@@ -119,9 +119,10 @@ void MainWindow::saveFileAs()
 
 void MainWindow::notifyShortcut(const QString& actionName)
 {
-    LOG_WARNING(logger, "notifyShortcut ", actionName.toStdString());
+    LOG_WARNING(logger, "notifyShortcut. actionName: ", actionName.toStdString(), ", shortcut: ", SettingsHandler().shortcut(actionName).toStdString());
     auto idx = recognizedShortcutsActions[actionName];
-    actionsArr_[idx]->setShortcut(QKeySequence(SettingsHandler().shortcut(actionName)));
+    auto keyseq = QKeySequence(SettingsHandler().shortcut(actionName));
+    actionsArr_[idx]->setShortcut(keyseq);
 }
 
 
@@ -185,6 +186,7 @@ void MainWindow::createActions()
     newAction_->setShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_NEW")));
     newAction_->setStatusTip(tr("New"));
     connect(newAction_, &QAction::triggered, this, &MainWindow::newFile);
+    actionsArr_[k_TYPE_NEW] = newAction_;
 
     settingsAction_ = new QAction(tr("Settings"), this);
 //    saveAllAction_->setShortcuts(QKeySequence::New);
@@ -207,6 +209,7 @@ void MainWindow::createActions()
     openAction_->setShortcut(QKeySequence(SettingsHandler().shortcut("TYPE_OPEN")));
     openAction_->setStatusTip(tr("Open"));
     connect(openAction_, &QAction::triggered, this, &MainWindow::openFile);
+    actionsArr_[k_TYPE_OPEN] = openAction_;
 
     saveAsAction_ = new QAction(tr("Save As"), this);
 //    saveAllAction_->setShortcuts(QKeySequence::New);
