@@ -1,22 +1,20 @@
-#include <QString>
-#include <QFileDialog>
-#include <canvasview.h>
 #include "file_actions.h"
-#include "tabpane.h"
 #include "fml_file_buffer.h"
 #include "mainwindow.h"
+#include "tabpane.h"
+#include <canvasview.h>
+#include <QFileDialog>
+#include <QString>
 
-FileActions::FileActions(MainWindow& mw) : mainwindow_(mw)
+FileActions::FileActions(MainWindow& mw)
+    : mainwindow_(mw)
 {
     fileExt_["Familiar (*.fml)"] = ".fml";
     fileExt_["SVG (*.svg)"] = ".svg";
     fileExt_["Adobe (*.psd)"] = ".psd";
 }
 
-FileActions::~FileActions()
-{
-
-}
+FileActions::~FileActions() {}
 
 void FileActions::newFile()
 {
@@ -27,7 +25,7 @@ void FileActions::openFile()
 {
     QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
     fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
-    fileDialog->setDirectory( QDir::homePath() );
+    fileDialog->setDirectory(QDir::homePath());
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
     fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
     fileDialog->setFileMode(QFileDialog::ExistingFiles);
@@ -61,7 +59,8 @@ void FileActions::openFile()
 
 void FileActions::processOpenFile(const QString& file)
 {
-    if ( mainwindow_.tabPane().currentWidget()->isUntitled() &&  mainwindow_.tabPane().currentWidget()->isModified() == false) {
+    if (mainwindow_.tabPane().currentWidget()->isUntitled()
+        && mainwindow_.tabPane().currentWidget()->isModified() == false) {
         mainwindow_.tabPane().setCurrentTabPath(file);
         mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(file).fileName());
         mainwindow_.tabPane().setCurrentTabProjectName(QFileInfo(file).fileName());
@@ -99,7 +98,7 @@ int FileActions::saveFileAs()
     int retval = QDialog::Rejected;
     QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
     fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
-    fileDialog->setDirectory( QDir::homePath() );
+    fileDialog->setDirectory(QDir::homePath());
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
     fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
     fileDialog->setFileMode(QFileDialog::AnyFile);
@@ -111,8 +110,8 @@ int FileActions::saveFileAs()
             selected.append(fileExt_.at(fileDialog->selectedNameFilter()));
         }
 
-        if (!mainwindow_.tabPane().currentWidget()->isUntitled() &&
-                mainwindow_.tabPane().getCurrentTabProjectName() != QFileInfo(selected).fileName()) {
+        if (!mainwindow_.tabPane().currentWidget()->isUntitled()
+            && mainwindow_.tabPane().getCurrentTabProjectName() != QFileInfo(selected).fileName()) {
             auto canvasView = mainwindow_.tabPane().currentWidget();
             mainwindow_.tabPane().addNewTab(selected);
             fml_file_buffer::open_file(mainwindow_.tabPane().currentWidget(), canvasView->path());

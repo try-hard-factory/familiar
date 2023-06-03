@@ -10,11 +10,6 @@
 #include <QPoint>
 #include <QScreen>
 
-QGuiAppCurrentScreen::QGuiAppCurrentScreen()
-{
-    m_currentScreen = nullptr;
-}
-
 QScreen* QGuiAppCurrentScreen::currentScreen()
 {
     return currentScreen(QCursor::pos());

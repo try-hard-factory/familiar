@@ -13,15 +13,13 @@
 #include <QPixmap>
 
 SetShortcutDialog::SetShortcutDialog(QDialog* parent, QString shortcutName)
-  : QDialog(parent)
+    : QDialog(parent)
+    , layout_(new QVBoxLayout(this))
+    , ks_(QKeySequence())
 {
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     // setWindowIcon(QIcon(GlobalValues::iconPath()));
     setWindowTitle(tr("Set Shortcut"));
-    ks_ = QKeySequence();
-
-    layout_ = new QVBoxLayout(this);
-    layout_->setAlignment(Qt::AlignHCenter);
 
     auto* infoTop = new QLabel(tr("Enter new shortcut to change "));
     infoTop->setMargin(10);
@@ -33,14 +31,14 @@ SetShortcutDialog::SetShortcutDialog(QDialog* parent, QString shortcutName)
     infoIcon->setPixmap(QPixmap(":/img/app/keyboard.svg"));
     layout_->addWidget(infoIcon);
 
-    layout_->addWidget(infoIcon);
-
     QString msg = tr("Press Esc to cancel or Backspace to disable the keyboard shortcut.");
 
     auto* infoBottom = new QLabel(msg);
     infoBottom->setMargin(10);
     infoBottom->setAlignment(Qt::AlignCenter);
     layout_->addWidget(infoBottom);
+    layout_->setAlignment(infoBottom, Qt::AlignHCenter);
+    layout_->addStretch();
 }
 
 const QKeySequence& SetShortcutDialog::shortcut()

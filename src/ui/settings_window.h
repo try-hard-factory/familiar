@@ -13,7 +13,7 @@ class SettingsWindow : public QWidget
 {
     Q_OBJECT
 public:
-    explicit SettingsWindow(MainWindow* wm, QWidget *parent = nullptr);
+    explicit SettingsWindow(MainWindow* wm, QWidget* parent = nullptr);
 
 signals:
     void updateChildren();
@@ -23,15 +23,11 @@ protected:
 
 private:
     MainWindow* window_ = nullptr;
-
     QTabWidget* tabWidget_ = nullptr;
-
     PreferencesConf* prefConfig_ = nullptr;
     QWidget* prefConfigTab_ = nullptr;
-
     ColorsWidget* colors_ = nullptr;
     QWidget* colorsTab_ = nullptr;
-
     ShortcutsWidget* shortcuts_ = nullptr;
     QWidget* shortcutsTab_ = nullptr;
 };

@@ -69,7 +69,7 @@ SettingsHandler::SettingsHandler()
                                  skipNextErrorCheck_ = false;
                                  return;
                              }
-                             SettingsHandler().checkAndHandleError();
+                             getInstance()->checkAndHandleError();
                              if (!QFile(fileName).exists()) {
                                  // File watcher stops watching a deleted file.
                                  // Next time the config is accessed, force it
