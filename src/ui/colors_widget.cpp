@@ -5,7 +5,7 @@
 using kColorPicker::KColorPicker;
 
 ColorsWidget::ColorsWidget(QWidget *parent)
-    : QWidget{parent}
+    : QWidget(parent)
 {
     layout_ = new QVBoxLayout(this);
     layout_->setAlignment(Qt::AlignTop);

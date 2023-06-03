@@ -14,16 +14,15 @@ class QScreen;
 class QGuiAppCurrentScreen
 {
 public:
-    explicit QGuiAppCurrentScreen();
+    explicit QGuiAppCurrentScreen() = default;
     QScreen* currentScreen();
     QScreen* currentScreen(const QPoint& pos);
 
 private:
     QScreen* screenAt(const QPoint& pos);
 
-    // class members
 private:
-    QScreen* m_currentScreen;
+    QScreen* m_currentScreen = nullptr;
 };
 
 #endif

@@ -36,6 +36,7 @@ class QTextStream;
 class SettingsHandler : public QObject
 {
     Q_OBJECT
+
 public:
     explicit SettingsHandler();
     static SettingsHandler* getInstance();

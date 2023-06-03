@@ -16,7 +16,7 @@ public slots:
 
 signals:
 private:
-    QVBoxLayout* layout_;
+    QVBoxLayout* layout_ = nullptr;
 };
 
 #endif // COLORSWIDGET_H

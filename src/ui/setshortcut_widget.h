@@ -28,7 +28,7 @@ public:
 signals:
 
 private:
-    QVBoxLayout* layout_;
+    QVBoxLayout* layout_ = nullptr;
     QString modifier_;
     QKeySequence ks_;
 };

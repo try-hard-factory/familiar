@@ -7,11 +7,11 @@
 #include "shortcuts_widget.h"
 
 #include <QCursor>
+#include <QHeaderView>
 #include <QRect>
 #include <QScreen>
-#include <QVBoxLayout>
 #include <QTableWidget>
-#include <QHeaderView>
+#include <QVBoxLayout>
 
 #include <core/qguiappcurrentscreen.h>
 #include <ui/setshortcut_widget.h>
@@ -22,16 +22,17 @@ extern Logger logger;
 
 ShortcutsWidget::ShortcutsWidget(QWidget* parent)
     : QWidget(parent)
+    , table_(new QTableWidget(this))
+    , layout_(new QVBoxLayout(this))
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowTitle(tr("HotKeys"));
 
-    QRect position = frameGeometry();
-    QScreen* screen = QGuiAppCurrentScreen().currentScreen();
+    auto position = frameGeometry();
+    auto screen = QGuiAppCurrentScreen().currentScreen();
     position.moveCenter(screen->availableGeometry().center());
     move(position.topLeft());
 
-    layout_ = new QVBoxLayout(this);
     layout_->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
 
     initInfoTable();
@@ -42,10 +43,8 @@ ShortcutsWidget::ShortcutsWidget(QWidget* parent)
     show();
 }
 
-
 void ShortcutsWidget::initInfoTable()
 {
-    table_ = new QTableWidget(this);
     table_->setToolTip(tr("Available shortcuts in the screen capture mode."));
 
     layout_->addWidget(table_);
@@ -70,16 +69,15 @@ void ShortcutsWidget::initInfoTable()
     table_->resizeRowsToContents();
 }
 
-
 void ShortcutsWidget::populateInfoTable()
 {
     loadShortCuts();
     table_->setRowCount(shortcuts_.size());
 
     for (int i = 0; i < shortcuts_.size(); ++i) {
-        const auto current_sc = shortcuts_.at(i); // maybe const auto & ????
-        const auto identifier = current_sc.at(0); // maybe const auto & ????
-        const auto description = current_sc.at(1); // maybe const auto & ????
+        const auto current_sc = shortcuts_.at(i);   // maybe const auto & ????
+        const auto identifier = current_sc.at(0);   // maybe const auto & ????
+        const auto description = current_sc.at(1);  // maybe const auto & ????
         const auto key_sequence = current_sc.at(2); // maybe const auto & ????
 
         table_->setItem(i, 0, new QTableWidgetItem(description));
@@ -106,36 +104,36 @@ void ShortcutsWidget::populateInfoTable()
     }
 }
 
-
 void ShortcutsWidget::onShortcutCellClicked(int row, int col)
 {
-    if (col == 1) {
-        // Ignore non-changable shortcuts
-        if (Qt::ItemIsEnabled !=
-            (Qt::ItemIsEnabled & table_->item(row, col)->flags())) {
-            return;
+    if (col != 1) {
+        return;
+    }
+
+    // Ignore non-changable shortcuts
+    const auto& itemFlags = table_->item(row, col)->flags();
+    if (!(itemFlags & Qt::ItemIsEnabled)) {
+        return;
+    }
+
+    const auto& shortcutName = shortcuts_.at(row).at(0);
+    auto setShortcutDialog = std::make_unique<SetShortcutDialog>(nullptr, shortcutName);
+
+    if (setShortcutDialog->exec() != 0) {
+        auto shortcutValue = setShortcutDialog->shortcut();
+
+        // set no shortcut is Backspace
+        if (shortcutValue == QKeySequence(Qt::Key_Backspace)) {
+            LOG_WARNING(logger, "BACKSPACE!!!!!!! ", shortcutName.toStdString());
+            shortcutValue = QKeySequence("");
         }
 
-        QString shortcutName = shortcuts_.at(row).at(0);
-        auto* setShortcutDialog = new SetShortcutDialog(nullptr, shortcutName);
-        if (0 != setShortcutDialog->exec()) {
-            QKeySequence shortcutValue = setShortcutDialog->shortcut();
-
-            // set no shortcut is Backspace
-            if (shortcutValue == QKeySequence(Qt::Key_Backspace)) {
-                LOG_WARNING(logger, "BACKSPACE!!!!!!! ", shortcutName.toStdString());
-                shortcutValue = QKeySequence("");
-            }
-
-            if (config_.setShortcut(shortcutName, shortcutValue.toString())) {
-//                emit SettingsHandler::getInstance()->shortCutChanged(shortcutName);
-                populateInfoTable();
-            }
+        if (config_.setShortcut(shortcutName, shortcutValue.toString())) {
+            //                emit SettingsHandler::getInstance()->shortCutChanged(shortcutName);
+            populateInfoTable();
         }
-        delete setShortcutDialog;
     }
 }
-
 
 void ShortcutsWidget::loadShortCuts()
 {
@@ -146,13 +144,10 @@ void ShortcutsWidget::loadShortCuts()
     appendShortcut("TYPE_QUIT", "Quit application");
 }
 
-
-void ShortcutsWidget::appendShortcut(const QString& shortcutName,
-                                     const QString& description)
+void ShortcutsWidget::appendShortcut(const QString& shortcutName, const QString& description)
 {
-    QString shortcut = SettingsHandler().shortcut(shortcutName);
-    shortcuts_ << (QStringList()
-                    << shortcutName
-                    << QObject::tr(description.toStdString().c_str())
-                    << shortcut.replace("Return", "Enter"));
+    auto settings = SettingsHandler::getInstance();
+    QString shortcut = settings->shortcut(shortcutName);
+    shortcuts_ << (QStringList() << shortcutName << QObject::tr(description.toStdString().c_str())
+                                 << shortcut.replace("Return", "Enter"));
 }
