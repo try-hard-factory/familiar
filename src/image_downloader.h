@@ -1,13 +1,13 @@
 #ifndef IMAGE_DOWNLOADER_H
 #define IMAGE_DOWNLOADER_H
 
+#include <QFile>
 #include <QGraphicsScene>
 #include <QObject>
-#include <QtNetwork/QNetworkAccessManager>
-#include <QtNetwork/QNetworkRequest>
-#include <QtNetwork/QNetworkReply>
-#include <QFile>
 #include <QStringList>
+#include <QtNetwork/QNetworkAccessManager>
+#include <QtNetwork/QNetworkReply>
+#include <QtNetwork/QNetworkRequest>
 
 class CanvasScene;
 
@@ -31,7 +31,7 @@ public:
      * \~english @param parent - pointer to QObject parent(may be nullptr - it
      *                           is normal)
      */
-    explicit ImageDownloader(CanvasScene& s, QObject *parent = nullptr);
+    explicit ImageDownloader(CanvasScene& s, QObject* parent = nullptr);
 
     /**
      * \~russian @brief деструктор
@@ -52,6 +52,7 @@ public:
 
     // \TODO: maybe rename this? or remove scene from this class and add callback
     void download(QString url, QPointF position);
+
 private:
     QNetworkAccessManager* manager_ = nullptr;
     QNetworkReply* reply_ = nullptr;
@@ -59,7 +60,7 @@ private:
 
 private:
     bool isReady_ = true;
-    QPointF position_ = {0,0};
+    QPointF position_ = {0, 0};
 private slots:
     void errorOccurred(QNetworkReply::NetworkError err);
     void finished();

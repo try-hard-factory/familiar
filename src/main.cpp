@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 
-#include <QApplication>
 #include <Logger.h>
+#include <QApplication>
 
 /*!
  * \~russian \mainpage RU
@@ -32,12 +32,12 @@
 
 Logger logger;
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef NDEBUG
-    qDebug()<<"NDEBUG DEFINED";
+    qDebug() << "NDEBUG DEFINED";
 #else
-    qDebug()<<"NDEBUG notDEFINED";
+    qDebug() << "NDEBUG notDEFINED";
 #endif
 
     QApplication a(argc, argv);

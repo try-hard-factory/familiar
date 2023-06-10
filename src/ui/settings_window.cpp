@@ -56,7 +56,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     shortcutsLayout->addWidget(shortcuts_);
     tabWidget_->addTab(shortcutsTab_, tr("Shortcuts"));
 
-    connect(this, &SettingsWindow::updateChildren, prefConfig_, &PreferencesConf::updateComponents);
+    connect(this,
+            &SettingsWindow::updateChildren,
+            prefConfig_,
+            &PreferencesConf::updateComponents);
 }
 
 void SettingsWindow::keyPressEvent(QKeyEvent* e)

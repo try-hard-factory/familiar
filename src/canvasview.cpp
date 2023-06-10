@@ -1,26 +1,30 @@
 #include "canvasview.h"
+#include "Logger.h"
+#include "canvasscene.h"
 #include "moveitem.h"
 #include "movepixmapitem.h"
-#include "canvasscene.h"
+#include "project_settings.h"
 #include <QFileDialog>
 #include <QMessageBox>
-#include "Logger.h"
 #include <QtMath>
-#include "project_settings.h"
 
-#include <main_context_menu.h>
 #include "mainwindow.h"
+#include <main_context_menu.h>
 
 extern Logger logger;
 
 
-CanvasView::CanvasView(MainWindow& mw, QWidget* parent) :
-    QGraphicsView(parent), mainwindow_(mw)
+CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
+    : QGraphicsView(parent)
+    , mainwindow_(mw)
 {
-    setHorizontalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
-    setVerticalScrollBarPolicy ( Qt::ScrollBarAlwaysOff );
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scene_ = new CanvasScene(mw, zCounter_);
-    connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
+    connect(scene_,
+            SIGNAL(selectionChanged()),
+            this,
+            SLOT(onSelectionChanged()));
 
     setMouseTracking(true);
     setScene(scene_);
@@ -73,7 +77,8 @@ void CanvasView::addImage(QImage* img, QPointF point)
     scene_->addItem(item);
 }
 
-void CanvasView::addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f)
+void CanvasView::addImage(
+    QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f)
 {
     ++zCounter_;
     MoveItem* item = new MoveItem(ba, w, h, bpl, f, zCounter_);
@@ -86,12 +91,13 @@ void CanvasView::addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, 
 }
 
 
-void CanvasView::mouseMoveEvent(QMouseEvent *event)
+void CanvasView::mouseMoveEvent(QMouseEvent* event)
 {
     if (pan_ == Qt::RightButton) {
         rightMoveflag_ = true;
         if (isMoving_) {
-          mainwindow_.move(wndPos_ + (event->globalPosition().toPoint() - pressPos_));
+            mainwindow_.move(wndPos_
+                             + (event->globalPosition().toPoint() - pressPos_));
         }
         event->accept();
     } else if (pan_ == Qt::LeftButton) {
@@ -104,7 +110,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent *event)
 }
 
 
-void CanvasView::mousePressEvent(QMouseEvent *event)
+void CanvasView::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton) {
         pan_ = Qt::LeftButton;
@@ -125,13 +131,13 @@ void CanvasView::mousePressEvent(QMouseEvent *event)
 }
 
 
-void CanvasView::mouseReleaseEvent(QMouseEvent *event)
+void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::RightButton) {
         if (!rightMoveflag_) {
             MainContextMenu contextMenu(mainwindow_, this);
             QPointF POS = mapToGlobal(event->pos());
-            contextMenu.exec( POS.toPoint());
+            contextMenu.exec(POS.toPoint());
         } else {
             rightMoveflag_ = false;
         }
@@ -146,7 +152,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent *event)
     QGraphicsView::mouseReleaseEvent(event);
 }
 
-void CanvasView::mouseDoubleClickEvent(QMouseEvent *event)
+void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
 {
     if (!fitViewF_) {
         fitViewF_ = true;
@@ -171,12 +177,11 @@ void CanvasView::ScaleView(qreal qFactor)
     matrix.scale(qFactor, qFactor).map(1.0, 1.0, &qrNewTx, &qrNewTy);
     double dbNewFactor = (qrNewTx + qrNewTy) * 0.5;
 
-    if ((0.07 <= dbNewFactor <= 100.0) ||
-        ((dbCurrentFactor < 0.07) && (dbNewFactor > dbCurrentFactor)) ||
-        ((dbCurrentFactor > 100.0) && (dbNewFactor < dbCurrentFactor)))
-    {
+    if ((0.07 <= dbNewFactor <= 100.0)
+        || ((dbCurrentFactor < 0.07) && (dbNewFactor > dbCurrentFactor))
+        || ((dbCurrentFactor > 100.0) && (dbNewFactor < dbCurrentFactor))) {
         scale(qFactor, qFactor);
-//        emit SetZoomText(qFactor);
+        //        emit SetZoomText(qFactor);
     }
 }
 
@@ -186,22 +191,23 @@ void CanvasView::SetScale(qreal qrScale)
     resetTransform();
     translate(old_matrix.dx(), old_matrix.dy());
     scale(qrScale, qrScale);
-//    emit SetZoomText(qrScale);
+    //    emit SetZoomText(qrScale);
 }
 
-void CanvasView::wheelEvent(QWheelEvent *event)
+void CanvasView::wheelEvent(QWheelEvent* event)
 {
     // When zooming, the view stay centered over the mouse
     this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-//    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
+    //    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
 
-//    ScaleView(qrValue);
+    //    ScaleView(qrValue);
     auto numPixels = event->angleDelta();
-    double factor = zoomFactor_;//(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
+    double factor
+        = zoomFactor_; //(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
     if (numPixels.y() > 0) {
         scale(factor, factor);
     } else {
-        scale(1/factor, 1/factor);
+        scale(1 / factor, 1 / factor);
     }
 
 
@@ -212,24 +218,30 @@ void CanvasView::wheelEvent(QWheelEvent *event)
 }
 
 
-void CanvasView::resizeEvent(QResizeEvent *event)
+void CanvasView::resizeEvent(QResizeEvent* event)
 {
     // First call, the scene is created
-    if(event->oldSize().width() == -1 || event->oldSize().height() == -1) return;
+    if (event->oldSize().width() == -1 || event->oldSize().height() == -1)
+        return;
 
     // Get the previous rectangle of the scene in the viewport
-    QPointF P1=mapToScene(QPoint(0,0));
-    QPointF P2=mapToScene(QPoint(event->oldSize().width(),event->oldSize().height()));
+    QPointF P1 = mapToScene(QPoint(0, 0));
+    QPointF P2 = mapToScene(
+        QPoint(event->oldSize().width(), event->oldSize().height()));
 
     // Stretch the rectangle around the scene
-    if (P1.x()<0) P1.setX(0);
-    if (P1.y()<0) P1.setY(0);
-    if (P2.x()>scene_->width()) P2.setX(scene_->width());
-    if (P2.y()>scene_->height()) P2.setY(scene_->height());
+    if (P1.x() < 0)
+        P1.setX(0);
+    if (P1.y() < 0)
+        P1.setY(0);
+    if (P2.x() > scene_->width())
+        P2.setX(scene_->width());
+    if (P2.y() > scene_->height())
+        P2.setY(scene_->height());
 }
 
 
-void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
+void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
 {
     setCacheMode(CacheNone);
     painter->save();
@@ -237,7 +249,7 @@ void CanvasView::drawBackground(QPainter *painter, const QRectF &rect)
     painter->fillRect(rect, backgroundBrush());
     scene_->setBackgroundBrush(QBrush(QColor(42, 42, 42)));
     painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
-    painter->setPen( QPen(QColor(247, 0, 255),2) );
+    painter->setPen(QPen(QColor(247, 0, 255), 2));
     painter->drawRect(scene_->sceneRect());
     painter->restore();
 }
@@ -252,7 +264,7 @@ QString CanvasView::path()
     return scene_->path();
 }
 
-void CanvasView::setPath(const QString &path)
+void CanvasView::setPath(const QString& path)
 {
     scene_->setPath(path);
 }
@@ -262,7 +274,7 @@ QString CanvasView::projectName()
     return scene_->projectName();
 }
 
-void CanvasView::setProjectName(const QString &pn)
+void CanvasView::setProjectName(const QString& pn)
 {
     scene_->setProjectName(pn);
 }
@@ -288,8 +300,8 @@ void CanvasView::onSelectionChanged()
     scene_->onSelectionChanged();
 }
 
-void CanvasView::contextMenuEvent(QContextMenuEvent *event)
+void CanvasView::contextMenuEvent(QContextMenuEvent* event)
 {
-//    MainContextMenu contextMenu(mainwindow_, this);
-//    contextMenu.exec(event->globalPos());
+    //    MainContextMenu contextMenu(mainwindow_, this);
+    //    contextMenu.exec(event->globalPos());
 }

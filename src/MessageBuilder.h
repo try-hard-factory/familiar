@@ -6,8 +6,9 @@
 class MessageBuilder
 {
 public:
-    template <typename... Args>
-    static std::string createMessage(Args&& ...args) {
+    template<typename... Args>
+    static std::string createMessage(Args&&... args)
+    {
         std::ostringstream s;
         (s << ... << args);
         return s.str();

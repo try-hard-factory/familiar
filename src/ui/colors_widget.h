@@ -9,7 +9,7 @@ class ColorsWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit ColorsWidget(QWidget *parent = nullptr);
+    explicit ColorsWidget(QWidget* parent = nullptr);
 
 public slots:
     void updateComponents();

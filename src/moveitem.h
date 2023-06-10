@@ -1,27 +1,35 @@
 #ifndef MOVEITEM_H
 #define MOVEITEM_H
 
-#include <QObject>
-#include <QWheelEvent>
+#include <QCursor>
+#include <QDebug>
 #include <QGraphicsItem>
+#include <QGraphicsSceneMouseEvent>
+#include <QObject>
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
-#include <QGraphicsSceneMouseEvent>
-#include <QDebug>
-#include <QCursor>
+#include <QWheelEvent>
 
 class MoveItem : public QObject, public QGraphicsRectItem
 {
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
 public:
-    MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem *parent = nullptr);
-    MoveItem(QImage* img, uint64_t& zc, QGraphicsRectItem *parent = nullptr);
-    MoveItem(QByteArray ba, int w, int h, qsizetype bpl, QImage::Format f, uint64_t& zc, QGraphicsRectItem *parent = nullptr);
+    MoveItem(const QString& path,
+             uint64_t& zc,
+             QGraphicsRectItem* parent = nullptr);
+    MoveItem(QImage* img, uint64_t& zc, QGraphicsRectItem* parent = nullptr);
+    MoveItem(QByteArray ba,
+             int w,
+             int h,
+             qsizetype bpl,
+             QImage::Format f,
+             uint64_t& zc,
+             QGraphicsRectItem* parent = nullptr);
     ~MoveItem();
     QRectF getRect() const { return boundingRect(); }
     void setRect(qreal x, qreal y, qreal w, qreal h);
-    void setRect(const QRectF &rect);
+    void setRect(const QRectF& rect);
     void setInGroup(bool f) { inGroup_ = f; }
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
@@ -34,12 +42,14 @@ public:
     uint64_t& zcounter() noexcept { return zCounter_; }
 signals:
 protected:
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
-    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
-    void wheelEvent(QGraphicsSceneWheelEvent *event) override;
-//    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void paint(QPainter* painter,
+               const QStyleOptionGraphicsItem* option,
+               QWidget* widget) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+    void wheelEvent(QGraphicsSceneWheelEvent* event) override;
+    //    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
 private:
     QPointF shiftMouseCoords_;
     QImage* qimage_;

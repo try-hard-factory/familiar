@@ -1,19 +1,19 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include <QFileDialog>
-#include <QMessageBox>
-#include <QLayout>
 #include <QLabel>
+#include <QLayout>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QShortcut>
 
 #include "fml_file_buffer.h"
 #include "project_settings.h"
-#include "tabpane.h"
 #include "saveallwindow.h"
-#include <ui/settings_window.h>
+#include "tabpane.h"
 #include <core/settingshandler.h>
 #include <map>
+#include <ui/settings_window.h>
 
 #include "Logger.h"
 
@@ -27,16 +27,15 @@ static QHash<QString, EShortcutButtons> recognizedShortcutsActions = {
 };
 
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent,Qt::Window
-                  | Qt::CustomizeWindowHint
-                  | Qt::WindowSystemMenuHint
-                  | Qt::WindowMinimizeButtonHint
-                  | Qt::WindowMaximizeButtonHint
-                  | Qt::WindowCloseButtonHint)
-    , ui(new Ui::MainWindow),
-      fileactions_(new FileActions(*this)),
-      tabpane_(new TabPane(*this))
+MainWindow::MainWindow(QWidget* parent)
+    : QMainWindow(parent,
+                  Qt::Window | Qt::CustomizeWindowHint
+                      | Qt::WindowSystemMenuHint | Qt::WindowMinimizeButtonHint
+                      | Qt::WindowMaximizeButtonHint
+                      | Qt::WindowCloseButtonHint)
+    , ui(new Ui::MainWindow)
+    , fileactions_(new FileActions(*this))
+    , tabpane_(new TabPane(*this))
 {
     ui->setupUi(this);
     setWindowTitle("Familiar");
@@ -48,7 +47,10 @@ MainWindow::MainWindow(QWidget *parent)
     createActions();
     createMenus();
 
-    connect(SettingsHandler::getInstance(), &SettingsHandler::shortCutChanged, this, &MainWindow::notifyShortcut);
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::shortCutChanged,
+            this,
+            &MainWindow::notifyShortcut);
 
     setCentralWidget(tabpane_);
 }
@@ -71,7 +73,7 @@ void MainWindow::quitProject()
 
 void MainWindow::saveAll()
 {
-    for (int i = tabpane_->count()-1; i>=0; --i) {
+    for (int i = tabpane_->count() - 1; i >= 0; --i) {
         tabpane_->setCurrentIndex(i);
 
         auto ret = fileactions_->saveFile();
@@ -89,7 +91,7 @@ void MainWindow::newFile()
 void MainWindow::settingsWindow()
 {
     SettingsWindow* widget = new SettingsWindow(this);
-    widget->setAttribute( Qt::WA_DeleteOnClose );
+    widget->setAttribute(Qt::WA_DeleteOnClose);
     widget->show();
     centered_widget(this, widget);
 }
@@ -120,7 +122,11 @@ void MainWindow::saveFileAs()
 void MainWindow::notifyShortcut(const QString& actionName)
 {
     auto settings = SettingsHandler::getInstance();
-    LOG_WARNING(logger, "notifyShortcut. actionName: ", actionName.toStdString(), ", shortcut: ", settings->shortcut(actionName).toStdString());
+    LOG_WARNING(logger,
+                "notifyShortcut. actionName: ",
+                actionName.toStdString(),
+                ", shortcut: ",
+                settings->shortcut(actionName).toStdString());
     auto idx = recognizedShortcutsActions[actionName];
     auto keyseq = QKeySequence(SettingsHandler().shortcut(actionName));
     actionsArr_[idx]->setShortcut(keyseq);
@@ -132,21 +138,20 @@ bool MainWindow::checkSave()
     bool found = false;
     std::map<int, QString> items;
     int count = tabpane_->count();
-    for (int i = 0; i<count; i++) {
+    for (int i = 0; i < count; i++) {
         if (tabpane_->widgetAt(i)->isModified()) {
             found = true;
             items.emplace(i, tabpane_->widgetAt(i)->path());
-
         }
     }
 
     if (found) {
         QString details = "";
-        for (auto&[_, p] : items) {
-            details+=p+"\n";
+        for (auto& [_, p] : items) {
+            details += p + "\n";
         }
         SaveAllWindow* widget = new SaveAllWindow(this, items);
-        widget->setAttribute( Qt::WA_DeleteOnClose );
+        widget->setAttribute(Qt::WA_DeleteOnClose);
         widget->show();
 
         return false;
@@ -156,31 +161,34 @@ bool MainWindow::checkSave()
 
 void MainWindow::initShortcuts()
 {
-//    newShortcut(k_TYPE_SAVE, QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
-//    newShortcut(k_TYPE_QUIT, QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
+    //    newShortcut(k_TYPE_SAVE, QKeySequence(SettingsHandler().shortcut("TYPE_SAVE")), this, SLOT(saveFile()));
+    //    newShortcut(k_TYPE_QUIT, QKeySequence(SettingsHandler().shortcut("TYPE_QUIT")), this, SLOT(quit()));
 }
 
-void MainWindow::newShortcut(EShortcutButtons as_key, const QKeySequence& key, QWidget* parent, const char* slot)
+void MainWindow::newShortcut(EShortcutButtons as_key,
+                             const QKeySequence& key,
+                             QWidget* parent,
+                             const char* slot)
 {
-//    QString strKey = key.toString();
-//    QShortcut* sc = nullptr;
-//    if (strKey.contains("Enter") || strKey.contains("Return")) {
-//        strKey.replace("Enter", "Return");
-//        sc = new QShortcut(strKey, parent, slot);
-//        strKey.replace("Return", "Enter");
-//        sc = new QShortcut(strKey, parent, slot);
-//    } else {
-//        sc = new QShortcut(key, parent, slot);
-//    }
+    //    QString strKey = key.toString();
+    //    QShortcut* sc = nullptr;
+    //    if (strKey.contains("Enter") || strKey.contains("Return")) {
+    //        strKey.replace("Enter", "Return");
+    //        sc = new QShortcut(strKey, parent, slot);
+    //        strKey.replace("Return", "Enter");
+    //        sc = new QShortcut(strKey, parent, slot);
+    //    } else {
+    //        sc = new QShortcut(key, parent, slot);
+    //    }
 
-//    shortcutArr_[as_key] = sc;
+    //    shortcutArr_[as_key] = sc;
 }
 
 void MainWindow::createActions()
 {
     auto settings = SettingsHandler::getInstance();
     saveAllAction_ = new QAction(tr("Save all"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    //    saveAllAction_->setShortcuts(QKeySequence::New);
     saveAllAction_->setStatusTip(tr("Save all"));
     connect(saveAllAction_, &QAction::triggered, this, &MainWindow::saveAll);
 
@@ -191,9 +199,12 @@ void MainWindow::createActions()
     actionsArr_[k_TYPE_NEW] = newAction_;
 
     settingsAction_ = new QAction(tr("Settings"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    //    saveAllAction_->setShortcuts(QKeySequence::New);
     settingsAction_->setStatusTip(tr("Settings"));
-    connect(settingsAction_, &QAction::triggered, this, &MainWindow::settingsWindow);
+    connect(settingsAction_,
+            &QAction::triggered,
+            this,
+            &MainWindow::settingsWindow);
 
     saveAction_ = new QAction(tr("Save"), this);
     saveAction_->setShortcut(QKeySequence(settings->shortcut("TYPE_SAVE")));
@@ -214,7 +225,7 @@ void MainWindow::createActions()
     actionsArr_[k_TYPE_OPEN] = openAction_;
 
     saveAsAction_ = new QAction(tr("Save As"), this);
-//    saveAllAction_->setShortcuts(QKeySequence::New);
+    //    saveAllAction_->setShortcuts(QKeySequence::New);
     saveAsAction_->setStatusTip(tr("Save As"));
     connect(saveAsAction_, &QAction::triggered, this, &MainWindow::saveFileAs);
 }
@@ -233,7 +244,7 @@ void MainWindow::createMenus()
 }
 
 
-void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool> &&m)
+void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m)
 {
     w->close();
 
@@ -241,13 +252,14 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool> &&m)
 
     for (auto it = m.rbegin(); it != m.rend(); it++) {
         if (!it->second) {
-            qDebug()<<"close ID = "<<it->first<<" "<<tabpane_->getCurrentTabPath();
+            qDebug() << "close ID = " << it->first << " "
+                     << tabpane_->getCurrentTabPath();
             tabpane_->closeTabByIndex(it->first);
         }
     }
 
-    for (int i = tabpane_->count()-1; i>=0; --i) {
-        qDebug()<<"save ID = "<<i<<" "<<tabpane_->getCurrentTabPath();
+    for (int i = tabpane_->count() - 1; i >= 0; --i) {
+        qDebug() << "save ID = " << i << " " << tabpane_->getCurrentTabPath();
         tabpane_->setCurrentIndex(i);
 
         auto ret = fileactions_->saveFile();
@@ -258,7 +270,8 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool> &&m)
         }
     }
 
-    if (exit_flag) exitProject();
+    if (exit_flag)
+        exitProject();
 }
 
 void MainWindow::cleanupWorkplace()
@@ -268,7 +281,7 @@ void MainWindow::cleanupWorkplace()
 
 void MainWindow::exitProject()
 {
-    qApp->exit(0);// Is it correct way?
+    qApp->exit(0); // Is it correct way?
 }
 
 TabPane& MainWindow::tabPane()
@@ -276,13 +289,13 @@ TabPane& MainWindow::tabPane()
     return *tabpane_;
 }
 
-FileActions &MainWindow::fileActions()
+FileActions& MainWindow::fileActions()
 {
     return *fileactions_;
 }
 
 
-void MainWindow::closeEvent(QCloseEvent *event)
+void MainWindow::closeEvent(QCloseEvent* event)
 {
     if (checkSave()) {
         event->accept();
@@ -290,4 +303,3 @@ void MainWindow::closeEvent(QCloseEvent *event)
         event->ignore();
     }
 }
-

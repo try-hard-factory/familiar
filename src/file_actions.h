@@ -2,8 +2,8 @@
 #define FILEACTIONS_H
 
 #include <unordered_map>
-#include <QString>
 #include <QFileDialog>
+#include <QString>
 
 class TabPane;
 class MainWindow;
@@ -21,9 +21,11 @@ public:
     int saveFile(const QString& path);
     int saveFile();
     int saveFileAs();
+
 private:
     MainWindow& mainwindow_;
-    std::unordered_map<QString, QString> fileExt_; ///< \~english table with file extention \~russian таблица с расширениями файлов
+    std::unordered_map<QString, QString>
+        fileExt_; ///< \~english table with file extention
 };
 
 #endif // FILEACTIONS_H

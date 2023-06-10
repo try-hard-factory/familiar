@@ -2,9 +2,9 @@
 #define VALUEHANDLER_H
 
 #include <QColor>
+#include <QKeySequence>
 #include <QList>
 #include <QString>
-#include <QKeySequence>
 
 class QVariant;
 

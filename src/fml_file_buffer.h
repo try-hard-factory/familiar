@@ -10,31 +10,32 @@
  *  \~english @author angeleyes (mpano91@gmail.com)
  */
 
-#include <QDebug>
-#include <QImage>
 #include <string>
 #include <QByteArray>
+#include <QDebug>
 #include <QFile>
+#include <QImage>
 #include <QMessageBox>
 
 /**
- * \~russian @brief The fml_file_buffer класс
- *
- * \~english @brief The fml_file_buffer class
- */
+  * \~russian @brief The fml_file_buffer класс
+  *
+  * \~english @brief The fml_file_buffer class
+  */
 class fml_file_buffer
 {
 public:
-
     template<typename T>
-    static QByteArray create_payload(T* obj) {
+    static QByteArray create_payload(T* obj)
+    {
         return obj->fml_payload();
     }
 
-    static void save_to_file(QString filename, QByteArray& payload) {
+    static void save_to_file(QString filename, QByteArray& payload)
+    {
         QFile file(filename);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            qDebug()<<"Unnable to save file";
+            qDebug() << "Unnable to save file";
             return;
         }
 
@@ -44,20 +45,21 @@ public:
     }
 
     template<typename T>
-    static void open_file(T* obj, QString filename) {
+    static void open_file(T* obj, QString filename)
+    {
         QFile file(filename);
         if (!file.open(QFile::ReadOnly)) {
             return;
         }
 
-        QDataStream stream (&file);
+        QDataStream stream(&file);
 
         qint16 count = 0;
         stream >> count;
         for (int i = 0; i < count; ++i) {
             QPointF scenePos;
-            stream >>scenePos;
-            qint32 h,w;
+            stream >> scenePos;
+            qint32 h, w;
             stream >> h >> w;
             QRectF br;
             stream >> br;
@@ -67,8 +69,9 @@ public:
             stream >> size;
             QByteArray zip_img_payload = file.read(size);
             QByteArray img_payload = qUncompress(zip_img_payload);
-            QRect br_ = QRect(scenePos.x(), scenePos.y(), br.width(), br.height());
-            obj->addImage(img_payload, w, h, br_, w*4, QImage::Format(format));
+            QRect br_
+                = QRect(scenePos.x(), scenePos.y(), br.width(), br.height());
+            obj->addImage(img_payload, w, h, br_, w * 4, QImage::Format(format));
         }
 
         file.close();

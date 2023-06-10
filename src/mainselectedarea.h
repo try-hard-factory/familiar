@@ -1,8 +1,8 @@
 #ifndef MAINSELECTEDAREA_H
 #define MAINSELECTEDAREA_H
 
-#include <QRectF>
 #include <vector>
+#include <QRectF>
 
 class MainSelectedArea
 {

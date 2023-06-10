@@ -17,19 +17,23 @@ class QSharedPointer;
 class QTextStream;
 //class AbstractLogger;
 
-#define SETTINGS_GETTER(KEY, TYPE) TYPE KEY() { return value(QStringLiteral(#KEY)).value<TYPE>(); }
-#define SETTINGS_SETTER(FUNC, KEY, TYPE)                                         \
-    void FUNC(const TYPE& val)                                                 \
-    {                                                                          \
-        QString key = QStringLiteral(#KEY);                                    \
-        /* Without this check, multiple `flameshot gui` instances running */   \
-        /* simultaneously would cause an endless loop of fileWatcher calls */  \
-        if (QVariant::fromValue(val) != value(key)) {                          \
-            setValue(key, QVariant::fromValue(val));                           \
-        }                                                                      \
+#define SETTINGS_GETTER(KEY, TYPE) \
+    TYPE KEY() \
+    { \
+        return value(QStringLiteral(#KEY)).value<TYPE>(); \
     }
-#define SETTINGS_GETTER_SETTER(GETFUNC, SETFUNC, TYPE)                           \
-    SETTINGS_GETTER(GETFUNC, TYPE)                                               \
+#define SETTINGS_SETTER(FUNC, KEY, TYPE) \
+    void FUNC(const TYPE& val) \
+    { \
+        QString key = QStringLiteral(#KEY); \
+        /* Without this check, multiple `flameshot gui` instances running */ \
+        /* simultaneously would cause an endless loop of fileWatcher calls */ \
+        if (QVariant::fromValue(val) != value(key)) { \
+            setValue(key, QVariant::fromValue(val)); \
+        } \
+    }
+#define SETTINGS_GETTER_SETTER(GETFUNC, SETFUNC, TYPE) \
+    SETTINGS_GETTER(GETFUNC, TYPE) \
     SETTINGS_SETTER(SETFUNC, GETFUNC, TYPE)
 
 

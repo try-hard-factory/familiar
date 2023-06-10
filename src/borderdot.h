@@ -1,8 +1,8 @@
 #ifndef BORDERDOT_H
 #define BORDERDOT_H
 
-#include <QObject>
 #include <QGraphicsRectItem>
+#include <QObject>
 
 class QGraphicsSceneHoverEventPrivate;
 class QGraphicsSceneMouseEvent;
@@ -15,23 +15,21 @@ class QGraphicsSceneMouseEvent;
 class DotSignal : public QObject, public QGraphicsEllipseItem
 {
     Q_OBJECT
-    Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE setPreviousPosition NOTIFY previousPositionChanged)
+    Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE
+                   setPreviousPosition NOTIFY previousPositionChanged)
 
 public:
-    explicit DotSignal(QGraphicsItem *parentItem = 0, QObject *parent = 0);
-    explicit DotSignal(QPointF pos, QGraphicsItem *parentItem = 0, QObject *parent = 0);
+    explicit DotSignal(QGraphicsItem* parentItem = 0, QObject* parent = 0);
+    explicit DotSignal(QPointF pos,
+                       QGraphicsItem* parentItem = 0,
+                       QObject* parent = 0);
     ~DotSignal();
 
-    enum Flags {
-        Movable = 0x01
-    };
+    enum Flags { Movable = 0x01 };
 
     enum { Type = UserType + 1 };
 
-    int type() const override
-    {
-        return Type;
-    }
+    int type() const override { return Type; }
     QPointF previousPosition() const noexcept;
     void setPreviousPosition(const QPointF previousPosition) noexcept;
 
@@ -47,7 +45,7 @@ signals:
      * @param dx
      * @param dy
      */
-    void signalMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
+    void signalMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
 
 protected:
     /**
@@ -57,7 +55,7 @@ protected:
      * \~english @brief overload this function to process mouse moves
      * \~english @param event - mouse move event
      */
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки нажатий клавиш мышки
@@ -66,7 +64,7 @@ protected:
      * \~english @brief overload this function to process mouse button pressed
      * \~english @param event - mouse press event
      */
-    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки отпускания клавиш мышки
@@ -75,7 +73,7 @@ protected:
      * \~english @brief overload this function to process mouse button released
      * \~english @param event - mouse release event
      */
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки события наведения на элемент
@@ -84,7 +82,7 @@ protected:
      * \~english @brief overload this function to process hover enter event
      * \~english @param event - hover event
      */
-    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для обработки события наведения на элемент
@@ -93,7 +91,7 @@ protected:
      * \~english @brief overload this function to process hover leave event
      * \~english @param event - hover event
      */
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
 
 public slots:
 

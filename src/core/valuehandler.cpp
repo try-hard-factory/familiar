@@ -34,7 +34,7 @@ QVariant ValueHandler::process(const QVariant& val)
 // BOOL
 
 Bool::Bool(bool def)
-  : def_(def)
+    : def_(def)
 {}
 
 bool Bool::check(const QVariant& val)
@@ -59,7 +59,7 @@ QString Bool::expected()
 // KEY SEQUENCE
 
 KeySequence::KeySequence(const QKeySequence& fallback)
-  : fallback_(fallback)
+    : fallback_(fallback)
 {}
 
 bool KeySequence::check(const QVariant& val)

@@ -10,12 +10,12 @@
  *  \~english @author max aka angeleyes (mpano91@gmail.com)
  */
 
-#include <QObject>
-#include <QWheelEvent>
-#include <QMouseEvent>
-#include <QGraphicsView>
 #include <QGraphicsPixmapItem>
+#include <QGraphicsView>
+#include <QMouseEvent>
+#include <QObject>
 #include <QScrollBar>
+#include <QWheelEvent>
 
 class MainWindow;
 class project_settings;
@@ -81,7 +81,8 @@ public:
      */
     void addImage(QImage* img, QPointF point);
 
-    void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
+    void addImage(
+        QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
     void SetScale(qreal qrScale);
     void ScaleView(qreal qFactor);
@@ -109,7 +110,7 @@ public slots:
     void onSelectionChanged();
 
 protected:
-    void contextMenuEvent(QContextMenuEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent* event) override;
     /**
      * \~russian @brief перегрузите эту функцию, для обработки движений мышки
      * \~russian @param event - событие движения мышки
@@ -136,7 +137,7 @@ protected:
      * \~english @param event - mouse release event
      */
     void mouseReleaseEvent(QMouseEvent* event) override;
-    void mouseDoubleClickEvent(QMouseEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     /**
      * \~russian @brief перегрузите эту функцию, для обработки колёсика мышки
      * \~russian @param event - событие колёсика мышки
@@ -153,7 +154,7 @@ protected:
      * \~english @brief overload this function to process resize event
      * \~english @param event - resize event
      */
-    void resizeEvent(QResizeEvent *event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
     /**
      * \~russian @brief перегрузите эту функцию, для рисования на сцене
@@ -164,7 +165,7 @@ protected:
      * \~english @param painter - using for painting on scene
      * \~english @param rect - is the exposed rectangle.
      */
-    void drawBackground(QPainter *painter, const QRectF &rect) override;
+    void drawBackground(QPainter* painter, const QRectF& rect) override;
 
 private:
     MainWindow& mainwindow_;
@@ -174,7 +175,8 @@ private:
     bool rightMoveflag_{false};
     QPoint pressPos_;
     QPoint wndPos_;
-    bool isMoving_{false};;
+    bool isMoving_{false};
+    ;
     qreal panStartX_;
     qreal panStartY_;
     uint64_t zCounter_ = 0;

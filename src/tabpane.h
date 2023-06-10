@@ -1,9 +1,9 @@
 #ifndef TABPANE_H
 #define TABPANE_H
 
-#include <QVBoxLayout>
 #include <QFrame>
 #include <QTabWidget>
+#include <QVBoxLayout>
 
 class MainWindow;
 class CanvasView;

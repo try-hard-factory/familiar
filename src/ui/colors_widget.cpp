@@ -1,10 +1,10 @@
 #include "colors_widget.h"
-#include <QVBoxLayout>
 #include <kColorPicker/KColorPicker.h>
+#include <QVBoxLayout>
 
 using kColorPicker::KColorPicker;
 
-ColorsWidget::ColorsWidget(QWidget *parent)
+ColorsWidget::ColorsWidget(QWidget* parent)
     : QWidget(parent)
 {
     layout_ = new QVBoxLayout(this);
@@ -14,7 +14,4 @@ ColorsWidget::ColorsWidget(QWidget *parent)
     layout_->addWidget(colorPicker);
 }
 
-void ColorsWidget::updateComponents()
-{
-
-}
+void ColorsWidget::updateComponents() {}

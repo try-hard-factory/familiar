@@ -31,7 +31,8 @@ SetShortcutDialog::SetShortcutDialog(QDialog* parent, QString shortcutName)
     infoIcon->setPixmap(QPixmap(":/img/app/keyboard.svg"));
     layout_->addWidget(infoIcon);
 
-    QString msg = tr("Press Esc to cancel or Backspace to disable the keyboard shortcut.");
+    QString msg = tr(
+        "Press Esc to cancel or Backspace to disable the keyboard shortcut.");
 
     auto* infoBottom = new QLabel(msg);
     infoBottom->setMargin(10);

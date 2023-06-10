@@ -11,10 +11,10 @@ public:
     explicit project_settings(TabPane* tp);
 
     void title(const QString& t);
-    const QString& title() const noexcept  { return title_;}
+    const QString& title() const noexcept { return title_; }
 
     void path(const QString& p);
-    const QString& path() const noexcept  { return path_;}
+    const QString& path() const noexcept { return path_; }
 
     void projectName(const QString& p);
     const QString& projectName() const noexcept { return projectName_; };
@@ -22,7 +22,11 @@ public:
     void modified(bool s);
     bool modified() const noexcept { return changed_; }
 
-    bool isDefaultProjectName() const { return (0 == projectName_.compare("untitled")); }
+    bool isDefaultProjectName() const
+    {
+        return (0 == projectName_.compare("untitled"));
+    }
+
 private:
     TabPane* tp_;
     QString projectName_ = "untitled";

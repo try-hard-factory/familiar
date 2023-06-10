@@ -16,42 +16,42 @@
 
 extern Logger logger;
 
-#define OPTION(KEY, TYPE)                                                      \
-    {                                                                          \
-        QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE)            \
+#define OPTION(KEY, TYPE) \
+    { \
+        QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE) \
     }
 
-#define SHORTCUT(NAME, DEFAULT_VALUE)                                          \
-    {                                                                          \
-        QStringLiteral(NAME), QSharedPointer<KeySequence>(new KeySequence(     \
-                                QKeySequence(QLatin1String(DEFAULT_VALUE))))   \
+#define SHORTCUT(NAME, DEFAULT_VALUE) \
+    { \
+        QStringLiteral(NAME), QSharedPointer<KeySequence>(new KeySequence( \
+                                  QKeySequence(QLatin1String(DEFAULT_VALUE)))) \
     }
 
-static QMap<class QString, QSharedPointer<ValueHandler>>
-        recognizedGeneralOptions = {
-//         KEY                            TYPE                 DEFAULT_VALUE
-    OPTION("option0"         ,Bool               ( true          )),
-    OPTION("option1"         ,Bool               ( true          )),
+static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions
+    = {
+        //         KEY                            TYPE                 DEFAULT_VALUE
+        OPTION("option0", Bool(true)),
+        OPTION("option1", Bool(true)),
 
 };
 
 static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
-//           NAME                           DEFAULT_SHORTCUT
-    SHORTCUT("TYPE_NEW"                 ,   "Ctrl+N"                ),
-    SHORTCUT("TYPE_OPEN"                ,   "Ctrl+O"                ),
-    SHORTCUT("TYPE_SAVE"                ,   "Ctrl+S"                ),
-    SHORTCUT("TYPE_QUIT"                ,   "Ctrl+Q"                ),
+    //           NAME                           DEFAULT_SHORTCUT
+    SHORTCUT("TYPE_NEW", "Ctrl+N"),
+    SHORTCUT("TYPE_OPEN", "Ctrl+O"),
+    SHORTCUT("TYPE_SAVE", "Ctrl+S"),
+    SHORTCUT("TYPE_QUIT", "Ctrl+Q"),
 
 };
 
 
 SettingsHandler::SettingsHandler()
     : settings_(QSettings::IniFormat,
-                   QSettings::UserScope,
-                   qApp->organizationName(),
-                   qApp->applicationName())
+                QSettings::UserScope,
+                qApp->organizationName(),
+                qApp->applicationName())
 {
-//    settings_.clear();
+    //    settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
         // check for error every time the file changes
@@ -89,7 +89,8 @@ SettingsHandler* SettingsHandler::getInstance()
 }
 
 
-bool SettingsHandler::setShortcut(const QString& actionName, const QString& shortcut)
+bool SettingsHandler::setShortcut(const QString& actionName,
+                                  const QString& shortcut)
 {
     LOG_DEBUG(logger, shortcut.toStdString());
 
@@ -118,8 +119,8 @@ bool SettingsHandler::setShortcut(const QString& actionName, const QString& shor
             if (actionName == otherAction) {
                 continue;
             }
-            QString existingShortcut =
-              KeySequence().value(settings_.value(otherAction)).toString();
+            QString existingShortcut
+                = KeySequence().value(settings_.value(otherAction)).toString();
             if (newShortcut == existingShortcut) {
                 error = true;
                 goto done;
@@ -154,7 +155,8 @@ QString SettingsHandler::shortcut(const QString& actionName)
     return shortcut;
 }
 
-void SettingsHandler::setValue(const QString &key, const QVariant &value)
+
+void SettingsHandler::setValue(const QString& key, const QVariant& value)
 {
     assertKeyRecognized(key);
     if (!hasError()) {
@@ -166,7 +168,7 @@ void SettingsHandler::setValue(const QString &key, const QVariant &value)
 }
 
 
-QVariant SettingsHandler::value(const QString &key) const
+QVariant SettingsHandler::value(const QString& key) const
 {
     assertKeyRecognized(key);
 
@@ -186,19 +188,19 @@ QVariant SettingsHandler::value(const QString &key) const
 }
 
 
-void SettingsHandler::remove(const QString &key)
+void SettingsHandler::remove(const QString& key)
 {
     settings_.remove(key);
 }
 
 
-void SettingsHandler::resetValue(const QString &key)
+void SettingsHandler::resetValue(const QString& key)
 {
     settings_.setValue(key, valueHandler(key)->fallback());
 }
 
 
-QSet<QString> &SettingsHandler::recognizedShortcutNames()
+QSet<QString>& SettingsHandler::recognizedShortcutNames()
 {
     auto keys = recognizedShortcuts.keys();
     static QSet<QString> names = QSet<QString>(keys.begin(), keys.end());
@@ -206,7 +208,8 @@ QSet<QString> &SettingsHandler::recognizedShortcutNames()
     return names;
 }
 
-QSet<QString> SettingsHandler::keysFromGroup(const QString &group) const
+
+QSet<QString> SettingsHandler::keysFromGroup(const QString& group) const
 {
     QSet<QString> keys;
     for (const QString& key : settings_.allKeys()) {
@@ -222,12 +225,12 @@ QSet<QString> SettingsHandler::keysFromGroup(const QString &group) const
 
 bool SettingsHandler::checkForErrors() const
 {
-    return checkUnrecognizedSettings() & checkShortcutConflicts() &
-            checkSemantics();
+    return checkUnrecognizedSettings() & checkShortcutConflicts()
+           & checkSemantics();
 }
 
 
-bool SettingsHandler::checkUnrecognizedSettings(QList<QString> *offenders) const
+bool SettingsHandler::checkUnrecognizedSettings(QList<QString>* offenders) const
 {
     // sort the config keys by group
     QSet<QString> shortcutKeys = keysFromGroup(SETTINGS_GROUP_SHORTCUTS),
@@ -265,8 +268,8 @@ bool SettingsHandler::checkShortcutConflicts() const
             // - or one of the settings is not found in m_settings, i.e.
             //   user wants to use flameshot's default shortcut for the action
             // - or the shortcuts for both actions are different
-            if (!(value1.isEmpty() || !settings_.contains(*key1) ||
-                  !settings_.contains(*key2) || value1 != value2)) {
+            if (!(value1.isEmpty() || !settings_.contains(*key1)
+                  || !settings_.contains(*key2) || value1 != value2)) {
                 ok = false;
                 break;
             }
@@ -277,7 +280,7 @@ bool SettingsHandler::checkShortcutConflicts() const
 }
 
 
-bool SettingsHandler::checkSemantics(QList<QString> *offenders) const
+bool SettingsHandler::checkSemantics(QList<QString>* offenders) const
 {
     QStringList allKeys = settings_.allKeys();
     bool ok = true;
@@ -324,7 +327,7 @@ bool SettingsHandler::hasError() const
 QString SettingsHandler::errorMessage() const
 {
     return tr(
-      "The configuration contains an error. Open configuration to resolve.");
+        "The configuration contains an error. Open configuration to resolve.");
 }
 
 
@@ -335,29 +338,29 @@ void SettingsHandler::ensureFileWatched() const
         file.open(QFileDevice::WriteOnly);
         file.close();
     }
-    if (settingsWatcher_ != nullptr && settingsWatcher_->files().isEmpty() &&
-        qApp != nullptr // ensures that the organization name can be accessed
+    if (settingsWatcher_ != nullptr && settingsWatcher_->files().isEmpty()
+        && qApp != nullptr // ensures that the organization name can be accessed
     ) {
         settingsWatcher_->addPath(settings_.fileName());
     }
 }
 
 
-void SettingsHandler::assertKeyRecognized(const QString &key) const
+void SettingsHandler::assertKeyRecognized(const QString& key) const
 {
     bool recognized = isShortcut(key)
-            ? recognizedShortcutNames().contains(baseName(key))
-            : ::recognizedGeneralOptions.contains(key);
+                          ? recognizedShortcutNames().contains(baseName(key))
+                          : ::recognizedGeneralOptions.contains(key);
     if (!recognized) {
         setErrorState(true);
     }
 }
 
 
-bool SettingsHandler::isShortcut(const QString &key) const
+bool SettingsHandler::isShortcut(const QString& key) const
 {
-    return settings_.group() == QStringLiteral(SETTINGS_GROUP_SHORTCUTS) ||
-              key.startsWith(QStringLiteral(SETTINGS_GROUP_SHORTCUTS "/"));
+    return settings_.group() == QStringLiteral(SETTINGS_GROUP_SHORTCUTS)
+           || key.startsWith(QStringLiteral(SETTINGS_GROUP_SHORTCUTS "/"));
 }
 
 
@@ -367,12 +370,14 @@ QString SettingsHandler::baseName(QString key) const
 }
 
 
-QSharedPointer<ValueHandler> SettingsHandler::valueHandler(const QString &key) const
+QSharedPointer<ValueHandler> SettingsHandler::valueHandler(
+    const QString& key) const
 {
     QSharedPointer<ValueHandler> handler;
     if (isShortcut(key)) {
-        handler = recognizedShortcuts.value(
-          baseName(key), QSharedPointer<KeySequence>(new KeySequence()));
+        handler = recognizedShortcuts.value(baseName(key),
+                                            QSharedPointer<KeySequence>(
+                                                new KeySequence()));
     } else { // General group
         handler = ::recognizedGeneralOptions.value(key);
     }
@@ -388,15 +393,17 @@ void SettingsHandler::setErrorState(bool error) const
     if (!hadError && hasError_) {
         QString msg = errorMessage();
         LOG_WARNING(logger, msg.toStdString());
-//        AbstractLogger::error() << msg;
+        //        AbstractLogger::error() << msg;
         emit getInstance()->error();
     } else if (hadError && !hasError_) {
-        auto msg = tr("You have successfully resolved the configuration error.");
+        auto msg = tr(
+            "You have successfully resolved the configuration error.");
         LOG_INFO(logger, msg.toStdString());
-//        AbstractLogger::info() << msg;
+        //        AbstractLogger::info() << msg;
         emit getInstance()->errorResolved();
     }
 }
+
 
 // STATIC MEMBER DEFINITIONS
 

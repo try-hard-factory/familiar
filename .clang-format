@@ -40,22 +40,17 @@ BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
-ColumnLimit:    100
+ColumnLimit:    80
 CommentPragmas:  '^ IWYU pragma:'
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ConstructorInitializerIndentWidth: 4
 ContinuationIndentWidth: 4
 Cpp11BracedListStyle: true
-DerivePointerAlignment: false
 DisableFormat:   false
+DerivePointerAlignment: false
 ExperimentalAutoDetectBinPacking: false
 FixNamespaceComments: true
-ForEachMacros:
-  - forever # avoids { wrapped to next line
-  - foreach
-  - Q_FOREACH
-  - BOOST_FOREACH
 IncludeCategories:
   - Regex:           '^<Q.*'
     Priority:        200
@@ -69,7 +64,7 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 # Do not add QT_BEGIN_NAMESPACE/QT_END_NAMESPACE as this will indent lines in between.
 MacroBlockBegin: ""
 MacroBlockEnd:   ""
-MaxEmptyLinesToKeep: 1
+MaxEmptyLinesToKeep: 2
 NamespaceIndentation: None
 ObjCBlockIndentWidth: 4
 ObjCSpaceAfterProperty: false

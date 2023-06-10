@@ -63,7 +63,8 @@ void FileActions::processOpenFile(const QString& file)
         && mainwindow_.tabPane().currentWidget()->isModified() == false) {
         mainwindow_.tabPane().setCurrentTabPath(file);
         mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(file).fileName());
-        mainwindow_.tabPane().setCurrentTabProjectName(QFileInfo(file).fileName());
+        mainwindow_.tabPane().setCurrentTabProjectName(
+            QFileInfo(file).fileName());
     } else {
         mainwindow_.tabPane().addNewTab(file);
     }
@@ -106,20 +107,24 @@ int FileActions::saveFileAs()
 
     if (retdialog == QDialog::Accepted) {
         QString selected = fileDialog->selectedFiles().at(0);
-        if (!selected.contains(fileExt_.at(fileDialog->selectedNameFilter()), Qt::CaseInsensitive)) {
+        if (!selected.contains(fileExt_.at(fileDialog->selectedNameFilter()),
+                               Qt::CaseInsensitive)) {
             selected.append(fileExt_.at(fileDialog->selectedNameFilter()));
         }
 
         if (!mainwindow_.tabPane().currentWidget()->isUntitled()
-            && mainwindow_.tabPane().getCurrentTabProjectName() != QFileInfo(selected).fileName()) {
+            && mainwindow_.tabPane().getCurrentTabProjectName()
+                   != QFileInfo(selected).fileName()) {
             auto canvasView = mainwindow_.tabPane().currentWidget();
             mainwindow_.tabPane().addNewTab(selected);
-            fml_file_buffer::open_file(mainwindow_.tabPane().currentWidget(), canvasView->path());
+            fml_file_buffer::open_file(mainwindow_.tabPane().currentWidget(),
+                                       canvasView->path());
         }
 
         mainwindow_.tabPane().setCurrentTabPath(selected);
         mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(selected).fileName());
-        mainwindow_.tabPane().setCurrentTabProjectName(QFileInfo(selected).fileName());
+        mainwindow_.tabPane().setCurrentTabProjectName(
+            QFileInfo(selected).fileName());
 
         QFile(selected).open(QFile::ReadWrite);
         saveFile(selected);

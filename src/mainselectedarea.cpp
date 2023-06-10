@@ -1,6 +1,3 @@
 #include "mainselectedarea.h"
 
-MainSelectedArea::MainSelectedArea()
-{
-
-}
+MainSelectedArea::MainSelectedArea() {}

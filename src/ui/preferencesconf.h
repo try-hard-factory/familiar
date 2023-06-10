@@ -9,7 +9,7 @@ class PreferencesConf : public QWidget
 {
     Q_OBJECT
 public:
-    explicit PreferencesConf(QWidget *parent = nullptr);
+    explicit PreferencesConf(QWidget* parent = nullptr);
 
 public slots:
     void updateComponents();

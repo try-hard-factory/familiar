@@ -58,13 +58,17 @@ void ShortcutsWidget::initInfoTable()
     QStringList names;
     names << tr("Description") << tr("Key");
     table_->setHorizontalHeaderLabels(names);
-    connect(table_, &QTableWidget::cellClicked, this, &ShortcutsWidget::onShortcutCellClicked);
+    connect(table_,
+            &QTableWidget::cellClicked,
+            this,
+            &ShortcutsWidget::onShortcutCellClicked);
 
     populateInfoTable();
 
     table_->horizontalHeader()->setMinimumSectionSize(200);
     table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    table_->horizontalHeader()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    table_->horizontalHeader()->setSizePolicy(QSizePolicy::Expanding,
+                                              QSizePolicy::Expanding);
     table_->resizeColumnsToContents();
     table_->resizeRowsToContents();
 }
@@ -117,7 +121,8 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
     }
 
     const auto& shortcutName = shortcuts_.at(row).at(0);
-    auto setShortcutDialog = std::make_unique<SetShortcutDialog>(nullptr, shortcutName);
+    auto setShortcutDialog = std::make_unique<SetShortcutDialog>(nullptr,
+                                                                 shortcutName);
 
     if (setShortcutDialog->exec() != 0) {
         auto shortcutValue = setShortcutDialog->shortcut();
@@ -144,10 +149,13 @@ void ShortcutsWidget::loadShortCuts()
     appendShortcut("TYPE_QUIT", "Quit application");
 }
 
-void ShortcutsWidget::appendShortcut(const QString& shortcutName, const QString& description)
+void ShortcutsWidget::appendShortcut(const QString& shortcutName,
+                                     const QString& description)
 {
     auto settings = SettingsHandler::getInstance();
     QString shortcut = settings->shortcut(shortcutName);
-    shortcuts_ << (QStringList() << shortcutName << QObject::tr(description.toStdString().c_str())
-                                 << shortcut.replace("Return", "Enter"));
+    shortcuts_ << (QStringList()
+                   << shortcutName
+                   << QObject::tr(description.toStdString().c_str())
+                   << shortcut.replace("Return", "Enter"));
 }

@@ -1,19 +1,19 @@
 #ifndef CANVASSCENE_H
 #define CANVASSCENE_H
 
-#include <QGraphicsScene>
+#include "image_downloader.h"
+#include "mainselectedarea.h"
+#include <itemgroup.h>
 #include <QGraphicsItem>
+#include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
 #include <QRubberBand>
-#include <itemgroup.h>
-#include "mainselectedarea.h"
-#include "image_downloader.h"
 
 enum EState {
-    eMouseMoving          = 0x0000,
-    eMouseSelection       = 0x0001,
-    eGroupItemMoving      = 0x0002,
-    eGroupItemResizing    = 0x0003,
+    eMouseMoving = 0x0000,
+    eMouseSelection = 0x0001,
+    eGroupItemMoving = 0x0002,
+    eGroupItemResizing = 0x0003,
 };
 
 class MainWindow;
@@ -22,7 +22,7 @@ class project_settings;
 class CanvasScene : public QGraphicsScene
 {
 public:
-    CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene *scene = 0);
+    CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene* scene = 0);
     ~CanvasScene();
 
 public:
@@ -33,7 +33,8 @@ public:
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     void addImageToSceneToPosition(QImage&& image, QPointF position);
     QByteArray fml_payload();
-    void updateViewScaleFactor(qreal newval) {
+    void updateViewScaleFactor(qreal newval)
+    {
         itemGroup_->setScaleControlFactor(newval);
         parentViewScaleFactor_ = newval;
     }
@@ -43,29 +44,29 @@ public:
     void cleanupWorkplace();
 
     QString path();
-    void setPath(const QString &path);
+    void setPath(const QString& path);
     QString projectName();
-    void setProjectName(const QString &pn);
+    void setProjectName(const QString& pn);
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
     ItemGroup* itemGroup() const noexcept { return itemGroup_; }
 
 protected:
-    void keyPressEvent(QKeyEvent *event) override;
-    void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent *event) override;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
-    void drawForeground(QPainter *painter, const QRectF &rect) override;
-    void dragEnterEvent(QGraphicsSceneDragDropEvent *event) override;
-    void dragMoveEvent(QGraphicsSceneDragDropEvent *event) override;
-    void dropEvent(QGraphicsSceneDragDropEvent *event) override;
-
+    void keyPressEvent(QKeyEvent* event) override;
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+    void drawForeground(QPainter* painter, const QRectF& rect) override;
+    void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;
+    void dragMoveEvent(QGraphicsSceneDragDropEvent* event) override;
+    void dropEvent(QGraphicsSceneDragDropEvent* event) override;
 
 public slots:
-    void slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy);
+    void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
 private slots:
     void clipboardChanged();
+
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;
@@ -79,17 +80,16 @@ private:
     ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
 
-
     EState state_ = eMouseMoving;
 
-    ImageDownloader* imgdownloader_ = nullptr;//image loader need c++threads!!!
+    ImageDownloader* imgdownloader_ = nullptr; //image loader need c++threads!!!
 
     qreal parentViewScaleFactor_ = 1;
     project_settings* projectSettings_;
 
     QPointF origin_;
     QRectF rubberBand_;
-    QPointF lastClickedPoint_{0,0};
+    QPointF lastClickedPoint_{0, 0};
 };
 
 #endif // CANVASSCENE_H

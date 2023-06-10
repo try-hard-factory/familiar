@@ -7,7 +7,7 @@ class SaveCheckBox : public QCheckBox
 {
     Q_OBJECT
 public:
-    SaveCheckBox(int id, QWidget *parent = 0);
+    SaveCheckBox(int id, QWidget* parent = 0);
     ~SaveCheckBox() = default;
     int id() const noexcept { return id_; };
 

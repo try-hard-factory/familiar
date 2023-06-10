@@ -12,14 +12,16 @@
  *  \~english @bug No known bugs.
  */
 
+#include "file_actions.h"
+#include "tabpane.h"
+#include <canvasview.h>
 #include <QMainWindow>
 #include <QMessageBox>
-#include <canvasview.h>
-#include "tabpane.h"
-#include "file_actions.h"
 
 QT_BEGIN_NAMESPACE
-namespace Ui { class MainWindow; }
+namespace Ui {
+class MainWindow;
+}
 QT_END_NAMESPACE
 
 class project_settings;
@@ -53,7 +55,7 @@ public:
      * \~english @param parent - pointer to QWidget parent(may be nullptr - it
      *                           is normal)
      */
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(QWidget* parent = nullptr);
 
     /**
      * \~russian @brief деструктор
@@ -72,20 +74,27 @@ public:
     TabPane& tabPane();
     FileActions& fileActions();
 
-    void clipboardItems(QVector<QGraphicsItem*> ci) noexcept { clipboardItems_ = ci; }
-    QVector<QGraphicsItem*>& clipboardItems() noexcept { return clipboardItems_; }
-    void clearClipboardItems() { clipboardItems_.clear();}
+    void clipboardItems(QVector<QGraphicsItem*> ci) noexcept
+    {
+        clipboardItems_ = ci;
+    }
+    QVector<QGraphicsItem*>& clipboardItems() noexcept
+    {
+        return clipboardItems_;
+    }
+    void clearClipboardItems() { clipboardItems_.clear(); }
 
 protected:
-    void closeEvent(QCloseEvent *event) override;
+    void closeEvent(QCloseEvent* event) override;
 
 private:
-//    void saveFile(const QString& path);
+    //    void saveFile(const QString& path);
     bool checkSave();
     void initShortcuts();
-    void newShortcut(EShortcutButtons as_key, const QKeySequence& key,
-                                  QWidget* parent,
-                                  const char* slot);
+    void newShortcut(EShortcutButtons as_key,
+                     const QKeySequence& key,
+                     QWidget* parent,
+                     const char* slot);
     void createActions();
     void createMenus();
 
@@ -101,7 +110,8 @@ private slots:
     void notifyShortcut(const QString& t);
 
 private:
-    Ui::MainWindow *ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
+    Ui::MainWindow*
+        ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
@@ -115,15 +125,17 @@ private:
     QAction* openAction_ = nullptr;
     QAction* saveAsAction_ = nullptr;
 
-    QVarLengthArray<QAction*, EShortcutButtons::k_ALL> actionsArr_ = { nullptr, nullptr, nullptr, nullptr};
-//    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
+    QVarLengthArray<QAction*, EShortcutButtons::k_ALL> actionsArr_
+        = {nullptr, nullptr, nullptr, nullptr};
+    //    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
 };
 
 template<typename M, typename S>
-void centered_widget(M* mw, S* w) {
+void centered_widget(M* mw, S* w)
+{
     auto hostRect = mw->geometry();
-    auto point = hostRect.center() - QPoint(w->size().width()/2,
-                                            w->size().height()/2);
+    auto point = hostRect.center()
+                 - QPoint(w->size().width() / 2, w->size().height() / 2);
     w->move(point);
 }
 #endif // MAINWINDOW_H

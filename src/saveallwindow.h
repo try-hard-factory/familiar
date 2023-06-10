@@ -1,26 +1,29 @@
 #ifndef SAVEALLWINDOW_H
 #define SAVEALLWINDOW_H
-#include <QWidget>
-#include <QVBoxLayout>
+#include <map>
+#include <savecheckbox.h>
+#include <QCheckBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
-#include <QCheckBox>
-#include <savecheckbox.h>
-#include <map>
+#include <QVBoxLayout>
+#include <QWidget>
 
 class MainWindow;
 class SaveAllWindow : public QWidget
 {
     Q_OBJECT
-public:                                    // move semathics
-    SaveAllWindow(MainWindow* wm, std::map<int, QString> items, QWidget *parent = nullptr);
+public: // move semathics
+    SaveAllWindow(MainWindow* wm,
+                  std::map<int, QString> items,
+                  QWidget* parent = nullptr);
     ~SaveAllWindow();
 private slots:
     void onCloseWithoutSaveClicked();
     void onCancelClicked();
     void onSaveClicked();
     void onSaveBoxToggled();
+
 private:
     MainWindow* window_;
     QVBoxLayout* vlayout_;
