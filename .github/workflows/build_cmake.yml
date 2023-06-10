@@ -22,7 +22,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-20.04]
+        os: [ubuntu-22.04]
 
     steps:
       - name: Checkout Source code
@@ -46,7 +46,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
         with:
-          version: 6.0.4
+          version: 6.2.4
           host: 'linux'
           target:  desktop
           dir: '${{ github.workspace }}/build/'
@@ -114,7 +114,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v2
         with:
-          version: 6.0.4
+          version: 6.2.4
           target:  desktop
           dir: '${{ github.workspace }}/build/'
 
@@ -122,9 +122,10 @@ jobs:
         working-directory: build
         shell: powershell
         run: |
-          cmake -DCMAKE_BUILD_TYPE=$env:BUILD_TYPE ../
+          cmake .. -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE:STRING=$env:BUILD_TYPE -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=OFF
+          ls
       - name: Build
         working-directory: build
         shell: powershell
         run: |
-          cmake --build . --config $env:BUILD_TYPE
+          cmake --build . --parallel 2 --config $env:BUILD_TYPE

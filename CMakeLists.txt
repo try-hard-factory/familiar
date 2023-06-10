@@ -35,7 +35,7 @@ set(RUN_IN_PLACE
         ${DEFAULT_RUN_IN_PLACE}
         CACHE BOOL "Run directly in source directory structure")
 
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
+#set(CMAKE_INCLUDE_CURRENT_DIR ON)
 option(GENERATE_TS "Regenerate translation source files" OFF)
 
 include(cmake/StandardProjectSettings.cmake)
@@ -50,7 +50,7 @@ add_library(project_warnings INTERFACE)
 set(CMAKE_CXX_STANDARD 11)
 set(COMPILE_FLAGS "${CMAKE_CXX_FLAGS} -Wall  -O0 -g")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-#set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/kColorPicker)
 add_subdirectory(src)
 

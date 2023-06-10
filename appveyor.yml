@@ -4,13 +4,14 @@ clone_folder: c:\projects\source
 
 environment:
   Qt6_INSTALL_DIR: 'C:\Qt\6.2.4\msvc2019_64'
-  CMAKE_PREFIX_PATH: 'C:\Qt\Qt6.0.4\6.2.4\msvc2019_64\'
-  PATH: '%CMAKE_PREFIX_PATH%;%Qt6_INSTALL_DIR%\bin;%PATH%'  
+  PATH: '%Qt6_INSTALL_DIR%\bin;%PATH%'  
 
 build_script:
 - cmd: >-
 
     ls 'C:\Qt'
+
+    mkdir build
 
     cd build
     
@@ -30,13 +31,15 @@ build_script:
 
     mkdir artifact
     
+    ls
+
     ls package
 
-    ls src/Release
+    ls Release
 
     cp package/*.msi artifact/.
 
-    cp src/Release/*.exe artifact/.
+    cp Release/*.exe artifact/.
 
     7z a -tzip artifact.zip artifact/
 

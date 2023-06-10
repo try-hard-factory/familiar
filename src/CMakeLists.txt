@@ -109,11 +109,23 @@ target_sources(
         ${CMAKE_CURRENT_SOURCE_DIR}/../data/familiar.rc # windows binary icon resource file
         main.cpp)
 
-target_link_libraries(familiar PRIVATE
-                                Qt${QT_VERSION_MAJOR}::Widgets
-                                Qt${QT_VERSION_MAJOR}::Network
-                                ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
-                                )
+if (WIN32)
+    message(!!!!!!!!)
+    target_link_libraries(familiar PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Network
+        "${CMAKE_BINARY_DIR}\\include\\kColorPicker\\lib\\Release\\kColorPicker.lib"
+    )
+elseif(APPLE)
+    
+else()
+    target_link_libraries(familiar PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Network
+        ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
+    )
+endif()
+
 
 
 if (WIN32)
