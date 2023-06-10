@@ -47,6 +47,7 @@ void ImageDownloader::finished()
 
 void ImageDownloader::errorOccurred(QNetworkReply::NetworkError err)
 {
+    qDebug()<<"errorOccurred: "<<err;
     // Manage error here.
     reply_->deleteLater();
 }

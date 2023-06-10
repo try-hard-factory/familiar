@@ -88,15 +88,22 @@ void CanvasScene::pasteFromClipboard()
         itemGroup_->clearItemGroup();
         qreal x = 0;
         foreach (const QUrl &url, mimedata->urls()) {
-            QString fileName = url.toLocalFile();
-            qDebug() << "Dropped file:" << fileName<<
-                        ", formats: "<< mimedata->formats();
+            if (url.isLocalFile()) {
+                QString fileName(url.toLocalFile());
+                LOG_DEBUG(logger, "Dropped file: ", fileName.toStdString());
+                qDebug() << "formats: "<< mimedata->formats();
 
-            MoveItem* item = new MoveItem(fileName, zCounter_);
-            item->setPos({lastClickedPoint_.x()+x, lastClickedPoint_.y()});
-            x += item->getRect().width();
-            addItem(item);
-            itemGroup_->addItemToGroup(item);
+                MoveItem* item = new MoveItem(fileName, zCounter_);
+                item->setPos({lastClickedPoint_.x()+x, lastClickedPoint_.y()});
+                x += item->getRect().width();
+                addItem(item);
+                itemGroup_->addItemToGroup(item);
+            } else {
+                QString urlstr = url.url();
+                LOG_DEBUG(logger, "Download.Dropped file: ", urlstr.toStdString());
+                imgdownloader_->download(urlstr, lastClickedPoint_);
+                projectSettings_->modified(true);
+            }
         }
         itemGroup_->incZ();
         mainSelArea_.setReady(true);
@@ -274,8 +281,8 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent *event)
         qreal x = 0;
         foreach (const QUrl &url, event->mimeData()->urls()) {
             QString fileName = url.toLocalFile();
-            qDebug() << "Dropped file:" << fileName<<
-                        ", formats: "<< event->mimeData()->formats();
+            LOG_DEBUG(logger, "Dropped file: ", fileName.toStdString());
+            qDebug() << "formats: "<< event->mimeData()->formats();
 
             MoveItem* item = new MoveItem(fileName, zCounter_);
             qreal new_x = event->scenePos().x();
@@ -561,29 +568,42 @@ void CanvasScene::handleHtmlFromClipboard(const QString& html)
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
 }
+// void CanvasScene::handleHtmlFromClipboard(const QString& html)
+// {
+//     QRegularExpression re("<img[^>]*src=['|\"](.*?)['|\"].*?>");
+//     QRegularExpressionMatchIterator it = re.globalMatch(html);
+
+//     if (it.hasNext()) {
+//         QRegularExpressionMatch match = it.next();
+//         QString imageUrl = match.captured(1);
+//         imgdownloader_->download(imageUrl, {0, 0});
+//     } else {
+//         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
+//     }
+// }
 
 //ItemGroup
 void CanvasScene::slotMove(QGraphicsItem *signalOwner, qreal dx, qreal dy)
 {
-    foreach (QGraphicsItem *item, selectedItems()) {
+    for (QGraphicsItem* item : selectedItems()) {
         if(item != signalOwner) {
             item->moveBy(dx,dy);
         }
     }
 }
 
+
 void CanvasScene::clipboardChanged()
 {
     mainwindow_.clearClipboardItems();
 }
 
+
 qint16 CanvasScene::objectsCount() const
 {
-    qint16 count = 0;
-    for (auto& it : items()) {
-        // \TODO: type.h header with all types (image, textline, multitextline)
-        if (it->type() != 3) continue;
-        ++count;
-    }
-    return count;
+     // \TODO: type.h header with all types (image, textline, multitextline)
+    const int targetObjectType = 3;
+    return std::count_if(items().begin(), items().end(), [targetObjectType](const QGraphicsItem* item) {
+        return item->type() == targetObjectType;
+    });
 }
