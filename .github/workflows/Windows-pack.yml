@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        qt_ver: [6.0.4]
+        qt_ver: [6.2.4]
         qt_target: [desktop]
         config:
           - {
@@ -89,7 +89,7 @@ jobs:
         working-directory: build
         shell: pwsh
         run: |
-          cmake ..  ${{matrix.config.generator}}  `
+          ls && cmake ..  ${{matrix.config.generator}}  `
           -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"  `
           -DENABLE_OPENSSL=ON `
           -DCMAKE_BUILD_TYPE=Release  `
@@ -97,7 +97,7 @@ jobs:
       - name: Compile
         working-directory: build
         shell: pwsh
-        run: cmake --build . --config Release
+        run: cmake --build . --parallel 2 --config Release
 
       - name: CPack
         working-directory: build
