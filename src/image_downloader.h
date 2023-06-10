@@ -53,19 +53,14 @@ public:
     // \TODO: maybe rename this? or remove scene from this class and add callback
     void download(QString url, QPointF position);
 private:
-    QNetworkAccessManager* manager_;
-    QNetworkReply* reply_;
+    QNetworkAccessManager* manager_ = nullptr;
+    QNetworkReply* reply_ = nullptr;
     CanvasScene& scene_;
 
 private:
     bool isReady_ = true;
     QPointF position_ = {0,0};
 private slots:
-    void onDownloadProgress(qint64,qint64);
-    void onFinished(QNetworkReply*);
-    void onReadyRead();
-    void onReplyFinished();
-    void onDownloadFileComplete(QNetworkReply*);
     void errorOccurred(QNetworkReply::NetworkError err);
     void finished();
 };
