@@ -49,7 +49,7 @@ qreal ScaledSizeProvider::getScaleFactor()
 #if defined(__linux__)
 bool ScaledSizeProvider::isGnomeEnvironment()
 {
-    return false;
+    //return false;
 	auto currentDesktop = QString(qgetenv("XDG_CURRENT_DESKTOP"));
 	return currentDesktop.contains(QLatin1String("gnome"), Qt::CaseInsensitive)
 		   || currentDesktop.contains(QLatin1String("unity"), Qt::CaseInsensitive);

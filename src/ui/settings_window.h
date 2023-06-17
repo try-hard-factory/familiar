@@ -24,12 +24,12 @@ protected:
 private:
     MainWindow* window_ = nullptr;
     QTabWidget* tabWidget_ = nullptr;
-    PreferencesConf* prefConfig_ = nullptr;
     QWidget* prefConfigTab_ = nullptr;
-    ColorsWidget* colors_ = nullptr;
+    PreferencesConf* prefConfig_ = nullptr;
     QWidget* colorsTab_ = nullptr;
-    ShortcutsWidget* shortcuts_ = nullptr;
+    ColorsWidget* colors_ = nullptr;
     QWidget* shortcutsTab_ = nullptr;
+    ShortcutsWidget* shortcuts_ = nullptr;
 };
 
 #endif // SETTINGSWINDOW_H

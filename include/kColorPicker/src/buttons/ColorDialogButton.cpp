@@ -30,7 +30,7 @@ ColorDialogButton::ColorDialogButton(const QIcon &icon, bool showAlphaChannel) :
 
 void ColorDialogButton::buttonClicked()
 {
-    auto color = QColorDialog::getColor(Qt::white, this, QString(), getColorDialogOptions());
+    auto color = QColorDialog::getColor(Qt::white, this, QString(), QColorDialog::DontUseNativeDialog | getColorDialogOptions());
     emit colorSelected(color);
 }
 

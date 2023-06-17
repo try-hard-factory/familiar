@@ -10,12 +10,12 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     : QWidget(parent)
     , window_(wm)
     , tabWidget_(new QTabWidget(this))
-    , prefConfig_(new PreferencesConf)
     , prefConfigTab_(new QWidget)
-    , colors_(new ColorsWidget)
+    , prefConfig_(new PreferencesConf)
     , colorsTab_(new QWidget)
-    , shortcuts_(new ShortcutsWidget)
+    , colors_(new ColorsWidget(colorsTab_))
     , shortcutsTab_(new QWidget)
+    , shortcuts_(new ShortcutsWidget)
 {
     // We wrap QTabWidget in a QWidget because of a Qt bug
     auto* layout = new QVBoxLayout(this);
