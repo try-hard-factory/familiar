@@ -1,3 +1,22 @@
+Version v0.0.7
+==============
+  - fix build
+  - fix image cope from browser
+  - fix Settings handler singleton
+  - color picker
+  - colors widget
+  - shortkesy done
+  - shortcut settings
+  - add menu from code
+  - shortcut for save and quit
+  - logic of settings handler
+  - app current screen
+  - shortcut widget
+  - tab widget
+  - global clipboard logic
+  - merge images to one
+  - copy paste from folder
+
 Version v0.0.6
 ==============
 

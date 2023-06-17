@@ -1,8 +1,17 @@
 Changes:
-  - TABS!!!
-  - mainpage doxygen
-  - tabpane utility functions
-  - custom save checkbox
-  - save all custom window
-  - callback for saveallwindow
-  - add file action and tab pane
+  - fix build
+  - fix image cope from browser
+  - fix Settings handler singleton
+  - color picker
+  - colors widget
+  - shortkesy done
+  - shortcut settings
+  - add menu from code
+  - shortcut for save and quit
+  - logic of settings handler
+  - app current screen
+  - shortcut widget
+  - tab widget
+  - global clipboard logic
+  - merge images to one
+  - copy paste from folder
