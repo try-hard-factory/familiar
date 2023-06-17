@@ -1,22 +1,20 @@
-name: Github(Release)
+name: Releases
 
-# Only trigger, when the build workflow succeeded
-on:
+on: 
   push:
     tags:
-      - 'v[0-9].[0-9]+.[0-9]+'
+    - 'v[0-9].[0-9]+.[0-9]+'
 
 jobs:
+
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          body_path: misc/LATEST_RELEASE_BODY
-        env:
-          GITHUB_TOKEN: ${{ secrets.FAMILIAR_TOKEN }}
-          GITHUB_REPOSITORY: try-hard-factory/familiar
+    - uses: actions/checkout@v3
+    - uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.FAMILIAR_TOKEN }}
+        bodyFile: "misc/LATEST_RELEASE_BODY"
+
