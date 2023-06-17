@@ -15,6 +15,6 @@ jobs:
     - uses: actions/checkout@v3
     - uses: ncipollo/release-action@v1
       with:
-        token: ${{ secrets.FAMILIAR_TOKEN }}
+        token: ${{ secrets.FAM_TOKEN }}
         bodyFile: "misc/LATEST_RELEASE_BODY"
 
