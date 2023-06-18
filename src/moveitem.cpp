@@ -20,9 +20,12 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem* parent)
     setZValue(zCounter_);
     //    qimage_ = QImage("bender.png");
     qimage_ = new QImage(path);
+    auto img = qimage_->convertToFormat(QImage::Format_ARGB32);
+    //img.setop
+    qimage_->swap(img);
     //    auto qimage = QImage("kot.jpg");
     qInfo() << qimage_->width() << ' ' << qimage_->height()
-            << " SIZE=" << qimage_->sizeInBytes();
+            << " !!!!SIZE=" << qimage_->sizeInBytes();
     pixmap_ = QPixmap::fromImage(*qimage_);
     _size = pixmap_.size();
     rect_ = qimage_->rect();
@@ -98,6 +101,7 @@ void MoveItem::paint(QPainter* painter,
                      const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
+    painter->setOpacity(0.5);
     painter->drawImage(boundingRect(), *qimage_);
     qreal wsize = 2;
     QPen outline_pen{QColor(22, 142, 153), wsize};

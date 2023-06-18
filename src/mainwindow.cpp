@@ -35,11 +35,14 @@ MainWindow::MainWindow(QWidget* parent)
                       | Qt::WindowCloseButtonHint)
     , ui(new Ui::MainWindow)
     , fileactions_(new FileActions(*this))
-    , tabpane_(new TabPane(*this))
+    , tabpane_(new TabPane(this, *this))
 {
     ui->setupUi(this);
     setWindowTitle("Familiar");
     statusBar()->hide();
+
+
+    setMouseTracking(true);
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
     initShortcuts();
@@ -51,8 +54,20 @@ MainWindow::MainWindow(QWidget* parent)
             &SettingsHandler::shortCutChanged,
             this,
             &MainWindow::notifyShortcut);
-
+    tabpane_->setWindowFlags(Qt::FramelessWindowHint);
+    tabpane_->setAttribute(Qt::WA_TranslucentBackground);
+    tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: 1px solid lightgray; top:-1px; background: rgb(245, 0, 0, 128); }"); 
+ 
+    //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
     setCentralWidget(tabpane_);
+
+    setAttribute(Qt::WA_TranslucentBackground);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
+    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 128);");
+    // Qt::WindowFlags flags = Qt::Window | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint;
+    // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
+    // setWindowFlags(flags);
+    // setWindowOpacity(0.6);
 }
 
 
@@ -302,4 +317,13 @@ void MainWindow::closeEvent(QCloseEvent* event)
     } else {
         event->ignore();
     }
+}
+
+void MainWindow::paintEvent(QPaintEvent* event)
+{
+    QPainter painter(this);
+    painter.setOpacity(0.6);
+    painter.fillRect(event->rect(), Qt::black);// тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
+    // Нарисуйте другие элементы интерфейса здесь
+    //QMainWindow::paintEvent(event); // Вызов базовой реализации
 }

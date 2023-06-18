@@ -21,6 +21,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scene_ = new CanvasScene(mw, zCounter_);
+
     connect(scene_,
             SIGNAL(selectionChanged()),
             this,
@@ -243,15 +244,16 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 
 void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
 {
-    setCacheMode(CacheNone);
-    painter->save();
-    setBackgroundBrush(QBrush(QColor(32, 32, 32)));
-    painter->fillRect(rect, backgroundBrush());
-    scene_->setBackgroundBrush(QBrush(QColor(42, 42, 42)));
-    painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
-    painter->setPen(QPen(QColor(247, 0, 255), 2));
-    painter->drawRect(scene_->sceneRect());
-    painter->restore();
+    // painter->setOpacity(0.6);
+    // setCacheMode(CacheNone);
+    // painter->save();
+    // setBackgroundBrush(QBrush(QColor(32, 32, 32)));
+    // painter->fillRect(rect, backgroundBrush());
+    // scene_->setBackgroundBrush(QBrush(QColor(42, 42, 42)));
+    // painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
+    // painter->setPen(QPen(QColor(247, 0, 255), 2));
+    // painter->drawRect(scene_->sceneRect());
+    // painter->restore();
 }
 
 void CanvasView::cleanupWorkplace()

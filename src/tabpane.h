@@ -8,11 +8,11 @@
 class MainWindow;
 class CanvasView;
 class FileActions;
-class TabPane : public QFrame
+class TabPane : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TabPane(MainWindow& mw);
+    explicit TabPane(QWidget* parent, MainWindow& mw);
     ~TabPane();
 
     void addNewTab(const QString& path);
@@ -32,6 +32,9 @@ public:
     CanvasView* widgetAt(int index);
     void setCurrentIndex(int index);
     int count();
+
+protected:
+    // void paintEvent(QPaintEvent* event) override;
 
 private slots:
     void onTabClosed(int index);
