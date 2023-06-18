@@ -557,16 +557,16 @@ void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
         begin += 100;
     }
 #endif
-    if (!mainSelArea_.isReady())
-        return;
-    painter->save();
-    qreal wsize = 2;
-    QPen outline_pen{QColor(22, 142, 153), wsize};
-    outline_pen.setCosmetic(true);
-    painter->setPen(outline_pen);
-    auto r = itemGroup_->sceneBoundingRect();
-    painter->drawRect(r);
-    painter->restore();
+    // if (!mainSelArea_.isReady())
+    //     return;
+    // painter->save();
+    // qreal wsize = 2;
+    // QPen outline_pen{QColor(22, 142, 153), wsize};
+    // outline_pen.setCosmetic(true);
+    // painter->setPen(outline_pen);
+    // auto r = itemGroup_->sceneBoundingRect();
+    // painter->drawRect(r);
+    // painter->restore();
 }
 
 void CanvasScene::handleImageFromClipboard(const QImage& image)

@@ -17,7 +17,7 @@
 #include <canvasview.h>
 #include <QMainWindow>
 #include <QMessageBox>
-
+#include <QCursor>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -36,6 +36,8 @@ enum EShortcutButtons {
     k_TYPE_QUIT = 3,
     k_ALL = 4
 };
+
+constexpr QPoint kInvalidPoint(-1, -1);
 
 /**
  * \~russian @brief The MainWindow класс
@@ -86,6 +88,36 @@ public:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
+    // void mousePressEvent(QMouseEvent* _event)
+    // {
+    //     if (_event->button() == Qt::LeftButton
+    //         && _event->modifiers() == Qt::NoModifier) {
+    //         pos_ = _event->globalPosition().toPoint();
+    //         setCursor(Qt::ClosedHandCursor);
+    //         return;
+    //     }
+    //     QWidget::mousePressEvent(_event);
+    // }
+    // void mouseMoveEvent(QMouseEvent* _event)
+    // {
+    //     if (pos_ == kInvalidPoint)
+    //         return QWidget::mouseMoveEvent(_event);
+
+    //     const QPoint delta = _event->globalPosition().toPoint() - pos_;
+    //     move(pos() + delta);
+    //     pos_ = _event->globalPosition().toPoint();
+    // }
+
+    // void mouseReleaseEvent(QMouseEvent* _event)
+    // {
+    //     pos_ = kInvalidPoint;
+    //     setCursor(Qt::OpenHandCursor);
+    //     QWidget::mouseReleaseEvent(_event);
+    // }
+
+private:
+    QPoint pos_ = kInvalidPoint;
 
 private:
     //    void saveFile(const QString& path);

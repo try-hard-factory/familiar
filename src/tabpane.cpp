@@ -5,19 +5,24 @@
 #include "project_settings.h"
 #include <QFileInfo>
 
-TabPane::TabPane(MainWindow& mw)
-    : mainwindow_(mw)
+     
+TabPane::TabPane(QWidget* parent, MainWindow& mw)
+    : QWidget(parent), mainwindow_(mw)
 {
     layout_ = new QVBoxLayout; // try some other layout
     layout_->setContentsMargins(0, 0, 0, 0);
     this->setLayout(layout_);
 
-    tabs_ = new QTabWidget();
+    tabs_ = new QTabWidget(this);
     tabs_->setTabsClosable(true);
+    tabs_->setWindowFlags(Qt::FramelessWindowHint);
+    tabs_->setAttribute(Qt::WA_TranslucentBackground);
+    // // tabs_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 255, 128);");
     layout_->addWidget(tabs_);
 
     addNewUntitledTab();
-
+    
+    // // setStyleSheet("background: transparent; background-color: rgba(0, 0, 0, 128);");
     connect(tabs_, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
 }
 
@@ -26,6 +31,15 @@ TabPane::~TabPane()
     delete tabs_;
     delete layout_;
 }
+
+// void TabPane::paintEvent(QPaintEvent* event)
+// {
+//     QPainter painter(this);
+//     painter.setOpacity(0.6);
+//     painter.fillRect(event->rect(), Qt::black);// тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
+//     // Нарисуйте другие элементы интерфейса здесь
+//     //QWidget::paintEvent(event); // Вызов базовой реализации
+// }
 
 void TabPane::addNewTab(const QString& path)
 {
