@@ -151,6 +151,13 @@ endif ()
 # include(GNUInstallDirs)
 # set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Flameshot)
 
+set_target_properties(familiar
+        PROPERTIES
+        CXX_STANDARD 17
+        CXX_STANDARD_REQUIRED ON
+        COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}  -Wall  -O0 -g" # -Wextra -Wpedantic -Werror
+)
+
 # Install binary
 install(TARGETS familiar
         EXPORT familiar-targets

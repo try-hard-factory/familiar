@@ -62,7 +62,7 @@ MainWindow::MainWindow(QWidget* parent)
     setCentralWidget(tabpane_);
 
     setAttribute(Qt::WA_TranslucentBackground);
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);//|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
     setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 128);");
     // Qt::WindowFlags flags = Qt::Window | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint;
     // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
