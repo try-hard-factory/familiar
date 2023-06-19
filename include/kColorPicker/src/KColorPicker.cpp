@@ -63,6 +63,7 @@ void KColorPicker::setColor(const QColor &color)
 void KColorPicker::colorSelected(const QColor &color)
 {
 	Q_D(KColorPicker);
+	if (!color.isValid()) return;
 	d->mSelectedColor = color;
 	setColorIcon(color);
 	emit colorChanged(color);
