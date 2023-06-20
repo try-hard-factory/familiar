@@ -93,7 +93,8 @@ set(PROJECT_SOURCES
         ui/colors_widget.cpp
         main_context_menu.cpp
         main_context_menu.h
-
+        ui/extendedslider.cpp
+        ui/extendedslider.h
 
 )
 add_executable(familiar ${PROJECT_SOURCES})

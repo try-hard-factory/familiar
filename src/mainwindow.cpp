@@ -107,6 +107,8 @@ void MainWindow::settingsWindow()
 {
     SettingsWindow* widget = new SettingsWindow(this);
     widget->setAttribute(Qt::WA_DeleteOnClose);
+    widget->setWindowFlags(Qt::Window |  Qt::WindowCloseButtonHint | Qt::MSWindowsFixedSizeDialogHint );    
+    widget->raise();
     widget->show();
     centered_widget(this, widget);
 }
