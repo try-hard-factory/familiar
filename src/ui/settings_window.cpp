@@ -22,9 +22,12 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     tabWidget_->tabBar()->setUsesScrollButtons(false);
     layout->addWidget(tabWidget_);
 
-    resize(640, this->geometry().height());
+    resize(640, this->geometry().height());    
 
     setAttribute(Qt::WA_DeleteOnClose);
+
+    setFixedSize(640, this->geometry().height());
+
     //    setWindowIcon(QIcon(GlobalValues::iconPath()));
     setWindowTitle(tr("Configuration"));
 
@@ -60,6 +63,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             &SettingsWindow::updateChildren,
             prefConfig_,
             &PreferencesConf::updateComponents);
+    setWindowFlags(Qt::Window |  Qt::WindowCloseButtonHint | Qt::MSWindowsFixedSizeDialogHint);
 }
 
 void SettingsWindow::keyPressEvent(QKeyEvent* e)
