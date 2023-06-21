@@ -29,9 +29,8 @@ static QHash<QString, EShortcutButtons> recognizedShortcutsActions = {
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent,
-                  Qt::Window | Qt::CustomizeWindowHint
-                      | Qt::WindowSystemMenuHint | Qt::WindowMinimizeButtonHint
-                      | Qt::WindowMaximizeButtonHint
+                  Qt::Window | Qt::CustomizeWindowHint | Qt::WindowSystemMenuHint
+                      | Qt::WindowMinimizeButtonHint | Qt::WindowMaximizeButtonHint
                       | Qt::WindowCloseButtonHint)
     , ui(new Ui::MainWindow)
     , fileactions_(new FileActions(*this))
@@ -56,13 +55,16 @@ MainWindow::MainWindow(QWidget* parent)
             &MainWindow::notifyShortcut);
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
-    tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: 1px solid lightgray; top:-1px; background: rgb(245, 0, 0, 128); }"); 
- 
+    tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
+                            "1px solid lightgray; top:-1px; background: rgb(245, 0, 0, 128); }");
+
     //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
     setCentralWidget(tabpane_);
 
     setAttribute(Qt::WA_TranslucentBackground);
-    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);//|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
+    setWindowFlags(
+        Qt::Window
+        | Qt::FramelessWindowHint); //|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
     setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 128);");
     // Qt::WindowFlags flags = Qt::Window | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint;
     // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
@@ -107,7 +109,8 @@ void MainWindow::settingsWindow()
 {
     SettingsWindow* widget = new SettingsWindow(this);
     widget->setAttribute(Qt::WA_DeleteOnClose);
-    widget->setWindowFlags(Qt::Window |  Qt::WindowCloseButtonHint | Qt::MSWindowsFixedSizeDialogHint );    
+    widget->setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
+                           | Qt::MSWindowsFixedSizeDialogHint);
     widget->raise();
     widget->show();
     centered_widget(this, widget);
@@ -147,6 +150,15 @@ void MainWindow::notifyShortcut(const QString& actionName)
     auto idx = recognizedShortcutsActions[actionName];
     auto keyseq = QKeySequence(SettingsHandler().shortcut(actionName));
     actionsArr_[idx]->setShortcut(keyseq);
+}
+
+void MainWindow::settingsChangedSlot()
+{
+    auto settings = SettingsHandler::getInstance();
+
+    tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
+                            "1px solid lightgray; top:-1px; background: rgb(245, 0, 0, " + QString::number(settings->masterOpacity()) + "); }");
+    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, " + QString::number(settings->masterOpacity()) + "); }");
 }
 
 
@@ -218,10 +230,7 @@ void MainWindow::createActions()
     settingsAction_ = new QAction(tr("Settings"), this);
     //    saveAllAction_->setShortcuts(QKeySequence::New);
     settingsAction_->setStatusTip(tr("Settings"));
-    connect(settingsAction_,
-            &QAction::triggered,
-            this,
-            &MainWindow::settingsWindow);
+    connect(settingsAction_, &QAction::triggered, this, &MainWindow::settingsWindow);
 
     saveAction_ = new QAction(tr("Save"), this);
     saveAction_->setShortcut(QKeySequence(settings->shortcut("TYPE_SAVE")));
@@ -269,8 +278,7 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m)
 
     for (auto it = m.rbegin(); it != m.rend(); it++) {
         if (!it->second) {
-            qDebug() << "close ID = " << it->first << " "
-                     << tabpane_->getCurrentTabPath();
+            qDebug() << "close ID = " << it->first << " " << tabpane_->getCurrentTabPath();
             tabpane_->closeTabByIndex(it->first);
         }
     }
@@ -325,7 +333,9 @@ void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
     painter.setOpacity(0.6);
-    painter.fillRect(event->rect(), Qt::black);// тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
+    painter.fillRect(
+        event->rect(),
+        Qt::black); // тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
     // Нарисуйте другие элементы интерфейса здесь
     //QMainWindow::paintEvent(event); // Вызов базовой реализации
 }

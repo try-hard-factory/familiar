@@ -13,7 +13,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     , prefConfigTab_(new QWidget)
     , prefConfig_(new PreferencesConf)
     , colorsTab_(new QWidget)
-    , colors_(new ColorsWidget(colorsTab_))
+    , colors_(new ColorsWidget(this))
     , shortcutsTab_(new QWidget)
     , shortcuts_(new ShortcutsWidget)
 {
@@ -35,6 +35,11 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             &SettingsHandler::fileChanged,
             this,
             &SettingsWindow::updateChildren);
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            window_,
+            &MainWindow::settingsChangedSlot);
+            
 
     QColor background = this->palette().window().color();
     //    bool isDark = ColorUtils::colorIsDark(background);
@@ -63,7 +68,13 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             &SettingsWindow::updateChildren,
             prefConfig_,
             &PreferencesConf::updateComponents);
+
     setWindowFlags(Qt::Window |  Qt::WindowCloseButtonHint | Qt::MSWindowsFixedSizeDialogHint);
+}
+
+void SettingsWindow::slidertest_out()
+{
+    qDebug() << SettingsHandler::getInstance()->masterOpacity() << " SettingsWindow";
 }
 
 void SettingsWindow::keyPressEvent(QKeyEvent* e)

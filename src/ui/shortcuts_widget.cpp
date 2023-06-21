@@ -15,6 +15,7 @@
 
 #include <core/qguiappcurrentscreen.h>
 #include <ui/setshortcut_widget.h>
+#include <core/settingshandler.h>
 
 #include "Logger.h"
 
@@ -110,6 +111,7 @@ void ShortcutsWidget::populateInfoTable()
 
 void ShortcutsWidget::onShortcutCellClicked(int row, int col)
 {
+    auto settings = SettingsHandler::getInstance();
     if (col != 1) {
         return;
     }
@@ -133,7 +135,7 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
             shortcutValue = QKeySequence("");
         }
 
-        if (config_.setShortcut(shortcutName, shortcutValue.toString())) {
+        if (settings->setShortcut(shortcutName, shortcutValue.toString())) {
             //                emit SettingsHandler::getInstance()->shortCutChanged(shortcutName);
             populateInfoTable();
         }

@@ -95,6 +95,18 @@ private:
     bool def_;
 };
 
+class BoundedInt : public ValueHandler
+{
+public:
+    BoundedInt(int min, int max, int def);
+
+    bool check(const QVariant& val) override;
+    virtual QVariant fallback() override;
+    QString expected() override;
+
+private:
+    int m_min, m_max, m_def;
+};
 
 class KeySequence : public ValueHandler
 {

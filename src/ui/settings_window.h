@@ -14,7 +14,8 @@ class SettingsWindow : public QWidget
     Q_OBJECT
 public:
     explicit SettingsWindow(MainWindow* wm, QWidget* parent = nullptr);
-
+private:
+    void slidertest_out();
 signals:
     void updateChildren();
 

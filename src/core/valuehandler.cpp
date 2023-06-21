@@ -98,3 +98,30 @@ QVariant KeySequence::process(const QVariant& val)
     }
     return str;
 }
+
+
+// BOUNDED INT
+
+BoundedInt::BoundedInt(int min, int max, int def)
+  : m_min(min)
+  , m_max(max)
+  , m_def(def)
+{}
+
+bool BoundedInt::check(const QVariant& val)
+{
+    QString str = val.toString();
+    bool conversionOk;
+    int num = str.toInt(&conversionOk);
+    return conversionOk && m_min <= num && num <= m_max;
+}
+
+QVariant BoundedInt::fallback()
+{
+    return m_def;
+}
+
+QString BoundedInt::expected()
+{
+    return QStringLiteral("number between %1 and %2").arg(m_min).arg(m_max);
+}

@@ -1,10 +1,11 @@
 #include "colors_widget.h"
 #include <kColorPicker/KColorPicker.h>
+#include <ui/extendedslider.h>
 #include <QButtonGroup>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <ui/extendedslider.h>
+#include <core/settingshandler.h>
 
 using kColorPicker::KColorPicker;
 
@@ -59,7 +60,7 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 
     auto* canvas_layout = new QHBoxLayout();
     canvas_layout->setAlignment(Qt::AlignRight);
-    auto* canvas_color_lbl = new QLabel(tr("Canvas color: "));    
+    auto* canvas_color_lbl = new QLabel(tr("Canvas color: "));
     auto* canvas_cp = new KColorPicker(true);
     canvas_cp->setColor(QColor(Qt::red));
     canvas_layout->addWidget(canvas_color_lbl);
@@ -91,7 +92,7 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 
     // auto* selection_layout = new QHBoxLayout();
     // auto* color5 = new QLabel(tr("..reserved.."));
-    
+
     colors_layout->addLayout(background_layout);
     colors_layout->addLayout(canvas_layout);
     colors_layout->addLayout(border_layout);
@@ -123,14 +124,21 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 
 
     // int opacity = ConfigHandler().contrastOpacity();
-    opacitySlider_->setMapedValue(0, /*opacity*/255, 255);
+    opacitySlider_->setMapedValue(0, /*opacity*/ 255, 255);
+    connect(opacitySlider_,
+            &ExtendedSlider::valueChanged,
+            [this]() {
+                SettingsHandler::getInstance()->setMasterOpacity(opacitySlider_->mappedValue(0, 255));
+                //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
+                emit SettingsHandler::getInstance()->settingsChanged();
+            });
 
     layout_->addLayout(header_layout);
     layout_->addLayout(body_layout);
     layout_->addSpacing(50);
     layout_->addLayout(localLayout);
 
-    
+
     setLayout(layout_);
 }
 
