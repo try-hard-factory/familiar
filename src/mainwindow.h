@@ -18,6 +18,7 @@
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QCursor>
+#include <core/settingshandler.h>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -130,6 +131,8 @@ private:
     void createActions();
     void createMenus();
 
+public slots:
+    void settingsChangedSlot();
 private slots:
     void saveAll();
     void newFile();
@@ -138,10 +141,11 @@ private slots:
     void quit();
     void openFile();
     void saveFileAs();
-
     void notifyShortcut(const QString& t);
 
+
 private:
+    SettingsHandler settings_;
     Ui::MainWindow*
         ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
     FileActions* fileactions_ = nullptr;

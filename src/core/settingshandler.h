@@ -46,6 +46,7 @@ public:
     static SettingsHandler* getInstance();
 
     // GENERIC GETTERS AND SETTERS
+    SETTINGS_GETTER_SETTER(masterOpacity, setMasterOpacity, int)
     bool setShortcut(const QString& actionName, const QString& shortcut);
     QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);
@@ -69,6 +70,7 @@ public:
 
 
 signals:
+    void settingsChanged() const;
     void fileChanged();
     void error();
     void errorResolved();

@@ -32,6 +32,7 @@ static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOption
         //         KEY                            TYPE                 DEFAULT_VALUE
         OPTION("option0", Bool(true)),
         OPTION("option1", Bool(true)),
+        OPTION("masterOpacity"             ,BoundedInt( 0, 255, 190 )),
 
 };
 
