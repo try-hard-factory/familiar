@@ -124,6 +124,7 @@ else()
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
         ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
+        -lgcov
     )
 endif()
 
@@ -156,7 +157,7 @@ set_target_properties(familiar
         PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED ON
-        COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}  -Wall  -O0 -g" # -Wextra -Wpedantic -Werror
+        COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}  -Wall  -O0 -g --coverage -fprofile-arcs -ftest-coverage" # -Wextra -Wpedantic -Werror
 )
 
 # Install binary
