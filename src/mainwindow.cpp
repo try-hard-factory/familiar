@@ -56,7 +56,7 @@ MainWindow::MainWindow(QWidget* parent)
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
     tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background: rgb(245, 0, 0, 128); }");
+                            "1px solid lightgray; top:-1px; background: rgba(245, 0, 0, 128); }");
 
     //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
     setCentralWidget(tabpane_);
@@ -157,8 +157,8 @@ void MainWindow::settingsChangedSlot()
     auto settings = SettingsHandler::getInstance();
 
     tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background: rgb(245, 0, 0, " + QString::number(settings->masterOpacity()) + "); }");
-    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, " + QString::number(settings->masterOpacity()) + "); }");
+                            "1px solid lightgray; top:-1px; background: rgba(245, 0, 0, " + QString::number(settings->masterOpacity()) + "); }");
+    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, " + QString::number(settings->masterOpacity()) + ");");
 }
 
 

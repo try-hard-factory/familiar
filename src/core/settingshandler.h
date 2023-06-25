@@ -10,6 +10,25 @@
 #define SETTINGS_GROUP_GENERAL "General"
 #define SETTINGS_GROUP_SHORTCUTS "Shortcuts"
 
+enum EPresets {
+    kDarkPreset = 0,
+    kLightPreset = 1,
+    kCustom1 = 2,
+    kCustom2 = 3,
+    kCustom3 = 4,
+    kCustom4 = 5,
+    kAllPresets = 6
+};
+
+enum EPresetsColorIdx {
+    kBackgroundColor = 0,
+    kCanvasColor = 1,
+    kBorderColor = 2,
+    kTextColor = 3,
+    kSelectionColor = 4,
+    kAllIdx = 5
+};
+
 class QFileSystemWatcher;
 class ValueHandler;
 template<class T>
@@ -46,7 +65,16 @@ public:
     static SettingsHandler* getInstance();
 
     // GENERIC GETTERS AND SETTERS
+    SETTINGS_GETTER_SETTER(currentPreset, setCurrentPreset, int)
     SETTINGS_GETTER_SETTER(masterOpacity, setMasterOpacity, int)
+    using CL = QMap<int, QColor>;
+    SETTINGS_GETTER_SETTER(darkColorPreset, setDarkColorPreset, CL )
+    SETTINGS_GETTER_SETTER(lightColorPreset, setLightColorPreset, CL )
+    SETTINGS_GETTER_SETTER(customPreset1, setCustomPreset1, CL )
+    SETTINGS_GETTER_SETTER(customPreset2, setCustomPreset2, CL )
+    SETTINGS_GETTER_SETTER(customPreset3, setCustomPreset3, CL )
+    SETTINGS_GETTER_SETTER(customPreset4, setCustomPreset4, CL )
+
     bool setShortcut(const QString& actionName, const QString& shortcut);
     QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);
@@ -55,8 +83,11 @@ public:
     void resetValue(const QString& key);
 
     // INFO
+    static QSet<QString>& recognizedGeneralOptions();
     static QSet<QString>& recognizedShortcutNames();
     QSet<QString> keysFromGroup(const QString& group) const;
+    CL getCurrentColorPreset();
+    void setCurrentColorPreset(const CL& preset);
 
     // errors catching
     bool checkForErrors() const;

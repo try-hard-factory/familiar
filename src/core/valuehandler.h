@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QKeySequence>
 #include <QList>
+#include <QMap>
 #include <QString>
 
 class QVariant;
@@ -99,9 +100,8 @@ class BoundedInt : public ValueHandler
 {
 public:
     BoundedInt(int min, int max, int def);
-
     bool check(const QVariant& val) override;
-    virtual QVariant fallback() override;
+    QVariant fallback() override;
     QString expected() override;
 
 private:
@@ -121,6 +121,33 @@ private:
     QKeySequence fallback_;
 
     QVariant process(const QVariant& val) override;
+};
+
+class Color : public ValueHandler
+{
+public:
+    Color(QColor def);
+    bool check(const QVariant& val) override;
+    QVariant process(const QVariant& val) override;
+    QVariant fallback() override;
+    QVariant representation(const QVariant& val) override;
+    QString expected() override;
+
+private:
+    QColor m_def;
+};
+
+class ColorList : public ValueHandler
+{
+public:
+    ColorList(QMap<int, QColor> def);
+    bool check(const QVariant& val) override;
+    QVariant process(const QVariant& val) override;
+    QVariant fallback() override;
+    QVariant representation(const QVariant& val) override;
+    QString expected() override;
+private:
+    QMap<int, QColor> m_def;    
 };
 
 #endif // VALUEHANDLER_H
