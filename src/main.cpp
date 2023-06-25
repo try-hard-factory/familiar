@@ -2,6 +2,7 @@
 
 #include <Logger.h>
 #include <QApplication>
+#include <QMetaType>
 
 /*!
  * \~russian \mainpage RU
@@ -40,6 +41,7 @@ int main(int argc, char* argv[])
     qDebug() << "NDEBUG notDEFINED";
 #endif
 
+    qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
     QApplication a(argc, argv);
     MainWindow w;
     w.show();

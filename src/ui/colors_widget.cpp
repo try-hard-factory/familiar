@@ -1,11 +1,11 @@
 #include "colors_widget.h"
+#include <core/settingshandler.h>
 #include <kColorPicker/KColorPicker.h>
 #include <ui/extendedslider.h>
 #include <QButtonGroup>
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <core/settingshandler.h>
 
 using kColorPicker::KColorPicker;
 
@@ -26,15 +26,33 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 
     auto* body_layout = new QHBoxLayout();
 
+    // presets init
     auto* presets_layout = new QVBoxLayout();
     presets_layout->setAlignment(Qt::AlignLeft);
     QPushButton* dark_btn = new QPushButton("Dark");
+    connect(dark_btn, &QPushButton::clicked, this, [this]() {
+        SettingsHandler::getInstance()->setCurrentPreset(EPresets::kDarkPreset);
+    });
     QPushButton* light_btn = new QPushButton("Light");
+    connect(light_btn, &QPushButton::clicked, this, [this]() {
+        SettingsHandler::getInstance()->setCurrentPreset(EPresets::kLightPreset);
+    });
     QPushButton* custom1_btn = new QPushButton("Custom 1");
+    connect(custom1_btn, &QPushButton::clicked, this, [this]() {
+        SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom1);
+    });
     QPushButton* custom2_btn = new QPushButton("Custom 2");
+    connect(custom2_btn, &QPushButton::clicked, this, [this]() {
+        SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom2);
+    });
     QPushButton* custom3_btn = new QPushButton("Custom 3");
+    connect(custom3_btn, &QPushButton::clicked, this, [this]() {
+        SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom3);
+    });
     QPushButton* custom4_btn = new QPushButton("Custom 4");
-
+    connect(custom4_btn, &QPushButton::clicked, this, [this]() {
+        SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom4);
+    });
 
     presets_layout->addWidget(presets_lbl);
     presets_layout->addWidget(dark_btn);
@@ -45,7 +63,12 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     presets_layout->addWidget(custom4_btn);
     body_layout->addLayout(presets_layout);
 
-
+    // colors init
+    auto* settings = SettingsHandler::getInstance();
+    auto current_preset = settings->getCurrentColorPreset();
+    for (auto& color : current_preset) {
+        qDebug() << color;
+    }
     auto* colors_layout = new QVBoxLayout();
     colors_layout->setAlignment(Qt::AlignRight);
 
@@ -54,7 +77,13 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     auto* background_color_lbl = new QLabel(tr("Background color: "));
     background_color_lbl->setAlignment(Qt::AlignRight);
     auto* background_cp = new KColorPicker(true);
-    background_cp->setColor(QColor(Qt::red));
+    connect(background_cp, &KColorPicker::colorChanged, [background_cp, settings]() {
+        auto preset = settings->getCurrentColorPreset();
+        preset[EPresetsColorIdx::kBackgroundColor] = background_cp->color();
+        settings->setCurrentColorPreset(preset);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
+    background_cp->setColor(current_preset[EPresetsColorIdx::kBackgroundColor]);
     background_layout->addWidget(background_color_lbl);
     background_layout->addWidget(background_cp);
 
@@ -62,7 +91,13 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     canvas_layout->setAlignment(Qt::AlignRight);
     auto* canvas_color_lbl = new QLabel(tr("Canvas color: "));
     auto* canvas_cp = new KColorPicker(true);
-    canvas_cp->setColor(QColor(Qt::red));
+    connect(canvas_cp, &KColorPicker::colorChanged, [canvas_cp, settings]() {
+        auto preset = settings->getCurrentColorPreset();
+        preset[EPresetsColorIdx::kCanvasColor] = canvas_cp->color();
+        settings->setCurrentColorPreset(preset);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
+    canvas_cp->setColor(current_preset[EPresetsColorIdx::kCanvasColor]);
     canvas_layout->addWidget(canvas_color_lbl);
     canvas_layout->addWidget(canvas_cp);
 
@@ -70,7 +105,13 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     border_layout->setAlignment(Qt::AlignRight);
     auto* border_color_lbl = new QLabel(tr("Border color: "));
     auto* border_cp = new KColorPicker(true);
-    border_cp->setColor(QColor(Qt::red));
+    connect(border_cp, &KColorPicker::colorChanged, [border_cp, settings]() {
+        auto preset = settings->getCurrentColorPreset();
+        preset[EPresetsColorIdx::kBorderColor] = border_cp->color();
+        settings->setCurrentColorPreset(preset);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
+    border_cp->setColor(current_preset[EPresetsColorIdx::kBorderColor]);
     border_layout->addWidget(border_color_lbl);
     border_layout->addWidget(border_cp);
 
@@ -78,7 +119,13 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     text_layout->setAlignment(Qt::AlignRight);
     auto* text_color_lbl = new QLabel(tr("Text color: "));
     auto* text_cp = new KColorPicker(true);
-    text_cp->setColor(QColor(Qt::red));
+    connect(text_cp, &KColorPicker::colorChanged, [text_cp, settings]() {
+        auto preset = settings->getCurrentColorPreset();
+        preset[EPresetsColorIdx::kTextColor] = text_cp->color();
+        settings->setCurrentColorPreset(preset);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
+    text_cp->setColor(current_preset[EPresetsColorIdx::kTextColor]);
     text_layout->addWidget(text_color_lbl);
     text_layout->addWidget(text_cp);
 
@@ -86,7 +133,13 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     selection_layout->setAlignment(Qt::AlignRight);
     auto* selection_color_lbl = new QLabel(tr("Selection color: "));
     auto* selection_cp = new KColorPicker(true);
-    selection_cp->setColor(QColor(Qt::red));
+    connect(selection_cp, &KColorPicker::colorChanged, [selection_cp, settings]() {
+        auto preset = settings->getCurrentColorPreset();
+        preset[EPresetsColorIdx::kSelectionColor] = selection_cp->color();
+        settings->setCurrentColorPreset(preset);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
+    selection_cp->setColor(current_preset[EPresetsColorIdx::kSelectionColor]);
     selection_layout->addWidget(selection_color_lbl);
     selection_layout->addWidget(selection_cp);
 
@@ -125,13 +178,13 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 
     // int opacity = ConfigHandler().contrastOpacity();
     opacitySlider_->setMapedValue(0, /*opacity*/ 255, 255);
-    connect(opacitySlider_,
-            &ExtendedSlider::valueChanged,
-            [this]() {
-                SettingsHandler::getInstance()->setMasterOpacity(opacitySlider_->mappedValue(0, 255));
-                //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
-                emit SettingsHandler::getInstance()->settingsChanged();
-            });
+    connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
+        qDebug() << "Master opacity from settings = "
+                 << SettingsHandler::getInstance()->masterOpacity();
+        SettingsHandler::getInstance()->setMasterOpacity(opacitySlider_->mappedValue(0, 255));
+        //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
 
     layout_->addLayout(header_layout);
     layout_->addLayout(body_layout);
