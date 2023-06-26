@@ -66,7 +66,8 @@ public:
 
     // GENERIC GETTERS AND SETTERS
     SETTINGS_GETTER_SETTER(currentPreset, setCurrentPreset, int)
-    SETTINGS_GETTER_SETTER(masterOpacity, setMasterOpacity, int)
+    using OL = QMap<int, int>;
+    SETTINGS_GETTER_SETTER(masterOpacity, setMasterOpacity, OL)
     using CL = QMap<int, QColor>;
     SETTINGS_GETTER_SETTER(darkColorPreset, setDarkColorPreset, CL )
     SETTINGS_GETTER_SETTER(lightColorPreset, setLightColorPreset, CL )
@@ -90,6 +91,8 @@ public:
     QSet<QString> keysFromGroup(const QString& group) const;
     CL getCurrentColorPreset();
     void setCurrentColorPreset(const CL& preset);
+    int getCurrentOpacity();
+    void setCurrentOpacity(int opacity);
 
     // errors catching
     bool checkForErrors() const;

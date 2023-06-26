@@ -150,4 +150,17 @@ private:
     QMap<int, QColor> m_def;    
 };
 
+class OpacityList : public ValueHandler
+{
+public:
+    OpacityList(QMap<int, int> def);
+    bool check(const QVariant& val) override;
+    QVariant process(const QVariant& val) override;
+    QVariant fallback() override;
+    QVariant representation(const QVariant& val) override;
+    QString expected() override;
+private:
+    QMap<int, int> m_def;    
+};
+
 #endif // VALUEHANDLER_H

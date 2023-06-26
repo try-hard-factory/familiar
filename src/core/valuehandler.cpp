@@ -209,8 +209,6 @@ QVariant ColorList::fallback()
     return QVariant::fromValue(m_def);
 }
 
-
-
 QVariant ColorList::representation(const QVariant& val)
 {
     auto colorVector = val.value<CCollection>();
@@ -218,6 +216,43 @@ QVariant ColorList::representation(const QVariant& val)
 }
 
 QString ColorList::expected()
+{
+    return QStringLiteral("please don't edit by hand");
+}
+
+
+// OPACITY LIST
+using OCollection = QMap<int, int>;
+
+OpacityList::OpacityList(QMap<int, int> def)
+    : m_def(def)
+{
+    qDebug() << "OpacityList::OpacityList. SIZE= "<< m_def.size();
+}
+
+bool OpacityList::check(const QVariant& val)
+{
+    return true;
+}
+
+QVariant OpacityList::process(const QVariant& val)
+{
+    auto OpacityList = val.value<QMap<int, int>>();
+    return QVariant::fromValue(OpacityList);
+}
+
+QVariant OpacityList::fallback()
+{
+    return QVariant::fromValue(m_def);
+}
+
+QVariant OpacityList::representation(const QVariant& val)
+{
+    auto colorVector = val.value<OCollection>();
+    return QVariant::fromValue(colorVector);
+}
+
+QString OpacityList::expected()
 {
     return QStringLiteral("please don't edit by hand");
 }

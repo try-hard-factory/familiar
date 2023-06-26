@@ -27,7 +27,11 @@ extern Logger logger;
                                   new KeySequence(QKeySequence(QLatin1String(DEFAULT_VALUE)))) \
     }
 
-
+static QMap<int, int> opacityListDef = {{kBackgroundColor, 255},
+                                        {kCanvasColor, 255},
+                                        {kBorderColor, 255},
+                                        {kTextColor, 255},
+                                        {kSelectionColor, 255}};
 static QMap<int, QColor> darkColorPresetDef
     = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
        {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
@@ -65,7 +69,7 @@ static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOption
     OPTION("option0", Bool(true)),
     OPTION("option1", Bool(true)),
     OPTION("currentPreset", BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
-    OPTION("masterOpacity", BoundedInt(0, 255, 255)),
+    OPTION("masterOpacity", OpacityList(opacityListDef)),
     OPTION("darkColorPreset", ColorList(darkColorPresetDef)),
     OPTION("lightColorPreset", ColorList(lightColorPresetDef)),
     OPTION("customPreset1", ColorList(customPreset1Def)),
@@ -91,7 +95,7 @@ SettingsHandler::SettingsHandler()
                 qApp->organizationName(),
                 qApp->applicationName())
 {
-    // settings_.clear();
+    //settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
         qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!SettingsHandler::SettingsHandler";
@@ -133,7 +137,7 @@ void SettingsHandler::setDefaultCurrentPreset()
 {
     auto current_preset = currentPreset();
     switch (current_preset) {
-    case EPresets::kDarkPreset: {        
+    case EPresets::kDarkPreset: {
         settings_.remove("darkColorPreset");
         break;
     }
@@ -383,6 +387,22 @@ void SettingsHandler::setCurrentColorPreset(const SettingsHandler::CL& preset)
     // TODO: assert
 }
 
+int SettingsHandler::getCurrentOpacity()
+{
+    auto current_preset = currentPreset();
+    auto master_opacity = masterOpacity();
+    // TODO: try catch
+    return master_opacity[current_preset];
+}
+
+void SettingsHandler::setCurrentOpacity(int opacity)
+{
+    auto current_preset = currentPreset();
+    auto master_opacity = masterOpacity();
+    // TODO: try catch
+    master_opacity[current_preset] = opacity;
+    setMasterOpacity(master_opacity);
+}
 
 bool SettingsHandler::checkForErrors() const
 {

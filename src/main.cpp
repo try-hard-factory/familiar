@@ -42,6 +42,8 @@ int main(int argc, char* argv[])
 #endif
 
     qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
+    qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
+
     QApplication a(argc, argv);
     MainWindow w;
     w.show();
