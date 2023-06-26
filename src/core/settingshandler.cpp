@@ -27,11 +27,14 @@ extern Logger logger;
                                   new KeySequence(QKeySequence(QLatin1String(DEFAULT_VALUE)))) \
     }
 
-static QMap<int, int> opacityListDef = {{kBackgroundColor, 255},
-                                        {kCanvasColor, 255},
-                                        {kBorderColor, 255},
-                                        {kTextColor, 255},
-                                        {kSelectionColor, 255}};
+static QMap<int, int> opacityListDef = {{kDarkPreset, 255},
+                                        {kLightPreset, 255},
+                                        {kCustom1, 255},
+                                        {kCustom2, 255},
+                                        {kCustom3, 255},
+                                        {kCustom4, 255},
+                                        };
+
 static QMap<int, QColor> darkColorPresetDef
     = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
        {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
@@ -164,6 +167,8 @@ void SettingsHandler::setDefaultCurrentPreset()
     default:
         break;
     };
+
+    setCurrentOpacity(255);
 
     settings_.sync();
 }
