@@ -107,6 +107,7 @@ public:
 
 signals:
     void settingsChanged() const;
+    void presetsChanged() const;
     void fileChanged();
     void error();
     void errorResolved();
