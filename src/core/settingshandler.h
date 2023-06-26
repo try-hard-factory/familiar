@@ -75,6 +75,8 @@ public:
     SETTINGS_GETTER_SETTER(customPreset3, setCustomPreset3, CL )
     SETTINGS_GETTER_SETTER(customPreset4, setCustomPreset4, CL )
 
+    void setDefaultCurrentPreset();
+
     bool setShortcut(const QString& actionName, const QString& shortcut);
     QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);

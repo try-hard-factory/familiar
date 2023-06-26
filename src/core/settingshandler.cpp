@@ -28,11 +28,12 @@ extern Logger logger;
     }
 
 
-static QMap<int, QColor> darkColorPresetDef = {{kBackgroundColor, QColor({32, 32, 32})},    // kBackgroundColor
-                                               {kCanvasColor, QColor({42, 42, 42})},    // kCanvasColor
-                                               {kBorderColor, QColor({13, 13, 13})},    // kBorderColor
-                                               {kTextColor, QColor({122, 122, 122})}, // kTextColor
-                                               {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
+static QMap<int, QColor> darkColorPresetDef
+    = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
+       {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
+       {kBorderColor, QColor({13, 13, 13})},       // kBorderColor
+       {kTextColor, QColor({122, 122, 122})},      // kTextColor
+       {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
 static QMap<int, QColor> lightColorPresetDef = {{kBackgroundColor, QColor({224, 224, 224})},
                                                 {kCanvasColor, QColor({234, 234, 234})},
                                                 {kBorderColor, QColor({200, 200, 200})},
@@ -126,6 +127,41 @@ SettingsHandler* SettingsHandler::getInstance()
 {
     static SettingsHandler config;
     return &config;
+}
+
+void SettingsHandler::setDefaultCurrentPreset()
+{
+    auto current_preset = currentPreset();
+    switch (current_preset) {
+    case EPresets::kDarkPreset: {        
+        settings_.remove("darkColorPreset");
+        break;
+    }
+    case EPresets::kLightPreset: {
+        settings_.remove("lightColorPreset");
+        break;
+    }
+    case EPresets::kCustom1: {
+        settings_.remove("customPreset1");
+        break;
+    }
+    case EPresets::kCustom2: {
+        settings_.remove("customPreset2");
+        break;
+    }
+    case EPresets::kCustom3: {
+        settings_.remove("customPreset3");
+        break;
+    }
+    case EPresets::kCustom4: {
+        settings_.remove("customPreset4");
+        break;
+    }
+    default:
+        break;
+    };
+
+    settings_.sync();
 }
 
 
