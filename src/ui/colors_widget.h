@@ -13,10 +13,13 @@ public:
     explicit ColorsWidget(QWidget* parent = nullptr);
     ~ColorsWidget();
 
+private:
+    void resetCurrentPreset();
 public slots:
     void updateComponents();
 
 signals:
+
 private:
     QVBoxLayout* layout_ = nullptr;
     ExtendedSlider* opacitySlider_ = nullptr;

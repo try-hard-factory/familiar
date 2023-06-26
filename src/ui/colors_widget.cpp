@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QMessageBox>
 
 using kColorPicker::KColorPicker;
 
@@ -143,40 +144,22 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     selection_layout->addWidget(selection_color_lbl);
     selection_layout->addWidget(selection_cp);
 
-    // auto* selection_layout = new QHBoxLayout();
-    // auto* color5 = new QLabel(tr("..reserved.."));
-
     colors_layout->addLayout(background_layout);
     colors_layout->addLayout(canvas_layout);
     colors_layout->addLayout(border_layout);
     colors_layout->addLayout(text_layout);
     colors_layout->addLayout(selection_layout);
-
-    // colors_layout->addWidget(color5);
     body_layout->addLayout(colors_layout);
 
-
+    // slider init
     opacitySlider_->setFocusPolicy(Qt::NoFocus);
     opacitySlider_->setOrientation(Qt::Horizontal);
     opacitySlider_->setRange(0, 100);
-    auto* localLayout = new QHBoxLayout();
-    localLayout->setAlignment(Qt::AlignBottom);
-    localLayout->addWidget(new QLabel(QStringLiteral("Master opacity:")));
-    localLayout->addWidget(opacitySlider_);
+    auto* sliderLayout = new QHBoxLayout();
+    sliderLayout->setAlignment(Qt::AlignBottom);
+    sliderLayout->addWidget(new QLabel(QStringLiteral("Master opacity:")));
+    sliderLayout->addWidget(opacitySlider_);
 
-    // ExtendedSlider* opacitySlider = opacitySlider_;
-    // connect(opacitySlider_,
-    //         &ExtendedSlider::valueChanged,
-    //         this,
-    //         [labelMsg, label, opacitySlider](int val) {
-    //             label->setText(labelMsg.arg(val));
-    //             ConfigHandler().setContrastOpacity(
-    //               opacitySlider->mappedValue(0, 255));
-    //         });
-    // m_layout->addWidget(label);
-
-
-    // int opacity = ConfigHandler().contrastOpacity();
     opacitySlider_->setMapedValue(0, /*opacity*/ 255, 255);
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
         qDebug() << "Master opacity from settings = "
@@ -186,11 +169,21 @@ ColorsWidget::ColorsWidget(QWidget* parent)
         emit SettingsHandler::getInstance()->settingsChanged();
     });
 
+    auto* bottom_layout = new QHBoxLayout();
+    //presets_layout->setAlignment(Qt::AlignLeft);
+    QPushButton* save_to_preset_btn = new QPushButton("Save to preset");
+    connect(save_to_preset_btn, &QPushButton::clicked, this, [this]() {});
+    QPushButton* reset_to_default_btn = new QPushButton("Reset to default");
+    connect(reset_to_default_btn, &QPushButton::clicked, this, &ColorsWidget::resetCurrentPreset);
+    bottom_layout->addWidget(save_to_preset_btn);
+    bottom_layout->addWidget(reset_to_default_btn);
+
     layout_->addLayout(header_layout);
     layout_->addLayout(body_layout);
     layout_->addSpacing(50);
-    layout_->addLayout(localLayout);
-
+    layout_->addLayout(sliderLayout);
+    layout_->addSpacing(50);
+    layout_->addLayout(bottom_layout);
 
     setLayout(layout_);
 }
@@ -199,6 +192,20 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 ColorsWidget::~ColorsWidget()
 {
     delete layout_;
+}
+
+void ColorsWidget::resetCurrentPreset()
+{
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this,
+                                  tr("Confirm Reset"),
+                                  tr("Are you sure you want to reset the configuration?"),
+                                  QMessageBox::Yes | QMessageBox::No);
+    if (reply == QMessageBox::Yes) {        
+        auto* settings = SettingsHandler::getInstance();
+        settings->setDefaultCurrentPreset();
+        //_updateComponents(true);
+    }
 }
 
 void ColorsWidget::updateComponents() {}
