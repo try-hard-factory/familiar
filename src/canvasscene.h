@@ -64,6 +64,7 @@ protected:
 
 public slots:
     void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
+    void settingsChangedSlot();
 private slots:
     void clipboardChanged();
 
@@ -90,6 +91,7 @@ private:
     QPointF origin_;
     QRectF rubberBand_;
     QPointF lastClickedPoint_{0, 0};
+    QColor selectionColor_;
 };
 
 #endif // CANVASSCENE_H

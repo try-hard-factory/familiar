@@ -5,6 +5,7 @@
 #include <QGraphicsSceneHoverEvent>
 #include <QGraphicsSceneMouseEvent>
 #include <QPen>
+#include <core/settingshandler.h>
 
 DotSignal::DotSignal(QGraphicsItem* parentItem, QObject* parent)
     : QObject(parent)
@@ -13,8 +14,16 @@ DotSignal::DotSignal(QGraphicsItem* parentItem, QObject* parent)
     //    setFlags(ItemIsMovable);
     setParentItem(parentItem);
     setAcceptHoverEvents(true);
-    setBrush(QBrush(QColor(22, 142, 153)));
-    QPen outline_pen{QColor(22, 142, 153), 0};
+
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            &DotSignal::settingsChangedSlot);
+
+    settingsChangedSlot();
+
+    setBrush(QBrush(selectionColor_));
+    QPen outline_pen{selectionColor_, 0};
     setPen(outline_pen);
     int x = 4;
     setRect(-x, -x, 2 * x, 2 * x);
@@ -22,23 +31,23 @@ DotSignal::DotSignal(QGraphicsItem* parentItem, QObject* parent)
     //    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
 }
 
-DotSignal::DotSignal(QPointF pos, QGraphicsItem* parentItem, QObject* parent)
-    : QObject(parent)
-{
-    setZValue(999999999);
-    //    setFlags(ItemIsMovable);
-    setParentItem(parentItem);
-    setAcceptHoverEvents(true);
-    setBrush(QBrush(QColor(22, 142, 153)));
-    QPen outline_pen{QColor(22, 142, 153), 0};
-    setPen(outline_pen);
-    int x = 4;
-    setRect(-x, -x, 2 * x, 2 * x);
-    setPos(pos);
-    setPreviousPosition(pos);
-    setDotFlags(0);
-    //    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
-}
+// DotSignal::DotSignal(QPointF pos, QGraphicsItem* parentItem, QObject* parent)
+//     : QObject(parent)
+// {
+//     setZValue(999999999);
+//     //    setFlags(ItemIsMovable);
+//     setParentItem(parentItem);
+//     setAcceptHoverEvents(true);
+//     setBrush(QBrush(QColor(22, 142, 153)));
+//     QPen outline_pen{QColor(22, 142, 153), 0};
+//     setPen(outline_pen);
+//     int x = 4;
+//     setRect(-x, -x, 2 * x, 2 * x);
+//     setPos(pos);
+//     setPreviousPosition(pos);
+//     setDotFlags(0);
+//     //    setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+// }
 
 DotSignal::~DotSignal() {}
 
@@ -47,6 +56,17 @@ void DotSignal::SetScale(qreal qrScale)
     resetTransform();
     setScale(qrScale);
 }
+
+void DotSignal::settingsChangedSlot()
+{
+    auto settings = SettingsHandler::getInstance();
+    auto colorPreset = settings->getCurrentColorPreset();
+    selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
+    setBrush(QBrush(selectionColor_));
+    QPen outline_pen{selectionColor_, 0};
+    setPen(outline_pen);
+}
+
 
 QPointF DotSignal::previousPosition() const noexcept
 {

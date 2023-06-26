@@ -19,10 +19,10 @@ class DotSignal : public QObject, public QGraphicsEllipseItem
                    setPreviousPosition NOTIFY previousPositionChanged)
 
 public:
-    explicit DotSignal(QGraphicsItem* parentItem = 0, QObject* parent = 0);
-    explicit DotSignal(QPointF pos,
-                       QGraphicsItem* parentItem = 0,
-                       QObject* parent = 0);
+    explicit DotSignal(QGraphicsItem* parentItem = nullptr, QObject* parent = nullptr);
+    // explicit DotSignal(QPointF pos,
+    //                    QGraphicsItem* parentItem = 0,
+    //                    QObject* parent = 0);
     ~DotSignal();
 
     enum Flags { Movable = 0x01 };
@@ -35,6 +35,10 @@ public:
 
     void setDotFlags(unsigned int flags);
     void SetScale(qreal qrScale);
+
+public slots:
+    void settingsChangedSlot();
+    
 signals:
     void previousPositionChanged();
     void signalMouseRelease();
@@ -98,6 +102,7 @@ public slots:
 private:
     unsigned int m_flags;
     QPointF m_previousPosition;
+    QColor selectionColor_;
 };
 
 #endif // BORDERDOT_H
