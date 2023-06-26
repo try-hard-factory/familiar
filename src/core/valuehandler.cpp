@@ -5,10 +5,8 @@
 QVariant ValueHandler::value(const QVariant& val)
 {
     if (!val.isValid() || !check(val)) {
-        qDebug() << "ValueHandler::value, fallback " << val;
         return fallback();
     } else {
-        qDebug() << "ValueHandler::value, process " << val;
         return process(val);
     }
 }
@@ -190,7 +188,7 @@ using CCollection = QMap<int, QColor>;
 ColorList::ColorList(QMap<int, QColor> def)
     : m_def(def)
 {
-    qDebug() << "ColorList::ColorList. SIZE= "<< m_def.size();
+    qDebug() << "ColorList::ColorList. SIZE= " << m_def.size();
 }
 
 bool ColorList::check(const QVariant& val)
@@ -227,7 +225,7 @@ using OCollection = QMap<int, int>;
 OpacityList::OpacityList(QMap<int, int> def)
     : m_def(def)
 {
-    qDebug() << "OpacityList::OpacityList. SIZE= "<< m_def.size();
+    qDebug() << "OpacityList::OpacityList. SIZE= " << m_def.size();
 }
 
 bool OpacityList::check(const QVariant& val)

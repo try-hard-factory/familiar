@@ -108,6 +108,7 @@ public slots:
      * \~english @brief QT slot-handler for selection changed
      */
     void onSelectionChanged();
+    void settingsChangedSlot();
 
 protected:
     void contextMenuEvent(QContextMenuEvent* event) override;
@@ -176,11 +177,13 @@ private:
     QPoint pressPos_;
     QPoint wndPos_;
     bool isMoving_{false};
-    ;
     qreal panStartX_;
     qreal panStartY_;
     uint64_t zCounter_ = 0;
     bool fitViewF_{false};
+    QColor canvasColor_;
+    QColor borderColor_;
+    int currentOpacity_;
 };
 
 #endif // CANVASVIEW_H

@@ -40,7 +40,6 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("Familiar");
     statusBar()->hide();
 
-
     setMouseTracking(true);
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
@@ -53,10 +52,20 @@ MainWindow::MainWindow(QWidget* parent)
             &SettingsHandler::shortCutChanged,
             this,
             &MainWindow::notifyShortcut);
+
+    auto colorPreset = settings_.getCurrentColorPreset();
+    backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    currentOpacity_ = settings_.getCurrentOpacity();
+    rgbaBackGroundStr_ = QString("rgba(%1, %2, %3, %4);")
+                             .arg(backGroundColor_.red())
+                             .arg(backGroundColor_.green())
+                             .arg(backGroundColor_.blue())
+                             .arg(currentOpacity_);
+
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
-    tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background: rgba(245, 0, 0, 128); }");
+    tabpane_->setStyleSheet("QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
+                            "1px solid lightgray; top:-1px; background:  transparent; }");
 
     //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
     setCentralWidget(tabpane_);
@@ -65,7 +74,8 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowFlags(
         Qt::Window
         | Qt::FramelessWindowHint); //|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
-    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, 128);");
+
+    setStyleSheet("background: transparent; background-color: transparent;");// + rgbaBackGroundStr_);
     // Qt::WindowFlags flags = Qt::Window | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint;
     // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
     // setWindowFlags(flags);
@@ -154,11 +164,18 @@ void MainWindow::notifyShortcut(const QString& actionName)
 
 void MainWindow::settingsChangedSlot()
 {
-    auto settings = SettingsHandler::getInstance();
+    auto colorPreset = settings_.getCurrentColorPreset();
+    backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    currentOpacity_ = settings_.getCurrentOpacity();
+    rgbaBackGroundStr_ = QString("rgba(%1, %2, %3, %4);")
+                             .arg(backGroundColor_.red())
+                             .arg(backGroundColor_.green())
+                             .arg(backGroundColor_.blue())
+                             .arg(currentOpacity_);
 
-    tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background: rgba(245, 0, 0, " + QString::number(settings->getCurrentOpacity()) + "); }");
-    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, " + QString::number(settings->getCurrentOpacity()) + ");");
+    tabpane_->setStyleSheet("QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
+                            "1px solid lightgray; top:-1px; background:  transparent; }");
+    setStyleSheet("background: transparent; background-color: transparent; ");// + rgbaBackGroundStr_);
 }
 
 
@@ -259,6 +276,8 @@ void MainWindow::createActions()
 void MainWindow::createMenus()
 {
     fileMenu_ = menuBar()->addMenu(tr("menu"));
+    fileMenu_->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
+    menuBar()->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
     fileMenu_->addAction(newAction_);
     fileMenu_->addAction(openAction_);
     fileMenu_->addAction(saveAction_);
@@ -332,10 +351,11 @@ void MainWindow::closeEvent(QCloseEvent* event)
 void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
-    painter.setOpacity(0.6);
+    qreal opacity = (qreal)currentOpacity_/255;
+    painter.setOpacity(opacity);
     painter.fillRect(
         event->rect(),
-        Qt::black); // тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
+        backGroundColor_); // тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
     // Нарисуйте другие элементы интерфейса здесь
     //QMainWindow::paintEvent(event); // Вызов базовой реализации
 }

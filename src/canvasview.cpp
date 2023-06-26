@@ -27,6 +27,12 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
             this,
             SLOT(onSelectionChanged()));
 
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            &CanvasView::settingsChangedSlot);
+
+    settingsChangedSlot();
     setMouseTracking(true);
     setScene(scene_);
 
@@ -247,11 +253,11 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     painter->setOpacity(0.6);
     setCacheMode(CacheNone);
     painter->save();
-    setBackgroundBrush(QBrush(QColor(32, 32, 32)));
-    painter->fillRect(rect, backgroundBrush());
-    scene_->setBackgroundBrush(QBrush(QColor(42, 42, 42)));
+    // setBackgroundBrush(QBrush(QColor(32, 255, 32)));
+    // painter->fillRect(rect, backgroundBrush());
+    scene_->setBackgroundBrush(QBrush(canvasColor_));
     painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
-    painter->setPen(QPen(QColor(247, 0, 255), 2));
+    painter->setPen(QPen(borderColor_, 2));
     painter->drawRect(scene_->sceneRect());
     painter->restore();
 }
@@ -300,6 +306,15 @@ bool CanvasView::isUntitled()
 void CanvasView::onSelectionChanged()
 {
     scene_->onSelectionChanged();
+}
+
+void CanvasView::settingsChangedSlot()
+{
+    auto settings = SettingsHandler::getInstance();
+    auto colorPreset = settings->getCurrentColorPreset();
+    canvasColor_ = colorPreset[EPresetsColorIdx::kCanvasColor];
+    borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
+    currentOpacity_ = settings->getCurrentOpacity();
 }
 
 void CanvasView::contextMenuEvent(QContextMenuEvent* event)
