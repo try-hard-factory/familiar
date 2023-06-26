@@ -160,11 +160,11 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     sliderLayout->addWidget(new QLabel(QStringLiteral("Master opacity:")));
     sliderLayout->addWidget(opacitySlider_);
 
-    opacitySlider_->setMapedValue(0, /*opacity*/ 255, 255);
+    opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
         qDebug() << "Master opacity from settings = "
                  << SettingsHandler::getInstance()->masterOpacity();
-        SettingsHandler::getInstance()->setMasterOpacity(opacitySlider_->mappedValue(0, 255));
+        SettingsHandler::getInstance()->setCurrentOpacity(opacitySlider_->mappedValue(0, 255));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
         emit SettingsHandler::getInstance()->settingsChanged();
     });

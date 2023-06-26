@@ -157,8 +157,8 @@ void MainWindow::settingsChangedSlot()
     auto settings = SettingsHandler::getInstance();
 
     tabpane_->setStyleSheet("QTabBar::tab { background: transparent; } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background: rgba(245, 0, 0, " + QString::number(settings->masterOpacity()) + "); }");
-    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, " + QString::number(settings->masterOpacity()) + ");");
+                            "1px solid lightgray; top:-1px; background: rgba(245, 0, 0, " + QString::number(settings->getCurrentOpacity()) + "); }");
+    setStyleSheet("background: transparent; background-color: rgba(255, 0, 0, " + QString::number(settings->getCurrentOpacity()) + ");");
 }
 
 
