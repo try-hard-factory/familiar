@@ -15,12 +15,12 @@ class SettingsWindow : public QWidget
 public:
     explicit SettingsWindow(MainWindow* wm, QWidget* parent = nullptr);
 private:
-    void slidertest_out();
+
 signals:
     void updateChildren();
 
 protected:
-    void keyPressEvent(QKeyEvent*);
+    void keyPressEvent(QKeyEvent*) override;
 
 private:
     MainWindow* window_ = nullptr;

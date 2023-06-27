@@ -102,7 +102,6 @@ SettingsHandler::SettingsHandler()
     //settings_.clear();
     static bool firstInitialization = true;
     if (firstInitialization) {
-        qDebug() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!SettingsHandler::SettingsHandler";
         // check for error every time the file changes
         settingsWatcher_.reset(new QFileSystemWatcher());
         ensureFileWatched();
@@ -245,7 +244,6 @@ void SettingsHandler::setValue(const QString& key, const QVariant& value)
     qDebug() << "Setting " << key << " to " << value;
     assertKeyRecognized(key);
     if (!hasError()) {
-        qDebug() << "!!!!Setting " << key << " to " << value;
         // don't let the file watcher initiate another error check
         skipNextErrorCheck_ = true;
         auto val = valueHandler(key)->representation(value);

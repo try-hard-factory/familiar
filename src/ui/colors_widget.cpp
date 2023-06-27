@@ -1,13 +1,13 @@
 #include "colors_widget.h"
 #include <core/settingshandler.h>
-
 #include <ui/extendedslider.h>
+#include <ui/presetsave_window.h>
+#include <utils/utils.h>
 #include <QButtonGroup>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QVBoxLayout>
-
 
 
 ColorsWidget::ColorsWidget(QWidget* parent)
@@ -238,17 +238,25 @@ void ColorsWidget::saveResetBtnsInit()
 {
     //presets_layout->setAlignment(Qt::AlignLeft);
     QPushButton* save_to_preset_btn = new QPushButton("Save to preset");
-    connect(save_to_preset_btn, &QPushButton::clicked, this, [this]() {});
+    connect(save_to_preset_btn, &QPushButton::clicked, this, &ColorsWidget::showPresetSaveWindow);
+
     QPushButton* reset_to_default_btn = new QPushButton("Reset to default");
     connect(reset_to_default_btn, &QPushButton::clicked, this, &ColorsWidget::resetCurrentPreset);
+
     bottom_layout_->addWidget(save_to_preset_btn);
     bottom_layout_->addWidget(reset_to_default_btn);
 }
 
+void ColorsWidget::showPresetSaveWindow()
+{
+    PresetSaveWindow* widget = new PresetSaveWindow(parentWidget());
+    widget->show();
+    centered_widget(this, widget);
+}
 
-void ColorsWidget::updateComponents() {
-    qDebug() << "updateComponents";
 
+void ColorsWidget::updateComponents()
+{
     auto* settings = SettingsHandler::getInstance();
     auto current_preset = settings->getCurrentColorPreset();
 
