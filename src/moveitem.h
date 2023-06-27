@@ -40,6 +40,10 @@ public:
     const QImage* qimage_ptr_const() { return qimage_; }
     QImage* qimage_ptr() { return qimage_; }
     uint64_t& zcounter() noexcept { return zCounter_; }
+
+public slots:
+    void settingsChangedSlot();
+
 signals:
 protected:
     void paint(QPainter* painter,
@@ -59,7 +63,8 @@ private:
     QSizeF _size;
     QRectF rect_;
     bool inGroup_ = false;
-public slots:
+    QColor selectionColor_;
+    int currentOpacity_;
 };
 
 #endif // MOVEITEM_H

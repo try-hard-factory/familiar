@@ -1,7 +1,7 @@
 #include "moveitem.h"
 #include "debug_macros.h"
 #include <QPen>
-
+#include <core/settingshandler.h>
 
 #include "Logger.h"
 #include "Vec2d.h"
@@ -30,6 +30,12 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem* parent)
     _size = pixmap_.size();
     rect_ = qimage_->rect();
 
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            &MoveItem::settingsChangedSlot);
+    settingsChangedSlot();
+
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemIsMovable, true);
 }
@@ -49,6 +55,12 @@ MoveItem::MoveItem(QImage* img, uint64_t& zc, QGraphicsRectItem* parent)
 
     _size = pixmap_.size();
     rect_ = qimage_->rect();
+
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            &MoveItem::settingsChangedSlot);
+    settingsChangedSlot();
 
     setAcceptHoverEvents(true);
     setFlag(QGraphicsItem::ItemIsMovable, true);
@@ -97,14 +109,22 @@ QPainterPath MoveItem::shape() const
 }
 
 
-void MoveItem::paint(QPainter* painter,
-                     const QStyleOptionGraphicsItem* option,
-                     QWidget* widget)
+void MoveItem::settingsChangedSlot()
 {
-    painter->setOpacity(0.5);
+    auto settings = SettingsHandler::getInstance();
+    auto colorPreset = settings->getCurrentColorPreset();
+    selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
+    currentOpacity_ = settings->getCurrentOpacity();
+}
+
+
+void MoveItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
+{
+    qreal opacity = (qreal)currentOpacity_/255;
+    painter->setOpacity(opacity);
     painter->drawImage(boundingRect(), *qimage_);
     qreal wsize = 2;
-    QPen outline_pen{QColor(22, 142, 153), wsize};
+    QPen outline_pen{selectionColor_, wsize};
     outline_pen.setCosmetic(true);
     painter->setPen(outline_pen);
 

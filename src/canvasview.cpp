@@ -43,6 +43,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
     setDragMode(QGraphicsView::RubberBandDrag);
     setResizeAnchor(QGraphicsView::AnchorViewCenter);
+    //setAttribute(Qt::WA_TranslucentBackground);
 }
 
 
@@ -250,7 +251,11 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 
 void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
 {
-    painter->setOpacity(0.6);
+    // TODO: 
+    int local_opacity = currentOpacity_;
+    //if (local_opacity < 255) local_opacity -=100;
+    qreal opacity = (qreal)local_opacity/255;
+    painter->setOpacity(opacity);
     setCacheMode(CacheNone);
     painter->save();
     // setBackgroundBrush(QBrush(QColor(32, 255, 32)));
