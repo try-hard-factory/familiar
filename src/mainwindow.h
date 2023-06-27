@@ -19,6 +19,7 @@
 #include <QMessageBox>
 #include <QCursor>
 #include <core/settingshandler.h>
+#include <utils/utils.h>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -170,12 +171,4 @@ private:
     //    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
 };
 
-template<typename M, typename S>
-void centered_widget(M* mw, S* w)
-{
-    auto hostRect = mw->geometry();
-    auto point = hostRect.center()
-                 - QPoint(w->size().width() / 2, w->size().height() / 2);
-    w->move(point);
-}
 #endif // MAINWINDOW_H

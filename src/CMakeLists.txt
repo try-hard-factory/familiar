@@ -77,6 +77,8 @@ set(PROJECT_SOURCES
         savecheckbox.h
         ui/settings_window.cpp
         ui/settings_window.h
+        ui/presetsave_window.cpp
+        ui/presetsave_window.h
         ui/shortcuts_widget.cpp
         ui/shortcuts_widget.h
         core/qguiappcurrentscreen.cpp
@@ -95,6 +97,7 @@ set(PROJECT_SOURCES
         main_context_menu.h
         ui/extendedslider.cpp
         ui/extendedslider.h
+        utils/utils.h
 
 )
 add_executable(familiar ${PROJECT_SOURCES})

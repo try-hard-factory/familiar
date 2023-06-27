@@ -17,14 +17,16 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     , shortcutsTab_(new QWidget)
     , shortcuts_(new ShortcutsWidget)
 {
+    setAttribute(Qt::WA_DeleteOnClose);
+    setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
+                           | Qt::MSWindowsFixedSizeDialogHint);
+    setWindowModality(Qt::ApplicationModal);
     // We wrap QTabWidget in a QWidget because of a Qt bug
     auto* layout = new QVBoxLayout(this);
     tabWidget_->tabBar()->setUsesScrollButtons(false);
     layout->addWidget(tabWidget_);
 
-    resize(640, this->geometry().height());    
-
-    setAttribute(Qt::WA_DeleteOnClose);
+    resize(640, this->geometry().height());
 
     setFixedSize(640, this->geometry().height());
 
@@ -39,7 +41,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             &SettingsHandler::settingsChanged,
             window_,
             &MainWindow::settingsChangedSlot);
-            
+
 
     QColor background = this->palette().window().color();
     //    bool isDark = ColorUtils::colorIsDark(background);
@@ -64,17 +66,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     shortcutsLayout->addWidget(shortcuts_);
     tabWidget_->addTab(shortcutsTab_, tr("Shortcuts"));
 
-    connect(this,
-            &SettingsWindow::updateChildren,
-            prefConfig_,
-            &PreferencesConf::updateComponents);
-
-    setWindowFlags(Qt::Window |  Qt::WindowCloseButtonHint | Qt::MSWindowsFixedSizeDialogHint);
-}
-
-void SettingsWindow::slidertest_out()
-{
-    qDebug() << SettingsHandler::getInstance()->masterOpacity() << " SettingsWindow";
+    connect(this, &SettingsWindow::updateChildren, prefConfig_, &PreferencesConf::updateComponents);
 }
 
 void SettingsWindow::keyPressEvent(QKeyEvent* e)

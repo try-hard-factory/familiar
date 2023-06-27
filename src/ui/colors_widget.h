@@ -24,6 +24,8 @@ private:
     void colorInit();
     void sliderInit();
     void saveResetBtnsInit();
+    void showPresetSaveWindow();
+
 public slots:
     void updateComponents();
 

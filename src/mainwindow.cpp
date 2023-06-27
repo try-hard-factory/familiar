@@ -117,11 +117,9 @@ void MainWindow::newFile()
 
 void MainWindow::settingsWindow()
 {
-    SettingsWindow* widget = new SettingsWindow(this);
-    widget->setAttribute(Qt::WA_DeleteOnClose);
-    widget->setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
-                           | Qt::MSWindowsFixedSizeDialogHint);
-    widget->raise();
+    SettingsWindow* widget = new SettingsWindow(this, this->parentWidget());
+
+    // widget->raise();
     widget->show();
     centered_widget(this, widget);
 }
