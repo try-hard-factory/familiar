@@ -1,17 +1,13 @@
 Changes:
-  - fix build
-  - fix image cope from browser
-  - fix Settings handler singleton
-  - color picker
-  - colors widget
-  - shortkesy done
-  - shortcut settings
-  - add menu from code
-  - shortcut for save and quit
-  - logic of settings handler
-  - app current screen
-  - shortcut widget
-  - tab widget
-  - global clipboard logic
-  - merge images to one
-  - copy paste from folder
+  - save to preset functionality
+  - color settings for view pen and other graphics
+  - update all components in color widget
+  - save opacity
+  - reset current preset to default
+  - colors settings
+  - connect slider and opcaity
+  - ui for presets and color tab
+  - slider from flameshot <3
+  - fix invalid color for kcolorpicker
+  - some transparent tests
+  - dont use native dialog for color picker

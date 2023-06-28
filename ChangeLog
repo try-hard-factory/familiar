@@ -1,3 +1,19 @@
+Version v0.0.8
+==============
+
+  - save to preset functionality
+  - color settings for view pen and other graphics
+  - update all components in color widget
+  - save opacity
+  - reset current preset to default
+  - colors settings
+  - connect slider and opcaity
+  - ui for presets and color tab
+  - slider from flameshot <3
+  - fix invalid color for kcolorpicker
+  - some transparent tests
+  - dont use native dialog for color picker
+
 Version v0.0.7
 ==============
   - fix build
