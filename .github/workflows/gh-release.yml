@@ -1,4 +1,4 @@
-name: Releases
+name: Create Release
 
 on: 
   push:
@@ -13,8 +13,8 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@v3
-    - uses: ncipollo/release-action@v1
+    - uses: ncipollo/release-action@v1.12.0
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         bodyFile: "misc/LATEST_RELEASE_BODY"
-
+        makeLatest: makeLatest
