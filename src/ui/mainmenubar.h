@@ -13,15 +13,15 @@ public:
     {
         // Создание кнопок для минимизации, максимизации и закрытия
         minimizeButton_ = new QToolButton(this);
-        minimizeButton_->setIcon(QIcon(":/path/to/minimize/icon.png"));
+        minimizeButton_->setIcon(QIcon("://images/minimize-50.png"));
         connect(minimizeButton_, &QToolButton::clicked, this, &MainMenuBar::minimizeWindow);
 
         maximizeButton_ = new QToolButton(this);
-        maximizeButton_->setIcon(QIcon(":/path/to/maximize/icon.png"));
+        maximizeButton_->setIcon(QIcon("://images/maximize-50.png"));
         connect(maximizeButton_, &QToolButton::clicked, this, &MainMenuBar::maximizeWindow);
 
         closeButton_ = new QToolButton(this);
-        closeButton_->setIcon(QIcon(":/path/to/close/icon.png"));
+        closeButton_->setIcon(QIcon("://images/close-50.png"));
         connect(closeButton_, &QToolButton::clicked, this, &MainMenuBar::closeWindow);
 
         // Добавление кнопок на QMenuBar

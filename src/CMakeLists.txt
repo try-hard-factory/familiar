@@ -100,6 +100,7 @@ set(PROJECT_SOURCES
         utils/utils.h
         ui/mainmenubar.cpp
         ui/mainmenubar.h
+        resources.qrc
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
