@@ -63,9 +63,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
-    tabpane_->setStyleSheet(
-        "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
-        "1px solid lightgray; top:-1px; background:  transparent; }");
+
 
     //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
     setCentralWidget(tabpane_);
@@ -172,11 +170,11 @@ void MainWindow::settingsChangedSlot()
                              .arg(backGroundColor_.blue())
                              .arg(currentOpacity_);
 
-    tabpane_->setStyleSheet(
-        "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
-        "1px solid lightgray; top:-1px; background:  transparent; }");
-    setStyleSheet(
-        "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
+    // tabpane_->setStyleSheet(
+    //     "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
+    //     "1px solid lightgray; top:-1px; background:  transparent; }");
+    // setStyleSheet(
+    //     "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
 }
 
 
@@ -241,6 +239,7 @@ void MainWindow::createActions()
 
     newAction_ = new QAction(tr("New"), this);
     newAction_->setShortcut(QKeySequence(settings->shortcut("TYPE_NEW")));
+    qDebug() << "MainWindow::createActions: " << settings->shortcut("TYPE_NEW");
     newAction_->setStatusTip(tr("New"));
     connect(newAction_, &QAction::triggered, this, &MainWindow::newFile);
     actionsArr_[k_TYPE_NEW] = newAction_;
@@ -279,8 +278,6 @@ void MainWindow::createMenus()
     mainmenubar_ = new MainMenuBar(this);
     setMenuBar(mainmenubar_);
     fileMenu_ = menuBar()->addMenu(tr("menu"));
-    fileMenu_->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
-    menuBar()->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
     fileMenu_->addAction(newAction_);
     fileMenu_->addAction(openAction_);
     fileMenu_->addAction(saveAction_);
