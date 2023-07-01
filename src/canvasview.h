@@ -170,17 +170,17 @@ protected:
 
 private:
     MainWindow& mainwindow_;
-    CanvasScene* scene_;
+    CanvasScene* scene_ = nullptr;
     double zoomFactor_ = 1.15;
-    Qt::MouseButton pan_;
-    bool rightMoveflag_{false};
+    Qt::MouseButton pan_ = Qt::NoButton;
+    bool rightMoveflag_ = false;
     QPoint pressPos_;
     QPoint wndPos_;
-    bool isMoving_{false};
+    bool isMoving_ = false;
     qreal panStartX_;
     qreal panStartY_;
     uint64_t zCounter_ = 0;
-    bool fitViewF_{false};
+    bool fitViewF_ = false;
     QColor canvasColor_;
     QColor borderColor_;
     int currentOpacity_;

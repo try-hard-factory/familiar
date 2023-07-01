@@ -15,11 +15,11 @@
 #include "file_actions.h"
 #include "tabpane.h"
 #include <canvasview.h>
-#include <QMainWindow>
-#include <QMessageBox>
-#include <QCursor>
 #include <core/settingshandler.h>
 #include <utils/utils.h>
+#include <QCursor>
+#include <QMainWindow>
+#include <QMessageBox>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -78,14 +78,8 @@ public:
     TabPane& tabPane();
     FileActions& fileActions();
 
-    void clipboardItems(QVector<QGraphicsItem*> ci) noexcept
-    {
-        clipboardItems_ = ci;
-    }
-    QVector<QGraphicsItem*>& clipboardItems() noexcept
-    {
-        return clipboardItems_;
-    }
+    void clipboardItems(QVector<QGraphicsItem*> ci) noexcept { clipboardItems_ = ci; }
+    QVector<QGraphicsItem*>& clipboardItems() noexcept { return clipboardItems_; }
     void clearClipboardItems() { clipboardItems_.clear(); }
 
 protected:
@@ -147,8 +141,7 @@ private slots:
 
 private:
     SettingsHandler settings_;
-    Ui::MainWindow*
-        ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
+    Ui::MainWindow* ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;

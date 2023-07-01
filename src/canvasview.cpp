@@ -22,10 +22,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scene_ = new CanvasScene(mw, zCounter_);
 
-    connect(scene_,
-            SIGNAL(selectionChanged()),
-            this,
-            SLOT(onSelectionChanged()));
+    connect(scene_, SIGNAL(selectionChanged()), this, SLOT(onSelectionChanged()));
 
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
@@ -85,8 +82,7 @@ void CanvasView::addImage(QImage* img, QPointF point)
     scene_->addItem(item);
 }
 
-void CanvasView::addImage(
-    QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f)
+void CanvasView::addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f)
 {
     ++zCounter_;
     MoveItem* item = new MoveItem(ba, w, h, bpl, f, zCounter_);
@@ -104,8 +100,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
     if (pan_ == Qt::RightButton) {
         rightMoveflag_ = true;
         if (isMoving_) {
-            mainwindow_.move(wndPos_
-                             + (event->globalPosition().toPoint() - pressPos_));
+            mainwindow_.move(wndPos_ + (event->globalPosition().toPoint() - pressPos_));
         }
         event->accept();
     } else if (pan_ == Qt::LeftButton) {
@@ -234,8 +229,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 
     // Get the previous rectangle of the scene in the viewport
     QPointF P1 = mapToScene(QPoint(0, 0));
-    QPointF P2 = mapToScene(
-        QPoint(event->oldSize().width(), event->oldSize().height()));
+    QPointF P2 = mapToScene(QPoint(event->oldSize().width(), event->oldSize().height()));
 
     // Stretch the rectangle around the scene
     if (P1.x() < 0)
@@ -251,10 +245,10 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 
 void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
 {
-    // TODO: 
+    // TODO:
     int local_opacity = currentOpacity_;
     //if (local_opacity < 255) local_opacity -=100;
-    qreal opacity = (qreal)local_opacity/255;
+    qreal opacity = (qreal) local_opacity / 255;
     painter->setOpacity(opacity);
     setCacheMode(CacheNone);
     painter->save();
