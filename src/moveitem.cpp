@@ -1,7 +1,7 @@
 #include "moveitem.h"
 #include "debug_macros.h"
-#include <QPen>
 #include <core/settingshandler.h>
+#include <QPen>
 
 #include "Logger.h"
 #include "Vec2d.h"
@@ -120,7 +120,7 @@ void MoveItem::settingsChangedSlot()
 
 void MoveItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
-    qreal opacity = (qreal)currentOpacity_/255;
+    qreal opacity = (qreal) currentOpacity_ / 255;
     painter->setOpacity(opacity);
     painter->drawImage(boundingRect(), *qimage_);
     qreal wsize = 2;

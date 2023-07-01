@@ -1,6 +1,5 @@
 #include "image_downloader.h"
 #include "canvasscene.h"
-#include "moveitem.h"
 
 ImageDownloader::ImageDownloader(CanvasScene& s, QObject* parent)
     : QObject(parent)

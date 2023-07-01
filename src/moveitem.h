@@ -10,6 +10,13 @@
 #include <QStyleOptionGraphicsItem>
 #include <QWheelEvent>
 
+class MoveItemBase : public QObject
+{
+    Q_OBJECT
+public:
+
+};
+
 class MoveItem : public QObject, public QGraphicsRectItem
 {
     Q_OBJECT

@@ -568,8 +568,7 @@ void ItemGroup::resizeTopRight(const QPointF& pt)
 
         auto new_size = calculateNewSize(tmpRect, widget);
 
-        widget->setX(new_size.new_x);
-        widget->setY(new_size.new_y);
+        widget->setPos(new_size.new_x, new_size.new_y);
         widget->setRect(new_size.new_x,
                         new_size.new_y,
                         new_size.new_w,
@@ -642,8 +641,7 @@ void ItemGroup::resizeBottomLeft(const QPointF& pt)
 
         auto new_size = calculateNewSize(tmpRect, widget);
 
-        widget->setX(new_size.new_x);
-        widget->setY(new_size.new_y);
+        widget->setPos(new_size.new_x, new_size.new_y);
         widget->setRect(new_size.new_x,
                         new_size.new_y,
                         new_size.new_w,
@@ -718,8 +716,7 @@ void ItemGroup::resizeBottomRight(const QPointF& pt)
 
         auto new_size = calculateNewSize(tmpRect, widget);
 
-        widget->setX(new_size.new_x);
-        widget->setY(new_size.new_y);
+        widget->setPos(new_size.new_x, new_size.new_y);
         widget->setRect(new_size.new_x,
                         new_size.new_y,
                         new_size.new_w,
