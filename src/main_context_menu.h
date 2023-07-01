@@ -11,12 +11,18 @@ class MainContextMenu : public QMenu
 public:
     MainContextMenu(MainWindow& wm, QWidget* parent = nullptr);
     ~MainContextMenu();
+
+public slots:
+    void settingsChangedSlot();
 private slots:
+    void settings();
     void quit();
 
 private:
     MainWindow& mainwindow_;
-    QAction* quit_action = nullptr;
+    QAction* quitAction_ = nullptr;
+    QAction* settingsAction_ = nullptr;
+    QColor menuColor_;
 };
 
 #endif // MAINCONTEXTMENU_H
