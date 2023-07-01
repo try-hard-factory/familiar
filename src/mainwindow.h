@@ -104,7 +104,6 @@ private:
 
 public slots:
     void settingsChangedSlot();
-private slots:
     void saveAll();
     void newFile();
     void settingsWindow();
