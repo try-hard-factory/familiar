@@ -276,6 +276,8 @@ void MainWindow::createActions()
 
 void MainWindow::createMenus()
 {
+    mainmenubar_ = new MainMenuBar(this);
+    setMenuBar(mainmenubar_);
     fileMenu_ = menuBar()->addMenu(tr("menu"));
     fileMenu_->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
     menuBar()->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
@@ -349,6 +351,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 }
 
+
 void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
@@ -359,4 +362,31 @@ void MainWindow::paintEvent(QPaintEvent* event)
         backGroundColor_); // тут поменяем цвет из настроек и сделаем доп функцию где будем менять опасити
     // Нарисуйте другие элементы интерфейса здесь
     //QMainWindow::paintEvent(event); // Вызов базовой реализации
+}
+
+
+void MainWindow::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::RightButton && event->modifiers() == Qt::NoModifier) {
+        pos_ = event->globalPosition().toPoint();
+        return;
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent* event)
+{
+    if (pos_ == kInvalidPoint)
+        return QWidget::mouseMoveEvent(event);
+
+    const QPoint delta = event->globalPosition().toPoint() - pos_;
+    move(pos() + delta);
+    pos_ = event->globalPosition().toPoint();
+}
+
+
+void MainWindow::mouseReleaseEvent(QMouseEvent* event)
+{
+    pos_ = kInvalidPoint;
+    QWidget::mouseReleaseEvent(event);
 }
