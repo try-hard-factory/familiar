@@ -1,15 +1,17 @@
 #ifndef MAINMENUBAR_H
 #define MAINMENUBAR_H
 
+#include <QFrame>
+#include <QHBoxLayout>
 #include <QMenuBar>
 #include <QToolButton>
-#include <QHBoxLayout>
-#include <QFrame>
+#include <core/settingshandler.h>
 
 class MainMenuBar : public QMenuBar
 {
 public:
-    MainMenuBar(QWidget* parent = nullptr) : QMenuBar(parent)
+    MainMenuBar(QWidget* parent = nullptr)
+        : QMenuBar(parent)
     {
         // Создание кнопок для минимизации, максимизации и закрытия
         minimizeButton_ = new QToolButton(this);
@@ -41,6 +43,27 @@ public:
         frame->setLayout(layout);
 
         setCornerWidget(frame, Qt::TopRightCorner);
+
+        connect(SettingsHandler::getInstance(),
+                &SettingsHandler::settingsChanged,
+                this,
+                &MainMenuBar::settingsChangedSlot);
+        settingsChangedSlot();
+    }
+
+public slots:
+    void settingsChangedSlot()
+    {
+        auto settings = SettingsHandler::getInstance();
+        auto colorPreset = settings->getCurrentColorPreset();
+        menuColor_ = colorPreset[EPresetsColorIdx::kMenuColor];
+        //fileMenu_->setStyleSheet("background: transparent; background-color: rgba(0, 255, 0, 255);");
+        QString rgbaColor = QString("rgba(%1, %2, %3, %4);")
+                                .arg(menuColor_.red())
+                                .arg(menuColor_.green())
+                                .arg(menuColor_.blue())
+                                .arg(255);
+        setStyleSheet("background: transparent; background-color: " + rgbaColor);
     }
 
 private slots:
@@ -54,8 +77,7 @@ private slots:
     void maximizeWindow()
     {
         // Максимизация окна
-        if (window())
-        {
+        if (window()) {
             if (window()->isMaximized())
                 window()->showNormal();
             else
@@ -71,9 +93,10 @@ private slots:
     }
 
 private:
-    QToolButton* minimizeButton_;
-    QToolButton* maximizeButton_;
-    QToolButton* closeButton_;
+    QToolButton* minimizeButton_ = nullptr;
+    QToolButton* maximizeButton_ = nullptr;
+    QToolButton* closeButton_ = nullptr;
+    QColor menuColor_;
 };
 
 

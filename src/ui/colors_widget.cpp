@@ -203,11 +203,26 @@ void ColorsWidget::colorInit()
     selection_layout->addWidget(selection_color_lbl);
     selection_layout->addWidget(selection_cp);
 
+    auto* menu_layout = new QHBoxLayout();
+    menu_layout->setAlignment(Qt::AlignRight);
+    auto* menu_color_lbl = new QLabel(tr("menu color: "));
+    menu_cp = new KColorPicker(true);
+    connect(menu_cp, &KColorPicker::colorChanged, [menu_cp = menu_cp, settings]() {
+        auto preset = settings->getCurrentColorPreset();
+        preset[EPresetsColorIdx::kMenuColor] = menu_cp->color();
+        settings->setCurrentColorPreset(preset);
+        emit SettingsHandler::getInstance()->settingsChanged();
+    });
+    menu_cp->setColor(current_preset[EPresetsColorIdx::kMenuColor]);
+    menu_layout->addWidget(menu_color_lbl);
+    menu_layout->addWidget(menu_cp);
+
     colors_layout->addLayout(background_layout);
     colors_layout->addLayout(canvas_layout);
     colors_layout->addLayout(border_layout);
     colors_layout->addLayout(text_layout);
     colors_layout->addLayout(selection_layout);
+    colors_layout->addLayout(menu_layout);
     body_layout_->addLayout(colors_layout);
 }
 

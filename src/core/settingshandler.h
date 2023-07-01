@@ -26,7 +26,8 @@ enum EPresetsColorIdx {
     kBorderColor = 2,
     kTextColor = 3,
     kSelectionColor = 4,
-    kAllIdx = 5
+    kMenuColor = 5,
+    kAllIdx = 6
 };
 
 class QFileSystemWatcher;

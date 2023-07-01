@@ -43,6 +43,7 @@ private:
     KColorPicker* border_cp = nullptr;
     KColorPicker* text_cp = nullptr;
     KColorPicker* selection_cp = nullptr;
+    KColorPicker* menu_cp = nullptr;
 };
 
 #endif // COLORSWIDGET_H

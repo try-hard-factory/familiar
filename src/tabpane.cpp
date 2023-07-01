@@ -5,9 +5,10 @@
 #include "project_settings.h"
 #include <QFileInfo>
 
-     
+
 TabPane::TabPane(QWidget* parent, MainWindow& mw)
-    : QWidget(parent), mainwindow_(mw)
+    : QWidget(parent)
+    , mainwindow_(mw)
 {
     layout_ = new QVBoxLayout; // try some other layout
     layout_->setContentsMargins(0, 0, 0, 0);
@@ -21,9 +22,11 @@ TabPane::TabPane(QWidget* parent, MainWindow& mw)
     layout_->addWidget(tabs_);
 
     addNewUntitledTab();
-    
+
     // // setStyleSheet("background: transparent; background-color: rgba(0, 0, 0, 128);");
     connect(tabs_, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
+    setStyleSheet("QTabBar::tab { background: rgba(229, 229, 229, 255); } QTabWidget::pane { border: "
+                  "1px solid lightgray; top:-1px; background:  transparent; }");
 }
 
 TabPane::~TabPane()
@@ -89,12 +92,12 @@ void TabPane::onTabClosed(int index)
 {
     CanvasView* canvasview = widgetAt(index);
     if (canvasview->isModified()) {
-        QMessageBox::StandardButton resBtn = QMessageBox::warning(
-            this,
-            "Warning!",
-            tr("You have unsaved documents!\n\nDo you want to save it?"),
-            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-            QMessageBox::No);
+        QMessageBox::StandardButton resBtn
+            = QMessageBox::warning(this,
+                                   "Warning!",
+                                   tr("You have unsaved documents!\n\nDo you want to save it?"),
+                                   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                                   QMessageBox::No);
 
         if (resBtn == QMessageBox::Yes) {
             if (mainwindow_.fileActions().saveFile() == QDialog::Accepted) {
