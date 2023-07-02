@@ -280,6 +280,7 @@ void ColorsWidget::updateComponents()
     border_cp->setColor(current_preset[EPresetsColorIdx::kBorderColor]);
     text_cp->setColor(current_preset[EPresetsColorIdx::kTextColor]);
     selection_cp->setColor(current_preset[EPresetsColorIdx::kSelectionColor]);
+    menu_cp->setColor(current_preset[EPresetsColorIdx::kMenuColor]);
     opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
 
     emit SettingsHandler::getInstance()->settingsChanged();
