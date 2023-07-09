@@ -98,7 +98,8 @@ set(PROJECT_SOURCES
         ui/extendedslider.cpp
         ui/extendedslider.h
         utils/utils.h
-
+        selector.cpp
+        selector.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 

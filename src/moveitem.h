@@ -9,7 +9,7 @@
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
 #include <QWheelEvent>
-
+#include "selector.h"
 class MoveItem : public QObject, public QGraphicsRectItem
 {
     Q_OBJECT
