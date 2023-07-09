@@ -97,6 +97,7 @@ set(PROJECT_SOURCES
         main_context_menu.h
         ui/extendedslider.cpp
         ui/extendedslider.h
+        utils/utils.cpp
         utils/utils.h
         selector.cpp
         selector.h
