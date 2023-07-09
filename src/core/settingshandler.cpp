@@ -272,11 +272,11 @@ QVariant SettingsHandler::value(const QString& key) const
         setErrorState(true);
     }
     if (hasError_) {
-        qDebug() << "ERROR: " << key << " = " << val;
+        // qDebug() << "ERROR: " << key << " = " << val;
         return handler->fallback();
     }
 
-    qDebug() << "NOERROR: " << key << " = " << val;
+    //qDebug() << "NOERROR: " << key << " = " << val;
     return handler->value(val);
 }
 

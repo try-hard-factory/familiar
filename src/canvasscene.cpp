@@ -26,7 +26,6 @@ CanvasScene::CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene* scene)
     (void) scene;
     itemGroup_ = new ItemGroup(zc);
     LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
-    //    itemGroup_->setFiltersChildEvents(true);
 
     itemGroup_->setPos({0, 0});
     addItem(itemGroup_);
@@ -99,7 +98,7 @@ void CanvasScene::pasteFromClipboard()
                 LOG_DEBUG(logger, "Dropped file: ", fileName.toStdString());
                 qDebug() << "formats: " << mimedata->formats();
 
-                MoveItem* item = new MoveItem(fileName, zCounter_);
+                auto* item = new MoveItem(fileName, zCounter_);
                 item->setPos({lastClickedPoint_.x() + x, lastClickedPoint_.y()});
                 x += item->getRect().width();
                 addItem(item);
@@ -137,7 +136,7 @@ void CanvasScene::pasteFromTemp()
     itemGroup_->clearItemGroup();
     for (auto& item : mainwindow_.clipboardItems()) {
         auto widget = qgraphicsitem_cast<MoveItem*>(item);
-        MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(), widget->zcounter());
+        auto* tmpitem = new MoveItem(widget->qimage_ptr(), widget->zcounter());
         tmpitem->setPos(widget->pos());
 
         qDebug() << tmpitem->pos();
@@ -177,7 +176,7 @@ void CanvasScene::addImageToSceneToPosition(QImage&& image, QPointF position)
 {
     ++zCounter_;
     QImage* img = new QImage(image);
-    MoveItem* item = new MoveItem(img, zCounter_);
+    auto* item = new MoveItem(img, zCounter_);
     item->setPos(position);
     addItem(item);
 }
@@ -194,21 +193,22 @@ QByteArray CanvasScene::fml_payload()
         // \TODO: type.h header with all types (image, textline, multitextline)
         if (it->type() != 3)
             continue;
-        auto widget = qgraphicsitem_cast<MoveItem*>(it);
+        auto widget = qgraphicsitem_cast<MoveItemBase*>(it);
 
-        ds << widget->scenePos() << (qint32) widget->height() << (qint32) widget->width()
-           << widget->boundingRect() << (quint16) widget->format();
+        // ds << widget->scenePos() << (qint32) widget->height() << (qint32) widget->width()
+        //    << widget->boundingRect() << (quint16) widget->format();
 
-        QByteArray compressed = qCompress(widget->qimage().constBits(),
-                                          widget->qimage().sizeInBytes(),
-                                          7);
+        // QByteArray compressed = qCompress(widget->qimage().constBits(),
+        //                                   widget->qimage().sizeInBytes(),
+        //                                   7);
 
-        qDebug() << widget->qimage().sizeInBytes() << " " << compressed.size() << " "
-                 << widget->qimage().bitPlaneCount();
+        // qDebug() << widget->qimage().sizeInBytes() << " " << compressed.size() << " "
+        //          << widget->qimage().bitPlaneCount();
 
-        ds << (quint64) compressed.size();
-        qDebug() << "fml_payload::save sizeInBytes: " << widget->qimage().sizeInBytes();
-        ds.writeRawData((const char*) compressed.data(), compressed.size());
+        // ds << (quint32) it->type();
+        // ds << (quint64) compressed.size();
+        // qDebug() << "fml_payload::save sizeInBytes: " << widget->qimage().sizeInBytes();
+        // ds.writeRawData((const char*) compressed.data(), compressed.size());
     }
 
     return arr;
@@ -322,16 +322,17 @@ std::string stateText(int idx)
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "CanvasScene::mousePressEvent";
     //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
-    auto item = getFirstItemUnderCursor(event->scenePos());
+    auto item = getFirstItemUnderCursor(event->scenePos());    
     if (item && item->type() != ItemGroup::eBorderDot) {
         item->setZValue(++zCounter_);
-        qDebug() << "zcounter=" << zCounter_ << ", Z VALUE=" << item->zValue();
+        //qDebug() << "zcounter=" << zCounter_ << ", Z VALUE=" << item->zValue();
         //        LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
     }
     if (item && item->type() == ItemGroup::eBorderDot) {
         state_ = eGroupItemResizing;
-        LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+        //LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
         QGraphicsScene::mousePressEvent(event);
         return;
     }
@@ -347,11 +348,11 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
                     itemGroup_->addItemToGroup(item);
                     itemGroup_->incZ();
                     mainSelArea_.setReady(true);
-                    LOG_DEBUG(logger,
-                              "Group size: ",
-                              itemGroup_->childItems().size(),
-                              ". Empty: ",
-                              itemGroup_->isEmpty());
+                    // LOG_DEBUG(logger,
+                    //           "Group size: ",
+                    //           itemGroup_->childItems().size(),
+                    //           ". Empty: ",
+                    //           itemGroup_->isEmpty());
                     //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
                 }
                 //                state_ = eMouseSelection;
@@ -368,15 +369,21 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     QGraphicsScene::mousePressEvent(event);
 }
 
+void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *mouseEvent)
+{
+    qDebug() << "CanvasScene::mouseDoubleClickEvent";
+    QGraphicsScene::mouseDoubleClickEvent(mouseEvent);
+}
+
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
     lastClickedPoint_ = event->scenePos();
-    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
+    //LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
 
     if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
         state_ = eMouseMoving;
-        LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+        //LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
         itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
         QGraphicsScene::mouseReleaseEvent(event);
         return;
@@ -411,13 +418,13 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                     }
 
                     state_ = eMouseMoving;
-                    LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+                    //LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
                 }
             } else {
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
                 state_ = eMouseMoving;
-                LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+                //LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
             }
         }
     }
@@ -477,7 +484,11 @@ QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
     for (auto& it : childs) {
         if (it == itemGroup_)
             continue;
-        if (it->type() == 65537) { // borderdot control
+        if (it->type() == ItemGroup::eNote || it->type() == ItemGroup::eImage) {
+            if (it->sceneBoundingRect().contains(p)) {
+                return it;
+            }
+        } else if (it->type() == 65537) { // borderdot control
             // NOTE: Maybe I must reimplement QGraphicsItem::contains,
             //       but I don't know how yet.
             auto point = p - it->scenePos();
@@ -485,10 +496,6 @@ QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
             int x = 4;
             if ((len * parentViewScaleFactor_ - x) < 0)
                 return it;
-        } else {
-            if (it->sceneBoundingRect().contains(p)) {
-                return it;
-            }
         }
     }
 
@@ -519,6 +526,7 @@ bool CanvasScene::isAnySelectedUnderCursor() const
 void CanvasScene::onSelectionChanged()
 {
     auto selItems = selectedItems();
+    qDebug() << "Selected Items: " << selItems.size();
     (void) selItems;
 }
 

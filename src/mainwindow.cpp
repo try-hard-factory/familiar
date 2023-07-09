@@ -124,6 +124,13 @@ void MainWindow::settingsWindow()
 }
 
 
+void MainWindow::note()
+{
+    auto view = tabpane_->currentWidget();
+    view->addNote("note");
+}
+
+
 void MainWindow::saveFile()
 {
     fileactions_->saveFile();
@@ -364,6 +371,7 @@ void MainWindow::paintEvent(QPaintEvent* event)
 
 void MainWindow::mousePressEvent(QMouseEvent* event)
 {
+    qDebug() << "MainWindow::mousePressEvent";
     if (event->button() == Qt::RightButton && event->modifiers() == Qt::NoModifier) {
         pos_ = event->globalPosition().toPoint();
         return;

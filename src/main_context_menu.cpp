@@ -13,6 +13,10 @@ MainContextMenu::MainContextMenu(MainWindow& wm, QWidget* parent)
     connect(settingsAction_, SIGNAL(triggered()), this, SLOT(settings()));
     addAction(settingsAction_);
 
+    noteAction_ = new QAction("note", this);
+    connect(noteAction_, SIGNAL(triggered()), this, SLOT(note()));
+    addAction(noteAction_);
+
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
             this,
@@ -50,4 +54,10 @@ void MainContextMenu::quit()
 void MainContextMenu::settings()
 {
     mainwindow_.settingsWindow();
+}
+
+
+void MainContextMenu::note()
+{
+    mainwindow_.note();
 }

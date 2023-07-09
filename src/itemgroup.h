@@ -1,22 +1,26 @@
 #ifndef ITEMGROUP_H
 #define ITEMGROUP_H
-
+#include "moveitem.h"
+#include <QCoreApplication>
+#include <QEvent>
 #include <QGraphicsItemGroup>
+#include <QGraphicsSceneMouseEvent>
 #include <QObject>
-
 class MoveItem;
 class DotSignal;
-class QGraphicsSceneMouseEvent;
+//class QGraphicsSceneMouseEvent;
 
 class ItemGroup : public QObject, public QGraphicsItemGroup
 {
     Q_OBJECT
     Q_INTERFACES(QGraphicsItem)
-    Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE
-                   setPreviousPosition NOTIFY previousPositionChanged)
+    Q_PROPERTY(QPointF previousPosition READ previousPosition WRITE setPreviousPosition NOTIFY
+                   previousPositionChanged)
 public:
     enum EItemsType {
         eBorderDot = QGraphicsItem::UserType + 1,
+        eNote = QGraphicsItem::UserType + 2,
+        eImage = QGraphicsItem::UserType + 3,
     };
     ItemGroup(uint64_t& zc, QGraphicsItemGroup* parent = nullptr);
     ~ItemGroup();
@@ -57,6 +61,8 @@ public:
     QRectF boundingRect() const override;
     void notifyCursorUpdater(QGraphicsSceneMouseEvent* event, qreal sf);
     void setScaleControlFactor(qreal sf);
+    bool containsOnlyNote();
+    void startEditNote();
 
 signals:
     void rectChanged(ItemGroup* rect);
@@ -68,17 +74,46 @@ protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
+    // void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override;
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override;
     //    void hoverMoveEvent(QGraphicsSceneHoverEvent *event) override;
-    QVariant itemChange(GraphicsItemChange change,
-                        const QVariant& value) override;
-    void paint(QPainter* painter,
-               const QStyleOptionGraphicsItem* option,
-               QWidget* widget) override;
+    // bool sceneEvent(QEvent* event) override
+    // {
+    //     if (event->type() == QEvent::GraphicsSceneMouseDoubleClick) {
+    //         qDebug()
+    //             << "ItemGroup::sceneEvent !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    //             << event->type();
+    //         propagateSceneEvent(event);
+    //         return true;
+    //     }
 
+    //     return QGraphicsItemGroup::sceneEvent(event);
+    // }
+    QVariant itemChange(GraphicsItemChange change, const QVariant& value) override;
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) override;
+
+    // bool sceneEvent(QEvent* event) override
+    // {
+    //     qDebug() << "ItemGroup::sceneEvent TextItem!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << event->type();
+    //     if (event->type() == QEvent::GraphicsSceneMouseDoubleClick) {
+    //         QGraphicsSceneMouseEvent* mouseEvent = static_cast<QGraphicsSceneMouseEvent*>(event);
+    //         if (mouseEvent->button() == Qt::LeftButton) {
+
+    //             //return true; // Поглощаем событие двойного щелчка мыши
+    //         }
+    //     }
+    //     return QGraphicsItem::sceneEvent(event);
+    // }
 public:
+    void propagateSceneEvent(QEvent* event)
+    {
+        for (QGraphicsItem* child : childItems()) {
+            MoveItemBase* widget = static_cast<MoveItemBase*>(child);
+            qDebug() << "widget" << (void*)widget << " event" << event;    
+            QCoreApplication::sendEvent(widget, event);
+        }
+    }
     void clearItemGroup();
     bool isContain(const QGraphicsItem* item) const;
     bool isThisDots(const QGraphicsItem* item) const;

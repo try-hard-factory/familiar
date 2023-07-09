@@ -15,7 +15,7 @@ extern Logger logger;
 
 /*********************************************************************/
 #include "borderdot.h"
-#include "moveitem.h"
+
 #include <math.h>
 #include <QCursor>
 #include <QDebug>
@@ -68,6 +68,11 @@ ItemGroup::ItemGroup(uint64_t& zc, QGraphicsItemGroup* parent)
 {
     setAcceptHoverEvents(true);
     setFiltersChildEvents(true);
+    // setAcceptTouchEvents(true);
+    setHandlesChildEvents(false); //этот флаг нужен, чтобы события "проваливались" к добавленным элементам
+    // пока его выключу потому что ломается всё остальное. Но потом надо переделать обработку.
+    // А пока я буду обрабатывать двойной клик из этого класса. и в зависимости от элемента - буду вызывать центрирование
+    // или изменение текстовой заметки
     setFlags(ItemIsSelectable | ItemSendsGeometryChanges);
 }
 
@@ -79,10 +84,8 @@ QRectF ItemGroup::calcNewBr()
 
     qreal min_x = items_.first()->pos().x();
     qreal min_y = items_.first()->pos().y();
-    qreal max_x = items_.first()->pos().x()
-                  + items_.first()->boundingRect().width();
-    qreal max_y = items_.first()->pos().y()
-                  + items_.first()->boundingRect().height();
+    qreal max_x = items_.first()->pos().x() + items_.first()->boundingRect().width();
+    qreal max_y = items_.first()->pos().y() + items_.first()->boundingRect().height();
 
     for (auto& item : items_) {
         qreal cur_min_x = item->pos().x();
@@ -122,8 +125,6 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
         if (it->type() == eBorderDot)
             continue;
         scene_tmp = scene_tmp.united(it->sceneBoundingRect());
-        auto widget = qgraphicsitem_cast<MoveItem*>(it);
-        widget->setInGroup(true);
     }
 
     sceneRectItemGroup_ = scene_tmp;
@@ -145,11 +146,6 @@ void ItemGroup::addItemToGroup(QGraphicsItem* item)
 
 void ItemGroup::removeItemFromGroup(QGraphicsItem* item)
 {
-    if (item->type() != eBorderDot) {
-        auto widget = qgraphicsitem_cast<MoveItem*>(item);
-        widget->setInGroup(false);
-        //        LOG_DEBUG(logger, "REMOVE ", item, ", type = ", item->type());
-    }
     items_.erase(std::remove_if(items_.begin(),
                                 items_.end(),
                                 [&](QGraphicsItem* i) { return i == item; }),
@@ -197,14 +193,10 @@ void ItemGroup::notifyCursorUpdater(QGraphicsSceneMouseEvent* event, qreal sf)
         auto blPoint = pt - cornerGrabber[2]->scenePos();
         auto brPoint = pt - cornerGrabber[3]->scenePos();
 
-        auto tlLen = std::sqrt(std::pow(tlPoint.x(), 2)
-                               + std::pow(tlPoint.y(), 2));
-        auto trLen = std::sqrt(std::pow(trPoint.x(), 2)
-                               + std::pow(trPoint.y(), 2));
-        auto blLen = std::sqrt(std::pow(blPoint.x(), 2)
-                               + std::pow(blPoint.y(), 2));
-        auto brLen = std::sqrt(std::pow(brPoint.x(), 2)
-                               + std::pow(brPoint.y(), 2));
+        auto tlLen = std::sqrt(std::pow(tlPoint.x(), 2) + std::pow(tlPoint.y(), 2));
+        auto trLen = std::sqrt(std::pow(trPoint.x(), 2) + std::pow(trPoint.y(), 2));
+        auto blLen = std::sqrt(std::pow(blPoint.x(), 2) + std::pow(blPoint.y(), 2));
+        auto brLen = std::sqrt(std::pow(brPoint.x(), 2) + std::pow(brPoint.y(), 2));
 
         m_cornerFlags = 0;
         int x = 4;
@@ -297,6 +289,7 @@ void ItemGroup::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void ItemGroup::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "ItemGroup::mousePressEvent";
     setZValue(++zCounter_);
     shiftMouseCoords_ = (this->pos() - mapToScene(event->pos())) / scale();
 
@@ -319,26 +312,27 @@ void ItemGroup::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 }
 
 
-void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
-{
-    //    m_actionFlags = (m_actionFlags == ResizeState)?RotationState:ResizeState;
-    //    setVisibilityGrabbers();
-    QGraphicsItemGroup::mouseDoubleClickEvent(event);
-}
+// void ItemGroup::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
+// {
+//     //    m_actionFlags = (m_actionFlags == ResizeState)?RotationState:ResizeState;
+//     //    setVisibilityGrabbers();
+//     qDebug() << "ItemGroup::mouseDoubleClickEvent";
+//     QGraphicsItemGroup::mouseDoubleClickEvent(event);
+// }
 
 
 void ItemGroup::hoverEnterEvent(QGraphicsSceneHoverEvent* event)
 {
-    Q_UNUSED(event)
-    //    QGraphicsItemGroup::hoverEnterEvent(event);
+    //Q_UNUSED(event)
+    QGraphicsItemGroup::hoverEnterEvent(event);
 }
 
 
 void ItemGroup::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 {
-    Q_UNUSED(event)
+    //Q_UNUSED(event)
     //    m_cornerFlags = 0;
-    //    QGraphicsItemGroup::hoverLeaveEvent( event );
+    QGraphicsItemGroup::hoverLeaveEvent( event );
 }
 
 
@@ -376,8 +370,7 @@ void ItemGroup::hoverLeaveEvent(QGraphicsSceneHoverEvent* event)
 //}
 
 
-QVariant ItemGroup::itemChange(QGraphicsItem::GraphicsItemChange change,
-                               const QVariant& value)
+QVariant ItemGroup::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value)
 {
     switch (change) {
     case QGraphicsItemGroup::ItemSelectedChange:
@@ -390,19 +383,16 @@ QVariant ItemGroup::itemChange(QGraphicsItem::GraphicsItemChange change,
 }
 
 
-ItemGroup::new_size_t ItemGroup::calculateNewSize(const QRectF& tmpRect,
-                                                  MoveItem* widget)
+ItemGroup::new_size_t ItemGroup::calculateNewSize(const QRectF& tmpRect, MoveItem* widget)
 {
     qreal old_ig_w = boundingRect().width();
     qreal old_ig_h = boundingRect().height();
     qreal new_ig_w = tmpRect.width();
     qreal new_ig_h = tmpRect.height();
 
-    qreal old_h = abs(widget->boundingRect().bottom()
-                      - widget->boundingRect().top());
+    qreal old_h = abs(widget->boundingRect().bottom() - widget->boundingRect().top());
     qreal new_h = (old_h * new_ig_h) / old_ig_h;
-    qreal old_w = abs(widget->boundingRect().left()
-                      - widget->boundingRect().right());
+    qreal old_w = abs(widget->boundingRect().left() - widget->boundingRect().right());
     qreal new_w = (old_w * new_h) / old_h;
 
     qreal new_x = 0;
@@ -460,8 +450,7 @@ void ItemGroup::resizeTopLeft(const QPointF& pt)
     auto cos_kca = ckca_dot / (ca_len * ck_len);
     auto cd2_len = ck_len * cos_kca;
 
-    auto y = (cd2_len * cb_len)
-             / (std::sqrt(ba_len * ba_len + cb_len * cb_len));
+    auto y = (cd2_len * cb_len) / (std::sqrt(ba_len * ba_len + cb_len * cb_len));
     auto x = std::sqrt(cd2_len * cd2_len - y * y);
 
     if (x < 10 || y < 10) {
@@ -497,10 +486,7 @@ void ItemGroup::resizeTopLeft(const QPointF& pt)
         auto new_size = calculateNewSize(tmpRect, widget);
 
         widget->setPos(new_size.new_x, new_size.new_y);
-        widget->setRect(new_size.new_x,
-                        new_size.new_y,
-                        new_size.new_w,
-                        new_size.new_h);
+        widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
     rectItemGroup_ = tmpRect;
@@ -533,8 +519,7 @@ void ItemGroup::resizeTopRight(const QPointF& pt)
     auto cos_kdb = dkdb_dot / (db_len * dk_len);
     auto dd2_len = dk_len * cos_kdb;
 
-    auto x = (dd2_len * dc_len)
-             / (std::sqrt(cb_len * cb_len + dc_len * dc_len));
+    auto x = (dd2_len * dc_len) / (std::sqrt(cb_len * cb_len + dc_len * dc_len));
     auto y = std::sqrt(dd2_len * dd2_len - x * x);
 
     if (x < 10 || y < 10)
@@ -569,10 +554,7 @@ void ItemGroup::resizeTopRight(const QPointF& pt)
         auto new_size = calculateNewSize(tmpRect, widget);
 
         widget->setPos(new_size.new_x, new_size.new_y);
-        widget->setRect(new_size.new_x,
-                        new_size.new_y,
-                        new_size.new_w,
-                        new_size.new_h);
+        widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
     rectItemGroup_ = tmpRect;
@@ -605,8 +587,7 @@ void ItemGroup::resizeBottomLeft(const QPointF& pt)
     auto cos_kdb = bkbd_dot / (bd_len * bk_len);
     auto bd2_len = bk_len * cos_kdb;
 
-    auto x = (bd2_len * ba_len)
-             / (std::sqrt(ad_len * ad_len + ba_len * ba_len));
+    auto x = (bd2_len * ba_len) / (std::sqrt(ad_len * ad_len + ba_len * ba_len));
     auto y = std::sqrt(bd2_len * bd2_len - x * x);
 
     if (x < 10 || y < 10)
@@ -642,10 +623,7 @@ void ItemGroup::resizeBottomLeft(const QPointF& pt)
         auto new_size = calculateNewSize(tmpRect, widget);
 
         widget->setPos(new_size.new_x, new_size.new_y);
-        widget->setRect(new_size.new_x,
-                        new_size.new_y,
-                        new_size.new_w,
-                        new_size.new_h);
+        widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
     rectItemGroup_ = tmpRect;
@@ -678,8 +656,7 @@ void ItemGroup::resizeBottomRight(const QPointF& pt)
     auto cos_kac = akac_dot / (ac_len * ak_len);
     auto ad2_len = ak_len * cos_kac;
 
-    auto x = (ad2_len * dc_len)
-             / (std::sqrt(ad_len * ad_len + dc_len * dc_len));
+    auto x = (ad2_len * dc_len) / (std::sqrt(ad_len * ad_len + dc_len * dc_len));
     auto y = std::sqrt(ad2_len * ad2_len - x * x);
 
     if (x < 10 || y < 10)
@@ -717,10 +694,7 @@ void ItemGroup::resizeBottomRight(const QPointF& pt)
         auto new_size = calculateNewSize(tmpRect, widget);
 
         widget->setPos(new_size.new_x, new_size.new_y);
-        widget->setRect(new_size.new_x,
-                        new_size.new_y,
-                        new_size.new_w,
-                        new_size.new_h);
+        widget->setRect(new_size.new_x, new_size.new_y, new_size.new_w, new_size.new_h);
     }
 
     rectItemGroup_ = tmpRect;
@@ -783,14 +757,10 @@ void ItemGroup::setPositionGrabbers()
 
     QRectF tmpRect = boundingRect();
 
-    cornerGrabber[GrabberTopLeft]->setPos(tmpRect.topLeft().x(),
-                                          tmpRect.topLeft().y());
-    cornerGrabber[GrabberTopRight]->setPos(tmpRect.topRight().x(),
-                                           tmpRect.topRight().y());
-    cornerGrabber[GrabberBottomLeft]->setPos(tmpRect.bottomLeft().x(),
-                                             tmpRect.bottomLeft().y());
-    cornerGrabber[GrabberBottomRight]->setPos(tmpRect.bottomRight().x(),
-                                              tmpRect.bottomRight().y());
+    cornerGrabber[GrabberTopLeft]->setPos(tmpRect.topLeft().x(), tmpRect.topLeft().y());
+    cornerGrabber[GrabberTopRight]->setPos(tmpRect.topRight().x(), tmpRect.topRight().y());
+    cornerGrabber[GrabberBottomLeft]->setPos(tmpRect.bottomLeft().x(), tmpRect.bottomLeft().y());
+    cornerGrabber[GrabberBottomRight]->setPos(tmpRect.bottomRight().x(), tmpRect.bottomRight().y());
 }
 
 
@@ -819,9 +789,7 @@ void ItemGroup::hideGrabbers()
 }
 
 
-void ItemGroup::paint(QPainter* painter,
-                      const QStyleOptionGraphicsItem* option,
-                      QWidget* widget)
+void ItemGroup::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
 {
 #ifdef GRID_DEBUG
     painter->save();
@@ -934,10 +902,9 @@ void ItemGroup::dumpBits(QString text)
 
 QImage ItemGroup::mergedImages()
 {
-    QImage result(
-        boundingRect().width(),
-        boundingRect().height(),
-        QImage::Format::Format_RGB32); // image to hold the join of image 1 & 2
+    QImage result(boundingRect().width(),
+                  boundingRect().height(),
+                  QImage::Format::Format_RGB32); // image to hold the join of image 1 & 2
     result.fill(QColor(42, 42, 42));
     QPainter painter(&result);
 
@@ -946,8 +913,7 @@ QImage ItemGroup::mergedImages()
     for (auto& it : items_) {
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
         qDebug() << widget->pos() << ' ' << widget->boundingRect();
-        painter.drawImage({widget->pos() - boundingRect().topLeft(),
-                           widget->boundingRect().size()},
+        painter.drawImage({widget->pos() - boundingRect().topLeft(), widget->boundingRect().size()},
                           widget->qimage());
     }
     return result;
@@ -963,6 +929,24 @@ void ItemGroup::setScaleControlFactor(qreal sf)
     controlScaleFactor_ = sf;
 
     updateScaleControl();
+}
+
+bool ItemGroup::containsOnlyNote()
+{
+    // auto widget = qgraphicsitem_cast<MoveItemBase*>(items_[0]);
+    qDebug() << "####### " << items_.size() << " " << items_[0]->type();
+    if (items_.size() == 1 && items_[0]->type() == eNote) {
+        return true;
+    }
+
+    return false;
+}
+
+void ItemGroup::startEditNote()
+{
+    auto widget = qgraphicsitem_cast<TextItem*>(items_[0]);
+    qDebug() << "####### ItemGroup::startEditNote "  << widget->type();
+    widget->startTextEdit();
 }
 
 void ItemGroup::updateScaleControl()

@@ -17,11 +17,13 @@ public slots:
 private slots:
     void settings();
     void quit();
+    void note();
 
 private:
     MainWindow& mainwindow_;
     QAction* quitAction_ = nullptr;
     QAction* settingsAction_ = nullptr;
+    QAction* noteAction_ = nullptr;
     QColor menuColor_;
 };
 

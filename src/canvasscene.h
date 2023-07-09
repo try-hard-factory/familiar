@@ -56,6 +56,7 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *mouseEvent) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
     void drawForeground(QPainter* painter, const QRectF& rect) override;
     void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;

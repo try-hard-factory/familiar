@@ -107,6 +107,7 @@ public slots:
     void saveAll();
     void newFile();
     void settingsWindow();
+    void note();
     void saveFile();
     void quit();
     void openFile();

@@ -72,6 +72,17 @@ void CanvasView::addImage(const QString& path, QPointF point)
 }
 
 
+void CanvasView::addNote(const QString& note)
+{
+    ++zCounter_;
+    TextItem* item = new TextItem();
+    item->setText(note);
+    //item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+
+    item->setPos(lastClickedPoint_);
+    scene_->addItem(item);
+}
+
 void CanvasView::addImage(QImage* img, QPointF point)
 {
     ++zCounter_;
@@ -87,7 +98,7 @@ void CanvasView::addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, 
     ++zCounter_;
     MoveItem* item = new MoveItem(ba, w, h, bpl, f, zCounter_);
     item->setRect(br);
-    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
+    // LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
     item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 
     item->setPos(br.topLeft());
@@ -104,8 +115,6 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         }
         event->accept();
     } else if (pan_ == Qt::LeftButton) {
-        panStartX_ = event->position().x();
-        panStartY_ = event->position().y();
         event->accept();
     }
 
@@ -115,16 +124,13 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
+    qDebug() << "CanvasView::mousePressEvent";
     if (event->button() == Qt::LeftButton) {
         pan_ = Qt::LeftButton;
-        panStartX_ = event->position().x();
-        panStartY_ = event->position().y();
         event->accept();
     } else if (event->button() == Qt::RightButton) {
         setDragMode(QGraphicsView::NoDrag);
         pan_ = Qt::RightButton;
-        panStartX_ = event->position().x();
-        panStartY_ = event->position().y();
         pressPos_ = event->globalPosition().toPoint();
         isMoving_ = true;
         wndPos_ = mainwindow_.pos();
@@ -136,6 +142,8 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
 void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 {
+    lastClickedPoint_ = event->pos();
+
     if (event->button() == Qt::RightButton) {
         if (!rightMoveflag_) {
             MainContextMenu contextMenu(mainwindow_, this);
@@ -157,16 +165,25 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 
 void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
 {
-    if (!fitViewF_) {
-        fitViewF_ = true;
-        fitInView(scene_->itemGroup(), Qt::KeepAspectRatio);
-        scene_->updateViewScaleFactor(transform().m11());
-    } else {
-        fitViewF_ = false;
-        fitInView(scene_->sceneRect(), Qt::KeepAspectRatio);
-        scene_->updateViewScaleFactor(transform().m11());
-    }
+    qDebug() << "CanvasView::mouseDoubleClickEvent";
+    // if (scene_->itemGroup()->containsOnlyNote()) {
+    //     scene_->itemGroup()->startEditNote();
+    //     QGraphicsView::mouseDoubleClickEvent(event);
+    //     return;
+    // }
+    // if (!fitViewF_) {
+    //     fitViewF_ = true;
+    //     fitInView(scene_->itemGroup(), Qt::KeepAspectRatio);
+    //     scene_->updateViewScaleFactor(transform().m11());
+    // } else {
+    //     fitViewF_ = false;
+    //     fitInView(scene_->sceneRect(), Qt::KeepAspectRatio);
+    //     scene_->updateViewScaleFactor(transform().m11());
+    // }
     QGraphicsView::mouseDoubleClickEvent(event);
+    if (event->button() == Qt::LeftButton) {
+        event->accept();
+    }
 }
 
 void CanvasView::ScaleView(qreal qFactor)

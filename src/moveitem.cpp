@@ -13,8 +13,8 @@ extern Logger logger;
 /*********************************************************************/
 
 
-MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem* parent)
-    : QGraphicsRectItem(parent)
+MoveItem::MoveItem(const QString& path, uint64_t& zc, MoveItemBase* parent)
+    : MoveItemBase(parent)
     , zCounter_(zc)
 {
     setZValue(zCounter_);
@@ -40,8 +40,8 @@ MoveItem::MoveItem(const QString& path, uint64_t& zc, QGraphicsRectItem* parent)
     setFlag(QGraphicsItem::ItemIsMovable, true);
 }
 
-MoveItem::MoveItem(QImage* img, uint64_t& zc, QGraphicsRectItem* parent)
-    : QGraphicsRectItem(parent)
+MoveItem::MoveItem(QImage* img, uint64_t& zc, MoveItemBase* parent)
+    : MoveItemBase(parent)
     , qimage_(new QImage(*img))
     , zCounter_(zc)
 {
@@ -72,8 +72,8 @@ MoveItem::MoveItem(QByteArray ba,
                    qsizetype bpl,
                    QImage::Format f,
                    uint64_t& zc,
-                   QGraphicsRectItem* parent)
-    : QGraphicsRectItem(parent)
+                   MoveItemBase* parent)
+    : MoveItemBase(parent)
     , ba_(ba)
     , zCounter_(zc)
 {
@@ -128,7 +128,7 @@ void MoveItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, 
     outline_pen.setCosmetic(true);
     painter->setPen(outline_pen);
 
-    if (inGroup_) {
+    if (group() != nullptr) {
         QPainterPath path;
         path.addPath(shape());
 
@@ -157,6 +157,7 @@ void MoveItem::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void MoveItem::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    qDebug() << "MoveItem::mousePressEvent";
     setZValue(++zCounter_);
 
     shiftMouseCoords_ = (this->pos() - mapToScene(event->pos())) / scale();
@@ -237,5 +238,5 @@ void MoveItem::setRect(qreal x, qreal y, qreal w, qreal h)
 void MoveItem::setRect(const QRectF& rect)
 {
     rect_ = rect;
-    QGraphicsRectItem::setRect(rect);
+    //QGraphicsItem::setRect(rect);
 }

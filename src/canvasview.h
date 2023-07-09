@@ -80,7 +80,8 @@ public:
      * \~english @param point - coords of image on scene
      */
     void addImage(QImage* img, QPointF point);
-
+    
+    void addNote(const QString& note);
     void addImage(
         QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
@@ -176,9 +177,8 @@ private:
     bool rightMoveflag_ = false;
     QPoint pressPos_;
     QPoint wndPos_;
+    QPointF lastClickedPoint_{0, 0};
     bool isMoving_ = false;
-    qreal panStartX_;
-    qreal panStartY_;
     uint64_t zCounter_ = 0;
     bool fitViewF_ = false;
     QColor canvasColor_;
