@@ -81,8 +81,7 @@ public:
      */
     void addImage(QImage* img, QPointF point);
 
-    void addImage(
-        QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
+    void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
     void SetScale(qreal qrScale);
     void ScaleView(qreal qFactor);
@@ -101,6 +100,28 @@ public:
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
+
+    //----new interface--------------
+    qreal get_scale() const { return transform().m11(); }
+
+    void reset_previous_transform(QGraphicsItem* toggle_item)
+    {
+        // if (previous_transform && previous_transform->toggle_item != toggle_item)
+        // {
+        //     delete previous_transform;
+        //     previous_transform = nullptr;
+        // }
+    }
+
+    void on_selection_changed()
+    {
+        qDebug() << "Currently selected items:" << scene()->selectedItems().size();
+        // bool hasSelection = !scene->selectedItems().isEmpty();
+        // actiongroup_set_enabled("active_when_selection", hasSelection);
+        // actiongroup_set_enabled("active_when_croppable", scene->has_croppable_selection());
+        // viewport()->repaint();
+    }
+
 public slots:
     /**
      * \~russian @brief QT обработчик для события выбора элементов
@@ -167,6 +188,7 @@ protected:
      * \~english @param rect - is the exposed rectangle.
      */
     void drawBackground(QPainter* painter, const QRectF& rect) override;
+
 
 private:
     MainWindow& mainwindow_;

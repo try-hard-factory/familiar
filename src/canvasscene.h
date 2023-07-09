@@ -52,6 +52,18 @@ public:
     bool isUntitled();
     ItemGroup* itemGroup() const noexcept { return itemGroup_; }
 
+    void onSelectionChange()
+    {
+        // if (hasMultiSelection())
+        //     multiSelectItem->fitSelectionArea(itemsBoundingRect(true));
+        // if (hasMultiSelection() && !multiSelectItem->scene()) {
+        //     addItem(multiSelectItem);
+        //     multiSelectItem->bringToFront();
+        // }
+        // if (!hasMultiSelection() && multiSelectItem->scene())
+        //     removeItem(multiSelectItem);
+    }
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -67,6 +79,12 @@ public slots:
     void settingsChangedSlot();
 private slots:
     void clipboardChanged();
+
+
+public:
+    qreal max_z = 0;
+    qreal min_z = 0;
+    qreal Z_STEP = 0.001;
 
 private:
     qint16 objectsCount() const;

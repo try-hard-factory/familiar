@@ -1,4 +1,5 @@
 #pragma once
+#include <QRectF>
 
 template<typename M, typename S>
 void centered_widget(M* mw, S* w)
@@ -14,3 +15,7 @@ void centered_widget(M* mw, S* w)
     // qDebug() << point;
     // w->move(point);e
 }
+
+QRectF get_rect_from_points(const QPointF& point1, const QPointF& point2);
+
+double roundTo(double number, double base);
