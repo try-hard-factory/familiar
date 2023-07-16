@@ -8,6 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
 #include <QRubberBand>
+//#include "moveitem.h"
 
 enum EState {
     eMouseMoving = 0x0000,
@@ -18,6 +19,7 @@ enum EState {
 
 class MainWindow;
 class project_settings;
+class TextItem;
 
 class CanvasScene : public QGraphicsScene
 {
@@ -82,6 +84,19 @@ private slots:
 
 
 public:
+    bool has_selection()
+    {
+        return true;
+    }
+
+    bool has_single_selection()
+    {
+        return true;
+    }
+    
+    TextItem* edit_item = nullptr;
+
+    bool rubberband_active = false;
     qreal max_z = 0;
     qreal min_z = 0;
     qreal Z_STEP = 0.001;
