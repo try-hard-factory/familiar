@@ -1,5 +1,7 @@
 #pragma once
 
+#include "canvasscene.h"
+#include "canvasview.h"
 #include <utils/utils.h>
 #include <QBrush>
 #include <QDebug>
@@ -8,8 +10,6 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QPen>
-#include "canvasscene.h"
-#include "canvasview.h"
 
 template<typename T>
 class BaseItemMixin : public T
@@ -30,7 +30,7 @@ public:
         QPointF prev = this->mapToScene(anchor);
         QGraphicsItem::setScale(value);
         QPointF diff = this->mapToScene(anchor) - prev;
-        setPos(this->pos() - diff);
+        this->setPos(this->pos() - diff);
     }
 
     void setZValue(qreal value)
@@ -38,7 +38,7 @@ public:
         qDebug() << "Setting z-value to" << value;
         QGraphicsItem::setZValue(value);
 
-        CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
 
         if (scene) {
             scene->max_z = qMax(scene->max_z, value);
@@ -48,13 +48,13 @@ public:
         }
     }
 
-    void bringToFront()
+    virtual void bring_to_front()
     {
-        CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
             setZValue(scene->max_z + scene->Z_STEP);
         } else {
-            qDebug() << "BaseItemMixin::bringToFront Scene not found";
+            qDebug() << "BaseItemMixin::bring_to_front Scene not found";
         }
     }
 
@@ -64,7 +64,7 @@ public:
         QGraphicsItem::setRotation(std::fmod(value, 360.0));
         QPointF prev = this->mapToScene(anchor);
         QPointF diff = this->mapToScene(anchor) - prev;
-        setPos(this->pos() - diff);
+        this->setPos(this->pos() - diff);
     }
 
     qreal flip()
@@ -74,11 +74,11 @@ public:
         return this->transform().m11();
     }
 
-    void doFlip(bool vertical = false, const QPointF& anchor = QPointF(0, 0))
+    void do_flip(bool vertical = false, const QPointF& anchor = QPointF(0, 0))
     {
-        setTransform(QTransform::fromScale(-flip(), 1));
+        this->setTransform(QTransform::fromScale(-flip(), 1));
         if (vertical) {
-            setRotation(this->rotation() + 180, anchor);
+            this->setRotation(this->rotation() + 180, anchor);
         }
     }
 
@@ -90,7 +90,7 @@ public:
 
     QPointF center() const { return boundingRectUnselected().center(); }
 
-    QPointF centerSceneCoords() const { return mapToScene(center()); }
+    QPointF center_scene_coords() const { return this->mapToScene(center()); }
 
     void on_selected_change() {}
 };
@@ -106,8 +106,11 @@ public:
         bool flip_v;
     };
 
-    explicit SelectableMixin(QGraphicsRectItem* parent = nullptr)
+    explicit SelectableMixin(T* parent = nullptr)
         : BaseItemMixin<T>(parent)
+    {}
+
+    void init_selectable()
     {
         this->setAcceptHoverEvents(true);
         this->setFlag(QGraphicsItem::ItemIsMovable, true);
@@ -126,7 +129,7 @@ public:
 
     bool isActionActive() const { return scaleActive || rotateActive || flipActive; }
 
-    qreal fixed_length_for_viewport(qreal value)
+    qreal fixed_length_for_viewport(qreal value) const
     {
         qreal viewScale = 1.0;
 
@@ -142,8 +145,8 @@ public:
         return value / viewScale / scale;
     }
 
-    qreal select_resize_size() const { return fixed_length_for_viewport(selectResizeSize); }
-    qreal select_rotate_size() const { return fixed_length_for_viewport(selectRotateSize); }
+    qreal select_resize_size() const { return fixed_length_for_viewport(this->selectResizeSize); }
+    qreal select_rotate_size() const { return fixed_length_for_viewport(this->selectRotateSize); }
     QRectF handleFreeCenterRect() const
     {
         qreal size = fixed_length_for_viewport(selectFreeCenter);
@@ -152,14 +155,14 @@ public:
         return QRectF(x, y, size, size);
     }
 
-    void paintSelectable(QPainter* painter,
-                         const QStyleOptionGraphicsItem* option,
-                         QWidget* widget = nullptr)
+    void paint_selectable(QPainter* painter,
+                          const QStyleOptionGraphicsItem* option,
+                          QWidget* widget = nullptr)
     {
         Q_UNUSED(option)
         Q_UNUSED(widget)
 
-        if (static_cast<Mixin*>(this)->hasSelectionOutline() == false) {
+        if (static_cast<Mixin*>(this)->has_selection_outline() == false) {
             return;
         }
 
@@ -170,10 +173,10 @@ public:
         painter->setPen(QPen(selectColor, selectLineWidth));
         painter->drawRect(this->boundingRectUnselected());
 
-        if (static_cast<Mixin*>(this)->hasSelectionHandles() == true) {
+        if (static_cast<Mixin*>(this)->has_selection_handles() == true) {
             painter->setPen(QPen(Qt::blue));
             painter->setBrush(Qt::blue);
-            for (const QPointF& corner : corners) {
+            for (const QPointF& corner : corners()) {
                 painter->drawEllipse(corner, selectHandleSize / 2, selectHandleSize / 2);
             }
         }
@@ -214,7 +217,7 @@ public:
         return path;
     }
 
-    QRectF getRotateBounds(const QPointF& corner) const
+    QPainterPath getRotateBounds(const QPointF& corner) const
     {
         QPainterPath path;
         //https://bugreports.qt.io/browse/QTBUG-57567
@@ -269,25 +272,26 @@ public:
 
     QRectF boundingRect() const override
     {
-        if (static_cast<Mixin*>(this)->hasSelectionOutline() == false) {
+        if (static_cast<const Mixin*>(this)->has_selection_outline() == false) {
             return this->boundingRectUnselected();
         }
 
         auto margin = select_resize_size() / 2 + select_rotate_size();
-        return this->boundingRectUnselected().marginsAdded(QMarginsF(margin, margin, margin, margin));
+        return this->boundingRectUnselected().marginsAdded(
+            QMarginsF(margin, margin, margin, margin));
     }
 
     QPainterPath shape() const override
     {
         QPainterPath path;
-        if (static_cast<Mixin*>(this)->hasSelectionOutline() == true) {
+        if (static_cast<const Mixin*>(this)->has_selection_outline() == true) {
             auto margin = select_resize_size() / 2;
             auto rect = this->boundingRectUnselected().marginsAdded(
                 QMarginsF(margin, margin, margin, margin));
             path.addRect(rect);
 
-            for_each(std::begin(corners()), std::end(corners()), [&path](const QPointF& corner) {
-                path.addPath(getRotateBounds(corner));
+            std::for_each(std::begin(corners()), std::end(corners()), [&path, this](const QPointF& corner) {
+                path.addPath(this->getRotateBounds(corner));
             });
         } else {
             path.addRect(this->boundingRectUnselected());
@@ -299,7 +303,7 @@ public:
 protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (static_cast<Mixin*>(this)->hasSelectionHandles() == false) {
+        if (static_cast<Mixin*>(this)->has_selection_handles() == false) {
             return;
         }
 
@@ -335,7 +339,7 @@ protected:
 
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (static_cast<Mixin*>(this)->hasSelectionHandles() == false) {
+        if (static_cast<Mixin*>(this)->has_selection_handles() == false) {
             this->setCursor(Qt::ArrowCursor);
         }
     }
@@ -362,16 +366,17 @@ protected:
         }
 
         if (event->button() == Qt::LeftButton
-            && static_cast<Mixin*>(this)->hasSelectionHandles() == true) {
+            && static_cast<Mixin*>(this)->has_selection_handles() == true) {
             for (auto& corner : corners()) {
                 //Check if we are in one of the corner's scale areas
                 if (getScaleBounds(corner).contains(event->pos())) {
                     scaleActive = true;
                     eventDirection = get_direction_from_center(event->scenePos());
-                    eventAnchor = mapToScene(get_scale_anchor(corner));
-                    for (auto& item : static_cast<Mixin*>(this)->selectionActionItems()) {
+                    eventAnchor = this->mapToScene(get_scale_anchor(corner));
+                    for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
                         // need casting here
-                        item->scaleOrigFactor = item->scale();
+                        auto* item_cast = dynamic_cast<SelectableMixin*>(item);
+                        item_cast->scaleOrigFactor = item_cast->scale();
                     }
                     event->accept();
                     return;
@@ -380,11 +385,12 @@ protected:
                 //Check if we are in one of the corner's rotate areas
                 if (getRotateBounds(corner).contains(event->pos())) {
                     rotateActive = true;
-                    eventAnchor = this->centerSceneCoords();
+                    eventAnchor = this->center_scene_coords();
                     rotateStartAngle = getRotateAngle(event->scenePos());
-                    for (auto& item : static_cast<Mixin*>(this)->selectionActionItems()) {
+                    for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
                         // need casting here
-                        item->rotateOrigDegrees = item->scale();
+                        auto* item_cast = dynamic_cast<SelectableMixin*>(item);
+                        item_cast->rotateOrigDegrees = item_cast->scale();
                     }
                     event->accept();
                     return;
@@ -415,8 +421,9 @@ protected:
 
         if (scaleActive) {
             qreal factor = getScaleFactor(event);
-            for (auto& item : static_cast<Mixin*>(this)->selectionActionItems()) {
-                item->setScale(scaleOrigFactor * factor, item->mapFromscene(eventAnchor));
+            for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
+                auto* item_cast = dynamic_cast<SelectableMixin*>(item);
+                item_cast->setScale(scaleOrigFactor * factor, item->mapFromScene(eventAnchor));
             }
             event->accept();
             return;
@@ -425,9 +432,10 @@ protected:
                          || event->modifiers() == Qt::ControlModifier);
 
             qreal delta = getRotateDelta(event->scenePos(), snap);
-            for (auto& item : static_cast<Mixin*>(this)->selectionActionItems()) {
+            for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
                 // need casting here
-                item->setRotation(rotateOrigDegrees + delta * item->flip(),
+                auto* item_cast = dynamic_cast<SelectableMixin*>(item);
+                item_cast->setRotation(rotateOrigDegrees + delta * item_cast->flip(),
                                   item->mapFromScene(eventAnchor));
             }
             event->accept();
@@ -479,7 +487,7 @@ protected:
                const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override
     {
-        paintSelectable(painter, option, widget);
+        paint_selectable(painter, option, widget);
     }
 
 public slots:
@@ -488,11 +496,10 @@ public slots:
     {
         if (change == QGraphicsItem::ItemSelectedChange) {
             this->prepareGeometryChange();
-            this->on_selected_change();// or emit?
+            this->on_selected_change(); // or emit?
         }
         return QGraphicsItem::itemChange(change, value);
     }
-
 
 
 public:
@@ -504,13 +511,13 @@ public:
 
     bool isInScaleHandle(const QPointF& corner, const QPointF& pos) const
     {
-        QRectF rect = getScaleBounds(corner);
+        QPainterPath rect = getScaleBounds(corner);
         return rect.contains(pos);
     }
 
     bool isInRotateHandle(const QPointF& corner, const QPointF& pos) const
     {
-        QRectF rect = getRotateBounds(corner);
+        QPainterPath rect = getRotateBounds(corner);
         return rect.contains(pos);
     }
 
@@ -527,16 +534,17 @@ public:
     {
         //Get the direction facing away from the center, e.g. the direction
         //in which the scale for this corner increases.
-        return QPointF((corner.x() > this->center().x()) ? 1 : -1, (corner.y() > this->center().y()) ? 1 : -1);
+        return QPointF((corner.x() > this->center().x()) ? 1 : -1,
+                       (corner.y() > this->center().y()) ? 1 : -1);
     }
 
     QPointF get_direction_from_center(const QPointF& pos) const
     {
-        auto diff = pos - this->centerSceneCoords();
+        auto diff = pos - this->center_scene_coords();
         qreal length = std::sqrt(QPointF::dotProduct(diff, diff));
         return diff / length;
     }
-    qreal getRotateAngle(const QPointF& pos)
+    qreal getRotateAngle(const QPointF& pos) const
     {
         QPointF diff = pos - eventAnchor;
         return -std::atan2(diff.x(), diff.y()) * 180 / M_PI;
@@ -552,7 +560,7 @@ public:
     {
         bool isTopLeftOrBottomRight = (corner == this->boundingRectUnselected().topLeft()
                                        || corner == this->boundingRectUnselected().bottomRight());
-        return getDiagCursor(isTopLeftOrBottomRight, this->rotation(), this->flip());
+        return getDiagCursor(isTopLeftOrBottomRight);
     }
 
     Qt::CursorShape getDiagCursor(bool isTopLeftOrBottomRight)
@@ -585,7 +593,8 @@ public:
 
     bool getEdgeFlipsVertically(const FlipBounds& edge) const
     {
-        if ((this->rotation() > 45 && this->rotation() < 135) || (this->rotation() > 225 && this->rotation() < 315)) {
+        if ((this->rotation() > 45 && this->rotation() < 135)
+            || (this->rotation() > 225 && this->rotation() < 315)) {
             return !edge.flip_v;
         } else {
             return edge.flip_v;
@@ -644,10 +653,88 @@ private:
 };
 
 
-class MultiSelectItem : public SelectableMixin<MultiSelectItem, QGraphicsRectItem> {
+class MultiSelectItem : public SelectableMixin<MultiSelectItem, QGraphicsRectItem>
+{
 public:
-    virtual bool has_selection_handles() {
+    MultiSelectItem(QGraphicsRectItem* parent = nullptr)
+        : SelectableMixin<MultiSelectItem, QGraphicsRectItem>(parent)
+    {
+        this->init_selectable();
+    }
+
+    virtual bool has_selection_outline() const { return true; }
+    virtual bool has_selection_handles()
+    {
         // std::cout << "MultiSelectItem::has_selection_handles" << '\n';
         return true;
     }
+
+    QRectF boundingRect() const override { return QGraphicsRectItem::boundingRect(); }
+
+    void paint(QPainter* painter,
+               const QStyleOptionGraphicsItem* option,
+               QWidget* widget = nullptr) override
+    {
+        this->paint_selectable(painter, option, widget);
+    }
+
+    virtual QVector<QGraphicsItem*> selection_action_items()
+    {
+        return this->scene()->selectedItems();
+    }
+
+    void fit_selection_area(const QRectF& rect)
+    {
+        if (this->width() != rect.width() || this->height() != rect.height()) {
+            this->setRect(0, 0, rect.width(), rect.height());
+        }
+        if (this->pos() != rect.topLeft()) {
+            this->setPos(rect.topLeft());
+        }
+        if (this->scale() != 1) {
+            this->setScale(1);
+        }
+        if (this->rotation() != 0) {
+            this->setRotation(0);
+        }
+        if (!this->isSelected()) {
+            this->setSelected(true);
+        }
+        if (this->flip() == -1) {
+            this->setTransform(QTransform::fromScale(1, 1));
+        }
+    }
+
+protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton && event->modifiers() == Qt::ControlModifier) {
+            // Мы все равно должны иметь возможность выбирать дополнительные изображения
+            // внутри/под множественным выбором, поэтому позволяйте событиям ctrl+click проходить
+            event->ignore();
+            return;
+        }
+
+        QGraphicsItem::mousePressEvent(event);
+    }
+};
+
+class RubberbandItem : public BaseItemMixin<QGraphicsRectItem>
+{
+public:
+    RubberbandItem(QGraphicsRectItem* parent = nullptr)
+        : BaseItemMixin<QGraphicsRectItem>(parent)
+    {
+        this->setBrush(QBrush(Qt::black));
+        pen.setWidth(1);
+        pen.setCosmetic(true);
+        this->setPen(pen);
+    }
+    void fit(const QPointF& point1, const QPointF& point2)
+    {
+        this->setRect(get_rect_from_points(point1, point2));
+    }
+
+    QColor color{Qt::black};
+    QPen pen{color};
 };
