@@ -82,13 +82,13 @@ public:
         }
     }
 
-    QRectF boundingRectUnselected() const { return QGraphicsItem::boundingRect(); }
+    virtual QRectF bounding_rect_unselected() const { return QGraphicsItem::boundingRect(); }
 
-    qreal width() const { return boundingRectUnselected().width(); }
+    qreal width() const { return bounding_rect_unselected().width(); }
 
-    qreal height() const { return boundingRectUnselected().height(); }
+    qreal height() const { return bounding_rect_unselected().height(); }
 
-    QPointF center() const { return boundingRectUnselected().center(); }
+    QPointF center() const { return bounding_rect_unselected().center(); }
 
     QPointF center_scene_coords() const { return this->mapToScene(center()); }
 
@@ -171,7 +171,7 @@ public:
         QColor selectColor(Qt::yellow);
         selectColor.setAlpha(128);
         painter->setPen(QPen(selectColor, selectLineWidth));
-        painter->drawRect(this->boundingRectUnselected());
+        painter->drawRect(this->bounding_rect_unselected());
 
         if (static_cast<Mixin*>(this)->has_selection_handles() == true) {
             painter->setPen(QPen(Qt::blue));
@@ -186,10 +186,10 @@ public:
 
     QVector<QPointF> corners() const
     {
-        return {this->boundingRectUnselected().topLeft(),
-                this->boundingRectUnselected().topRight(),
-                this->boundingRectUnselected().bottomRight(),
-                this->boundingRectUnselected().bottomLeft()};
+        return {this->bounding_rect_unselected().topLeft(),
+                this->bounding_rect_unselected().topRight(),
+                this->bounding_rect_unselected().bottomRight(),
+                this->bounding_rect_unselected().bottomLeft()};
     }
 
     QVector<QPointF> corners_scene_coords() const
@@ -234,7 +234,7 @@ public:
     {
         qreal outer_margin = select_resize_size() / 2;
         qreal inner_margin = select_resize_size() / 2;
-        QPointF origin = this->boundingRectUnselected().topLeft();
+        QPointF origin = this->bounding_rect_unselected().topLeft();
 
         std::vector<FlipBounds> flipBounds;
         flipBounds.reserve(4);
@@ -273,11 +273,11 @@ public:
     QRectF boundingRect() const override
     {
         if (static_cast<const Mixin*>(this)->has_selection_outline() == false) {
-            return this->boundingRectUnselected();
+            return this->bounding_rect_unselected();
         }
 
         auto margin = select_resize_size() / 2 + select_rotate_size();
-        return this->boundingRectUnselected().marginsAdded(
+        return this->bounding_rect_unselected().marginsAdded(
             QMarginsF(margin, margin, margin, margin));
     }
 
@@ -286,7 +286,7 @@ public:
         QPainterPath path;
         if (static_cast<const Mixin*>(this)->has_selection_outline() == true) {
             auto margin = select_resize_size() / 2;
-            auto rect = this->boundingRectUnselected().marginsAdded(
+            auto rect = this->bounding_rect_unselected().marginsAdded(
                 QMarginsF(margin, margin, margin, margin));
             path.addRect(rect);
 
@@ -294,7 +294,7 @@ public:
                 path.addPath(this->getRotateBounds(corner));
             });
         } else {
-            path.addRect(this->boundingRectUnselected());
+            path.addRect(this->bounding_rect_unselected());
         }
 
         return path;
@@ -525,7 +525,7 @@ public:
 
     QPointF get_scale_anchor(const QPointF& corner) const
     {
-        auto origin = this->boundingRectUnselected().topLeft();
+        auto origin = this->bounding_rect_unselected().topLeft();
         return QPointF(this->width() - corner.x() + 2 * origin.x(),
                        this->height() - corner.y() + 2 * origin.y());
     }
@@ -558,12 +558,12 @@ public:
 
     Qt::CursorShape getCornerScaleCursor(const QPointF& corner)
     {
-        bool isTopLeftOrBottomRight = (corner == this->boundingRectUnselected().topLeft()
-                                       || corner == this->boundingRectUnselected().bottomRight());
-        return getDiagCursor(isTopLeftOrBottomRight);
+        bool isTopLeftOrBottomRight = (corner == this->bounding_rect_unselected().topLeft()
+                                       || corner == this->bounding_rect_unselected().bottomRight());
+        return get_diag_cursor(isTopLeftOrBottomRight);
     }
 
-    Qt::CursorShape getDiagCursor(bool isTopLeftOrBottomRight)
+    Qt::CursorShape get_diag_cursor(bool isTopLeftOrBottomRight)
     {
         auto rotation = std::fmod(this->rotation(), 180);
         bool flipped = (this->flip() == -1);
@@ -612,7 +612,7 @@ public:
 
     QPointF getScaleAnchor(const QPointF& corner)
     {
-        auto origin = this->boundingRectUnselected().topLeft();
+        auto origin = this->bounding_rect_unselected().topLeft();
         return QPointF(this->width() - corner.x() + 2 * origin.x(),
                        this->height() - corner.y() + 2 * origin.y());
     }
