@@ -20,6 +20,7 @@ enum EState {
 class MainWindow;
 class project_settings;
 class TextItem;
+class PixmapItem;
 
 class CanvasScene : public QGraphicsScene
 {
@@ -95,7 +96,7 @@ public:
     }
     
     TextItem* edit_item = nullptr;
-
+    PixmapItem* crop_item = nullptr;
     bool rubberband_active = false;
     qreal max_z = 0;
     qreal min_z = 0;
