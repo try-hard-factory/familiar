@@ -101,6 +101,16 @@ set(PROJECT_SOURCES
         utils/utils.h
         selector.cpp
         selector.h
+        widgets/main_controls.cpp
+        widgets/main_controls.h
+        widgets/recent_files_model.cpp
+        widgets/recent_files_model.h
+        widgets/recent_files_view.cpp
+        widgets/recent_files_view.h
+        widgets/welcome_overlay.cpp
+        widgets/welcome_overlay.h
+        widgets/dialogs.cpp
+        widgets/dialogs.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
