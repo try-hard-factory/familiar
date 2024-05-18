@@ -7,7 +7,7 @@
 class RecentFilesModel : public QAbstractListModel
 {
 public:
-    RecentFilesModel(QObject *parent = nullptr, const QStringList& files)
+    RecentFilesModel(QObject *parent, const QStringList& files)
         : QAbstractListModel(parent), files(files) {}
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override

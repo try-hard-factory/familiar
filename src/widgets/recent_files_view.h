@@ -18,37 +18,48 @@ public:
         , files(files)
     {
         connect(this, &QListView::clicked, this, &RecentFilesView::on_clicked);
-        setModel(new RecentFilesModel(files)); // TODO: memory leak?
+        setModel(new RecentFilesModel(nullptr, files));
         setMouseTracking(true);
     }
 
     void update_files(const QStringList& newFiles)
     {
         files = newFiles;
-        model()->setData(files);
+        QItemSelectionModel* m = selectionModel();
+        setModel(new RecentFilesModel(nullptr, files));
+        delete m;
         reset();
     }
 
     QSize sizeHint() const override
     {
-        int height
-            = std::accumulate(files.begin(), files.end(), 0, [this](int sum, const QString& file) {
-                  return sum + sizeHintForRow(model()->index(files.indexOf(file), 0)) + 2;
-              });
-
-        int width = std::transform_reduce(
-            files.begin(), files.end(), 0, [](int max_width, const QString& file) {
-                return std::max(max_width,
-                                sizeHintForColumn(model()->index(files.indexOf(file), 0)));
+        int height = std::accumulate(
+            files.begin(), files.end(), 0, [this](int sum, const QString& file) {
+                return sum
+                       + sizeHintForRow(this->model()
+                                            ->index(this->files.indexOf(file), 0)
+                                            .row())
+                       + 2;
             });
 
-        return QSize(width + 2, height);
+        std::vector<int> columnWidths(files.size());
+        std::transform(files.begin(),
+                       files.end(),
+                       columnWidths.begin(),
+                       [this](const QString& file) {
+                           return sizeHintForColumn(
+                               model()->index(files.indexOf(file), 0).column());
+                       });
+        int width = 2
+                    + *std::max_element(columnWidths.begin(),
+                                        columnWidths.end());
+        return QSize(width, height);
     }
 
 protected:
     void mouseMoveEvent(QMouseEvent* event) override
     {
-        QModelIndex index = indexAt(event->position());
+        QModelIndex index = indexAt(event->position().toPoint());
         if (index.isValid())
             setCursor(Qt::PointingHandCursor);
         else
@@ -60,8 +71,10 @@ protected:
 private slots:
     void on_clicked(const QModelIndex& index)
     {
-        if (index.isValid() && index.row() < files.size())
-            parentWidget()->parentWidget()->open_from_file(files[index.row()]);
+        if (index.isValid() && index.row() < files.size()) {
+            // TODO: open from file
+            // parentWidget()->parentWidget()->open_from_file(files[index.row()]);
+        }
     }
 
 private:

@@ -5,6 +5,7 @@ set(FAMILIAR_VERSION 0.0.8)
 set(GIT_API_URL "https://api.github.com/repos/try-hard-factory/familiar/releases/latest")
 
 project(familiar VERSION ${FAMILIAR_VERSION} LANGUAGES CXX)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(PROJECT_NAME_CAPITALIZED "Familiar")
 
