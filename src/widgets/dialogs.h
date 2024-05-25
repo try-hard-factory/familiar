@@ -74,7 +74,7 @@ private slots:
         setMaximum(value);
     }
 
-    void on_finished(const QString& filename, const QString& errors)
+    void on_finished(const QString& filename, const QStringList& errors)
     {
         qDebug() << "Finished progress dialog";
         setValue(maximum());
