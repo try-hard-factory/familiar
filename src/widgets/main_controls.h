@@ -1,5 +1,7 @@
 #pragma once
 #include <QDebug>
+#include <QDragEnterEvent>
+#include <QMimeData>
 
 template<typename Mixin, typename T>
 class MainControlsMixin : public T
@@ -22,7 +24,7 @@ protected:
     void dragEnterEvent(QDragEnterEvent *event) override
     {
         const auto* mimedata = event->mimeData();
-        qDebug() << "dragEnterEvent: " << mimedata->;
+        qDebug() << "dragEnterEvent: " << mimedata;
         if (mimedata->hasUrls()) {
             event->acceptProposedAction();
         } else if (mimedata->hasImage()) {

@@ -9,7 +9,9 @@
  *  \~english @brief  Graphics view of working place
  *  \~english @author max aka angeleyes (mpano91@gmail.com)
  */
-
+#include <actions/action_mixin.h>
+#include <widgets/main_controls.h>
+#include <widgets/welcome_overlay.h>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsView>
 #include <QMouseEvent>
@@ -20,13 +22,17 @@
 class MainWindow;
 class project_settings;
 class CanvasScene;
+class QUndoStack;
 
 /**
  * \~russian @brief CanvasView класс
  *
  * \~english @brief The CanvasView class
  */
-class CanvasView : public QGraphicsView
+class CanvasView : public MainControlsMixin<CanvasView, QGraphicsView>
+
+//    ,
+//    public ActionsMixin<CanvasView>
 {
     Q_OBJECT
 public:
@@ -81,7 +87,8 @@ public:
      */
     void addImage(QImage* img, QPointF point);
 
-    void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
+    void addImage(
+        QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
     void SetScale(qreal qrScale);
     void ScaleView(qreal qFactor);
@@ -113,14 +120,7 @@ public:
         // }
     }
 
-    void on_selection_changed()
-    {
-        qDebug() << "Currently selected items:" << scene()->selectedItems().size();
-        // bool hasSelection = !scene->selectedItems().isEmpty();
-        // actiongroup_set_enabled("active_when_selection", hasSelection);
-        // actiongroup_set_enabled("active_when_croppable", scene->has_croppable_selection());
-        // viewport()->repaint();
-    }
+
 
 public slots:
     /**
@@ -128,7 +128,7 @@ public slots:
      *
      * \~english @brief QT slot-handler for selection changed
      */
-    void onSelectionChanged();
+    void on_selection_changed();
     void settingsChangedSlot();
 
 protected:
@@ -192,6 +192,8 @@ protected:
 
 private:
     MainWindow& mainwindow_;
+    WelcomeOverlay* welcomeOverlay_;
+    std::unique_ptr<QUndoStack> undoStack_;
     CanvasScene* scene_;
     double zoomFactor_ = 1.15;
     Qt::MouseButton pan_;

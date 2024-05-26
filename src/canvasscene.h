@@ -9,6 +9,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QRubberBand>
 //#include "moveitem.h"
+#include <queue>
 
 enum EState {
     eMouseMoving = 0x0000,
@@ -21,14 +22,38 @@ class MainWindow;
 class project_settings;
 class TextItem;
 class PixmapItem;
+class RubberBandItem;
+class MultiSelectItem;
+class QUndoStack;
 
 class CanvasScene : public QGraphicsScene
 {
-public:
-    CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene* scene = 0);
-    ~CanvasScene();
+    enum ESceneMode {
+        kMove = 1,
+        kRubberBand = 2,
+        kNone = -1,
+    };
 
 public:
+    CanvasScene(MainWindow& mw, uint64_t& zc, QUndoStack* undoStack, QGraphicsScene* scene = 0);
+    ~CanvasScene();
+
+// new code
+    void clear();
+    bool has_multi_selection();
+    void addItem(QGraphicsItem* item);
+    void removeItem(QGraphicsItem* item);
+    void cancel_active_modes();
+    void cancel_crop_mode();
+    void end_rubberband_mode();
+    void copy_selection_to_internal_clipboard();
+    void paste_from_internal_clipboard(QPointF position);
+    void raise_to_top();
+    void lower_to_bottom();
+    void normalize_width_or_height(const QString& mode);
+    void normalize_height();
+    void normalize_width();
+// old code
     void pasteFromClipboard();
     void pasteFromTemp();
     void copyToClipboard();
@@ -67,6 +92,8 @@ public:
         //     removeItem(multiSelectItem);
     }
 
+
+
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -80,28 +107,28 @@ protected:
 public slots:
     void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
     void settingsChangedSlot();
+    void on_selection_changed();
+    void on_change();
 private slots:
     void clipboardChanged();
 
+signals:
+    void cursor_changed(QCursor);
+    void cursor_cleared();
 
-public:
-    bool has_selection()
-    {
-        return true;
-    }
-
-    bool has_single_selection()
-    {
-        return true;
-    }
-    
-    TextItem* edit_item = nullptr;
-    PixmapItem* crop_item = nullptr;
-    bool rubberband_active = false;
+public:    
+    ESceneMode active_mode = kNone;
+    QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
     qreal min_z = 0;
     qreal Z_STEP = 0.001;
-
+    TextItem* edit_item = nullptr;
+    PixmapItem* crop_item = nullptr;
+    std::queue<PixmapItem*> items_to_add;
+    bool clear_ongoing = false;
+    RubberBandItem* rubberband_item_;
+    MultiSelectItem* multiselect_item_;
+    QList<QGraphicsItem*> internal_clipboard;
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;

@@ -45,7 +45,7 @@ public:
     virtual void on_selected_change(bool value)
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        if (value && scene && !scene->has_selection() && !scene->rubberband_active) {
+        if (value && scene && !scene->has_selection() && !scene->rubberband_item_) {
             this->bring_to_front();
         }
     }
