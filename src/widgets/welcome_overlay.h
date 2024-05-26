@@ -19,12 +19,12 @@ public:
         // Initialize your WelcomeOverlay-specific code here
 
         // Recent files
-        files_layout = new QVBoxLayout(this);
-        files_layout->addStretch(50);
-        files_layout->addWidget(new QLabel("<h3>Recent Files</h3>", this));
-        files_view = new RecentFilesView(this);
-        files_layout->addWidget(files_view);
-        files_layout->addStretch(50);
+        // files_layout = new QVBoxLayout(this);
+        // files_layout->addStretch(50);
+        // files_layout->addWidget(new QLabel("<h3>Recent Files</h3>", this));
+        // files_view = new RecentFilesView(this);
+        // files_layout->addWidget(files_view);
+        // files_layout->addStretch(50);
 
         // Help text
         QLabel* label = new QLabel(txt, this);
@@ -39,6 +39,7 @@ public:
     // Define WelcomeOverlay-specific functions here
     void show()
     {
+        // TODO: get recent files
         // files_view->update_files(BeeSettings().get_recent_files(true));
         // if (BeeSettings().get_recent_files(true).size() && layout.indexOf(&files_layout) < 0)
         // {
@@ -49,7 +50,7 @@ public:
 
 private:
     QVBoxLayout* files_layout = nullptr;
-    RecentFilesView* files_view;
+    RecentFilesView* files_view = nullptr;
     QHBoxLayout* layout = nullptr;
     QWidget* control_target = nullptr;
 

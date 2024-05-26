@@ -14,18 +14,35 @@
 #include "Logger.h"
 
 #include "project_settings.h"
+#include "selector.h"
 #include <regex>
 
 extern Logger logger;
 
 #define MOUSE_MOVE_DEBUG
-CanvasScene::CanvasScene(MainWindow& mw, uint64_t& zc, QGraphicsScene* scene)
-    : mainwindow_(mw)
+CanvasScene::CanvasScene(MainWindow& mw,
+                         uint64_t& zc,
+                         QUndoStack* undoStack,
+                         QGraphicsScene* scene)
+    : undo_stack_(undoStack)
+    , mainwindow_(mw)
     , zCounter_(zc)
 {
+    connect(this,
+            &CanvasScene::selectionChanged,
+            this,
+            &CanvasScene::on_selection_changed);
+    connect(this, &CanvasScene::changed, this, &CanvasScene::on_change);
     (void) scene;
+    clear();
+    clear_ongoing = false;
+
     itemGroup_ = new ItemGroup(zc);
-    LOG_DEBUG(logger, "itemGroup_ Adress: ", itemGroup_, ", Z: ", itemGroup_->zValue());
+    LOG_DEBUG(logger,
+              "itemGroup_ Adress: ",
+              itemGroup_,
+              ", Z: ",
+              itemGroup_->zValue());
     //    itemGroup_->setFiltersChildEvents(true);
 
     itemGroup_->setPos({0, 0});
@@ -50,6 +67,131 @@ CanvasScene::~CanvasScene()
 {
     delete projectSettings_;
 }
+
+void CanvasScene::clear()
+{
+    clear_ongoing = true;
+    QGraphicsScene::clear();
+    // internal_clipboard_.clear();
+    rubberband_item_ = new RubberBandItem(this);
+    multiselect_item_ = new MultiSelectItem(this);
+    clear_ongoing = false;
+}
+
+void CanvasScene::addItem(QGraphicsItem* item)
+{
+    qDebug() << "Adding item" << item;
+    QGraphicsScene::addItem(item);
+}
+
+
+void CanvasScene::removeItem(QGraphicsItem* item)
+{
+    qDebug() << "Removing item" << item;
+    QGraphicsScene::removeItem(item);
+}
+
+void CanvasScene::cancel_active_modes()
+{
+    cancel_crop_mode();
+    end_rubberband_mode();
+}
+
+void CanvasScene::cancel_crop_mode()
+{
+    if (crop_item) {
+        qDebug() << "End crop mode";
+        crop_item->exit_crop_mode(false);
+    }
+}
+
+void CanvasScene::end_rubberband_mode()
+{
+    if (rubberband_item_) {
+        qDebug() << "End rubberband mode";
+        removeItem(rubberband_item_);
+    }
+    active_mode = ESceneMode::kNone;
+}
+void CanvasScene::copy_selection_to_internal_clipboard()
+{
+    internal_clipboard.clear();
+    for (QGraphicsItem* item : selectedItems(true)) {
+        internal_clipboard.append(item);
+    }
+}
+
+void CanvasScene::paste_from_internal_clipboard(QPointF position)
+{
+    QList<QGraphicsItem*> copies;
+    for (QGraphicsItem* item : internal_clipboard) {
+        QGraphicsItem* copy = item->createCopy();
+        copies.append(copy);
+    }
+    undo_stack_->push(new InsertItemsCommand(this, copies, position));
+}
+
+void CanvasScene::raise_to_top()
+{
+    cancel_active_modes();
+    QList<QGraphicsItem*> items = selectedItems(true);
+    std::vector<double> z_values;
+    std::transform(items.begin(), items.end(), std::back_inserter(z_values),
+                   [](const auto& i) { return i->zValue(); });
+    double min_z_value = *std::min_element(z_values.begin(), z_values.end());
+    double delta = max_z + Z_STEP - min_z_value;
+    qDebug() << "Raise to top, delta: " << delta;
+    for (auto& item : items) {
+        item->setZValue(item->zValue() + delta);
+    }
+}
+
+void CanvasScene::lower_to_bottom()
+{
+    cancel_active_modes();
+    QList<QGraphicsItem*> items = selectedItems(true);
+    std::vector<double> z_values;
+    std::transform(items.begin(), items.end(), std::back_inserter(z_values),
+                   [](const auto& i) { return i->zValue(); });
+    double max_z_value = *std::max_element(z_values.begin(), z_values.end());
+    double delta = min_z - Z_STEP - max_z_value;
+    qDebug() << "Lower to bottom, delta: " << delta;
+    for (auto& item : items) {
+        item->setZValue(item->zValue() + delta);
+    }
+}
+
+
+void CanvasScene::normalize_width_or_height(const QString& mode)
+{
+    cancel_active_modes();
+    QList<qreal> values;
+    QList<QGraphicsItem*> items = selectedItems(true);
+    for (QGraphicsItem* item : items) {
+        QRectF rect = items_bounding_rect(QList<QGraphicsItem*>{ item });
+        values.append(mode == "width" ? rect.width() : rect.height());
+    }
+    if (values.size() < 2)
+        return;
+    qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0) / values.size();
+    qDebug() << "Calculated average" << mode << avg;
+
+    QList<qreal> scaleFactors;
+    for (QGraphicsItem* item : items) {
+        QRectF rect = items_bounding_rect(QList<QGraphicsItem*>{ item });
+        scaleFactors.append(avg / (mode == "width" ? rect.width() : rect.height()));
+    }
+    undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
+}
+
+void CanvasScene::normalize_height() { normalize_width_or_height("height"); }
+void CanvasScene::normalize_width() { normalize_width_or_height("width"); }
+
+bool CanvasScene::has_multi_selection()
+{
+    return false;
+}
+
 
 void CanvasScene::keyPressEvent(QKeyEvent* event)
 {
@@ -106,7 +248,9 @@ void CanvasScene::pasteFromClipboard()
                 itemGroup_->addItemToGroup(item);
             } else {
                 QString urlstr = url.url();
-                LOG_DEBUG(logger, "Download.Dropped file: ", urlstr.toStdString());
+                LOG_DEBUG(logger,
+                          "Download.Dropped file: ",
+                          urlstr.toStdString());
                 imgdownloader_->download(urlstr, lastClickedPoint_);
                 projectSettings_->modified(true);
             }
@@ -137,7 +281,8 @@ void CanvasScene::pasteFromTemp()
     itemGroup_->clearItemGroup();
     for (auto& item : mainwindow_.clipboardItems()) {
         auto widget = qgraphicsitem_cast<MoveItem*>(item);
-        MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(), widget->zcounter());
+        MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(),
+                                         widget->zcounter());
         tmpitem->setPos(widget->pos());
 
         qDebug() << tmpitem->pos();
@@ -196,18 +341,20 @@ QByteArray CanvasScene::fml_payload()
             continue;
         auto widget = qgraphicsitem_cast<MoveItem*>(it);
 
-        ds << widget->scenePos() << (qint32) widget->height() << (qint32) widget->width()
-           << widget->boundingRect() << (quint16) widget->format();
+        ds << widget->scenePos() << (qint32) widget->height()
+           << (qint32) widget->width() << widget->boundingRect()
+           << (quint16) widget->format();
 
         QByteArray compressed = qCompress(widget->qimage().constBits(),
                                           widget->qimage().sizeInBytes(),
                                           7);
 
-        qDebug() << widget->qimage().sizeInBytes() << " " << compressed.size() << " "
-                 << widget->qimage().bitPlaneCount();
+        qDebug() << widget->qimage().sizeInBytes() << " " << compressed.size()
+                 << " " << widget->qimage().bitPlaneCount();
 
         ds << (quint64) compressed.size();
-        qDebug() << "fml_payload::save sizeInBytes: " << widget->qimage().sizeInBytes();
+        qDebug() << "fml_payload::save sizeInBytes: "
+                 << widget->qimage().sizeInBytes();
         ds.writeRawData((const char*) compressed.data(), compressed.size());
     }
 
@@ -279,7 +426,8 @@ void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent* event)
         itemGroup_->clearItemGroup();
         qDebug() << "dropEvent html" << mimeData->html();
         qDebug() << "dropEvent url" << mimeData->urls();
-        imgdownloader_->download(mimeData->urls()[0].toString(), event->scenePos());
+        imgdownloader_->download(mimeData->urls()[0].toString(),
+                                 event->scenePos());
         projectSettings_->modified(true);
     } else if (mimeData->hasUrls()) {
         itemGroup_->clearItemGroup();
@@ -331,7 +479,10 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
     if (item && item->type() == ItemGroup::eBorderDot) {
         state_ = eGroupItemResizing;
-        LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+        LOG_DEBUG(logger,
+                  "DEBUG: CHANGE TO mouse state: ",
+                  stateText(state_),
+                  "\n");
         QGraphicsScene::mousePressEvent(event);
         return;
     }
@@ -376,7 +527,10 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
     if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
         state_ = eMouseMoving;
-        LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+        LOG_DEBUG(logger,
+                  "DEBUG: CHANGE TO mouse state: ",
+                  stateText(state_),
+                  "\n");
         itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
         QGraphicsScene::mouseReleaseEvent(event);
         return;
@@ -401,7 +555,8 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             }
         } else if (event->modifiers() != Qt::ShiftModifier) {
             if (item) {
-                if (itemGroup_->isContain(item) && !itemGroup_->isThisDots(item)) {
+                if (itemGroup_->isContain(item)
+                    && !itemGroup_->isThisDots(item)) {
                     if (state_ != eGroupItemMoving) {
                         itemGroup_->clearItemGroup();
                         item->setZValue(++zCounter_);
@@ -411,13 +566,19 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                     }
 
                     state_ = eMouseMoving;
-                    LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+                    LOG_DEBUG(logger,
+                              "DEBUG: CHANGE TO mouse state: ",
+                              stateText(state_),
+                              "\n");
                 }
             } else {
                 itemGroup_->clearItemGroup();
                 mainSelArea_.setReady(false);
                 state_ = eMouseMoving;
-                LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
+                LOG_DEBUG(logger,
+                          "DEBUG: CHANGE TO mouse state: ",
+                          stateText(state_),
+                          "\n");
             }
         }
     }
@@ -481,7 +642,8 @@ QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
             // NOTE: Maybe I must reimplement QGraphicsItem::contains,
             //       but I don't know how yet.
             auto point = p - it->scenePos();
-            auto len = std::sqrt(std::pow(point.x(), 2) + std::pow(point.y(), 2));
+            auto len = std::sqrt(std::pow(point.x(), 2)
+                                 + std::pow(point.y(), 2));
             int x = 4;
             if ((len * parentViewScaleFactor_ - x) < 0)
                 return it;
@@ -603,6 +765,38 @@ void CanvasScene::settingsChangedSlot()
     auto settings = SettingsHandler::getInstance();
     auto colorPreset = settings->getCurrentColorPreset();
     selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
+}
+
+void CanvasScene::on_selection_changed()
+{
+    if (clear_ongoing) {
+        return;
+    }
+
+    if (has_multi_selection()) {
+        multiselect_item_->fit_selection_area(items_bounding_rect(true));
+    }
+
+    if (has_multi_selection() && !multiselect_item_->scene()) {
+        add_item(multiselect_item_.get());
+        multiselect_item_->bring_to_front();
+    }
+
+    if (!has_multi_selection() && multiselect_item_->scene()) {
+        remove_item(multiselect_item_.get());
+    }
+}
+
+void CanvasScene::on_change()
+{
+    if (clear_ongoing) {
+        return;
+    }
+
+    if (multiselect_item_->scene()
+        && multiselect_item_->active_mode == MultiSelectItem::kNone) {
+        multiselect_item_->fit_selection_area(items_bounding_rect(true));
+    }
 }
 
 void CanvasScene::clipboardChanged()

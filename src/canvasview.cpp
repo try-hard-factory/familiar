@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QtMath>
+#include <QUndoStack>
 
 #include "mainwindow.h"
 #include <main_context_menu.h>
@@ -15,17 +16,29 @@ extern Logger logger;
 
 
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
-    : QGraphicsView(parent)
+    : MainControlsMixin<CanvasView, QGraphicsView>()
+    // , QGraphicsView(parent)
+    // , ActionsMixin<CanvasView>()
     , mainwindow_(mw)
+    , welcomeOverlay_(new WelcomeOverlay(this))
+    , undoStack_(std::make_unique<QUndoStack>(this))
 {
+    setFrameShape(QFrame::NoFrame);
+
+    undoStack_->setUndoLimit(100);
+    connect(undoStack_, &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
+    connect(undoStack_, &QUndoStack::canUndoChanged, this, &CanvasView::on_can_undo_changed);
+    connect(undoStack_, &QUndoStack::cleanChanged, this, &CanvasView::on_undo_clean_changed);
+
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    scene_ = new CanvasScene(mw, zCounter_);
 
-    connect(scene_,
-            SIGNAL(selectionChanged()),
-            this,
-            SLOT(onSelectionChanged()));
+    scene_ = new CanvasScene(mw, zCounter_);
+    connect(scene_, &CanvasScene::changed, this, &CanvasView::on_scene_changed);
+    connect(scene_, &CanvasScene::selectionChanged, this, &CanvasView::on_selection_changed);
+    connect(scene_, &CanvasScene::cursor_changed, this, &CanvasView::on_cursor_changed);
+    connect(scene_, &CanvasScene::cursor_cleared, this, &CanvasView::on_cursor_cleared);
+    setScene(scene_);
 
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
@@ -34,7 +47,6 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
     settingsChangedSlot();
     setMouseTracking(true);
-    setScene(scene_);
 
     // Update all the view port when needed, otherwise, the drawInViewPort may experience trouble
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
@@ -50,6 +62,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 CanvasView::~CanvasView()
 {
     delete scene_;
+    delete welcomeOverlay_;
 }
 
 void CanvasView::setProjectSettings(project_settings* ps)
@@ -307,10 +320,15 @@ bool CanvasView::isUntitled()
     return scene_->isUntitled();
 }
 
-
-void CanvasView::onSelectionChanged()
+void CanvasView::on_selection_changed()
 {
-    scene_->onSelectionChanged();
+    // scene_->onSelectionChanged();
+    qDebug() << "Currently selected items:"
+                << scene()->selectedItems().size();
+    // bool hasSelection = !scene->selectedItems().isEmpty();
+    // actiongroup_set_enabled("active_when_selection", hasSelection);
+    // actiongroup_set_enabled("active_when_croppable", scene->has_croppable_selection());
+    // viewport()->repaint();
 }
 
 void CanvasView::settingsChangedSlot()
