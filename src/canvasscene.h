@@ -8,7 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
 #include <QRubberBand>
-//#include "moveitem.h"
+#include "moveitem.h"
 #include <queue>
 
 enum EState {
@@ -53,6 +53,39 @@ public:
     void normalize_width_or_height(const QString& mode);
     void normalize_height();
     void normalize_width();
+    void normalize_size();
+    void arrange(bool vertical = false);
+    void arrange_optimal();
+    void flip_items(bool vertical = false);
+    void crop_items();
+    QColor sample_color_at(QPointF position);
+    void select_all_items();
+    void deselect_all_items();
+    bool has_selection();
+    bool has_single_selection();
+    bool has_multi_selection();
+    bool has_single_image_selection();
+protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+
+public:    
+    QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
+    QList<QGraphicsItem*> items_by_type(int type);
+    QList<QGraphicsItem*> items_for_save();
+    void clear_save_ids();
+    void on_view_scale_change();
+    QRectF itemsBoundingRect(bool selectionOnly = false, QList<QGraphicsItem*> items = QList<QGraphicsItem*>()) const;
+    QPointF get_selection_center();
+public slots:
+    void on_selection_changed();
+    void on_change();
+public:
+    void add_item_later();
+    void add_queued_items();
+    bool itemAddByUser(int type) const;
 // old code
     void pasteFromClipboard();
     void pasteFromTemp();
@@ -97,8 +130,7 @@ public:
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+    
     void drawForeground(QPainter* painter, const QRectF& rect) override;
     void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent* event) override;
@@ -107,8 +139,7 @@ protected:
 public slots:
     void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
     void settingsChangedSlot();
-    void on_selection_changed();
-    void on_change();
+
 private slots:
     void clipboardChanged();
 
@@ -128,7 +159,7 @@ public:
     bool clear_ongoing = false;
     RubberBandItem* rubberband_item_;
     MultiSelectItem* multiselect_item_;
-    QList<QGraphicsItem*> internal_clipboard;
+    QList<IBaseItem*> internal_clipboard;
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;

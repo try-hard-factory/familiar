@@ -17,6 +17,8 @@
 #include "selector.h"
 #include <regex>
 
+#include <QUndoStack>
+
 extern Logger logger;
 
 #define MOUSE_MOVE_DEBUG
@@ -117,18 +119,19 @@ void CanvasScene::copy_selection_to_internal_clipboard()
 {
     internal_clipboard.clear();
     for (QGraphicsItem* item : selectedItems(true)) {
-        internal_clipboard.append(item);
+        internal_clipboard.append(dynamic_cast<IBaseItem*>(item));
     }
 }
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
-    QList<QGraphicsItem*> copies;
-    for (QGraphicsItem* item : internal_clipboard) {
-        QGraphicsItem* copy = item->createCopy();
+    QList<IBaseItem*> copies;
+    for (IBaseItem* item : internal_clipboard) {
+        IBaseItem* copy = item->create_copy();
         copies.append(copy);
     }
-    undo_stack_->push(new InsertItemsCommand(this, copies, position));
+    // TODOLATER: use undo stack
+    // undo_stack_->push(new InsertItemsCommand(this, copies, position));
 }
 
 void CanvasScene::raise_to_top()
@@ -136,7 +139,9 @@ void CanvasScene::raise_to_top()
     cancel_active_modes();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
-    std::transform(items.begin(), items.end(), std::back_inserter(z_values),
+    std::transform(items.begin(),
+                   items.end(),
+                   std::back_inserter(z_values),
                    [](const auto& i) { return i->zValue(); });
     double min_z_value = *std::min_element(z_values.begin(), z_values.end());
     double delta = max_z + Z_STEP - min_z_value;
@@ -151,7 +156,9 @@ void CanvasScene::lower_to_bottom()
     cancel_active_modes();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
-    std::transform(items.begin(), items.end(), std::back_inserter(z_values),
+    std::transform(items.begin(),
+                   items.end(),
+                   std::back_inserter(z_values),
                    [](const auto& i) { return i->zValue(); });
     double max_z_value = *std::max_element(z_values.begin(), z_values.end());
     double delta = min_z - Z_STEP - max_z_value;
@@ -168,29 +175,239 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
     QList<qreal> values;
     QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
-        QRectF rect = items_bounding_rect(QList<QGraphicsItem*>{ item });
+        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         values.append(mode == "width" ? rect.width() : rect.height());
     }
     if (values.size() < 2)
         return;
-    qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0) / values.size();
+    qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
+                / values.size();
     qDebug() << "Calculated average" << mode << avg;
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
-        QRectF rect = items_bounding_rect(QList<QGraphicsItem*>{ item });
-        scaleFactors.append(avg / (mode == "width" ? rect.width() : rect.height()));
+        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        scaleFactors.append(avg
+                            / (mode == "width" ? rect.width() : rect.height()));
     }
-    undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
+    // TODOLATER: use undo stack
+    // undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
-void CanvasScene::normalize_height() { normalize_width_or_height("height"); }
-void CanvasScene::normalize_width() { normalize_width_or_height("width"); }
+void CanvasScene::normalize_height()
+{
+    normalize_width_or_height("height");
+}
+void CanvasScene::normalize_width()
+{
+    normalize_width_or_height("width");
+}
+
+void CanvasScene::normalize_size()
+{
+    cancel_active_modes();
+    QList<qreal> sizes;
+    QList<QGraphicsItem*> items = selectedItems(true);
+    for (QGraphicsItem* item : items) {
+        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        sizes.append(rect.width() * rect.height());
+    }
+    if (sizes.size() < 2)
+        return;
+    qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
+                / sizes.size();
+    qDebug() << "Calculated average size" << avg;
+
+    QList<qreal> scaleFactors;
+    for (QGraphicsItem* item : items) {
+        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        scaleFactors.append(std::sqrt(avg / (rect.width() * rect.height())));
+    }
+    // TODOLATER: use undo stack
+    // undoStack->push(new NormalizeItemsCommand(items, scaleFactors));
+}
+
+void CanvasScene::arrange(bool vertical) {
+    // TODOLATER:
+    qDebug() << "CanvasScene::arrange: not implemented";    
+}
+
+void CanvasScene::arrange_optimal() {
+    // TODOLATER:
+    qDebug() << "CanvasScene::arrange_optimal: not implemented";
+}
+
+void CanvasScene::flip_items(bool vertical) {
+    cancel_active_modes();
+    // TODOLATER:
+    // undoStack->push(new FlipItemsCommand(selectedItems(userOnly), getSelectionCenter(), vertical));
+}
+
+void CanvasScene::crop_items() {
+    if (crop_item)
+        return;
+    if (has_single_image_selection()) {
+        IBaseItem* item = (IBaseItem*)selectedItems(true).first();
+        if (item->is_croppable())
+            item->enter_crop_mode();
+    }
+}
+
+QColor CanvasScene::sample_color_at(QPointF position)
+{
+    // TODOLATER:
+    qDebug() << "CanvasScene::sample_color_at: not implemented";
+    return QColor();
+}
+
+void CanvasScene::select_all_items() {
+    cancel_active_modes();
+    QPainterPath path;
+    path.addRect(itemsBoundingRect());
+    setSelectionArea(path);
+}
+
+void CanvasScene::deselect_all_items() {
+    cancel_active_modes();
+    clearSelection();
+}
+
+bool CanvasScene::has_selection() {
+    return selectedItems(true).isEmpty();
+}
+
+bool CanvasScene::has_single_selection() {
+    return selectedItems(true).size() == 1;
+}
 
 bool CanvasScene::has_multi_selection()
 {
+    return selectedItems(true).size() > 1;
+}
+
+bool CanvasScene::has_single_image_selection()
+{
+    if (has_single_selection()) {
+        return selectedItems(true).first()->type() == 777;
+    }
     return false;
 }
+
+QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
+{
+    QList<QGraphicsItem*> items = QGraphicsScene::selectedItems();
+    if (userOnly) {
+        QList<QGraphicsItem*> userItems;
+        for (QGraphicsItem* item : items) {
+            if (item->data(0).isValid() && itemAddByUser(item->type()))
+                userItems.append(item);
+        }
+        return userItems;
+    }
+    return items;
+}
+
+QList<QGraphicsItem*> CanvasScene::items_by_type(int type) {
+    QList<QGraphicsItem*> itemsl;
+    for (QGraphicsItem* item : items()) {
+        if (item->type() == type)
+            itemsl.append(item);
+    }
+    return itemsl;
+}
+
+QList<QGraphicsItem*> CanvasScene::items_for_save()
+{
+    Q_ASSERT_X(false, "CanvasScene::items_for_save", "Not implemented");
+    return QList<QGraphicsItem*>();
+}
+
+void CanvasScene::clear_save_ids() {
+    Q_ASSERT_X(false, "CanvasScene::clear_save_ids", "Not implemented");
+}
+
+void CanvasScene::on_view_scale_change() {
+    for (QGraphicsItem* item : selectedItems()) {
+        // TODOLATER: Может сделать в IBaseItem виртуальный метод,
+        // который я переопределю в SelectableMixin
+        if (item->type() == 777) {
+            auto* pixmap_item = (PixmapItem*)item;
+            pixmap_item->on_view_scale_change();
+        } else if (item->type() == 666) {
+            auto* text_item = (TextItem*)item;
+            text_item->on_view_scale_change();
+        }
+    }
+}
+
+QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
+                                      QList<QGraphicsItem*> items_in) const
+{
+    auto filterUserItems =
+        [this](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
+        QList<QGraphicsItem*> userItems;
+        for (QGraphicsItem* item : itemList) {
+            if (item->data(0).isValid() && this->itemAddByUser(item->type()))
+                userItems.append(item);
+        }
+        return userItems;
+    };
+
+    QList<QGraphicsItem*> base;
+
+    if (selectionOnly) {
+        base = filterUserItems(selectedItems());
+    } else if (!items_in.isEmpty()) {
+        base = items_in;
+    } else {
+        base = filterUserItems(items());
+    }
+}
+
+QPointF CanvasScene::get_selection_center()
+{
+    auto rect = itemsBoundingRect(true);
+    return (rect.topLeft() + rect.bottomRight()) / 2;
+}
+
+void CanvasScene::on_selection_changed()
+{
+    if (clear_ongoing) {
+        return;
+    }
+
+    if (has_multi_selection()) {
+        multiselect_item_->fit_selection_area(itemsBoundingRect(true));
+    }
+
+    if (has_multi_selection() && !multiselect_item_->scene()) {
+        addItem(multiselect_item_);
+        multiselect_item_->bring_to_front();
+    }
+
+    if (!has_multi_selection() && multiselect_item_->scene()) {
+        removeItem(multiselect_item_);
+    }
+}
+
+void CanvasScene::on_change()
+{
+    if (clear_ongoing) {
+        return;
+    }
+
+    if (multiselect_item_->scene()
+        && multiselect_item_->active_mode == MultiSelectItem::kNone) {
+        multiselect_item_->fit_selection_area(itemsBoundingRect(true));
+    }
+}
+
+bool CanvasScene::itemAddByUser(int type) const
+{
+    return (type == 666) || (type == 777);
+}
+
+
 
 
 void CanvasScene::keyPressEvent(QKeyEvent* event)
@@ -767,37 +984,7 @@ void CanvasScene::settingsChangedSlot()
     selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
 }
 
-void CanvasScene::on_selection_changed()
-{
-    if (clear_ongoing) {
-        return;
-    }
 
-    if (has_multi_selection()) {
-        multiselect_item_->fit_selection_area(items_bounding_rect(true));
-    }
-
-    if (has_multi_selection() && !multiselect_item_->scene()) {
-        add_item(multiselect_item_.get());
-        multiselect_item_->bring_to_front();
-    }
-
-    if (!has_multi_selection() && multiselect_item_->scene()) {
-        remove_item(multiselect_item_.get());
-    }
-}
-
-void CanvasScene::on_change()
-{
-    if (clear_ongoing) {
-        return;
-    }
-
-    if (multiselect_item_->scene()
-        && multiselect_item_->active_mode == MultiSelectItem::kNone) {
-        multiselect_item_->fit_selection_area(items_bounding_rect(true));
-    }
-}
 
 void CanvasScene::clipboardChanged()
 {

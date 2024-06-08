@@ -11,8 +11,16 @@
 #include <QPainter>
 #include <QPen>
 
+class IBaseItem {
+public:
+    virtual ~IBaseItem() = default;
+    virtual IBaseItem* create_copy() = 0;
+    virtual bool is_croppable() = 0;
+    virtual void enter_crop_mode() = 0;
+};
+
 template<typename T>
-class BaseItemMixin : public T
+class BaseItemMixin : public T, public IBaseItem
 {
 public:
     explicit BaseItemMixin(T* parent = nullptr)
