@@ -56,7 +56,7 @@ public:
 class PixmapItem : public ItemMixin<PixmapItem, QGraphicsPixmapItem>
 {
 public:
-    bool is_croppable = true;
+    bool is_croppable_ = true;
     bool crop_mode = false;
     QRectF crop_{};
     QRectF crop_temp{};
@@ -68,13 +68,13 @@ public:
     {
         // save_id = nullptr;
         reset_crop();
-        is_croppable = true;
+        is_croppable_ = true;
         crop_mode = false;
         init_selectable();
     }
 
     // set_image function
-
+    bool is_croppable() override { return is_croppable_; }
     int type() const override { return 777; }
     // static PixmapItem* create_from_data() {}
 
@@ -119,9 +119,9 @@ public:
         this->setPixmap(pixmap);
     }
 
-    PixmapItem* create_copy()
+    IBaseItem* create_copy() override
     {
-        PixmapItem* item = new PixmapItem(nullptr);
+        auto* item = new PixmapItem(nullptr);
         item->setPixmap(pixmap());
         item->setPos(pos());
         item->setZValue(zValue());
@@ -303,7 +303,7 @@ public:
         }
     }
 
-    void enter_crop_mode()
+    void enter_crop_mode() override
     {
         this->prepareGeometryChange();
         crop_mode = true;
@@ -473,13 +473,13 @@ public:
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
     {
         // save_id = nullptr;
-        is_croppable = false;
+        is_croppable_ = false;
         init_selectable();
         is_editable = true;
         edit_mode = false;
         setDefaultTextColor(QColor(0, 0, 0, 128));
     }
-
+    bool is_croppable() override { return is_croppable_; }
     int type() const override { return 666; }
 
     void set_text(QString text) { this->setPlainText(text); }
@@ -513,7 +513,7 @@ public:
         this->paint_selectable(painter, option, widget);
     }
 
-    TextItem* create_copy()
+    IBaseItem* create_copy() override
     {
         auto* new_item = new TextItem();
         new_item->setPlainText(this->get_extra_save_data());
@@ -546,6 +546,10 @@ public:
         scene->edit_item = nullptr;
     }
 
+    void enter_crop_mode() override
+    {
+        Q_ASSERT_X(false, "TextItem::enter_crop_mode", "Should not be called");
+    }
 
     void copy_to_clipboard(QClipboard* clipboard)
     {
@@ -566,7 +570,7 @@ protected:
     }
 
 public:
-    bool is_croppable = false;
+    bool is_croppable_ = false;
     bool is_editable = true;
     bool edit_mode = false;
 };
