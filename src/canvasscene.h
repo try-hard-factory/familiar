@@ -8,7 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
 #include <QRubberBand>
-#include "moveitem.h"
+
 #include <queue>
 
 enum EState {
@@ -22,9 +22,10 @@ class MainWindow;
 class project_settings;
 class TextItem;
 class PixmapItem;
-class RubberBandItem;
+class RubberbandItem;
 class MultiSelectItem;
 class QUndoStack;
+class IBaseItem;
 
 class CanvasScene : public QGraphicsScene
 {
@@ -40,7 +41,6 @@ public:
 
 // new code
     void clear();
-    bool has_multi_selection();
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
     void cancel_active_modes();
@@ -94,11 +94,11 @@ public:
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     void addImageToSceneToPosition(QImage&& image, QPointF position);
     QByteArray fml_payload();
-    void updateViewScaleFactor(qreal newval)
-    {
-        itemGroup_->setScaleControlFactor(newval);
-        parentViewScaleFactor_ = newval;
-    }
+    // void updateViewScaleFactor(qreal newval)
+    // {
+    //     itemGroup_->setScaleControlFactor(newval);
+    //     parentViewScaleFactor_ = newval;
+    // }
 
     void setProjectSettings(project_settings* ps);
 
@@ -111,7 +111,7 @@ public:
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
-    ItemGroup* itemGroup() const noexcept { return itemGroup_; }
+    // ItemGroup* itemGroup() const noexcept { return itemGroup_; }
 
     void onSelectionChange()
     {
@@ -128,9 +128,7 @@ public:
 
 
 protected:
-    void keyPressEvent(QKeyEvent* event) override;
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-    
+    void keyPressEvent(QKeyEvent* event) override;   
     void drawForeground(QPainter* painter, const QRectF& rect) override;
     void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent* event) override;
@@ -157,7 +155,7 @@ public:
     PixmapItem* crop_item = nullptr;
     std::queue<PixmapItem*> items_to_add;
     bool clear_ongoing = false;
-    RubberBandItem* rubberband_item_;
+    RubberbandItem* rubberband_item_;
     MultiSelectItem* multiselect_item_;
     QList<IBaseItem*> internal_clipboard;
 private:
@@ -170,7 +168,7 @@ private:
 
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
-    ItemGroup* itemGroup_ = nullptr;
+    // ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
 
     EState state_ = eMouseMoving;

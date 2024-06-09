@@ -56,6 +56,10 @@ public:
      */
     ~CanvasView();
 
+
+public slots:
+    void on_scene_changed();
+public:
     /**
      * \~russian @brief setProjectSettings
      * \~russian @param ps - настройки проекта

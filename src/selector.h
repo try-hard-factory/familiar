@@ -90,7 +90,7 @@ public:
         }
     }
 
-    virtual QRectF bounding_rect_unselected() const { return QGraphicsItem::boundingRect(); }
+    virtual QRectF bounding_rect_unselected() const { return T::boundingRect(); }
 
     qreal width() const { return bounding_rect_unselected().width(); }
 
@@ -113,6 +113,12 @@ public:
         QRectF rect;
         bool flip_v;
     };
+    enum EMode {
+        kScaleMode = 1,
+        kRotateMode = 2,
+        kFlipMode = 3,
+        kNone = -1,
+    };
 
     explicit SelectableMixin(T* parent = nullptr)
         : BaseItemMixin<T>(parent)
@@ -130,12 +136,10 @@ public:
 
     void resetActions()
     {
-        scaleActive = false;
-        rotateActive = false;
-        flipActive = false;
+        active_mode = EMode::kNone;
     }
 
-    bool isActionActive() const { return scaleActive || rotateActive || flipActive; }
+    bool isActionActive() const { return active_mode != EMode::kNone; }
 
     qreal fixed_length_for_viewport(qreal value) const
     {
@@ -653,6 +657,7 @@ private:
     bool scaleActive{false};
     bool rotateActive{false};
     bool flipActive{false};
+    EMode active_mode{kNone};
     int viewport_scale{1};
     bool is_editable{false};
 
@@ -669,7 +674,17 @@ public:
     {
         this->init_selectable();
     }
-
+    IBaseItem* create_copy() override {
+        Q_ASSERT_X(false, "RubberbandItem::create_copy", "Should not be called");
+        return nullptr;
+    }
+    bool is_croppable() override {
+        Q_ASSERT_X(false, "RubberbandItem::is_croppable", "Should not be called");
+        return false;
+    }
+    void enter_crop_mode() override {
+        Q_ASSERT_X(false, "RubberbandItem::enter_crop_mode", "Should not be called");
+    }
     virtual bool has_selection_outline() const { return true; }
     virtual bool has_selection_handles()
     {
@@ -741,6 +756,18 @@ public:
     void fit(const QPointF& point1, const QPointF& point2)
     {
         this->setRect(get_rect_from_points(point1, point2));
+    }
+
+    IBaseItem* create_copy() override {
+        Q_ASSERT_X(false, "RubberbandItem::create_copy", "Should not be called");
+        return nullptr;
+    }
+    bool is_croppable() override {
+        Q_ASSERT_X(false, "RubberbandItem::is_croppable", "Should not be called");
+        return false;
+    }
+    void enter_crop_mode() override {
+        Q_ASSERT_X(false, "RubberbandItem::enter_crop_mode", "Should not be called");
     }
 
     QColor color{Qt::black};
