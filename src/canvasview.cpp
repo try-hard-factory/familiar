@@ -26,18 +26,20 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setFrameShape(QFrame::NoFrame);
 
     undoStack_->setUndoLimit(100);
-    connect(undoStack_, &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
-    connect(undoStack_, &QUndoStack::canUndoChanged, this, &CanvasView::on_can_undo_changed);
-    connect(undoStack_, &QUndoStack::cleanChanged, this, &CanvasView::on_undo_clean_changed);
+     // TODOLATER:
+    // connect(undoStack_, &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
+    // connect(undoStack_, &QUndoStack::canUndoChanged, this, &CanvasView::on_can_undo_changed);
+    // connect(undoStack_, &QUndoStack::cleanChanged, this, &CanvasView::on_undo_clean_changed);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
-    scene_ = new CanvasScene(mw, zCounter_);
+    scene_ = new CanvasScene(mw, zCounter_, undoStack_.get());
     connect(scene_, &CanvasScene::changed, this, &CanvasView::on_scene_changed);
     connect(scene_, &CanvasScene::selectionChanged, this, &CanvasView::on_selection_changed);
-    connect(scene_, &CanvasScene::cursor_changed, this, &CanvasView::on_cursor_changed);
-    connect(scene_, &CanvasScene::cursor_cleared, this, &CanvasView::on_cursor_cleared);
+     // TODOLATER:
+    // connect(scene_, &CanvasScene::cursor_changed, this, &CanvasView::on_cursor_changed);
+    // connect(scene_, &CanvasScene::cursor_cleared, this, &CanvasView::on_cursor_cleared);
     setScene(scene_);
 
     connect(SettingsHandler::getInstance(),
@@ -65,6 +67,27 @@ CanvasView::~CanvasView()
     delete welcomeOverlay_;
 }
 
+
+void CanvasView::on_scene_changed()
+{
+    if (scene_->items().isEmpty()) {
+        qDebug() << "No items in scene";
+        setTransform(QTransform());
+        welcomeOverlay_->setFocus();
+        clearFocus();
+        welcomeOverlay_->show();
+        // TODOLATER:
+        // actiongroup_set_enabled("active_when_items_in_scene", false);
+    } else {
+        setFocus();
+        welcomeOverlay_->clearFocus();
+        welcomeOverlay_->hide();
+        // TODOLATER:
+        // actiongroup_set_enabled("active_when_items_in_scene", true);
+    }
+    // recalc_scene_rect();
+}
+
 void CanvasView::setProjectSettings(project_settings* ps)
 {
     scene_->setProjectSettings(ps);
@@ -79,36 +102,36 @@ QByteArray CanvasView::fml_payload()
 
 void CanvasView::addImage(const QString& path, QPointF point)
 {
-    ++zCounter_;
-    MoveItem* item = new MoveItem(path, zCounter_);
-    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+    // ++zCounter_;
+    // MoveItem* item = new MoveItem(path, zCounter_);
+    // item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 
-    item->setPos(point);
-    scene_->addItem(item);
+    // item->setPos(point);
+    // scene_->addItem(item);
 }
 
 
 void CanvasView::addImage(QImage* img, QPointF point)
 {
-    ++zCounter_;
-    MoveItem* item = new MoveItem(img, zCounter_);
-    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+    // ++zCounter_;
+    // MoveItem* item = new MoveItem(img, zCounter_);
+    // item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 
-    item->setPos(point);
-    scene_->addItem(item);
+    // item->setPos(point);
+    // scene_->addItem(item);
 }
 
 void CanvasView::addImage(
     QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f)
 {
-    ++zCounter_;
-    MoveItem* item = new MoveItem(ba, w, h, bpl, f, zCounter_);
-    item->setRect(br);
-    LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
-    item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+    // ++zCounter_;
+    // MoveItem* item = new MoveItem(ba, w, h, bpl, f, zCounter_);
+    // item->setRect(br);
+    // LOG_DEBUG(logger, "Adress: ", item, ", Z: ", item->zValue());
+    // item->setFlag(QGraphicsItem::ItemIsSelectable, true);
 
-    item->setPos(br.topLeft());
-    scene_->addItem(item);
+    // item->setPos(br.topLeft());
+    // scene_->addItem(item);
 }
 
 
@@ -175,15 +198,15 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 
 void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
 {
-    if (!fitViewF_) {
-        fitViewF_ = true;
-        fitInView(scene_->itemGroup(), Qt::KeepAspectRatio);
-        scene_->updateViewScaleFactor(transform().m11());
-    } else {
-        fitViewF_ = false;
-        fitInView(scene_->sceneRect(), Qt::KeepAspectRatio);
-        scene_->updateViewScaleFactor(transform().m11());
-    }
+    // if (!fitViewF_) {
+    //     fitViewF_ = true;
+    //     fitInView(scene_->itemGroup(), Qt::KeepAspectRatio);
+    //     scene_->updateViewScaleFactor(transform().m11());
+    // } else {
+    //     fitViewF_ = false;
+    //     fitInView(scene_->sceneRect(), Qt::KeepAspectRatio);
+    //     scene_->updateViewScaleFactor(transform().m11());
+    // }
     QGraphicsView::mouseDoubleClickEvent(event);
 }
 
@@ -217,25 +240,25 @@ void CanvasView::SetScale(qreal qrScale)
 
 void CanvasView::wheelEvent(QWheelEvent* event)
 {
-    // When zooming, the view stay centered over the mouse
-    this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
-    //    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
+    // // When zooming, the view stay centered over the mouse
+    // this->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
+    // //    qreal qrValue = qPow(2.0, (event->angleDelta().y() / 240.0));
 
-    //    ScaleView(qrValue);
-    auto numPixels = event->angleDelta();
-    double factor
-        = zoomFactor_; //(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
-    if (numPixels.y() > 0) {
-        scale(factor, factor);
-    } else {
-        scale(1 / factor, 1 / factor);
-    }
+    // //    ScaleView(qrValue);
+    // auto numPixels = event->angleDelta();
+    // double factor
+    //     = zoomFactor_; //(event->modifiers() & Qt::ControlModifier) ? zoomCtrlFactor : zoomFactor;
+    // if (numPixels.y() > 0) {
+    //     scale(factor, factor);
+    // } else {
+    //     scale(1 / factor, 1 / factor);
+    // }
 
 
-    scene_->updateViewScaleFactor(transform().m11());
+    // scene_->updateViewScaleFactor(transform().m11());
 
-    // The event is processed
-    event->accept();
+    // // The event is processed
+    // event->accept();
 }
 
 
