@@ -74,7 +74,7 @@ void CanvasScene::clear()
 {
     clear_ongoing = true;
     QGraphicsScene::clear();
-    // internal_clipboard_.clear();
+    internal_clipboard.clear();
     rubberband_item_ = new RubberbandItem();
     multiselect_item_ = new MultiSelectItem();
     clear_ongoing = false;
@@ -99,14 +99,6 @@ void CanvasScene::cancel_active_modes()
     end_rubberband_mode();
 }
 
-void CanvasScene::cancel_crop_mode()
-{
-    if (crop_item) {
-        qDebug() << "End crop mode";
-        crop_item->exit_crop_mode(false);
-    }
-}
-
 void CanvasScene::end_rubberband_mode()
 {
     if (rubberband_item_) {
@@ -115,6 +107,15 @@ void CanvasScene::end_rubberband_mode()
     }
     active_mode = ESceneMode::kNone;
 }
+
+void CanvasScene::cancel_crop_mode()
+{
+    if (crop_item) {
+        qDebug() << "End crop mode";
+        crop_item->exit_crop_mode(false);
+    }
+}
+
 void CanvasScene::copy_selection_to_internal_clipboard()
 {
     internal_clipboard.clear();

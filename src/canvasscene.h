@@ -82,10 +82,15 @@ public:
 public slots:
     void on_selection_changed();
     void on_change();
+signals:
+    void cursor_changed(QCursor);
+    void cursor_cleared();
 public:
     void add_item_later();
     void add_queued_items();
     bool itemAddByUser(int type) const;
+
+
 // old code
     void pasteFromClipboard();
     void pasteFromTemp();
@@ -141,9 +146,7 @@ public slots:
 private slots:
     void clipboardChanged();
 
-signals:
-    void cursor_changed(QCursor);
-    void cursor_cleared();
+
 
 public:    
     ESceneMode active_mode = kNone;
