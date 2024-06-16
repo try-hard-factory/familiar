@@ -71,7 +71,7 @@ CanvasView::~CanvasView()
 void CanvasView::on_scene_changed()
 {
     if (scene_->items().isEmpty()) {
-        qDebug() << "No items in scene";
+        //qDebug() << "No items in scene";
         setTransform(QTransform());
         welcomeOverlay_->setFocus();
         clearFocus();
