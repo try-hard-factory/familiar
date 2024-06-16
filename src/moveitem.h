@@ -58,6 +58,7 @@ class PixmapItem : public ItemMixin<PixmapItem, QGraphicsPixmapItem>
 public:
     bool is_croppable_ = true;
     bool crop_mode = false;
+    bool is_editable_ = false;
     QRectF crop_{};
     QRectF crop_temp{};
     QPointF crop_mode_event_start{};
@@ -70,11 +71,13 @@ public:
         reset_crop();
         is_croppable_ = true;
         crop_mode = false;
+        
         init_selectable();
     }
 
     // set_image function
     bool is_croppable() override { return is_croppable_; }
+    bool is_editable() override { return is_editable_; }
     int type() const override { return 777; }
     // static PixmapItem* create_from_data() {}
 
@@ -475,11 +478,12 @@ public:
         // save_id = nullptr;
         is_croppable_ = false;
         init_selectable();
-        is_editable = true;
+        is_editable_ = true;
         edit_mode = false;
         setDefaultTextColor(QColor(0, 0, 0, 128));
     }
     bool is_croppable() override { return is_croppable_; }
+    bool is_editable() override { return is_editable_; }
     int type() const override { return 666; }
 
     void set_text(QString text) { this->setPlainText(text); }
@@ -571,7 +575,7 @@ protected:
 
 public:
     bool is_croppable_ = false;
-    bool is_editable = true;
+    bool is_editable_ = true;
     bool edit_mode = false;
 };
 
