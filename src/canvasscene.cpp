@@ -228,27 +228,31 @@ void CanvasScene::normalize_size()
     // undoStack->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
-void CanvasScene::arrange(bool vertical) {
+void CanvasScene::arrange(bool vertical)
+{
     // TODOLATER:
-    qDebug() << "CanvasScene::arrange: not implemented";    
+    qDebug() << "CanvasScene::arrange: not implemented";
 }
 
-void CanvasScene::arrange_optimal() {
+void CanvasScene::arrange_optimal()
+{
     // TODOLATER:
     qDebug() << "CanvasScene::arrange_optimal: not implemented";
 }
 
-void CanvasScene::flip_items(bool vertical) {
+void CanvasScene::flip_items(bool vertical)
+{
     cancel_active_modes();
     // TODOLATER:
     // undoStack->push(new FlipItemsCommand(selectedItems(userOnly), getSelectionCenter(), vertical));
 }
 
-void CanvasScene::crop_items() {
+void CanvasScene::crop_items()
+{
     if (crop_item)
         return;
     if (has_single_image_selection()) {
-        IBaseItem* item = (IBaseItem*)selectedItems(true).first();
+        IBaseItem* item = (IBaseItem*) selectedItems(true).first();
         if (item->is_croppable())
             item->enter_crop_mode();
     }
@@ -261,23 +265,27 @@ QColor CanvasScene::sample_color_at(QPointF position)
     return QColor();
 }
 
-void CanvasScene::select_all_items() {
+void CanvasScene::select_all_items()
+{
     cancel_active_modes();
     QPainterPath path;
     path.addRect(itemsBoundingRect());
     setSelectionArea(path);
 }
 
-void CanvasScene::deselect_all_items() {
+void CanvasScene::deselect_all_items()
+{
     cancel_active_modes();
     clearSelection();
 }
 
-bool CanvasScene::has_selection() {
+bool CanvasScene::has_selection()
+{
     return selectedItems(true).isEmpty();
 }
 
-bool CanvasScene::has_single_selection() {
+bool CanvasScene::has_single_selection()
+{
     return selectedItems(true).size() == 1;
 }
 
@@ -296,18 +304,98 @@ bool CanvasScene::has_single_image_selection()
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
+    if (event->button() == Qt::RightButton) {
+        return;
+    }
+
+    if (event->button() == Qt::LeftButton) {
+        event_start = event->scenePos();
+        auto* item_at_pos = itemAt(event_start, views().first()->transform());
+
+        if (edit_item) {
+            if (item_at_pos != edit_item)
+                edit_item->exit_edit_mode();
+            else {
+                QGraphicsScene::mousePressEvent(event);
+                return;
+            }
+        }
+
+        if (crop_item) {
+            if (item_at_pos != crop_item)
+                cancel_crop_mode();
+            else {
+                QGraphicsScene::mousePressEvent(event);
+                return;
+            }
+        }
+
+        if (item_at_pos) {
+            active_mode = ESceneMode::kMove;
+        } else if (!items().isEmpty()) {
+            active_mode = ESceneMode::kRubberBand;
+        }
+    }
+
+    QGraphicsScene::mousePressEvent(event);
 }
 
 void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
+    cancel_active_modes();
+
+    auto* item = itemAt(event->scenePos(), views().first()->transform());
+    if (item) {
+        if (!item->isSelected()) {
+            item->setSelected(true);
+        }
+        if (((IBaseItem*) item)->is_editable()) {
+            ((TextItem*) item)->enter_edit_mode();
+            // TODOLATER:
+            QGraphicsScene::mousePressEvent(event);
+        } else {
+            (CanvasView*) (views().first())
+                ->fit_rect(itemsBoundingRect(QList<QGraphicsItem*>{item}), item);
+        }
+        return;
+    }
+
+    QGraphicsScene::mouseDoubleClickEvent(event);
 }
 
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
+    if (active_mode == ESceneMode::kRubberBand) {
+        if (!rubberband_item_->scene()) {
+            qDebug() << "Activating rubberband selection";
+            addItem(rubberband_item_);
+            rubberband_item_->bring_to_front();
+        }
+        rubberband_item_->fit(event_start, event->scenePos());
+        setSelectionArea(rubberband_item_->shape());
+        (CanvasView*) (views().first())->reset_previous_transform();
+    }
+
+    QGraphicsScene::mouseMoveEvent(event);
 }
 
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
+    if (active_mode == ESceneMode::kRubberBand) {
+        end_rubberband_mode();
+    }
+    if (active_mode == ESceneMode::kMove && has_selection()
+        && !multiselect_item_->isActionActive()
+        && !selectedItems(false).first()->isActionActive()) {
+            auto delta = event->scenePos() - event_start;
+            if (!delta.isNull()) {
+                // TODOLATER:
+                // undo_stack_->push(new MoveItemsByCommand(selectedItems(), delta, true));
+            }
+    }
+
+    active_mode = ESceneMode::kNone;
+    QGraphicsScene::mouseReleaseEvent(event);
 }
 
 QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
@@ -324,7 +412,8 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
     return items;
 }
 
-QList<QGraphicsItem*> CanvasScene::items_by_type(int type) {
+QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
+{
     QList<QGraphicsItem*> itemsl;
     for (QGraphicsItem* item : items()) {
         if (item->type() == type)
@@ -339,19 +428,21 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     return QList<QGraphicsItem*>();
 }
 
-void CanvasScene::clear_save_ids() {
+void CanvasScene::clear_save_ids()
+{
     Q_ASSERT_X(false, "CanvasScene::clear_save_ids", "Not implemented");
 }
 
-void CanvasScene::on_view_scale_change() {
+void CanvasScene::on_view_scale_change()
+{
     for (QGraphicsItem* item : selectedItems()) {
         // TODOLATER: Может сделать в IBaseItem виртуальный метод,
         // который я переопределю в SelectableMixin
         if (item->type() == 777) {
-            auto* pixmap_item = (PixmapItem*)item;
+            auto* pixmap_item = (PixmapItem*) item;
             pixmap_item->on_view_scale_change();
         } else if (item->type() == 666) {
-            auto* text_item = (TextItem*)item;
+            auto* text_item = (TextItem*) item;
             text_item->on_view_scale_change();
         }
     }
@@ -381,10 +472,10 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
     }
 
     if (base.isEmpty()) {
-        return QRectF(0,0,0,0);
+        return QRectF(0, 0, 0, 0);
     }
 
-    Q_ASSERT_X(false , "CanvasScene::itemsBoundingRect", "Not implemented");    
+    Q_ASSERT_X(false, "CanvasScene::itemsBoundingRect", "Not implemented");
 }
 
 QPointF CanvasScene::get_selection_center()
@@ -419,8 +510,7 @@ void CanvasScene::on_change()
         return;
     }
 
-    if (multiselect_item_->scene()
-        && !multiselect_item_->isActionActive()) {
+    if (multiselect_item_->scene() && !multiselect_item_->isActionActive()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 }
@@ -711,121 +801,121 @@ std::string stateText(int idx)
 
 // void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 // {
-    // //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
-    // auto item = getFirstItemUnderCursor(event->scenePos());
-    // if (item && item->type() != ItemGroup::eBorderDot) {
-    //     item->setZValue(++zCounter_);
-    //     qDebug() << "zcounter=" << zCounter_ << ", Z VALUE=" << item->zValue();
-    //     //        LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
-    // }
-    // if (item && item->type() == ItemGroup::eBorderDot) {
-    //     state_ = eGroupItemResizing;
-    //     LOG_DEBUG(logger,
-    //               "DEBUG: CHANGE TO mouse state: ",
-    //               stateText(state_),
-    //               "\n");
-    //     QGraphicsScene::mousePressEvent(event);
-    //     return;
-    // }
+// //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
+// auto item = getFirstItemUnderCursor(event->scenePos());
+// if (item && item->type() != ItemGroup::eBorderDot) {
+//     item->setZValue(++zCounter_);
+//     qDebug() << "zcounter=" << zCounter_ << ", Z VALUE=" << item->zValue();
+//     //        LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
+// }
+// if (item && item->type() == ItemGroup::eBorderDot) {
+//     state_ = eGroupItemResizing;
+//     LOG_DEBUG(logger,
+//               "DEBUG: CHANGE TO mouse state: ",
+//               stateText(state_),
+//               "\n");
+//     QGraphicsScene::mousePressEvent(event);
+//     return;
+// }
 
-    // //    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
+// //    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
 
-    // if (event->button() == Qt::LeftButton) {
-    //     if (event->modifiers() == Qt::ShiftModifier) {
-    //     } else if (event->modifiers() != Qt::ShiftModifier) {
-    //         if (item) {
-    //             if (!itemGroup_->isContain(item)) {
-    //                 itemGroup_->clearItemGroup();
-    //                 itemGroup_->addItemToGroup(item);
-    //                 itemGroup_->incZ();
-    //                 mainSelArea_.setReady(true);
-    //                 LOG_DEBUG(logger,
-    //                           "Group size: ",
-    //                           itemGroup_->childItems().size(),
-    //                           ". Empty: ",
-    //                           itemGroup_->isEmpty());
-    //                 //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
-    //             }
-    //             //                state_ = eMouseSelection;
-    //         } else {
-    //             state_ = eMouseSelection;
-    //             origin_ = event->scenePos();
-    //             rubberBand_.setRect(origin_.x(), origin_.y(), 0, 0);
-    //             itemGroup_->clearItemGroup();
-    //             mainSelArea_.setReady(false);
-    //             //                state_ = eMouseSelection;
-    //         }
-    //     }
-    // }
-    // QGraphicsScene::mousePressEvent(event);
+// if (event->button() == Qt::LeftButton) {
+//     if (event->modifiers() == Qt::ShiftModifier) {
+//     } else if (event->modifiers() != Qt::ShiftModifier) {
+//         if (item) {
+//             if (!itemGroup_->isContain(item)) {
+//                 itemGroup_->clearItemGroup();
+//                 itemGroup_->addItemToGroup(item);
+//                 itemGroup_->incZ();
+//                 mainSelArea_.setReady(true);
+//                 LOG_DEBUG(logger,
+//                           "Group size: ",
+//                           itemGroup_->childItems().size(),
+//                           ". Empty: ",
+//                           itemGroup_->isEmpty());
+//                 //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
+//             }
+//             //                state_ = eMouseSelection;
+//         } else {
+//             state_ = eMouseSelection;
+//             origin_ = event->scenePos();
+//             rubberBand_.setRect(origin_.x(), origin_.y(), 0, 0);
+//             itemGroup_->clearItemGroup();
+//             mainSelArea_.setReady(false);
+//             //                state_ = eMouseSelection;
+//         }
+//     }
+// }
+// QGraphicsScene::mousePressEvent(event);
 // }
 
 // void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 // {
-    // //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
-    // lastClickedPoint_ = event->scenePos();
-    // LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
+// //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
+// lastClickedPoint_ = event->scenePos();
+// LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
 
-    // if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
-    //     state_ = eMouseMoving;
-    //     LOG_DEBUG(logger,
-    //               "DEBUG: CHANGE TO mouse state: ",
-    //               stateText(state_),
-    //               "\n");
-    //     itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
-    //     QGraphicsScene::mouseReleaseEvent(event);
-    //     return;
-    // }
+// if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
+//     state_ = eMouseMoving;
+//     LOG_DEBUG(logger,
+//               "DEBUG: CHANGE TO mouse state: ",
+//               stateText(state_),
+//               "\n");
+//     itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
+//     QGraphicsScene::mouseReleaseEvent(event);
+//     return;
+// }
 
-    // auto item = getFirstItemUnderCursor(event->scenePos());
-    // if (event->button() == Qt::LeftButton) {
-    //     if (event->modifiers() == Qt::ShiftModifier) {
-    //         if (item) { // add to group
-    //             if (!itemGroup_->isContain(item)) {
-    //                 item->setZValue(++zCounter_);
-    //                 itemGroup_->addItemToGroup(item);
-    //                 itemGroup_->incZ();
-    //                 mainSelArea_.setReady(true);
-    //             } else {
-    //                 itemGroup_->removeItemFromGroup(item);
-    //                 if (itemGroup_->isEmpty()) {
-    //                     itemGroup_->clearItemGroup();
-    //                     mainSelArea_.setReady(false);
-    //                 }
-    //             }
-    //         }
-    //     } else if (event->modifiers() != Qt::ShiftModifier) {
-    //         if (item) {
-    //             if (itemGroup_->isContain(item)
-    //                 && !itemGroup_->isThisDots(item)) {
-    //                 if (state_ != eGroupItemMoving) {
-    //                     itemGroup_->clearItemGroup();
-    //                     item->setZValue(++zCounter_);
-    //                     itemGroup_->addItemToGroup(item);
-    //                     itemGroup_->incZ();
-    //                     mainSelArea_.setReady(true);
-    //                 }
+// auto item = getFirstItemUnderCursor(event->scenePos());
+// if (event->button() == Qt::LeftButton) {
+//     if (event->modifiers() == Qt::ShiftModifier) {
+//         if (item) { // add to group
+//             if (!itemGroup_->isContain(item)) {
+//                 item->setZValue(++zCounter_);
+//                 itemGroup_->addItemToGroup(item);
+//                 itemGroup_->incZ();
+//                 mainSelArea_.setReady(true);
+//             } else {
+//                 itemGroup_->removeItemFromGroup(item);
+//                 if (itemGroup_->isEmpty()) {
+//                     itemGroup_->clearItemGroup();
+//                     mainSelArea_.setReady(false);
+//                 }
+//             }
+//         }
+//     } else if (event->modifiers() != Qt::ShiftModifier) {
+//         if (item) {
+//             if (itemGroup_->isContain(item)
+//                 && !itemGroup_->isThisDots(item)) {
+//                 if (state_ != eGroupItemMoving) {
+//                     itemGroup_->clearItemGroup();
+//                     item->setZValue(++zCounter_);
+//                     itemGroup_->addItemToGroup(item);
+//                     itemGroup_->incZ();
+//                     mainSelArea_.setReady(true);
+//                 }
 
-    //                 state_ = eMouseMoving;
-    //                 LOG_DEBUG(logger,
-    //                           "DEBUG: CHANGE TO mouse state: ",
-    //                           stateText(state_),
-    //                           "\n");
-    //             }
-    //         } else {
-    //             itemGroup_->clearItemGroup();
-    //             mainSelArea_.setReady(false);
-    //             state_ = eMouseMoving;
-    //             LOG_DEBUG(logger,
-    //                       "DEBUG: CHANGE TO mouse state: ",
-    //                       stateText(state_),
-    //                       "\n");
-    //         }
-    //     }
-    // }
+//                 state_ = eMouseMoving;
+//                 LOG_DEBUG(logger,
+//                           "DEBUG: CHANGE TO mouse state: ",
+//                           stateText(state_),
+//                           "\n");
+//             }
+//         } else {
+//             itemGroup_->clearItemGroup();
+//             mainSelArea_.setReady(false);
+//             state_ = eMouseMoving;
+//             LOG_DEBUG(logger,
+//                       "DEBUG: CHANGE TO mouse state: ",
+//                       stateText(state_),
+//                       "\n");
+//         }
+//     }
+// }
 
-    // itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
-    // QGraphicsScene::mouseReleaseEvent(event);
+// itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
+// QGraphicsScene::mouseReleaseEvent(event);
 // }
 
 // void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
@@ -927,31 +1017,31 @@ void CanvasScene::onSelectionChanged()
 
 void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
 {
-// #ifdef GRID_DEBUG
-//     painter->setPen(QPen(Qt::green, 3));
-//     painter->drawEllipse(itemGroup_->pos(), 6, 6);
-//     painter->setPen(QPen(Qt::red, 3));
-//     painter->drawEllipse(itemGroup_->scenePos(), 10, 10);
-//     painter->setPen(QPen(Qt::white, 3));
-//     painter->drawEllipse({0, 0}, 2, 2);
-//     painter->setPen(QPen(Qt::black, 1));
-//     int begin = -3000;
-//     while (begin != 3000) {
-//         painter->drawLine(-99999, begin, 9999, begin);
-//         painter->drawLine(begin, -99999, begin, 99999);
-//         begin += 100;
-//     }
-// #endif
-//     if (!mainSelArea_.isReady())
-//         return;
-//     painter->save();
-//     qreal wsize = 2;
-//     QPen outline_pen{selectionColor_, wsize};
-//     outline_pen.setCosmetic(true);
-//     painter->setPen(outline_pen);
-//     auto r = itemGroup_->sceneBoundingRect();
-//     painter->drawRect(r);
-//     painter->restore();
+    // #ifdef GRID_DEBUG
+    //     painter->setPen(QPen(Qt::green, 3));
+    //     painter->drawEllipse(itemGroup_->pos(), 6, 6);
+    //     painter->setPen(QPen(Qt::red, 3));
+    //     painter->drawEllipse(itemGroup_->scenePos(), 10, 10);
+    //     painter->setPen(QPen(Qt::white, 3));
+    //     painter->drawEllipse({0, 0}, 2, 2);
+    //     painter->setPen(QPen(Qt::black, 1));
+    //     int begin = -3000;
+    //     while (begin != 3000) {
+    //         painter->drawLine(-99999, begin, 9999, begin);
+    //         painter->drawLine(begin, -99999, begin, 99999);
+    //         begin += 100;
+    //     }
+    // #endif
+    //     if (!mainSelArea_.isReady())
+    //         return;
+    //     painter->save();
+    //     qreal wsize = 2;
+    //     QPen outline_pen{selectionColor_, wsize};
+    //     outline_pen.setCosmetic(true);
+    //     painter->setPen(outline_pen);
+    //     auto r = itemGroup_->sceneBoundingRect();
+    //     painter->drawRect(r);
+    //     painter->restore();
 }
 
 void CanvasScene::handleImageFromClipboard(const QImage& image)
@@ -1007,7 +1097,6 @@ void CanvasScene::settingsChangedSlot()
     auto colorPreset = settings->getCurrentColorPreset();
     selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
 }
-
 
 
 void CanvasScene::clipboardChanged()

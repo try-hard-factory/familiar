@@ -161,6 +161,7 @@ public:
     RubberbandItem* rubberband_item_;
     MultiSelectItem* multiselect_item_;
     QList<IBaseItem*> internal_clipboard;
+    QPointF event_start{};
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;

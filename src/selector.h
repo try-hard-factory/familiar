@@ -16,6 +16,7 @@ public:
     virtual ~IBaseItem() = default;
     virtual IBaseItem* create_copy() = 0;
     virtual bool is_croppable() = 0;
+    virtual bool is_editable() = 0;
     virtual void enter_crop_mode() = 0;
 };
 
@@ -682,6 +683,10 @@ public:
         Q_ASSERT_X(false, "RubberbandItem::is_croppable", "Should not be called");
         return false;
     }
+    bool is_editable() override {
+        Q_ASSERT_X(false, "RubberbandItem::is_editable", "Should not be called");
+        return false;
+    }
     void enter_crop_mode() override {
         Q_ASSERT_X(false, "RubberbandItem::enter_crop_mode", "Should not be called");
     }
@@ -764,6 +769,10 @@ public:
     }
     bool is_croppable() override {
         Q_ASSERT_X(false, "RubberbandItem::is_croppable", "Should not be called");
+        return false;
+    }
+    bool is_editable() override {
+        Q_ASSERT_X(false, "RubberbandItem::is_editable", "Should not be called");
         return false;
     }
     void enter_crop_mode() override {
