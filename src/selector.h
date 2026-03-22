@@ -11,13 +11,15 @@
 #include <QPainter>
 #include <QPen>
 
-class IBaseItem {
+class IBaseItem
+{
 public:
     virtual ~IBaseItem() = default;
     virtual IBaseItem* create_copy() = 0;
     virtual bool is_croppable() = 0;
     virtual bool is_editable() = 0;
     virtual void enter_crop_mode() = 0;
+    virtual bool is_action_active() = 0;
 };
 
 template<typename T>
@@ -91,7 +93,10 @@ public:
         }
     }
 
-    virtual QRectF bounding_rect_unselected() const { return T::boundingRect(); }
+    virtual QRectF bounding_rect_unselected() const
+    {
+        return T::boundingRect();
+    }
 
     qreal width() const { return bounding_rect_unselected().width(); }
 
@@ -135,12 +140,9 @@ public:
         is_editable = false;
     }
 
-    void resetActions()
-    {
-        active_mode = EMode::kNone;
-    }
+    void resetActions() { active_mode = EMode::kNone; }
 
-    bool isActionActive() const { return active_mode != EMode::kNone; }
+    bool is_action_active() override { return active_mode != EMode::kNone; }
 
     qreal fixed_length_for_viewport(qreal value) const
     {
@@ -158,8 +160,14 @@ public:
         return value / viewScale / scale;
     }
 
-    qreal select_resize_size() const { return fixed_length_for_viewport(this->selectResizeSize); }
-    qreal select_rotate_size() const { return fixed_length_for_viewport(this->selectRotateSize); }
+    qreal select_resize_size() const
+    {
+        return fixed_length_for_viewport(this->selectResizeSize);
+    }
+    qreal select_rotate_size() const
+    {
+        return fixed_length_for_viewport(this->selectRotateSize);
+    }
     QRectF handleFreeCenterRect() const
     {
         qreal size = fixed_length_for_viewport(selectFreeCenter);
@@ -190,7 +198,9 @@ public:
             painter->setPen(QPen(Qt::blue));
             painter->setBrush(Qt::blue);
             for (const QPointF& corner : corners()) {
-                painter->drawEllipse(corner, selectHandleSize / 2, selectHandleSize / 2);
+                painter->drawEllipse(corner,
+                                     selectHandleSize / 2,
+                                     selectHandleSize / 2);
             }
         }
 
@@ -214,7 +224,9 @@ public:
         std::transform(corners.begin(),
                        corners.end(),
                        std::back_inserter(cornersScene),
-                       [this](const QPointF& corner) { return this->mapToScene(corner); });
+                       [this](const QPointF& corner) {
+                           return this->mapToScene(corner);
+                       });
 
         return cornersScene;
     }
@@ -303,9 +315,11 @@ public:
                 QMarginsF(margin, margin, margin, margin));
             path.addRect(rect);
 
-            std::for_each(std::begin(corners()), std::end(corners()), [&path, this](const QPointF& corner) {
-                path.addPath(this->getRotateBounds(corner));
-            });
+            std::for_each(std::begin(corners()),
+                          std::end(corners()),
+                          [&path, this](const QPointF& corner) {
+                              path.addPath(this->getRotateBounds(corner));
+                          });
         } else {
             path.addRect(this->bounding_rect_unselected());
         }
@@ -360,7 +374,8 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
         eventStart = event->scenePos();
-        CanvasView* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
+        CanvasView* view = dynamic_cast<CanvasView*>(
+            this->scene()->views().at(0));
         view->resetPreviousTransform(this);
 
         if (!this->isSelected()) {
@@ -384,9 +399,11 @@ protected:
                 //Check if we are in one of the corner's scale areas
                 if (getScaleBounds(corner).contains(event->pos())) {
                     scaleActive = true;
-                    eventDirection = get_direction_from_center(event->scenePos());
+                    eventDirection = get_direction_from_center(
+                        event->scenePos());
                     eventAnchor = this->mapToScene(get_scale_anchor(corner));
-                    for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
+                    for (auto& item :
+                         static_cast<Mixin*>(this)->selection_action_items()) {
                         // need casting here
                         auto* item_cast = dynamic_cast<SelectableMixin*>(item);
                         item_cast->scaleOrigFactor = item_cast->scale();
@@ -400,7 +417,8 @@ protected:
                     rotateActive = true;
                     eventAnchor = this->center_scene_coords();
                     rotateStartAngle = getRotateAngle(event->scenePos());
-                    for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
+                    for (auto& item :
+                         static_cast<Mixin*>(this)->selection_action_items()) {
                         // need casting here
                         auto* item_cast = dynamic_cast<SelectableMixin*>(item);
                         item_cast->rotateOrigDegrees = item_cast->scale();
@@ -428,15 +446,18 @@ protected:
         QPointF pos = event->scenePos();
         if ((pos - eventStart).manhattanLength() > 5) {
             // Reset previous transform when movement exceeds threshold
-            CanvasView* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
+            CanvasView* view = dynamic_cast<CanvasView*>(
+                this->scene()->views().at(0));
             view->resetPreviousTransform(nullptr);
         }
 
         if (scaleActive) {
             qreal factor = getScaleFactor(event);
-            for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
+            for (auto& item :
+                 static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                item_cast->setScale(scaleOrigFactor * factor, item->mapFromScene(eventAnchor));
+                item_cast->setScale(scaleOrigFactor * factor,
+                                    item->mapFromScene(eventAnchor));
             }
             event->accept();
             return;
@@ -445,11 +466,13 @@ protected:
                          || event->modifiers() == Qt::ControlModifier);
 
             qreal delta = getRotateDelta(event->scenePos(), snap);
-            for (auto& item : static_cast<Mixin*>(this)->selection_action_items()) {
+            for (auto& item :
+                 static_cast<Mixin*>(this)->selection_action_items()) {
                 // need casting here
                 auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                item_cast->setRotation(rotateOrigDegrees + delta * item_cast->flip(),
-                                  item->mapFromScene(eventAnchor));
+                item_cast->setRotation(rotateOrigDegrees
+                                           + delta * item_cast->flip(),
+                                       item->mapFromScene(eventAnchor));
             }
             event->accept();
             return;
@@ -505,7 +528,8 @@ protected:
 
 public slots:
     void on_view_scale_change() { this->prepareGeometryChange(); }
-    QVariant itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value) override
+    QVariant itemChange(QGraphicsItem::GraphicsItemChange change,
+                        const QVariant& value) override
     {
         if (change == QGraphicsItem::ItemSelectedChange) {
             this->prepareGeometryChange();
@@ -534,7 +558,10 @@ public:
         return rect.contains(pos);
     }
 
-    bool isInFlipHandle(const QRectF& rect, const QPointF& pos) const { return rect.contains(pos); }
+    bool isInFlipHandle(const QRectF& rect, const QPointF& pos) const
+    {
+        return rect.contains(pos);
+    }
 
     QPointF get_scale_anchor(const QPointF& corner) const
     {
@@ -571,8 +598,9 @@ public:
 
     Qt::CursorShape getCornerScaleCursor(const QPointF& corner)
     {
-        bool isTopLeftOrBottomRight = (corner == this->bounding_rect_unselected().topLeft()
-                                       || corner == this->bounding_rect_unselected().bottomRight());
+        bool isTopLeftOrBottomRight
+            = (corner == this->bounding_rect_unselected().topLeft()
+               || corner == this->bounding_rect_unselected().bottomRight());
         return get_diag_cursor(isTopLeftOrBottomRight);
     }
 
@@ -616,7 +644,8 @@ public:
 
     qreal getScaleFactor(QGraphicsSceneMouseEvent* event) const
     {
-        qreal imgSize = qSqrt(this->width() * this->width() + this->height() * this->height());
+        qreal imgSize = qSqrt(this->width() * this->width()
+                              + this->height() * this->height());
         QPointF p = event->scenePos() - eventStart;
         QPointF direction = eventDirection;
         qreal delta = QPointF::dotProduct(direction, p) / imgSize;
@@ -667,7 +696,8 @@ private:
 };
 
 
-class MultiSelectItem : public SelectableMixin<MultiSelectItem, QGraphicsRectItem>
+class MultiSelectItem
+    : public SelectableMixin<MultiSelectItem, QGraphicsRectItem>
 {
 public:
     MultiSelectItem(QGraphicsRectItem* parent = nullptr)
@@ -675,20 +705,28 @@ public:
     {
         this->init_selectable();
     }
-    IBaseItem* create_copy() override {
+    IBaseItem* create_copy() override
+    {
         Q_ASSERT_X(false, "RubberbandItem::create_copy", "Should not be called");
         return nullptr;
     }
-    bool is_croppable() override {
-        Q_ASSERT_X(false, "RubberbandItem::is_croppable", "Should not be called");
+    bool is_croppable() override
+    {
+        Q_ASSERT_X(false,
+                   "RubberbandItem::is_croppable",
+                   "Should not be called");
         return false;
     }
-    bool is_editable() override {
+    bool is_editable() override
+    {
         Q_ASSERT_X(false, "RubberbandItem::is_editable", "Should not be called");
         return false;
     }
-    void enter_crop_mode() override {
-        Q_ASSERT_X(false, "RubberbandItem::enter_crop_mode", "Should not be called");
+    void enter_crop_mode() override
+    {
+        Q_ASSERT_X(false,
+                   "RubberbandItem::enter_crop_mode",
+                   "Should not be called");
     }
     virtual bool has_selection_outline() const { return true; }
     virtual bool has_selection_handles()
@@ -697,7 +735,10 @@ public:
         return true;
     }
 
-    QRectF boundingRect() const override { return QGraphicsRectItem::boundingRect(); }
+    QRectF boundingRect() const override
+    {
+        return QGraphicsRectItem::boundingRect();
+    }
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
@@ -734,9 +775,10 @@ public:
     }
 
 protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent *event) override
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (event->button() == Qt::LeftButton && event->modifiers() == Qt::ControlModifier) {
+        if (event->button() == Qt::LeftButton
+            && event->modifiers() == Qt::ControlModifier) {
             // Мы все равно должны иметь возможность выбирать дополнительные изображения
             // внутри/под множественным выбором, поэтому позволяйте событиям ctrl+click проходить
             event->ignore();
@@ -763,20 +805,35 @@ public:
         this->setRect(get_rect_from_points(point1, point2));
     }
 
-    IBaseItem* create_copy() override {
+    IBaseItem* create_copy() override
+    {
         Q_ASSERT_X(false, "RubberbandItem::create_copy", "Should not be called");
         return nullptr;
     }
-    bool is_croppable() override {
-        Q_ASSERT_X(false, "RubberbandItem::is_croppable", "Should not be called");
+    bool is_croppable() override
+    {
+        Q_ASSERT_X(false,
+                   "RubberbandItem::is_croppable",
+                   "Should not be called");
         return false;
     }
-    bool is_editable() override {
+    bool is_editable() override
+    {
         Q_ASSERT_X(false, "RubberbandItem::is_editable", "Should not be called");
         return false;
     }
-    void enter_crop_mode() override {
-        Q_ASSERT_X(false, "RubberbandItem::enter_crop_mode", "Should not be called");
+    void enter_crop_mode() override
+    {
+        Q_ASSERT_X(false,
+                   "RubberbandItem::enter_crop_mode",
+                   "Should not be called");
+    }
+    bool is_action_active() override
+    {
+        Q_ASSERT_X(false,
+                   "RubberbandItem::is_action_active",
+                   "Should not be called");
+        return false;
     }
 
     QColor color{Qt::black};

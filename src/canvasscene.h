@@ -29,17 +29,14 @@ class IBaseItem;
 
 class CanvasScene : public QGraphicsScene
 {
-    enum ESceneMode {
-        kMove = 1,
-        kRubberBand = 2,
-        kNone = -1,
-    };
-
 public:
-    CanvasScene(MainWindow& mw, uint64_t& zc, QUndoStack* undoStack, QGraphicsScene* scene = 0);
+    CanvasScene(MainWindow& mw,
+                uint64_t& zc,
+                QUndoStack* undoStack,
+                QGraphicsScene* scene = 0);
     ~CanvasScene();
 
-// new code
+    // new code
     void clear();
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
@@ -65,19 +62,22 @@ public:
     bool has_single_selection();
     bool has_multi_selection();
     bool has_single_image_selection();
+
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
-public:    
+public:
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(int type);
     QList<QGraphicsItem*> items_for_save();
     void clear_save_ids();
     void on_view_scale_change();
-    QRectF itemsBoundingRect(bool selectionOnly = false, QList<QGraphicsItem*> items = QList<QGraphicsItem*>()) const;
+    QRectF itemsBoundingRect(bool selectionOnly = false,
+                             QList<QGraphicsItem*> items
+                             = QList<QGraphicsItem*>()) const;
     QPointF get_selection_center();
 public slots:
     void on_selection_changed();
@@ -85,13 +85,14 @@ public slots:
 signals:
     void cursor_changed(QCursor);
     void cursor_cleared();
+
 public:
     void add_item_later();
     void add_queued_items();
     bool itemAddByUser(int type) const;
 
 
-// old code
+    // old code
     void pasteFromClipboard();
     void pasteFromTemp();
     void copyToClipboard();
@@ -131,9 +132,8 @@ public:
     }
 
 
-
 protected:
-    void keyPressEvent(QKeyEvent* event) override;   
+    void keyPressEvent(QKeyEvent* event) override;
     void drawForeground(QPainter* painter, const QRectF& rect) override;
     void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;
     void dragMoveEvent(QGraphicsSceneDragDropEvent* event) override;
@@ -147,9 +147,9 @@ private slots:
     void clipboardChanged();
 
 
-
-public:    
-    ESceneMode active_mode = kNone;
+public:
+    bool move_active = false;
+    bool rubberband_active = false;
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
     qreal min_z = 0;
@@ -162,6 +162,7 @@ public:
     MultiSelectItem* multiselect_item_;
     QList<IBaseItem*> internal_clipboard;
     QPointF event_start{};
+
 private:
     qint16 objectsCount() const;
     bool isAnySelectedUnderCursor() const;
