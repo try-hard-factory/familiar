@@ -105,7 +105,7 @@ void CanvasScene::end_rubberband_mode()
         qDebug() << "End rubberband mode";
         removeItem(rubberband_item_);
     }
-    active_mode = ESceneMode::kNone;
+    rubberband_active = false;
 }
 
 void CanvasScene::cancel_crop_mode()
@@ -281,7 +281,7 @@ void CanvasScene::deselect_all_items()
 
 bool CanvasScene::has_selection()
 {
-    return selectedItems(true).isEmpty();
+    return !selectedItems(true).isEmpty();
 }
 
 bool CanvasScene::has_single_selection()
@@ -331,9 +331,9 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
 
         if (item_at_pos) {
-            active_mode = ESceneMode::kMove;
+            move_active = true;
         } else if (!items().isEmpty()) {
-            active_mode = ESceneMode::kRubberBand;
+            rubberband_active = true;
         }
     }
 
@@ -366,7 +366,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (active_mode == ESceneMode::kRubberBand) {
+    if (rubberband_active) {
         if (!rubberband_item_->scene()) {
             qDebug() << "Activating rubberband selection";
             addItem(rubberband_item_);
@@ -383,12 +383,11 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (active_mode == ESceneMode::kRubberBand) {
+    if (rubberband_active) {
         end_rubberband_mode();
     }
-    if (active_mode == ESceneMode::kMove && has_selection()
-        && !multiselect_item_->isActionActive()
-        && !selectedItems(false).first()->isActionActive()) {
+    if (move_active && has_selection() && !multiselect_item_->is_action_active()
+        && !((IBaseItem*) selectedItems(true).first())->is_action_active()) {
         auto delta = event->scenePos() - event_start;
         if (!delta.isNull()) {
             // TODOLATER:
@@ -396,7 +395,8 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         }
     }
 
-    active_mode = ESceneMode::kNone;
+    rubberband_active = false;
+    move_active = false;
     QGraphicsScene::mouseReleaseEvent(event);
 }
 
@@ -512,7 +512,7 @@ void CanvasScene::on_change()
         return;
     }
 
-    if (multiselect_item_->scene() && !multiselect_item_->isActionActive()) {
+    if (multiselect_item_->scene() && !multiselect_item_->is_action_active()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 }
