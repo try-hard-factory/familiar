@@ -361,7 +361,7 @@ protected:
     {
         eventStart = event->scenePos();
         CanvasView* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
-        view->reset_previous_transform(this);
+        view->resetPreviousTransform(this);
 
         if (!this->isSelected()) {
             //User has just selected this item with this click; don't
@@ -429,7 +429,7 @@ protected:
         if ((pos - eventStart).manhattanLength() > 5) {
             // Reset previous transform when movement exceeds threshold
             CanvasView* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
-            view->reset_previous_transform(nullptr);
+            view->resetPreviousTransform(nullptr);
         }
 
         if (scaleActive) {

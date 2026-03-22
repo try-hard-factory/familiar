@@ -10,19 +10,33 @@
  *  \~english @author max aka angeleyes (mpano91@gmail.com)
  */
 #include <actions/action_mixin.h>
+#include <memory>
 #include <widgets/main_controls.h>
 #include <widgets/welcome_overlay.h>
+#include <QGraphicsItem>
 #include <QGraphicsPixmapItem>
 #include <QGraphicsView>
 #include <QMouseEvent>
 #include <QObject>
 #include <QScrollBar>
+#include <QTransform>
 #include <QWheelEvent>
 
 class MainWindow;
 class project_settings;
 class CanvasScene;
 class QUndoStack;
+
+/**
+ * \~russian @brief Структура для хранения предыдущего состояния трансформации
+ * \~english @brief Structure to store previous transform state
+ */
+struct PreviousTransform
+{
+    QGraphicsItem* toggleItem;
+    QTransform transform;
+    QPointF center;
+};
 
 /**
  * \~russian @brief CanvasView класс
@@ -59,6 +73,7 @@ public:
 
 public slots:
     void on_scene_changed();
+
 public:
     /**
      * \~russian @brief setProjectSettings
@@ -115,16 +130,14 @@ public:
     //----new interface--------------
     qreal get_scale() const { return transform().m11(); }
 
-    void reset_previous_transform(QGraphicsItem* toggle_item)
-    {
-        // if (previous_transform && previous_transform->toggle_item != toggle_item)
-        // {
-        //     delete previous_transform;
-        //     previous_transform = nullptr;
-        // }
-    }
+    void resetPreviousTransform(QGraphicsItem* toggleItem = nullptr);
 
+    QPointF getViewCenter() const;
 
+    void fitRect(const QRectF& rect, QGraphicsItem* toggleItem = nullptr);
+
+private:
+    void recalcSceneRect();
 
 public slots:
     /**
@@ -212,6 +225,7 @@ private:
     QColor canvasColor_;
     QColor borderColor_;
     int currentOpacity_;
+    std::unique_ptr<PreviousTransform> previousTransform_;
 };
 
 #endif // CANVASVIEW_H
