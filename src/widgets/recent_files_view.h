@@ -13,21 +13,23 @@ class RecentFilesView : public QListView
     Q_OBJECT
 
 public:
-    RecentFilesView(QWidget* parent = nullptr, const QStringList& files = {})
+    RecentFilesView(QWidget* parent, const QStringList& files)
         : QListView(parent)
         , files(files)
     {
         connect(this, &QListView::clicked, this, &RecentFilesView::on_clicked);
-        setModel(new RecentFilesModel(nullptr, files));
+        setModel(new RecentFilesModel(nullptr, files)); // TODO: memory leak?
         setMouseTracking(true);
     }
 
     void update_files(const QStringList& newFiles)
     {
         files = newFiles;
-        QItemSelectionModel* m = selectionModel();
-        setModel(new RecentFilesModel(nullptr, files));
-        delete m;
+        // QItemSelectionModel* m = selectionModel();
+        // setModel(new RecentFilesModel(nullptr, files));
+        // delete m;
+        auto* model = dynamic_cast<RecentFilesModel*>(this->model());
+        model->setFiles(files);
         reset();
     }
 

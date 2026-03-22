@@ -1,19 +1,21 @@
 #pragma once
 
 #include <QAbstractListModel>
-#include <QFont>
 #include <QFileInfo>
+#include <QFont>
 
 class RecentFilesModel : public QAbstractListModel
 {
 public:
-    RecentFilesModel(QObject *parent, const QStringList& files)
-        : QAbstractListModel(parent), files(files) {}
+    RecentFilesModel(QObject* parent, const QStringList& files)
+        : QAbstractListModel(parent)
+        , files_(files)
+    {}
 
     int rowCount(const QModelIndex& parent = QModelIndex()) const override
     {
         Q_UNUSED(parent);
-        return files.size();
+        return files_.size();
     }
 
     QVariant data(const QModelIndex& index, int role) const override
@@ -21,14 +23,13 @@ public:
         if (!index.isValid())
             return QVariant();
 
-        if (index.row() < 0 || index.row() >= files.size())
+        if (index.row() < 0 || index.row() >= files_.size())
             return QVariant();
 
         if (role == Qt::DisplayRole)
-            return QFileInfo(files[index.row()]).fileName();
+            return QFileInfo(files_[index.row()]).fileName();
 
-        if (role == Qt::FontRole)
-        {
+        if (role == Qt::FontRole) {
             QFont font;
             font.setUnderline(true);
             return font;
@@ -37,6 +38,8 @@ public:
         return QVariant();
     }
 
+    void setFiles(const QStringList& files) { files_ = files; }
+
 private:
-    QStringList files;
+    QStringList files_;
 };
