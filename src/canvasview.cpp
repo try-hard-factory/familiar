@@ -6,8 +6,8 @@
 #include "project_settings.h"
 #include <QFileDialog>
 #include <QMessageBox>
-#include <QtMath>
 #include <QUndoStack>
+#include <QtMath>
 
 #include "mainwindow.h"
 #include <main_context_menu.h>
@@ -26,7 +26,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setFrameShape(QFrame::NoFrame);
 
     undoStack_->setUndoLimit(100);
-     // TODOLATER:
+    // TODOLATER:
     // connect(undoStack_, &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
     // connect(undoStack_, &QUndoStack::canUndoChanged, this, &CanvasView::on_can_undo_changed);
     // connect(undoStack_, &QUndoStack::cleanChanged, this, &CanvasView::on_undo_clean_changed);
@@ -36,8 +36,11 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
     scene_ = new CanvasScene(mw, zCounter_, undoStack_.get());
     connect(scene_, &CanvasScene::changed, this, &CanvasView::on_scene_changed);
-    connect(scene_, &CanvasScene::selectionChanged, this, &CanvasView::on_selection_changed);
-     // TODOLATER:
+    connect(scene_,
+            &CanvasScene::selectionChanged,
+            this,
+            &CanvasView::on_selection_changed);
+    // TODOLATER:
     // connect(scene_, &CanvasScene::cursor_changed, this, &CanvasView::on_cursor_changed);
     // connect(scene_, &CanvasScene::cursor_cleared, this, &CanvasView::on_cursor_cleared);
     setScene(scene_);
@@ -85,7 +88,7 @@ void CanvasView::on_scene_changed()
         // TODOLATER:
         // actiongroup_set_enabled("active_when_items_in_scene", true);
     }
-    // recalc_scene_rect();
+    recalcSceneRect();
 }
 
 void CanvasView::setProjectSettings(project_settings* ps)
@@ -264,6 +267,8 @@ void CanvasView::wheelEvent(QWheelEvent* event)
 
 void CanvasView::resizeEvent(QResizeEvent* event)
 {
+    QGraphicsView::resizeEvent(event);
+
     // First call, the scene is created
     if (event->oldSize().width() == -1 || event->oldSize().height() == -1)
         return;
@@ -282,15 +287,17 @@ void CanvasView::resizeEvent(QResizeEvent* event)
         P2.setX(scene_->width());
     if (P2.y() > scene_->height())
         P2.setY(scene_->height());
+
+    recalcSceneRect();
 }
 
 
 void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
 {
-    // TODO: 
+    // TODO:
     int local_opacity = currentOpacity_;
     //if (local_opacity < 255) local_opacity -=100;
-    qreal opacity = (qreal)local_opacity/255;
+    qreal opacity = (qreal) local_opacity / 255;
     painter->setOpacity(opacity);
     setCacheMode(CacheNone);
     painter->save();
@@ -346,8 +353,7 @@ bool CanvasView::isUntitled()
 void CanvasView::on_selection_changed()
 {
     // scene_->onSelectionChanged();
-    qDebug() << "Currently selected items:"
-                << scene()->selectedItems().size();
+    qDebug() << "Currently selected items:" << scene()->selectedItems().size();
     // bool hasSelection = !scene->selectedItems().isEmpty();
     // actiongroup_set_enabled("active_when_selection", hasSelection);
     // actiongroup_set_enabled("active_when_croppable", scene->has_croppable_selection());
@@ -367,4 +373,73 @@ void CanvasView::contextMenuEvent(QContextMenuEvent* event)
 {
     //    MainContextMenu contextMenu(mainwindow_, this);
     //    contextMenu.exec(event->globalPos());
+}
+
+void CanvasView::resetPreviousTransform(QGraphicsItem* toggleItem)
+{
+    if (previousTransform_ && previousTransform_->toggleItem != toggleItem) {
+        previousTransform_.reset();
+    }
+}
+
+QPointF CanvasView::getViewCenter() const
+{
+    return QPointF(round(size().width() / 2.0), round(size().height() / 2.0));
+}
+
+void CanvasView::recalcSceneRect()
+{
+    // Resize the scene rectangle so that it is always one view width
+    // wider than all items' bounding box at each side and one view
+    // width higher on top and bottom. This gives the impression of
+    // an infinite canvas.
+
+    if (previousTransform_) {
+        return;
+    }
+
+    QRectF itemsRect = scene_->itemsBoundingRect();
+    if (itemsRect.isEmpty()) {
+        return;
+    }
+
+    QPoint topleft = mapFromScene(itemsRect.topLeft());
+    topleft = mapToScene(QPoint(topleft.x() - size().width(),
+                                topleft.y() - size().height()))
+                  .toPoint();
+    QPoint bottomright = mapFromScene(itemsRect.bottomRight());
+    bottomright = mapToScene(QPoint(bottomright.x() + size().width(),
+                                    bottomright.y() + size().height()))
+                      .toPoint();
+    setSceneRect(QRectF(topleft, bottomright));
+}
+
+void CanvasView::fitRect(const QRectF& rect, QGraphicsItem* toggleItem)
+{
+    // Если есть toggleItem и есть сохраненная трансформация - восстанавливаем
+    if (toggleItem && previousTransform_) {
+        qDebug() << "Fit view: Reset to previous";
+        setTransform(previousTransform_->transform);
+        centerOn(previousTransform_->center);
+        previousTransform_.reset();
+        return;
+    }
+
+    // Сохраняем текущее состояние если есть toggleItem
+    if (toggleItem) {
+        previousTransform_ = std::make_unique<PreviousTransform>();
+        previousTransform_->toggleItem = toggleItem;
+        previousTransform_->transform = QTransform(transform());
+        previousTransform_->center = mapToScene(getViewCenter().toPoint());
+    } else {
+        previousTransform_.reset();
+    }
+
+    qDebug() << "Fit view:" << rect;
+    fitInView(rect, Qt::KeepAspectRatio);
+    recalcSceneRect();
+    // Второй вызов для надежности (как в Python)
+    // Иногда изменение размера сцены может испортить fitting
+    fitInView(rect, Qt::KeepAspectRatio);
+    qDebug() << "Fit view done";
 }

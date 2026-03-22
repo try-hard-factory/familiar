@@ -354,8 +354,9 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
             // TODOLATER:
             QGraphicsScene::mousePressEvent(event);
         } else {
-            (CanvasView*) (views().first())
-                ->fit_rect(itemsBoundingRect(QList<QGraphicsItem*>{item}), item);
+            CanvasView* view = static_cast<CanvasView*>(views().first());
+            view->fitRect(itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
+                          item);
         }
         return;
     }
@@ -373,7 +374,8 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         }
         rubberband_item_->fit(event_start, event->scenePos());
         setSelectionArea(rubberband_item_->shape());
-        (CanvasView*) (views().first())->reset_previous_transform();
+        CanvasView* view = static_cast<CanvasView*>(views().first());
+        view->resetPreviousTransform();
     }
 
     QGraphicsScene::mouseMoveEvent(event);
@@ -387,11 +389,11 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     if (active_mode == ESceneMode::kMove && has_selection()
         && !multiselect_item_->isActionActive()
         && !selectedItems(false).first()->isActionActive()) {
-            auto delta = event->scenePos() - event_start;
-            if (!delta.isNull()) {
-                // TODOLATER:
-                // undo_stack_->push(new MoveItemsByCommand(selectedItems(), delta, true));
-            }
+        auto delta = event->scenePos() - event_start;
+        if (!delta.isNull()) {
+            // TODOLATER:
+            // undo_stack_->push(new MoveItemsByCommand(selectedItems(), delta, true));
+        }
     }
 
     active_mode = ESceneMode::kNone;
