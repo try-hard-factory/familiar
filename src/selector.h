@@ -21,6 +21,10 @@ public:
     virtual void enter_crop_mode() = 0;
     virtual bool is_action_active() = 0;
     virtual QVector<QPointF> corners_scene_coords() const = 0;
+    virtual void bring_to_front() = 0;
+    virtual void do_flip(bool vertical = false,
+                         const QPointF& anchor = QPointF(0, 0))
+        = 0;
 };
 
 template<typename T>

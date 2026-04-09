@@ -8,6 +8,7 @@
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
 #include <QRubberBand>
+#include <QVariantMap>
 
 #include <queue>
 
@@ -88,18 +89,22 @@ signals:
     void cursor_cleared();
 
 public:
-    void add_item_later();
+    // Structure to hold item data for queued items
+    struct QueuedItemData {
+        QVariantMap data;
+        bool selected = false;
+    };
+
+    void add_item_later(const QVariantMap& itemdata, bool selected = false);
     void add_queued_items();
     bool itemAddByUser(int type) const;
 
 
     // old code
     void pasteFromClipboard();
-    void pasteFromTemp();
     void copyToClipboard();
     void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
-    void addImageToSceneToPosition(QImage&& image, QPointF position);
     QByteArray fml_payload();
     // void updateViewScaleFactor(qreal newval)
     // {
@@ -136,8 +141,6 @@ public:
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void drawForeground(QPainter* painter, const QRectF& rect) override;
-    void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;
-    void dragMoveEvent(QGraphicsSceneDragDropEvent* event) override;
     void dropEvent(QGraphicsSceneDragDropEvent* event) override;
 
 public slots:
@@ -158,7 +161,7 @@ public:
     qreal Z_STEP = 0.001;
     MultiSelectItem* multiselect_item_;
     RubberbandItem* rubberband_item_;
-    std::queue<PixmapItem*> items_to_add;
+    std::queue<QueuedItemData> items_to_add;
     QList<IBaseItem*> internal_clipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
