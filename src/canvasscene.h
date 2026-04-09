@@ -62,9 +62,6 @@ public:
     bool has_multi_selection();
     bool has_croppable_selection();
 
-    void deselect_all_items();
-    QColor sample_color_at(QPointF position);
-
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
@@ -84,6 +81,8 @@ public:
 public slots:
     void on_selection_changed();
     void on_change();
+
+
 signals:
     void cursor_changed(QCursor);
     void cursor_cleared();
@@ -97,6 +96,8 @@ public:
 
     void add_item_later(const QVariantMap& itemdata, bool selected = false);
     void add_queued_items();
+
+    
     bool itemAddByUser(int type) const;
 
 
