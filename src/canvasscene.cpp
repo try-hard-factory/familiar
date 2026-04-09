@@ -1118,17 +1118,3 @@ qint16 CanvasScene::objectsCount() const
                          });
 }
 
-
-QColor CanvasScene::sample_color_at(QPointF position)
-{
-    // TODOLATER:
-    qDebug() << "CanvasScene::sample_color_at: not implemented";
-    return QColor();
-}
-
-
-void CanvasScene::deselect_all_items()
-{
-    cancel_active_modes();
-    clearSelection();
-}
