@@ -97,14 +97,13 @@ public:
     void add_item_later(const QVariantMap& itemdata, bool selected = false);
     void add_queued_items();
 
-    
+
     bool itemAddByUser(int type) const;
 
 
     // old code
     void pasteFromClipboard();
     void copyToClipboard();
-    void onSelectionChanged();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     QByteArray fml_payload();
     // void updateViewScaleFactor(qreal newval)

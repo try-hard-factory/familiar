@@ -1032,11 +1032,6 @@ bool CanvasScene::isAnySelectedUnderCursor() const
     return false;
 }
 
-void CanvasScene::onSelectionChanged()
-{
-    auto selItems = selectedItems();
-    (void) selItems;
-}
 
 void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
 {
