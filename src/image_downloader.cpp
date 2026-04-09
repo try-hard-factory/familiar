@@ -38,7 +38,6 @@ void ImageDownloader::finished()
     qDebug() << reply_->error();
     qDebug() << reply_->url();
     qDebug() << " finished onDownloadFileComplete. " << img.size();
-    scene_.addImageToSceneToPosition(std::move(img), position_);
     isReady_ = true;
     reply_->deleteLater();
     // done

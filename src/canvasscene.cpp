@@ -177,6 +177,8 @@ void CanvasScene::lower_to_bottom()
 }
 
 
+
+
 void CanvasScene::normalize_width_or_height(const QString& mode)
 {
     cancel_crop_mode();
@@ -656,6 +658,7 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     return userItems;
 }
 
+// TODOLATER:
 void CanvasScene::clear_save_ids()
 {
     Q_ASSERT_X(false, "CanvasScene::clear_save_ids", "Not implemented");
@@ -763,8 +766,114 @@ void CanvasScene::on_change()
 
 
 
+void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
+{
+    items_to_add.push({itemdata, selected});
+}
 
 
+// TODOLATER: ????????
+void CanvasScene::add_queued_items()
+{
+    while (!items_to_add.empty()) {
+        QueuedItemData queuedData = items_to_add.front();
+        items_to_add.pop();
+
+        QVariantMap data = queuedData.data;
+        bool selected = queuedData.selected;
+
+        // Get item type from data
+        QString typ = data.value("type").toString();
+        data.remove("type");
+
+        // Create item based on type
+        QGraphicsItem* item = nullptr;
+        if (typ == "pixmap") {
+            // For pixmap items, we need an image - this should be provided in data
+            QVariant imageVariant = data.value("image");
+            if (imageVariant.isValid()) {
+                QImage image = imageVariant.value<QImage>();
+                PixmapItem* pixmapItem = new PixmapItem();
+                pixmapItem->setPixmap(QPixmap::fromImage(image));
+
+                // Handle extra data (crop, etc.)
+                QVariant extraData = data.value("data");
+                if (extraData.isValid()) {
+                    QVariantMap extraMap = extraData.toMap();
+
+                    // Handle crop data if present
+                    QVariant cropVariant = extraMap.value("crop");
+                    if (cropVariant.isValid()) {
+                        QList<QVariant> cropList = cropVariant.toList();
+                        if (cropList.size() == 4) {
+                            QRectF crop(cropList[0].toReal(),
+                                        cropList[1].toReal(),
+                                        cropList[2].toReal(),
+                                        cropList[3].toReal());
+                            pixmapItem->set_crop(crop);
+                        }
+                    }
+                }
+                item = pixmapItem;
+            }
+        } else if (typ == "text") {
+            QString text = data.value("data").toMap().value("text").toString();
+            if (text.isEmpty()) {
+                text = "Text";
+            }
+            TextItem* textItem = new TextItem();
+            textItem->setPlainText(text);
+            item = textItem;
+        } else {
+            // Unknown type - create text item with warning message
+            qWarning() << "Encountered item of unknown type:" << typ;
+            TextItem* textItem = new TextItem();
+            textItem->setPlainText(QString("Item of unknown type: %1").arg(typ));
+            item = textItem;
+        }
+
+        if (item) {
+            // Apply common item properties from data
+            IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
+            if (baseItem) {
+                // Set position
+                qreal x = data.value("x", 0.0).toReal();
+                qreal y = data.value("y", 0.0).toReal();
+                item->setPos(x, y);
+
+                // Set z-value
+                qreal z = data.value("z", 0.0).toReal();
+                item->setZValue(z);
+
+                // Set scale
+                qreal scale = data.value("scale", 1.0).toReal();
+                item->setScale(scale);
+
+                // Set rotation
+                qreal rotation = data.value("rotation", 0.0).toReal();
+                item->setRotation(rotation);
+
+                // Handle flip
+                int flip = data.value("flip", 1).toInt();
+                if (flip == -1) {
+                    baseItem->do_flip();
+                }
+
+                addItem(item);
+
+                // Force recalculation of min/max z values
+                item->setZValue(item->zValue());
+
+                if (selected) {
+                    item->setSelected(true);
+                    baseItem->bring_to_front();
+                }
+            }
+        }
+    }
+}
+
+///////////////////
 
 
 QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
@@ -777,12 +886,6 @@ QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
     return itemsl;
 }
 
-
-
-
-
-
-
 bool CanvasScene::itemAddByUser(int type) const
 {
     return (type == 666) || (type == 777);
@@ -794,137 +897,14 @@ bool CanvasScene::itemAddByUser(int type) const
 
 void CanvasScene::keyPressEvent(QKeyEvent* event)
 {
-    // switch (event->key()) {
-    // case (Qt::Key_Delete):
-    //     mainSelArea_.setReady(false);
-    //     for (auto it : itemGroup_->childItems()) {
-    //         itemGroup_->removeItemFromGroup(it);
-    //         removeItem(it);
-    //     }
-    //     projectSettings_->modified(true);
-    //     break;
-    // case (Qt::Key_Insert):
-    //     if (event->modifiers() & Qt::ShiftModifier) {
-    //         pasteFromClipboard();
-    //     }
-    //     break;
-    // case (Qt::Key_V):
-    //     if (event->modifiers() & Qt::ControlModifier) {
-    //         pasteFromClipboard();
-    //     }
-    //     break;
-    // case (Qt::Key_C):
-    //     if (event->modifiers() & Qt::ControlModifier) {
-    //         copyToClipboard();
-    //     }
-    //     break;
-    // default:
-    //     QGraphicsScene::keyPressEvent(event);
-    //     break;
-    // }
 }
 
 void CanvasScene::pasteFromClipboard()
 {
-    // const QClipboard* clipboard = QApplication::clipboard();
-    // const QMimeData* mimedata = clipboard->mimeData(QClipboard::Clipboard);
 
-    // if (!mainwindow_.clipboardItems().isEmpty()) {
-    //     pasteFromTemp();
-    // } else if (mimedata->hasUrls()) {
-    //     itemGroup_->clearItemGroup();
-    //     qreal x = 0;
-    //     foreach (const QUrl& url, mimedata->urls()) {
-    //         if (url.isLocalFile()) {
-    //             QString fileName(url.toLocalFile());
-    //             LOG_DEBUG(logger, "Dropped file: ", fileName.toStdString());
-    //             qDebug() << "formats: " << mimedata->formats();
-
-    //             MoveItem* item = new MoveItem(fileName, zCounter_);
-    //             item->setPos({lastClickedPoint_.x() + x, lastClickedPoint_.y()});
-    //             x += item->getRect().width();
-    //             addItem(item);
-    //             itemGroup_->addItemToGroup(item);
-    //         } else {
-    //             QString urlstr = url.url();
-    //             LOG_DEBUG(logger,
-    //                       "Download.Dropped file: ",
-    //                       urlstr.toStdString());
-    //             imgdownloader_->download(urlstr, lastClickedPoint_);
-    //             projectSettings_->modified(true);
-    //         }
-    //     }
-    //     itemGroup_->incZ();
-    //     mainSelArea_.setReady(true);
-    //     projectSettings_->modified(true);
-    // } else if (mimedata->hasImage()) {
-    //     QImage image = qvariant_cast<QImage>(mimedata->imageData());
-    //     if (!image.isNull()) {
-    //         handleImageFromClipboard(image);
-    //         projectSettings_->modified(true);
-    //     } else if (mimedata->hasHtml()) {
-    //         handleHtmlFromClipboard(mimedata->html());
-    //         projectSettings_->modified(true);
-    //     }
-    //     if (image.isNull())
-    //         LOG_DEBUG(logger, "NULL IMAGE!!!!");
-    //     qDebug() << "image rect " << image.rect();
-
-    // } else {
-    //     LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
-    // }
 }
 
-void CanvasScene::pasteFromTemp()
-{
-    // itemGroup_->clearItemGroup();
-    // for (auto& item : mainwindow_.clipboardItems()) {
-    //     auto widget = qgraphicsitem_cast<MoveItem*>(item);
-    //     MoveItem* tmpitem = new MoveItem(widget->qimage_ptr(),
-    //                                      widget->zcounter());
-    //     tmpitem->setPos(widget->pos());
 
-    //     qDebug() << tmpitem->pos();
-    //     addItem(tmpitem);
-    //     itemGroup_->addItemToGroup(tmpitem);
-    // }
-    // itemGroup_->incZ();
-    // mainSelArea_.setReady(true);
-    // projectSettings_->modified(true);
-}
-
-void CanvasScene::copyToClipboard()
-{
-    // if (itemGroup_->isEmpty())
-    //     return;
-    // QClipboard* clipboard = QApplication::clipboard();
-    // clipboard->setImage(itemGroup_->mergedImages());
-    // mainwindow_.clipboardItems(itemGroup_->cloneItems());
-}
-
-void CanvasScene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
-{
-    event->accept();
-}
-
-void CanvasScene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
-{
-    if (event->mimeData()->hasUrls()) {
-        qDebug() << "dragEnterEvent hasUrls";
-        event->acceptProposedAction();
-    }
-
-    event->accept();
-}
-
-void CanvasScene::addImageToSceneToPosition(QImage&& image, QPointF position)
-{
-    // ++zCounter_;
-    // QImage* img = new QImage(image);
-    // MoveItem* item = new MoveItem(img, zCounter_);
-    // item->setPos(position);
-    // addItem(item);
-}
 
 QByteArray CanvasScene::fml_payload()
 {
