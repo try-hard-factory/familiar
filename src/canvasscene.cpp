@@ -704,24 +704,31 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
         return QRectF(0, 0, 0, 0);
     }
 
-    Q_ASSERT_X(false, "CanvasScene::itemsBoundingRect", "Not implemented");
-}
+    QList<qreal> x;
+    QList<qreal> y;
 
-QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
-{
-    QList<QGraphicsItem*> itemsl;
-    for (QGraphicsItem* item : items()) {
-        if (item->type() == type)
-            itemsl.append(item);
+    for (QGraphicsItem* item : base) {
+        IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (baseItem) {
+            QVector<QPointF> corners = baseItem->corners_scene_coords();
+            for (const QPointF& corner : corners) {
+                x.append(corner.x());
+                y.append(corner.y());
+            }
+        }
     }
-    return itemsl;
+
+    if (x.isEmpty() || y.isEmpty()) {
+        return QRectF(0, 0, 0, 0);
+    }
+
+    qreal minX = *std::min_element(x.constBegin(), x.constEnd());
+    qreal maxX = *std::max_element(x.constBegin(), x.constEnd());
+    qreal minY = *std::min_element(y.constBegin(), y.constEnd());
+    qreal maxY = *std::max_element(y.constBegin(), y.constEnd());
+
+    return QRectF(QPointF(minX, minY), QPointF(maxX, maxY));
 }
-
-
-
-
-
-
 
 
 QPointF CanvasScene::get_selection_center()
@@ -732,10 +739,6 @@ QPointF CanvasScene::get_selection_center()
 
 void CanvasScene::on_selection_changed()
 {
-    if (clear_ongoing) {
-        return;
-    }
-
     if (has_multi_selection()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
@@ -752,14 +755,33 @@ void CanvasScene::on_selection_changed()
 
 void CanvasScene::on_change()
 {
-    if (clear_ongoing) {
-        return;
-    }
 
     if (multiselect_item_->scene() && !multiselect_item_->is_action_active()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 }
+
+
+
+
+
+
+
+QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
+{
+    QList<QGraphicsItem*> itemsl;
+    for (QGraphicsItem* item : items()) {
+        if (item->type() == type)
+            itemsl.append(item);
+    }
+    return itemsl;
+}
+
+
+
+
+
+
 
 bool CanvasScene::itemAddByUser(int type) const
 {

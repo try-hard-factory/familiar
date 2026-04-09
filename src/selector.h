@@ -20,6 +20,7 @@ public:
     virtual bool is_editable() = 0;
     virtual void enter_crop_mode() = 0;
     virtual bool is_action_active() = 0;
+    virtual QVector<QPointF> corners_scene_coords() const = 0;
 };
 
 template<typename T>
@@ -215,7 +216,7 @@ public:
                 this->bounding_rect_unselected().bottomLeft()};
     }
 
-    QVector<QPointF> corners_scene_coords() const
+    QVector<QPointF> corners_scene_coords() const override
     {
         QVector<QPointF> corners = this->corners();
         QVector<QPointF> cornersScene;
@@ -834,6 +835,13 @@ public:
                    "RubberbandItem::is_action_active",
                    "Should not be called");
         return false;
+    }
+    QVector<QPointF> corners_scene_coords() const override
+    {
+        Q_ASSERT_X(false,
+                   "RubberbandItem::corners_scene_coords",
+                   "Should not be called");
+        return QVector<QPointF>();
     }
 
     QColor color{Qt::black};
