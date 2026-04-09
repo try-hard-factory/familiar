@@ -994,43 +994,6 @@ bool CanvasScene::isUntitled()
     return projectSettings_->isDefaultProjectName();
 }
 
-void CanvasScene::dropEvent(QGraphicsSceneDragDropEvent* event)
-{
-    // const QMimeData* mimeData = event->mimeData();
-    // if (!mimeData) {
-    //     return;
-    // }
-
-    // if (mimeData->hasHtml()) {
-    //     itemGroup_->clearItemGroup();
-    //     qDebug() << "dropEvent html" << mimeData->html();
-    //     qDebug() << "dropEvent url" << mimeData->urls();
-    //     imgdownloader_->download(mimeData->urls()[0].toString(),
-    //                              event->scenePos());
-    //     projectSettings_->modified(true);
-    // } else if (mimeData->hasUrls()) {
-    //     itemGroup_->clearItemGroup();
-    //     qreal x = 0;
-    //     foreach (const QUrl& url, event->mimeData()->urls()) {
-    //         QString fileName = url.toLocalFile();
-    //         LOG_DEBUG(logger, "Dropped file: ", fileName.toStdString());
-    //         qDebug() << "formats: " << event->mimeData()->formats();
-
-    //         MoveItem* item = new MoveItem(fileName, zCounter_);
-    //         qreal new_x = event->scenePos().x();
-    //         qreal new_y = event->scenePos().y();
-    //         item->setPos({new_x + x, new_y});
-    //         x += item->getRect().width();
-    //         addItem(item);
-    //         itemGroup_->addItemToGroup(item);
-    //     }
-    //     itemGroup_->incZ();
-    //     mainSelArea_.setReady(true);
-    //     projectSettings_->modified(true);
-    // } else {
-    //     LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
-    // }
-}
 
 std::string stateText(int idx)
 {
@@ -1047,194 +1010,6 @@ std::string stateText(int idx)
     return "undefined";
 }
 
-// void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
-// {
-// //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
-// auto item = getFirstItemUnderCursor(event->scenePos());
-// if (item && item->type() != ItemGroup::eBorderDot) {
-//     item->setZValue(++zCounter_);
-//     qDebug() << "zcounter=" << zCounter_ << ", Z VALUE=" << item->zValue();
-//     //        LOG_DEBUG(logger, "DEBUG: TYPE ", item->type(), "\n");
-// }
-// if (item && item->type() == ItemGroup::eBorderDot) {
-//     state_ = eGroupItemResizing;
-//     LOG_DEBUG(logger,
-//               "DEBUG: CHANGE TO mouse state: ",
-//               stateText(state_),
-//               "\n");
-//     QGraphicsScene::mousePressEvent(event);
-//     return;
-// }
-
-// //    LOG_DEBUG(logger, "mousePressEvent Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
-
-// if (event->button() == Qt::LeftButton) {
-//     if (event->modifiers() == Qt::ShiftModifier) {
-//     } else if (event->modifiers() != Qt::ShiftModifier) {
-//         if (item) {
-//             if (!itemGroup_->isContain(item)) {
-//                 itemGroup_->clearItemGroup();
-//                 itemGroup_->addItemToGroup(item);
-//                 itemGroup_->incZ();
-//                 mainSelArea_.setReady(true);
-//                 LOG_DEBUG(logger,
-//                           "Group size: ",
-//                           itemGroup_->childItems().size(),
-//                           ". Empty: ",
-//                           itemGroup_->isEmpty());
-//                 //                    LOG_DEBUG(logger, "DEBUG MESSAGE1 state: ", stateText(state_));
-//             }
-//             //                state_ = eMouseSelection;
-//         } else {
-//             state_ = eMouseSelection;
-//             origin_ = event->scenePos();
-//             rubberBand_.setRect(origin_.x(), origin_.y(), 0, 0);
-//             itemGroup_->clearItemGroup();
-//             mainSelArea_.setReady(false);
-//             //                state_ = eMouseSelection;
-//         }
-//     }
-// }
-// QGraphicsScene::mousePressEvent(event);
-// }
-
-// void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
-// {
-// //    LOG_DEBUG(logger, "Event->scenePos: (", event->scenePos().x(),";",event->scenePos().y(), ")");
-// lastClickedPoint_ = event->scenePos();
-// LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), "\n");
-
-// if (state_ == eGroupItemResizing || state_ == eMouseSelection) {
-//     state_ = eMouseMoving;
-//     LOG_DEBUG(logger,
-//               "DEBUG: CHANGE TO mouse state: ",
-//               stateText(state_),
-//               "\n");
-//     itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
-//     QGraphicsScene::mouseReleaseEvent(event);
-//     return;
-// }
-
-// auto item = getFirstItemUnderCursor(event->scenePos());
-// if (event->button() == Qt::LeftButton) {
-//     if (event->modifiers() == Qt::ShiftModifier) {
-//         if (item) { // add to group
-//             if (!itemGroup_->isContain(item)) {
-//                 item->setZValue(++zCounter_);
-//                 itemGroup_->addItemToGroup(item);
-//                 itemGroup_->incZ();
-//                 mainSelArea_.setReady(true);
-//             } else {
-//                 itemGroup_->removeItemFromGroup(item);
-//                 if (itemGroup_->isEmpty()) {
-//                     itemGroup_->clearItemGroup();
-//                     mainSelArea_.setReady(false);
-//                 }
-//             }
-//         }
-//     } else if (event->modifiers() != Qt::ShiftModifier) {
-//         if (item) {
-//             if (itemGroup_->isContain(item)
-//                 && !itemGroup_->isThisDots(item)) {
-//                 if (state_ != eGroupItemMoving) {
-//                     itemGroup_->clearItemGroup();
-//                     item->setZValue(++zCounter_);
-//                     itemGroup_->addItemToGroup(item);
-//                     itemGroup_->incZ();
-//                     mainSelArea_.setReady(true);
-//                 }
-
-//                 state_ = eMouseMoving;
-//                 LOG_DEBUG(logger,
-//                           "DEBUG: CHANGE TO mouse state: ",
-//                           stateText(state_),
-//                           "\n");
-//             }
-//         } else {
-//             itemGroup_->clearItemGroup();
-//             mainSelArea_.setReady(false);
-//             state_ = eMouseMoving;
-//             LOG_DEBUG(logger,
-//                       "DEBUG: CHANGE TO mouse state: ",
-//                       stateText(state_),
-//                       "\n");
-//         }
-//     }
-// }
-
-// itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
-// QGraphicsScene::mouseReleaseEvent(event);
-// }
-
-// void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
-// {
-// #ifdef MOUSE_MOVE_DEBUG
-//     //    qDebug()<<'\n';
-//     //    qDebug()<<"CanvasScene:: pos: "<<event->pos()<<", scenePos: "<<event->scenePos();
-//     //    qDebug()<<"CanvasScene:: itemGroup_ pos: "<<itemGroup_->pos()<<", scenePos: "<<itemGroup_->scenePos();
-//     //    qDebug()<<'\n';
-// #endif
-//     //    LOG_DEBUG(logger, "DEBUG: mouse state: ", stateText(state_), ". Pos = ", event->scenePos().x(), ",",event->scenePos().y(), "\n");
-//     if ((event->buttons() & Qt::LeftButton)) {
-//         if (state_ == eMouseSelection) {
-//             QRectF tmp(origin_, event->scenePos());
-//             rubberBand_ = tmp;
-//             rubberBand_ = rubberBand_.normalized();
-
-//             //            qDebug()<<rubberBand_<<" "<<items(rubberBand_).size();
-//             itemGroup_->clearItemGroup();
-//             auto selItems = items(rubberBand_);
-//             for (auto& it : selItems) {
-//                 if (it->type() == 3)
-//                     itemGroup_->addItemToGroup(it);
-//                 //            it->setSelected(false);
-//             }
-//             itemGroup_->incZ();
-//             //            LOG_DEBUG(logger, "itemGroup_ address: ", itemGroup_);
-//             //            LOG_DEBUG(logger, "Selected Items: ", selItems.size());
-//             //            LOG_DEBUG(logger, "Group size: ", itemGroup_->childItems().size(), ". Empty: ", itemGroup_->isEmpty());
-//             if (itemGroup_->isEmpty()) {
-//                 mainSelArea_.setReady(false);
-//             } else {
-//                 mainSelArea_.setReady(true);
-//             }
-//         } else if (state_ == eGroupItemResizing || state_ == eGroupItemMoving) {
-//             projectSettings_->modified(true);
-//         } else if (itemGroup_->isUnderMouse() && state_ != eGroupItemResizing) {
-//             state_ = eGroupItemMoving;
-//             //            LOG_DEBUG(logger, "DEBUG: CHANGE TO mouse state: ", stateText(state_), "\n");
-//         }
-//     }
-
-//     itemGroup_->notifyCursorUpdater(event, parentViewScaleFactor_);
-//     QGraphicsScene::mouseMoveEvent(event);
-// }
-
-QGraphicsItem* CanvasScene::getFirstItemUnderCursor(const QPointF& p)
-{
-    // auto childs = this->items(Qt::DescendingOrder);
-
-    // for (auto& it : childs) {
-    //     if (it == itemGroup_)
-    //         continue;
-    //     if (it->type() == 65537) { // borderdot control
-    //         // NOTE: Maybe I must reimplement QGraphicsItem::contains,
-    //         //       but I don't know how yet.
-    //         auto point = p - it->scenePos();
-    //         auto len = std::sqrt(std::pow(point.x(), 2)
-    //                              + std::pow(point.y(), 2));
-    //         int x = 4;
-    //         if ((len * parentViewScaleFactor_ - x) < 0)
-    //             return it;
-    //     } else {
-    //         if (it->sceneBoundingRect().contains(p)) {
-    //             return it;
-    //         }
-    //     }
-    // }
-
-    return nullptr;
-}
 
 void CanvasScene::deselectItems()
 {
@@ -1292,14 +1067,6 @@ void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
     //     painter->restore();
 }
 
-void CanvasScene::handleImageFromClipboard(const QImage& image)
-{
-    // ++zCounter_;
-    // QImage* img = new QImage(image);
-    // MoveItem* item = new MoveItem(img, zCounter_);
-    // item->setPos(lastClickedPoint_);
-    // addItem(item);
-}
 
 void CanvasScene::handleHtmlFromClipboard(const QString& html)
 {
@@ -1315,19 +1082,7 @@ void CanvasScene::handleHtmlFromClipboard(const QString& html)
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
 }
-// void CanvasScene::handleHtmlFromClipboard(const QString& html)
-// {
-//     QRegularExpression re("<img[^>]*src=['|\"](.*?)['|\"].*?>");
-//     QRegularExpressionMatchIterator it = re.globalMatch(html);
 
-//     if (it.hasNext()) {
-//         QRegularExpressionMatch match = it.next();
-//         QString imageUrl = match.captured(1);
-//         imgdownloader_->download(imageUrl, {0, 0});
-//     } else {
-//         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
-//     }
-// }
 
 //ItemGroup
 void CanvasScene::slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy)

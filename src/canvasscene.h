@@ -141,7 +141,6 @@ public:
 protected:
     void keyPressEvent(QKeyEvent* event) override;
     void drawForeground(QPainter* painter, const QRectF& rect) override;
-    void dropEvent(QGraphicsSceneDragDropEvent* event) override;
 
 public slots:
     void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
