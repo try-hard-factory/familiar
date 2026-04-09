@@ -15,7 +15,7 @@ public:
     {
         control_target = parent;
         this->setAttribute(Qt::WA_NoSystemBackground);
-        this->init_main_control();
+        this->init_main_controls();
         // Initialize your WelcomeOverlay-specific code here
 
         // Recent files
@@ -46,6 +46,10 @@ public:
         //     layout.insertLayout(0, &files_layout);
         // }
         QWidget::show();
+    }
+
+    auto do_insert_images(QList<QUrl>, QPoint) -> void {
+        
     }
 
 private:

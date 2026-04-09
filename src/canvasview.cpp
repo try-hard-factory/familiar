@@ -53,6 +53,8 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     settingsChangedSlot();
     setMouseTracking(true);
 
+    init_main_controls();
+
     // Update all the view port when needed, otherwise, the drawInViewPort may experience trouble
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);
 
@@ -102,6 +104,22 @@ QByteArray CanvasView::fml_payload()
     return scene_->fml_payload();
 }
 
+void CanvasView::do_insert_images(const QList<QUrl>& urls, const QPoint& pos)
+{
+    // TODOLATER: implement full insert images logic with undo stack
+    // For now, just load images and add them to scene
+    QPointF scenePos = mapToScene(pos);
+
+    for (const QUrl& url : urls) {
+        if (url.isLocalFile()) {
+            QString path = url.toLocalFile();
+            addImage(path, scenePos);
+        } else {
+            // TODOLATER: handle remote URLs via ImageDownloader
+            qDebug() << "Remote URL not yet supported:" << url;
+        }
+    }
+}
 
 void CanvasView::addImage(const QString& path, QPointF point)
 {
