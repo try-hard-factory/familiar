@@ -621,6 +621,7 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
     if (userOnly) {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : items) {
+            // TODOLATER: save_id ???
             if (item->data(0).isValid() && itemAddByUser(item->type()))
                 userItems.append(item);
         }
@@ -629,26 +630,37 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
     return items;
 }
 
-QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
-{
-    QList<QGraphicsItem*> itemsl;
-    for (QGraphicsItem* item : items()) {
-        if (item->type() == type)
-            itemsl.append(item);
-    }
-    return itemsl;
-}
 
 QList<QGraphicsItem*> CanvasScene::items_for_save()
 {
-    Q_ASSERT_X(false, "CanvasScene::items_for_save", "Not implemented");
-    return QList<QGraphicsItem*>();
+    // Returns the items that are to be saved.
+    // Items to be saved are items that have a save_id attribute.
+    // In Python: filter(lambda i: hasattr(i, 'save_id'),
+    //                    self.items(order=Qt.SortOrder.AscendingOrder))
+
+    QList<QGraphicsItem*> allItems = items();
+
+    // Sort by zValue ascending (same as Qt.SortOrder.AscendingOrder)
+    std::sort(allItems.begin(), allItems.end(),
+              [](QGraphicsItem* a, QGraphicsItem* b) {
+                  return a->zValue() < b->zValue();
+              });
+
+    // Filter user items (those that would have save_id in Python)
+    QList<QGraphicsItem*> userItems;
+    for (QGraphicsItem* item : allItems) {
+        if (itemAddByUser(item->type()))
+            userItems.append(item);
+    }
+
+    return userItems;
 }
 
 void CanvasScene::clear_save_ids()
 {
     Q_ASSERT_X(false, "CanvasScene::clear_save_ids", "Not implemented");
 }
+
 
 void CanvasScene::on_view_scale_change()
 {
@@ -694,6 +706,23 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
 
     Q_ASSERT_X(false, "CanvasScene::itemsBoundingRect", "Not implemented");
 }
+
+QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
+{
+    QList<QGraphicsItem*> itemsl;
+    for (QGraphicsItem* item : items()) {
+        if (item->type() == type)
+            itemsl.append(item);
+    }
+    return itemsl;
+}
+
+
+
+
+
+
+
 
 QPointF CanvasScene::get_selection_center()
 {
