@@ -120,12 +120,6 @@ public:
         QRectF rect;
         bool flip_v;
     };
-    enum EMode {
-        kScaleMode = 1,
-        kRotateMode = 2,
-        kFlipMode = 3,
-        kNone = -1,
-    };
 
     explicit SelectableMixin(T* parent = nullptr)
         : BaseItemMixin<T>(parent)
@@ -141,9 +135,22 @@ public:
         is_editable = false;
     }
 
-    void resetActions() { active_mode = EMode::kNone; }
+    void resetActions()
+    {
+        scaleActive = false;
+        rotateActive = false;
+        flipActive = false;
+    }
 
-    bool is_action_active() override { return active_mode != EMode::kNone; }
+    bool is_action_active() override
+    {
+        return scaleActive || rotateActive || flipActive;
+    }
+
+    bool is_scale_or_rotate_active() const
+    {
+        return scaleActive || rotateActive;
+    }
 
     qreal fixed_length_for_viewport(qreal value) const
     {
@@ -688,7 +695,6 @@ private:
     bool scaleActive{false};
     bool rotateActive{false};
     bool flipActive{false};
-    EMode active_mode{kNone};
     int viewport_scale{1};
     bool is_editable{false};
 

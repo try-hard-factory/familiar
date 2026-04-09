@@ -756,7 +756,7 @@ void CanvasScene::on_selection_changed()
 void CanvasScene::on_change()
 {
 
-    if (multiselect_item_->scene() && !multiselect_item_->is_action_active()) {
+    if (multiselect_item_->scene() && !multiselect_item_->is_scale_or_rotate_active()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 }
