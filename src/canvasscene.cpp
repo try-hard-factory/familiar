@@ -92,7 +92,7 @@ void CanvasScene::cancel_active_modes()
 
 void CanvasScene::end_rubberband_mode()
 {
-    if (rubberband_item_) {
+    if (rubberband_item_ && rubberband_item_->scene()) {
         qDebug() << "End rubberband mode";
         removeItem(rubberband_item_);
     }
@@ -466,7 +466,9 @@ void CanvasScene::arrange_optimal()
 void CanvasScene::flip_items(bool vertical)
 {
     cancel_crop_mode();
-    undo_stack_->push(new FlipItemsCommand(selectedItems(true), get_selection_center(), vertical));
+    undo_stack_->push(new FlipItemsCommand(selectedItems(true),
+                                           get_selection_center(),
+                                           vertical));
 }
 
 void CanvasScene::crop_items()
@@ -509,7 +511,8 @@ bool CanvasScene::has_multi_selection()
 bool CanvasScene::has_croppable_selection()
 {
     if (has_single_selection()) {
-        return dynamic_cast<IBaseItem*>(selectedItems(true).first())->is_croppable();
+        return dynamic_cast<IBaseItem*>(selectedItems(true).first())
+            ->is_croppable();
     }
     return false;
 }
@@ -595,18 +598,19 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     if (rubberband_active) {
-        end_rubberband_mode();
+        if (rubberband_item_->scene()) {
+            end_rubberband_mode();
+        }
+        rubberband_active = false;
     }
     if (move_active && has_selection() && !multiselect_item_->is_action_active()
         && !((IBaseItem*) selectedItems(true).first())->is_action_active()) {
         auto delta = event->scenePos() - event_start;
         if (!delta.isNull()) {
-            // TODOLATER:
-            // undo_stack_->push(new MoveItemsByCommand(selectedItems(), delta, true));
+            undo_stack_->push(
+                new MoveItemsByCommand(selectedItems(), delta, true));
         }
     }
-
-    rubberband_active = false;
     move_active = false;
     QGraphicsScene::mouseReleaseEvent(event);
 }
