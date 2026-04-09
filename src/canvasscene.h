@@ -36,11 +36,11 @@ public:
                 QGraphicsScene* scene = 0);
     ~CanvasScene();
 
-    // new code
     void clear();
+    void cancel_active_modes();
+    // new code BEGIN
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
-    void cancel_active_modes();
     void cancel_crop_mode();
     void end_rubberband_mode();
     void copy_selection_to_internal_clipboard();
@@ -55,13 +55,14 @@ public:
     void arrange_optimal();
     void flip_items(bool vertical = false);
     void crop_items();
-    QColor sample_color_at(QPointF position);
-    void select_all_items();
-    void deselect_all_items();
+    void set_selected_all_items(bool value);
     bool has_selection();
     bool has_single_selection();
     bool has_multi_selection();
-    bool has_single_image_selection();
+    bool has_croppable_selection();
+
+    void deselect_all_items();
+    QColor sample_color_at(QPointF position);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -148,19 +149,22 @@ private slots:
 
 
 public:
+    // new code BEGIN
     bool move_active = false;
     bool rubberband_active = false;
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
     qreal min_z = 0;
     qreal Z_STEP = 0.001;
+    MultiSelectItem* multiselect_item_;
+    RubberbandItem* rubberband_item_;
+    std::queue<PixmapItem*> items_to_add;
+    QList<IBaseItem*> internal_clipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
-    std::queue<PixmapItem*> items_to_add;
+    // new code END
+
     bool clear_ongoing = false;
-    RubberbandItem* rubberband_item_;
-    MultiSelectItem* multiselect_item_;
-    QList<IBaseItem*> internal_clipboard;
     QPointF event_start{};
 
 private:

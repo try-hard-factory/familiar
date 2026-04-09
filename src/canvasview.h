@@ -20,6 +20,7 @@
 #include <QObject>
 #include <QScrollBar>
 #include <QTransform>
+#include <QUrl>
 #include <QWheelEvent>
 
 class MainWindow;
@@ -94,6 +95,17 @@ public:
      * \~english @param point - coords of image on scene
      */
     void addImage(const QString& path, QPointF point);
+
+    /**
+     * \~russian @brief добавить изображения из списка URL
+     * \~russian @param urls - список URL файлов
+     * \~russian @param pos - позиция для вставки (в координатах view)
+     *
+     * \~english @brief insert images from URL list
+     * \~english @param urls - list of file URLs
+     * \~english @param pos - position for insertion (in view coordinates)
+     */
+    void do_insert_images(const QList<QUrl>& urls, const QPoint& pos);
 
     /**
      * \~russian @brief добавить изображение на сцену

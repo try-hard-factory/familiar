@@ -17,7 +17,11 @@
 #include "selector.h"
 #include <regex>
 
+#include "commands.h"
 #include <QUndoStack>
+
+#include <algorithm>
+#include <cmath>
 
 extern Logger logger;
 
@@ -80,19 +84,6 @@ void CanvasScene::clear()
     clear_ongoing = false;
 }
 
-void CanvasScene::addItem(QGraphicsItem* item)
-{
-    qDebug() << "Adding item" << item;
-    QGraphicsScene::addItem(item);
-}
-
-
-void CanvasScene::removeItem(QGraphicsItem* item)
-{
-    qDebug() << "Removing item" << item;
-    QGraphicsScene::removeItem(item);
-}
-
 void CanvasScene::cancel_active_modes()
 {
     cancel_crop_mode();
@@ -106,6 +97,20 @@ void CanvasScene::end_rubberband_mode()
         removeItem(rubberband_item_);
     }
     rubberband_active = false;
+}
+
+// new code BEGIN
+
+void CanvasScene::addItem(QGraphicsItem* item)
+{
+    qDebug() << "Adding item" << item;
+    QGraphicsScene::addItem(item);
+}
+
+void CanvasScene::removeItem(QGraphicsItem* item)
+{
+    qDebug() << "Removing item" << item;
+    QGraphicsScene::removeItem(item);
 }
 
 void CanvasScene::cancel_crop_mode()
@@ -126,20 +131,22 @@ void CanvasScene::copy_selection_to_internal_clipboard()
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
+    set_selected_all_items(false);
     QList<IBaseItem*> copies;
     for (IBaseItem* item : internal_clipboard) {
         IBaseItem* copy = item->create_copy();
         copies.append(copy);
     }
     // TODOLATER: use undo stack
-    // undo_stack_->push(new InsertItemsCommand(this, copies, position));
+    undo_stack_->push(new InsertItemsCommand(this, copies, position));
 }
 
 void CanvasScene::raise_to_top()
 {
-    cancel_active_modes();
+    cancel_crop_mode();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
+    z_values.reserve(items.size());
     std::transform(items.begin(),
                    items.end(),
                    std::back_inserter(z_values),
@@ -154,7 +161,7 @@ void CanvasScene::raise_to_top()
 
 void CanvasScene::lower_to_bottom()
 {
-    cancel_active_modes();
+    cancel_crop_mode();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
     std::transform(items.begin(),
@@ -172,7 +179,7 @@ void CanvasScene::lower_to_bottom()
 
 void CanvasScene::normalize_width_or_height(const QString& mode)
 {
-    cancel_active_modes();
+    cancel_crop_mode();
     QList<qreal> values;
     QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
@@ -191,8 +198,8 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
         scaleFactors.append(avg
                             / (mode == "width" ? rect.width() : rect.height()));
     }
-    // TODOLATER: use undo stack
-    // undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
+
+    undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
 void CanvasScene::normalize_height()
@@ -206,7 +213,7 @@ void CanvasScene::normalize_width()
 
 void CanvasScene::normalize_size()
 {
-    cancel_active_modes();
+    cancel_crop_mode();
     QList<qreal> sizes;
     QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
@@ -225,58 +232,263 @@ void CanvasScene::normalize_size()
         scaleFactors.append(std::sqrt(avg / (rect.width() * rect.height())));
     }
     // TODOLATER: use undo stack
-    // undoStack->push(new NormalizeItemsCommand(items, scaleFactors));
+    undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
 void CanvasScene::arrange(bool vertical)
 {
-    // TODOLATER:
-    qDebug() << "CanvasScene::arrange: not implemented";
+    cancel_crop_mode();
+
+    QList<QGraphicsItem*> items = selectedItems(true);
+    if (items.size() < 2)
+        return;
+
+    QPointF center = get_selection_center();
+    QList<QPointF> positions;
+
+    // Структура для хранения прямоугольника и элемента
+    struct ItemRect
+    {
+        QRectF rect;
+        QGraphicsItem* item;
+    };
+
+    QList<ItemRect> rects;
+    for (QGraphicsItem* item : items) {
+        rects.append(
+            {itemsBoundingRect(false, QList<QGraphicsItem*>{item}), item});
+    }
+
+    if (vertical) {
+        // Сортировка по вертикали (y)
+        std::sort(rects.begin(),
+                  rects.end(),
+                  [](const ItemRect& a, const ItemRect& b) {
+                      return a.rect.topLeft().y() < b.rect.topLeft().y();
+                  });
+
+        qreal sum_height = 0;
+        for (const auto& r : rects) {
+            sum_height += r.rect.height();
+        }
+
+        qreal y = std::round(center.y() - sum_height / 2);
+        for (const auto& rect : rects) {
+            positions.append(
+                QPointF(std::round(center.x() - rect.rect.width() / 2), y));
+            y += rect.rect.height();
+        }
+    } else {
+        // Сортировка по горизонтали (x)
+        std::sort(rects.begin(),
+                  rects.end(),
+                  [](const ItemRect& a, const ItemRect& b) {
+                      return a.rect.topLeft().x() < b.rect.topLeft().x();
+                  });
+
+        qreal sum_width = 0;
+        for (const auto& r : rects) {
+            sum_width += r.rect.width();
+        }
+
+        qreal x = std::round(center.x() - sum_width / 2);
+        for (const auto& rect : rects) {
+            positions.append(
+                QPointF(x, std::round(center.y() - rect.rect.height() / 2)));
+            x += rect.rect.width();
+        }
+    }
+
+    // Извлекаем отсортированные элементы
+    QList<QGraphicsItem*> sortedItems;
+    for (const auto& r : rects) {
+        sortedItems.append(r.item);
+    }
+
+    undo_stack_->push(new ArrangeItemsCommand(this, sortedItems, positions));
 }
+
+// ============================================================================
+// Rectangle Packer для arrange_optimal
+// ============================================================================
+
+class RectPacker
+{
+public:
+    struct Size
+    {
+        int width;
+        int height;
+    };
+
+    struct Position
+    {
+        int x;
+        int y;
+    };
+
+    struct Shelf
+    {
+        int x = 0;
+        int y = 0;
+        int maxHeight = 0;
+    };
+
+    struct FreeRect
+    {
+        int x, y, width, height;
+    };
+
+    static QList<Position> pack(const QList<Size>& sizes,
+                                int maxWidth,
+                                int maxHeight,
+                                int& outWidth,
+                                int& outHeight)
+    {
+        QList<Position> positions;
+        QList<FreeRect> freeRects;
+        freeRects.append({0, 0, maxWidth, maxHeight});
+
+        for (const auto& size : sizes) {
+            Position pos;
+            if (!packRect(size.width, size.height, freeRects, pos)) {
+                return QList<Position>(); // Packing impossible
+            }
+            positions.append(pos);
+        }
+
+        // Calculate bounding box
+        outWidth = 0;
+        outHeight = 0;
+        for (int i = 0; i < positions.size(); ++i) {
+            outWidth = std::max(outWidth, positions[i].x + sizes[i].width);
+            outHeight = std::max(outHeight, positions[i].y + sizes[i].height);
+        }
+
+        return positions;
+    }
+
+private:
+    static bool packRect(int width,
+                         int height,
+                         QList<FreeRect>& freeRects,
+                         Position& pos)
+    {
+        // Find best free rectangle
+        int bestIndex = -1;
+        int bestArea = INT_MAX;
+
+        for (int i = 0; i < freeRects.size(); ++i) {
+            const auto& fr = freeRects[i];
+            if (fr.width >= width && fr.height >= height) {
+                int area = fr.width * fr.height;
+                if (area < bestArea) {
+                    bestArea = area;
+                    bestIndex = i;
+                }
+            }
+        }
+
+        if (bestIndex == -1) {
+            return false;
+        }
+
+        FreeRect fr = freeRects[bestIndex];
+        pos.x = fr.x;
+        pos.y = fr.y;
+
+        // Split free rectangle
+        if (width < fr.width) {
+            freeRects.append({fr.x + width, fr.y, fr.width - width, height});
+        }
+        if (height < fr.height) {
+            freeRects.append(
+                {fr.x, fr.y + height, fr.width, fr.height - height});
+        }
+
+        // Remove used free rectangle
+        freeRects.removeAt(bestIndex);
+
+        return true;
+    }
+};
 
 void CanvasScene::arrange_optimal()
 {
-    // TODOLATER:
-    qDebug() << "CanvasScene::arrange_optimal: not implemented";
+    cancel_crop_mode();
+
+    QList<QGraphicsItem*> items = selectedItems(true);
+    if (items.size() < 2)
+        return;
+
+    // Получаем размеры элементов
+    QList<RectPacker::Size> sizes;
+    for (QGraphicsItem* item : items) {
+        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        sizes.append({static_cast<int>(std::round(rect.width())),
+                      static_cast<int>(std::round(rect.height()))});
+    }
+
+    QPointF center = get_selection_center();
+
+    // Минимальная площадь элементов
+    int minArea = 0;
+    for (const auto& size : sizes) {
+        minArea += size.width * size.height;
+    }
+
+    int width = static_cast<int>(std::ceil(std::sqrt(minArea)));
+
+    QList<RectPacker::Position> positions;
+    int boundsWidth = 0, boundsHeight = 0;
+
+    // Пробуем увеличить размер контейнера пока не получится упаковать
+    while (positions.isEmpty()) {
+        positions
+            = RectPacker::pack(sizes, width, width, boundsWidth, boundsHeight);
+        if (positions.isEmpty()) {
+            width = static_cast<int>(std::ceil(width * 1.2));
+        }
+    }
+
+    // Центрируем элементы вокруг центра выделения
+    QPointF diff(center.x() - boundsWidth / 2.0,
+                 center.y() - boundsHeight / 2.0);
+
+    QList<QPointF> scenePositions;
+    for (const auto& pos : positions) {
+        scenePositions.append(QPointF(pos.x + diff.x(), pos.y + diff.y()));
+    }
+
+    undo_stack_->push(new ArrangeItemsCommand(this, items, scenePositions));
 }
 
 void CanvasScene::flip_items(bool vertical)
 {
-    cancel_active_modes();
-    // TODOLATER:
-    // undoStack->push(new FlipItemsCommand(selectedItems(userOnly), getSelectionCenter(), vertical));
+    cancel_crop_mode();
+    undo_stack_->push(new FlipItemsCommand(selectedItems(true), get_selection_center(), vertical));
 }
 
 void CanvasScene::crop_items()
 {
     if (crop_item)
         return;
-    if (has_single_image_selection()) {
+    if (has_croppable_selection()) {
         IBaseItem* item = (IBaseItem*) selectedItems(true).first();
         if (item->is_croppable())
             item->enter_crop_mode();
     }
 }
 
-QColor CanvasScene::sample_color_at(QPointF position)
+void CanvasScene::set_selected_all_items(bool value)
 {
-    // TODOLATER:
-    qDebug() << "CanvasScene::sample_color_at: not implemented";
-    return QColor();
-}
-
-void CanvasScene::select_all_items()
-{
-    cancel_active_modes();
+    cancel_crop_mode();
+    for (QGraphicsItem* item : items()) {
+        item->setSelected(value);
+    }
     QPainterPath path;
     path.addRect(itemsBoundingRect());
     setSelectionArea(path);
-}
-
-void CanvasScene::deselect_all_items()
-{
-    cancel_active_modes();
-    clearSelection();
 }
 
 bool CanvasScene::has_selection()
@@ -294,13 +506,14 @@ bool CanvasScene::has_multi_selection()
     return selectedItems(true).size() > 1;
 }
 
-bool CanvasScene::has_single_image_selection()
+bool CanvasScene::has_croppable_selection()
 {
     if (has_single_selection()) {
-        return selectedItems(true).first()->type() == 777;
+        return dynamic_cast<IBaseItem*>(selectedItems(true).first())->is_croppable();
     }
     return false;
 }
+
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
@@ -342,8 +555,6 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    cancel_active_modes();
-
     auto* item = itemAt(event->scenePos(), views().first()->transform());
     if (item) {
         if (!item->isSelected()) {
@@ -1115,4 +1326,19 @@ qint16 CanvasScene::objectsCount() const
                          [targetObjectType](const QGraphicsItem* item) {
                              return item->type() == targetObjectType;
                          });
+}
+
+
+QColor CanvasScene::sample_color_at(QPointF position)
+{
+    // TODOLATER:
+    qDebug() << "CanvasScene::sample_color_at: not implemented";
+    return QColor();
+}
+
+
+void CanvasScene::deselect_all_items()
+{
+    cancel_active_modes();
+    clearSelection();
 }
