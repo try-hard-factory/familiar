@@ -873,8 +873,6 @@ void CanvasScene::add_queued_items()
     }
 }
 
-///////////////////
-
 
 QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
 {
@@ -890,6 +888,9 @@ bool CanvasScene::itemAddByUser(int type) const
 {
     return (type == 666) || (type == 777);
 }
+
+
+
 
 
 // OLD CODE
