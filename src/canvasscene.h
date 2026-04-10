@@ -78,11 +78,13 @@ public:
                              QList<QGraphicsItem*> items
                              = QList<QGraphicsItem*>()) const;
     QPointF get_selection_center();
+    void add_item_later(const QVariantMap& itemdata, bool selected = false);
+    void add_queued_items();
+    bool itemAddByUser(int type) const;
+    
 public slots:
     void on_selection_changed();
     void on_change();
-
-
 signals:
     void cursor_changed(QCursor);
     void cursor_cleared();
@@ -93,29 +95,15 @@ public:
         QVariantMap data;
         bool selected = false;
     };
-
-    void add_item_later(const QVariantMap& itemdata, bool selected = false);
-    void add_queued_items();
-
-
-    bool itemAddByUser(int type) const;
-
+    // new code END
 
     // old code
     void pasteFromClipboard();
     void copyToClipboard();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
     QByteArray fml_payload();
-    // void updateViewScaleFactor(qreal newval)
-    // {
-    //     itemGroup_->setScaleControlFactor(newval);
-    //     parentViewScaleFactor_ = newval;
-    // }
-
     void setProjectSettings(project_settings* ps);
-
     void cleanupWorkplace();
-
     QString path();
     void setPath(const QString& path);
     QString projectName();
@@ -123,19 +111,6 @@ public:
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
-    // ItemGroup* itemGroup() const noexcept { return itemGroup_; }
-
-    void onSelectionChange()
-    {
-        // if (hasMultiSelection())
-        //     multiSelectItem->fitSelectionArea(itemsBoundingRect(true));
-        // if (hasMultiSelection() && !multiSelectItem->scene()) {
-        //     addItem(multiSelectItem);
-        //     multiSelectItem->bringToFront();
-        // }
-        // if (!hasMultiSelection() && multiSelectItem->scene())
-        //     removeItem(multiSelectItem);
-    }
 
 
 protected:
@@ -164,10 +139,10 @@ public:
     QList<IBaseItem*> internal_clipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
+    QPointF event_start{};
     // new code END
 
     bool clear_ongoing = false;
-    QPointF event_start{};
 
 private:
     qint16 objectsCount() const;
@@ -179,7 +154,6 @@ private:
 
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
-    // ItemGroup* itemGroup_ = nullptr;
     MainSelectedArea mainSelArea_;
 
     EState state_ = eMouseMoving;

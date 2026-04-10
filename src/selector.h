@@ -508,7 +508,7 @@ protected:
             return;
         } else if (rotateActive) {
             CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
-            scene->onSelectionChange(); // or emit selectionChange()
+            scene->on_selection_changed(); // or emit selectionChange()
             qreal delta = getRotateDelta(event->scenePos());
             if (delta != 0) {
                 // undo stack logic
