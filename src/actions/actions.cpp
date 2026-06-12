@@ -1,5 +1,5 @@
 #include "actions.h"
-#include <core/settings.h>
+#include <core/controls.h>
 #include <QAction>
 
 // ─── Action methods ───────────────────────────────────────────────────────────
