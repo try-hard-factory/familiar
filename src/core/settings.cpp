@@ -4,9 +4,8 @@
 #include <QCoreApplication>
 #include <QFileInfo>
 #include <QDir>
-
+#include <QImageReader>
 // TODO:
-
 // ─── CommandlineArgs ──────────────────────────────────────────────────────────
 
 CommandlineArgs& CommandlineArgs::instance()
@@ -79,10 +78,79 @@ void CommandlineArgs::parse(const QStringList& args)
     debugHandles_       = parser.isSet(QStringLiteral("debug-handles"));
 }
 
+// ─── SettingsEvents ───────────────────────────────────────────────────────────
+
+SettingsEvents& SettingsEvents::instance()
+{
+    static SettingsEvents inst;
+    return inst;
+}
+
 // ─── FamSettings ─────────────────────────────────────────────────────────────
 
-// Called in the member initializer list so the path is set before QSettings
-// reads its file location. Mirrors Python's QSettings.setPath() call.
+const QMap<QString, FieldConfig>& FamSettings::fields()
+{
+    static const QMap<QString, FieldConfig> map = {
+        {
+            "Save/confirm_close_unsaved",
+            {
+                /*default*/ true,
+                /*cast*/    [](const QVariant& v) -> QVariant { return v.toBool(); },
+            }
+        },
+        {
+            "Items/image_storage_format",
+            {
+                /*default*/  QString("best"),
+                /*cast*/     {},
+                /*validate*/ [](const QVariant& v) {
+                    const QString s = v.toString();
+                    return s == QLatin1String("png")
+                        || s == QLatin1String("jpg")
+                        || s == QLatin1String("best");
+                },
+            }
+        },
+        {
+            "Items/arrange_gap",
+            {
+                /*default*/  0,
+                /*cast*/     [](const QVariant& v) -> QVariant { return v.toInt(); },
+                /*validate*/ [](const QVariant& v) {
+                    const int n = v.toInt();
+                    return n >= 0 && n <= 200;
+                },
+            }
+        },
+        {
+            "Items/arrange_default",
+            {
+                /*default*/  QString("optimal"),
+                /*cast*/     {},
+                /*validate*/ [](const QVariant& v) {
+                    const QString s = v.toString();
+                    return s == QLatin1String("optimal")
+                        || s == QLatin1String("horizontal")
+                        || s == QLatin1String("vertical")
+                        || s == QLatin1String("square");
+                },
+            }
+        },
+        {
+            "Items/image_allocation_limit",
+            {
+                /*default*/          256,
+                /*cast*/             [](const QVariant& v) -> QVariant { return v.toInt(); },
+                /*validate*/         [](const QVariant& v) { return v.toInt() >= 0; },
+                /*postSaveCallback*/ [](const QVariant& v) {
+                    QImageReader::setAllocationLimit(v.toInt());
+                },
+            }
+        },
+    };
+    return map;
+}
+
 QSettings::Format FamSettings::initPathAndReturnFormat()
 {
     const QString dir = CommandlineArgs::instance().settingsDir();
@@ -98,6 +166,68 @@ FamSettings::FamSettings()
                 qApp->applicationName())
 {}
 
+QVariant FamSettings::valueOrDefault(const QString& key) const
+{
+    const auto& f = fields();
+    Q_ASSERT(f.contains(key));
+    const FieldConfig& conf = f[key];
+
+    QVariant val = QSettings::value(key);
+    if (!val.isValid())
+        return conf.defaultValue;
+
+    if (conf.cast) {
+        try {
+            val = conf.cast(val);
+        } catch (...) {
+            return conf.defaultValue;
+        }
+    }
+    if (conf.validate && !conf.validate(val))
+        return conf.defaultValue;
+
+    return val;
+}
+
+bool FamSettings::valueChanged(const QString& key) const
+{
+    return valueOrDefault(key) != fields().value(key).defaultValue;
+}
+
+void FamSettings::restoreDefaults()
+{
+    for (const QString& key : fields().keys())
+        remove(key);
+    emit SettingsEvents::instance().restoreDefaults();
+}
+
+void FamSettings::onStartup()
+{
+    const QByteArray envAlloc = qgetenv("QT_IMAGEIO_MAXALLOC");
+    if (!envAlloc.isEmpty()) {
+        QImageReader::setAllocationLimit(envAlloc.toInt());
+    } else {
+        const int alloc = valueOrDefault(QStringLiteral("Items/image_allocation_limit")).toInt();
+        QImageReader::setAllocationLimit(alloc);
+    }
+}
+
+void FamSettings::setValue(const QString& key, const QVariant& value)
+{
+    QSettings::setValue(key, value);
+    const auto& f = fields();
+    if (f.contains(key) && f[key].postSaveCallback)
+        f[key].postSaveCallback(value);
+}
+
+void FamSettings::remove(const QString& key)
+{
+    QSettings::remove(key);
+    const auto& f = fields();
+    if (f.contains(key) && f[key].postSaveCallback)
+        f[key].postSaveCallback(valueOrDefault(key));
+}
+
 void FamSettings::updateRecentFiles(const QString& filename)
 {
     const QString abs = QFileInfo(filename).absoluteFilePath();
@@ -111,7 +241,7 @@ void FamSettings::updateRecentFiles(const QString& filename)
     beginWriteArray(QStringLiteral("RecentFiles"));
     for (int i = 0; i < values.size(); ++i) {
         setArrayIndex(i);
-        setValue(QStringLiteral("path"), values[i]);
+        QSettings::setValue(QStringLiteral("path"), values[i]);
     }
     endArray();
 }
@@ -119,13 +249,11 @@ void FamSettings::updateRecentFiles(const QString& filename)
 QStringList FamSettings::getRecentFiles(bool existingOnly) const
 {
     QStringList values;
-    // QSettings array API is non-const; cast away is safe since no mutation
-    // of the stored data occurs — only internal read state changes.
     auto* s = const_cast<FamSettings*>(this);
     const int size = s->beginReadArray(QStringLiteral("RecentFiles"));
     for (int i = 0; i < size; ++i) {
         s->setArrayIndex(i);
-        values.append(value(QStringLiteral("path")).toString());
+        values.append(QSettings::value(QStringLiteral("path")).toString());
     }
     s->endArray();
 
@@ -136,38 +264,6 @@ QStringList FamSettings::getRecentFiles(bool existingOnly) const
             values.end());
     }
     return values;
-}
-
-// ─── KeyboardSettings ─────────────────────────────────────────────────────────
-
-KeyboardSettings::KeyboardSettings()
-    : QSettings(QFileInfo(FamSettings().fileName()).dir().filePath(
-                    QStringLiteral("KeyboardSettings.ini")),
-                QSettings::IniFormat)
-{}
-
-void KeyboardSettings::setShortcuts(const QString& group, const QString& key,
-                                    const QStringList& values)
-{
-    setValue(group + QLatin1Char('/') + key, values.join(QStringLiteral(", ")));
-}
-
-QStringList KeyboardSettings::getShortcuts(const QString& group, const QString& key,
-                                           const QStringList& defaultValues)
-{
-    const QVariant v = value(group + QLatin1Char('/') + key);
-    if (v.isValid()) {
-        QStringList values;
-        for (const QString& s : v.toString().split(QStringLiteral(", "))) {
-            if (!s.isEmpty())
-                values.append(s);
-        }
-        return values;
-    }
-
-    if (saveUnknownShortcuts)
-        setShortcuts(group, key, defaultValues);
-    return defaultValues;
 }
 
 // ─── logfileName ─────────────────────────────────────────────────────────────
