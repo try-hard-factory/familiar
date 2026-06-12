@@ -85,6 +85,8 @@ set(PROJECT_SOURCES
         core/qguiappcurrentscreen.h
         ui/setshortcut_widget.cpp
         ui/setshortcut_widget.h
+        core/settings.cpp
+        core/settings.h
         core/settingshandler.cpp
         core/settingshandler.h
         core/valuehandler.cpp
