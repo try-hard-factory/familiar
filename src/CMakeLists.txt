@@ -81,6 +81,10 @@ set(PROJECT_SOURCES
         ui/presetsave_window.h
         ui/shortcuts_widget.cpp
         ui/shortcuts_widget.h
+        actions/actions.cpp
+        actions/actions.h
+        actions/menu_structure.cpp
+        actions/menu_structure.h
         core/qguiappcurrentscreen.cpp
         core/qguiappcurrentscreen.h
         ui/setshortcut_widget.cpp
