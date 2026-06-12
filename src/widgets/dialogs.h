@@ -1,9 +1,24 @@
 #pragma once
 
-#include <QProgressDialog>
+#include <QApplication>
+#include <QClipboard>
+#include <QCoreApplication>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFile>
+#include <QLabel>
 #include <QLoggingCategory>
-#include <QTimer>
+#include <QPlainTextEdit>
+#include <QProgressDialog>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QStandardPaths>
+#include <QTabWidget>
+#include <QTextStream>
 #include <QThread>
+#include <QTimer>
+#include <QVBoxLayout>
 #include <QVariant>
 #include <QVariantMap>
 
@@ -17,23 +32,21 @@ signals:
     void beginProcessing(int value);
 
 public:
-    Worker(const std::function<void(Worker*)>& func, const QStringList& args, QVariantMap& kwargs)
-        : func(func), args(args), kwargs(kwargs)
+    Worker(const std::function<void(Worker*)>& func,
+           const QStringList& args,
+           QVariantMap& kwargs)
+        : func(func)
+        , args(args)
+        , kwargs(kwargs)
     {
         QString key("worker");
         kwargs.insert(key, QVariant::fromValue(this));
         canceled = false;
     }
 
-    void run() override
-    {
-        func(this);
-    }
+    void run() override { func(this); }
 
-    Q_INVOKABLE void onCanceled()
-    {
-        canceled = true;
-    }
+    Q_INVOKABLE void onCanceled() { canceled = true; }
 
 private:
     std::function<void(Worker*)> func;
@@ -47,7 +60,10 @@ class ProgressDialog : public QProgressDialog
     Q_OBJECT
 
 public:
-    explicit ProgressDialog(const QString& label, Worker* worker, int maximum = 0, QWidget* parent = nullptr)
+    explicit ProgressDialog(const QString& label,
+                               Worker* worker,
+                               int maximum = 0,
+                               QWidget* parent = nullptr)
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
     {
         qDebug() << "Initialized progress bar";
@@ -55,9 +71,18 @@ public:
         setWindowModality(Qt::WindowModal);
         setAutoReset(false);
         setAutoClose(false);
-        connect(worker, &Worker::beginProcessing, this, &ProgressDialog::on_begin_processing);
-        connect(worker, &Worker::progress, this, &ProgressDialog::on_progress);
-        connect(worker, &Worker::finished, this, &ProgressDialog::on_finished);
+        connect(worker,
+                &Worker::beginProcessing,
+                this,
+                &ProgressDialog::on_begin_processing);
+        connect(worker,
+                &Worker::progress,
+                this,
+                &ProgressDialog::on_progress);
+        connect(worker,
+                &Worker::finished,
+                this,
+                &ProgressDialog::on_finished);
         connect(this, &ProgressDialog::canceled, worker, &Worker::onCanceled);
     }
 
@@ -85,93 +110,95 @@ private slots:
 };
 
 
-
-
 class HelpDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    HelpDialog(QWidget* parent = nullptr) : QDialog(parent)
+    HelpDialog(QWidget* parent = nullptr)
+        : QDialog(parent)
     {
-        // setWindowTitle(Constants::APPNAME + " Help");
-        // QString docDir = QDir::currentPath() + "/documentation";
-        // QTabWidget* tabs = new QTabWidget();
+        setWindowTitle(qApp->applicationName() + " Help");
+        QString docDir = QCoreApplication::applicationDirPath()
+                         + "/documentation";
+        QTabWidget* tabs = new QTabWidget();
 
-        // // Controls tab
-        // QString controlsFile = docDir + "/controls.html";
-        // QString controlsTxt = readFile(controlsFile);
-        // QTextBrowser* controlsBrowser = new QTextBrowser();
-        // controlsBrowser->setText(controlsTxt);
-        // tabs->addTab(controlsBrowser, "&Controls");
+        QFile controlsFile(docDir + "/controls.html");
+        QString controlsTxt;
+        if (controlsFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&controlsFile);
+            controlsTxt = in.readAll();
+        }
+        QLabel* controls = new QLabel(controlsTxt);
+        controls->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        QScrollArea* scroll = new QScrollArea(this);
+        scroll->setWidgetResizable(true);
+        scroll->setWidget(controls);
+        tabs->addTab(scroll, "&Controls");
 
-        // QVBoxLayout* layout = new QVBoxLayout();
-        // setLayout(layout);
-        // layout->addWidget(tabs);
-        // show();
-    }
-
-private:
-    QString readFile(const QString& fileName)
-    {
-        // QFile file(fileName);
-        // if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-        // {
-        //     QTextStream in(&file);
-        //     return in.readAll();
-        // }
-        return QString();
+        QVBoxLayout* layout = new QVBoxLayout();
+        setLayout(layout);
+        layout->addWidget(tabs);
+        show();
     }
 };
+
 
 class DebugLogDialog : public QDialog
 {
     Q_OBJECT
 
 public:
-    DebugLogDialog(QWidget* parent) : QDialog(parent)
+    DebugLogDialog(QWidget* parent)
+        : QDialog(parent)
     {
-        // setWindowTitle(Constants::APPNAME + " Debug Log");
-        // QString logTxt = readFile(logfileName());
+        setWindowTitle(qApp->applicationName() + " Debug Log");
+        QString logPath = logfileName();
+        QFile file(logPath);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            logTxt = in.readAll();
+        }
 
-        // log = new QPlainTextEdit(logTxt);
-        // log->setReadOnly(true);
+        log = new QPlainTextEdit(logTxt);
+        log->setReadOnly(true);
 
-        // QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
-        // connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-        // copyButton = new QPushButton("Co&py To Clipboard");
-        // buttons->addButton(copyButton, QDialogButtonBox::ActionRole);
-        // connect(copyButton, &QPushButton::released, this, &DebugLogDialog::copyToClipboard);
+        QDialogButtonBox* buttons = new QDialogButtonBox(
+            QDialogButtonBox::Close);
+        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+        copyButton = new QPushButton("Co&py To Clipboard");
+        buttons->addButton(copyButton, QDialogButtonBox::ActionRole);
+        connect(copyButton,
+                &QPushButton::released,
+                this,
+                &DebugLogDialog::copyToClipboard);
 
-        // QVBoxLayout* layout = new QVBoxLayout();
-        // setLayout(layout);
-        // QLabel* nameWidget = new QLabel(logfileName());
-        // nameWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
-        // layout->addWidget(nameWidget);
-        // layout->addWidget(log);
-        // layout->addWidget(buttons);
-        // show();
+        QVBoxLayout* layout = new QVBoxLayout();
+        setLayout(layout);
+        QLabel* nameWidget = new QLabel(logPath);
+        nameWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        layout->addWidget(nameWidget);
+        layout->addWidget(log);
+        layout->addWidget(buttons);
+        show();
     }
 
 private:
-    // QPlainTextEdit* log;
+    QPlainTextEdit* log;
     QPushButton* copyButton;
+    QString logTxt;
 
-    QString readFile(const QString& fileName)
+    static QString logfileName()
     {
-        // QFile file(fileName);
-        // if (file.open(QIODevice::ReadOnly | QIODevice::Text))
-        // {
-        //     QTextStream in(&file);
-        //     return in.readAll();
-        // }
-        return QString();
+        return QStandardPaths::writableLocation(
+                   QStandardPaths::AppLocalDataLocation)
+               + "/" + qApp->applicationName() + ".log";
     }
 
 private slots:
     void copyToClipboard()
     {
-        // QClipboard* clipboard = QApplication::clipboard();
-        // clipboard->setText(log->toPlainText());
+        QClipboard* clipboard = QApplication::clipboard();
+        clipboard->setText(logTxt);
     }
 };
