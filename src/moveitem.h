@@ -59,6 +59,7 @@ public:
     bool is_croppable_ = true;
     bool crop_mode = false;
     bool is_editable_ = false;
+    bool grayscale_ = false;
     QRectF crop_{};
     QRectF crop_temp{};
     QPointF crop_mode_event_start{};
@@ -71,9 +72,12 @@ public:
         reset_crop();
         is_croppable_ = true;
         crop_mode = false;
-        
+
         init_selectable();
     }
+
+    bool grayscale() const { return grayscale_; }
+    void setGrayscale(bool value) { grayscale_ = value; update(); }
 
     // set_image function
     bool is_croppable() override { return is_croppable_; }
@@ -301,7 +305,14 @@ public:
             // Draw crop rectangle
             draw_crop_rect(*painter, crop_temp);
         } else {
-            painter->drawPixmap(crop_, pixmap(), crop_);
+            if (grayscale_) {
+                QImage img = pixmap().toImage()
+                                 .convertToFormat(QImage::Format_Grayscale8)
+                                 .convertToFormat(QImage::Format_ARGB32);
+                painter->drawImage(crop_, img, crop_);
+            } else {
+                painter->drawPixmap(crop_, pixmap(), crop_);
+            }
             paint_selectable(painter, option, widget);
         }
     }

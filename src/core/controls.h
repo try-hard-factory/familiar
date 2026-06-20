@@ -25,6 +25,15 @@ public:
     virtual const QString& text() const = 0;
     virtual const char* settingsGroup() const = 0;
 
+    virtual bool controlsChanged() const = 0;
+    virtual bool isConfigured() const = 0;
+    virtual void removeControls() const = 0;
+
+    bool isInvertible() const { return invertible_; }
+    bool defaultInverted() const { return defaultInverted_; }
+    const QStringList& defaultModifiers() const { return defaultModifiers_; }
+    virtual QString defaultButton() const { return {}; }
+
     bool operator==(const MouseConfigBase& o) const { return id() == o.id(); }
 
     // Ordered modifier name → Qt flag mapping.
@@ -35,9 +44,9 @@ public:
     static Qt::KeyboardModifiers modifiersToQt(const QStringList& modifiers);
 
     QStringList getModifiers() const;
-    void setModifiers(const QStringList& values);
+    void setModifiers(const QStringList& values) const;
     bool getInverted() const;
-    void setInverted(bool value);
+    void setInverted(bool value) const;
 
 protected:
     MouseConfigBase(const QString& id, const QString& group, const QString& text,
@@ -64,9 +73,9 @@ public:
     const QString& text()  const override { return text_; }
     const char* settingsGroup() const override;
 
-    bool controlsChanged() const;
-    bool isConfigured() const;
-    void removeControls();
+    bool controlsChanged() const override;
+    bool isConfigured() const override;
+    void removeControls() const override;
     bool conflictsWith(const MouseWheelConfig& other) const;
     bool matchesEvent(const QWheelEvent* event) const;
 };
@@ -86,11 +95,12 @@ public:
     const char* settingsGroup() const override;
 
     QString getButton() const;
-    void setButton(const QString& value);
+    void setButton(const QString& value) const;
+    QString defaultButton() const override { return defaultButton_; }
 
-    bool controlsChanged() const;
-    bool isConfigured() const;
-    void removeControls();
+    bool controlsChanged() const override;
+    bool isConfigured() const override;
+    void removeControls() const override;
     bool conflictsWith(const MouseConfig& other) const;
     bool matchesEvent(const QMouseEvent* event) const;
 
