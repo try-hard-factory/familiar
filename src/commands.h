@@ -5,10 +5,12 @@
 #include <QList>
 #include <QGraphicsItem>
 #include <QRectF>
+#include <QString>
 
 class CanvasScene;
 class IBaseItem;
 class PixmapItem;
+class TextItem;
 
 // ============================================================================
 // InsertItemsCommand - Вставка элементов на сцену
@@ -256,6 +258,27 @@ private:
 };
 
 // ============================================================================
+// ChangeOpacityCommand - Изменение прозрачности элементов
+// ============================================================================
+class ChangeOpacityCommand : public QUndoCommand
+{
+public:
+    ChangeOpacityCommand(const QList<QGraphicsItem*>& items,
+                         qreal opacity,
+                         bool ignoreFirstRedo = false);
+    void redo() override;
+    void undo() override;
+    void setOpacity(qreal opacity) { opacity_ = opacity; }
+    void setIgnoreFirstRedo(bool value) { ignoreFirstRedo_ = value; }
+
+private:
+    QList<QGraphicsItem*> items_;
+    qreal opacity_;
+    QList<qreal> oldOpacities_;
+    bool ignoreFirstRedo_;
+};
+
+// ============================================================================
 // CropItemCommand - Применение кропа к элементу
 // ============================================================================
 class CropItemCommand : public QUndoCommand
@@ -270,4 +293,38 @@ private:
     PixmapItem* item_;
     QRectF crop_;
     QRectF oldCrop_;
+};
+
+// ============================================================================
+// ChangeTextCommand - Изменение текста текстового элемента
+// ============================================================================
+class ChangeTextCommand : public QUndoCommand
+{
+public:
+    ChangeTextCommand(TextItem* item, const QString& newText, const QString& oldText);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    TextItem* item_;
+    QString newText_;
+    QString oldText_;
+};
+
+// ============================================================================
+// ToggleGrayscaleCommand - Переключение режима оттенков серого для изображений
+// ============================================================================
+class ToggleGrayscaleCommand : public QUndoCommand
+{
+public:
+    ToggleGrayscaleCommand(const QList<PixmapItem*>& items, bool grayscale);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    QList<PixmapItem*> items_;
+    bool grayscale_;
+    QList<bool> oldGrayscales_;
 };

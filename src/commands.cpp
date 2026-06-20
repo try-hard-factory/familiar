@@ -595,3 +595,87 @@ void CropItemCommand::undo()
 {
     item_->set_crop(oldCrop_);
 }
+
+// ============================================================================
+// ChangeOpacityCommand
+// ============================================================================
+ChangeOpacityCommand::ChangeOpacityCommand(const QList<QGraphicsItem*>& items,
+                                           qreal opacity,
+                                           bool ignoreFirstRedo)
+    : QUndoCommand(QObject::tr("Change opacity"))
+    , items_(items)
+    , opacity_(opacity)
+    , ignoreFirstRedo_(ignoreFirstRedo)
+{
+    for (auto* item : items_) {
+        oldOpacities_.append(item->opacity());
+    }
+}
+
+void ChangeOpacityCommand::redo()
+{
+    if (ignoreFirstRedo_) {
+        ignoreFirstRedo_ = false;
+        return;
+    }
+    for (auto* item : items_) {
+        item->setOpacity(opacity_);
+    }
+}
+
+void ChangeOpacityCommand::undo()
+{
+    for (int i = 0; i < items_.size(); ++i) {
+        items_[i]->setOpacity(oldOpacities_[i]);
+    }
+}
+
+// ============================================================================
+// ChangeTextCommand
+// ============================================================================
+ChangeTextCommand::ChangeTextCommand(TextItem* item,
+                                     const QString& newText,
+                                     const QString& oldText)
+    : QUndoCommand(QObject::tr("Change text"))
+    , item_(item)
+    , newText_(newText)
+    , oldText_(oldText)
+{
+}
+
+void ChangeTextCommand::redo()
+{
+    item_->setPlainText(newText_);
+}
+
+void ChangeTextCommand::undo()
+{
+    item_->setPlainText(oldText_);
+}
+
+// ============================================================================
+// ToggleGrayscaleCommand
+// ============================================================================
+ToggleGrayscaleCommand::ToggleGrayscaleCommand(const QList<PixmapItem*>& items, bool grayscale)
+    : QUndoCommand(QObject::tr("Toggle Grayscale"))
+    , items_(items)
+    , grayscale_(grayscale)
+{
+    for (auto* item : items_) {
+        oldGrayscales_.append(item->grayscale());
+    }
+}
+
+void ToggleGrayscaleCommand::redo()
+{
+    for (auto* item : items_) {
+        item->setGrayscale(grayscale_);
+    }
+}
+
+void ToggleGrayscaleCommand::undo()
+{
+    for (int i = 0; i < items_.size(); ++i) {
+        items_[i]->setGrayscale(oldGrayscales_[i]);
+    }
+}

@@ -121,6 +121,18 @@ set(PROJECT_SOURCES
         widgets/welcome_overlay.h
         widgets/dialogs.cpp
         widgets/dialogs.h
+        widgets/settings_dialog.cpp
+        widgets/settings_dialog.h
+        widgets/color_gamut.cpp
+        widgets/color_gamut.h
+        widgets/controls/controls_common.cpp
+        widgets/controls/controls_common.h
+        widgets/controls/keyboard_controls.cpp
+        widgets/controls/keyboard_controls.h
+        widgets/controls/mouse_controls.cpp
+        widgets/controls/mouse_controls.h
+        widgets/controls/mousewheel_controls.cpp
+        widgets/controls/mousewheel_controls.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 

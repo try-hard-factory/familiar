@@ -59,7 +59,7 @@ QStringList MouseConfigBase::getModifiers() const
         settingsGroup(), id_ + QStringLiteral("_modifiers"), defaultModifiers_);
 }
 
-void MouseConfigBase::setModifiers(const QStringList& values)
+void MouseConfigBase::setModifiers(const QStringList& values) const
 {
     KeyboardSettings().setList(
         settingsGroup(), id_ + QStringLiteral("_modifiers"), values, defaultModifiers_);
@@ -72,7 +72,7 @@ bool MouseConfigBase::getInverted() const
         .toBool();
 }
 
-void MouseConfigBase::setInverted(bool value)
+void MouseConfigBase::setInverted(bool value) const
 {
     KeyboardSettings().setScalar(
         settingsGroup(), id_ + QStringLiteral("_inverted"), value, defaultInverted_);
@@ -105,7 +105,7 @@ bool MouseWheelConfig::isConfigured() const
     return !getModifiers().isEmpty();
 }
 
-void MouseWheelConfig::removeControls()
+void MouseWheelConfig::removeControls() const
 {
     setModifiers({});
     setInverted(false);
@@ -147,7 +147,7 @@ QString MouseConfig::getButton() const
         .toString();
 }
 
-void MouseConfig::setButton(const QString& value)
+void MouseConfig::setButton(const QString& value) const
 {
     KeyboardSettings().setScalar(
         settingsGroup(), id_ + QStringLiteral("_button"), value, defaultButton_);
@@ -167,7 +167,7 @@ bool MouseConfig::isConfigured() const
     return getButton() != QLatin1String("Not Configured");
 }
 
-void MouseConfig::removeControls()
+void MouseConfig::removeControls() const
 {
     setButton(QStringLiteral("Not Configured"));
     setModifiers({});
