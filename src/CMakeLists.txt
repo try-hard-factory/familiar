@@ -58,8 +58,6 @@ set(PROJECT_SOURCES
         debug_macros.h
         Logger.h
         MessageBuilder.h
-        borderdot.cpp
-        borderdot.h
         Vec2d.h
         image_downloader.cpp
         image_downloader.h
