@@ -223,10 +223,11 @@ bool KeyboardShortcutsModel::setDataEx(const QModelIndex& index,
     // Deduplicate while preserving order.
     QStringList unique;
     QSet<QString> seen;
-    for (const auto& s : shortcuts) {
-        if (seen.insert(s).second)
-            unique.append(s);
-    }
+    // TODO:
+    // for (const auto& s : shortcuts) {
+    //     if (seen.insert(s).second)
+    //         unique.append(s);
+    // }
 
     action->setShortcuts(unique);
 

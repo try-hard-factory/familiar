@@ -1,5 +1,5 @@
 #include "settings_dialog.h"
-
+#include <QApplication>
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QGridLayout>
