@@ -15,7 +15,7 @@ extern Logger logger;
 
 
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
-    : MainControlsMixin<CanvasView, QGraphicsView>()
+    : MainControlsMixin<CanvasView, ActionsMixin<QGraphicsView>>()
     // , QGraphicsView(parent)
     // , ActionsMixin<CanvasView>()
     , mainwindow_(mw)
@@ -26,7 +26,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
     undoStack_->setUndoLimit(100);
     // TODOLATER:
-    // connect(undoStack_, &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
+    connect(undoStack_, &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
     // connect(undoStack_, &QUndoStack::canUndoChanged, this, &CanvasView::on_can_undo_changed);
     // connect(undoStack_, &QUndoStack::cleanChanged, this, &CanvasView::on_undo_clean_changed);
 

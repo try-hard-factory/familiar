@@ -44,10 +44,8 @@ struct PreviousTransform
  *
  * \~english @brief The CanvasView class
  */
-class CanvasView : public MainControlsMixin<CanvasView, QGraphicsView>
+class CanvasView : public MainControlsMixin<CanvasView, ActionsMixin<QGraphicsView>>
 
-//    ,
-//    public ActionsMixin<CanvasView>
 {
     Q_OBJECT
 public:
