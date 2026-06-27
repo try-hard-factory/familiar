@@ -51,8 +51,6 @@ set(PROJECT_SOURCES
         movepixmapitem.h
         canvasscene.cpp
         canvasscene.h
-        mainselectedarea.cpp
-        mainselectedarea.h
         debug_macros.h
         Logger.h
         MessageBuilder.h
