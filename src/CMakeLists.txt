@@ -47,8 +47,6 @@ set(PROJECT_SOURCES
         canvasview.h
         moveitem.cpp
         moveitem.h
-        movepixmapitem.cpp
-        movepixmapitem.h
         canvasscene.cpp
         canvasscene.h
         debug_macros.h
