@@ -2,7 +2,6 @@
 #define CANVASSCENE_H
 
 #include "image_downloader.h"
-#include "mainselectedarea.h"
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
@@ -153,7 +152,6 @@ private:
 
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
-    MainSelectedArea mainSelArea_;
 
     EState state_ = eMouseMoving;
 
