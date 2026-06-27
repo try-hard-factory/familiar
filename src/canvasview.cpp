@@ -2,7 +2,6 @@
 #include "Logger.h"
 #include "canvasscene.h"
 #include "moveitem.h"
-#include "movepixmapitem.h"
 #include "project_settings.h"
 #include <QFileDialog>
 #include <QMessageBox>

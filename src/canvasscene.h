@@ -3,7 +3,6 @@
 
 #include "image_downloader.h"
 #include "mainselectedarea.h"
-#include <itemgroup.h>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
