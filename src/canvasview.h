@@ -1,20 +1,11 @@
 #ifndef CANVASVIEW_H
 #define CANVASVIEW_H
 
-/**
- *  @file   canvasview.h
- *  \~russian @brief  Графическоe представлениe рабочей области
- *  \~russian @author max aka angeleyes (mpano91@gmail.com)
- *
- *  \~english @brief  Graphics view of working place
- *  \~english @author max aka angeleyes (mpano91@gmail.com)
- */
 #include <actions/action_mixin.h>
+#include <functional>
 #include <memory>
 #include <widgets/main_controls.h>
 #include <widgets/welcome_overlay.h>
-#include <QGraphicsItem>
-#include <QGraphicsPixmapItem>
 #include <QGraphicsView>
 #include <QMouseEvent>
 #include <QObject>
@@ -28,10 +19,6 @@ class project_settings;
 class CanvasScene;
 class QUndoStack;
 
-/**
- * \~russian @brief Структура для хранения предыдущего состояния трансформации
- * \~english @brief Structure to store previous transform state
- */
 struct PreviousTransform
 {
     QGraphicsItem* toggleItem;
@@ -39,96 +26,31 @@ struct PreviousTransform
     QPointF center;
 };
 
-/**
- * \~russian @brief CanvasView класс
- *
- * \~english @brief The CanvasView class
- */
 class CanvasView : public MainControlsMixin<CanvasView, ActionsMixin<QGraphicsView>>
-
 {
     Q_OBJECT
 public:
-    /**
-     * \~russian @brief конструктор
-     * \~russian @param parent - указатель на QWidget(может быть nullptr - это
-     *                           нормально)
-     * \~russian @param ps - настройки проекта
-     *
-     * \~english @brief main window class constructor
-     * \~english @param parent - pointer to QWidget parent(may be nullptr - it
-     *                           is normal)
-     * \~english @param ps - project settings
-     */
-    CanvasView(MainWindow& mw, QWidget* parent = 0);
+    enum ActiveMode { ModeNone, ModePan, ModeZoom, ModeSampleColor };
 
-    /**
-     * \~russian @brief деструктор
-     *
-     * \~english @brief class destructor
-     */
+    CanvasView(MainWindow& mw, QWidget* parent = nullptr);
     ~CanvasView();
 
-
-public slots:
-    void on_scene_changed();
-
-public:
-    /**
-     * \~russian @brief setProjectSettings
-     * \~russian @param ps - настройки проекта
-     *
-     * \~english @brief setProjectSettings
-     * \~english @param ps - project settings
-     */
     void setProjectSettings(project_settings* ps);
-
-    /**
-     * \~russian @brief добавить изображение на сцену
-     * \~russian @param path - путь к файлу
-     * \~russian @param point - координаты точки на сцене
-     *
-     * \~english @brief addImage add Image to the scene
-     * \~english @param path - path of image
-     * \~english @param point - coords of image on scene
-     */
-    void addImage(const QString& path, QPointF point);
-
-    /**
-     * \~russian @brief добавить изображения из списка URL
-     * \~russian @param urls - список URL файлов
-     * \~russian @param pos - позиция для вставки (в координатах view)
-     *
-     * \~english @brief insert images from URL list
-     * \~english @param urls - list of file URLs
-     * \~english @param pos - position for insertion (in view coordinates)
-     */
     void do_insert_images(const QList<QUrl>& urls, const QPoint& pos);
-
-    /**
-     * \~russian @brief добавить изображение на сцену
-     * \~russian @param img - изображение
-     * \~russian @param point - координаты точки на сцене
-     *
-     * \~english @brief add Image to the scene
-     * \~english @param img - image
-     * \~english @param point - coords of image on scene
-     */
+    void addImage(const QString& path, QPointF point);
     void addImage(QImage* img, QPointF point);
+    void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
-    void addImage(
-        QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
+    qreal get_scale() const { return transform().m11(); }
+    QPointF getViewCenter() const;
+    void resetPreviousTransform(QGraphicsItem* toggleItem = nullptr);
+    void fitRect(const QRectF& rect, QGraphicsItem* toggleItem = nullptr);
 
-    void SetScale(qreal qrScale);
-    void ScaleView(qreal qFactor);
-
-    void zoomFactor(double factor) noexcept { zoomFactor_ = factor; }
-    double zoomFactor() const noexcept { return zoomFactor_; }
+    void cancelActiveModes();
+    void cancelSampleColorMode();
 
     QByteArray fml_payload();
-
     void cleanupWorkplace();
-
     QString path();
     void setPath(const QString& path);
     QString projectName();
@@ -137,105 +59,127 @@ public:
     void setModified(bool mod);
     bool isUntitled();
 
-    //----new interface--------------
-    qreal get_scale() const { return transform().m11(); }
+public slots:
+    void on_scene_changed();
+    void on_selection_changed();
+    void on_context_menu(const QPoint& point);
+    void on_cursor_changed(QCursor cursor);
+    void on_cursor_cleared();
+    void on_can_redo_changed(bool canRedo);
+    void on_can_undo_changed(bool canUndo);
+    void on_undo_clean_changed(bool clean);
+    void settingsChangedSlot();
 
-    void resetPreviousTransform(QGraphicsItem* toggleItem = nullptr);
+    // File
+    void on_action_new_scene();
+    void on_action_open();
+    void on_action_open_recent_file(const QString& filename);
+    void on_action_save();
+    void on_action_save_as();
+    void on_action_export_scene();
+    void on_action_export_images();
+    void on_action_quit();
 
-    QPointF getViewCenter() const;
+    // Edit
+    void on_action_undo();
+    void on_action_redo();
+    void on_action_select_all();
+    void on_action_deselect_all();
+    void on_action_cut();
+    void on_action_copy();
+    void on_action_paste();
+    void on_action_delete_items();
+    void on_action_raise_to_top();
+    void on_action_lower_to_bottom();
 
-    void fitRect(const QRectF& rect, QGraphicsItem* toggleItem = nullptr);
+    // View
+    void on_action_fit_scene();
+    void on_action_fit_selection();
+    void on_action_fullscreen(bool checked);
+    void on_action_always_on_top(bool checked);
+    void on_action_show_scrollbars(bool checked);
+    void on_action_show_menubar(bool checked);
+    void on_action_show_titlebar(bool checked);
+    void on_action_move_window();
+
+    // Insert
+    void on_action_insert_images();
+    void on_action_insert_text();
+
+    // Transform
+    void on_action_crop();
+    void on_action_flip_horizontally();
+    void on_action_flip_vertically();
+    void on_action_reset_scale();
+    void on_action_reset_rotation();
+    void on_action_reset_flip();
+    void on_action_reset_crop();
+    void on_action_reset_transforms();
+
+    // Normalize
+    void on_action_normalize_height();
+    void on_action_normalize_width();
+    void on_action_normalize_size();
+
+    // Arrange
+    void on_action_arrange_optimal();
+    void on_action_arrange_horizontal();
+    void on_action_arrange_vertical();
+    void on_action_arrange_square();
+
+    // Images
+    void on_action_change_opacity();
+    void on_action_grayscale(bool checked);
+    void on_action_show_color_gamut();
+    void on_action_sample_color();
+
+    // Settings / Help
+    void on_action_settings();
+    void on_action_keyboard_settings();
+    void on_action_open_settings_dir();
+    void on_action_help();
+    void on_action_about();
+    void on_action_debuglog();
+
+protected:
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
+    void wheelEvent(QWheelEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
+    void drawBackground(QPainter* painter, const QRectF& rect) override;
 
 private:
     void recalcSceneRect();
+    void doScale(qreal sx, qreal sy);
+    double getZoomSize(std::function<double(double, double)> func) const;
+    void zoom(double delta, QPointF anchor);
+    void pan(QPointF delta);
 
-public slots:
-    /**
-     * \~russian @brief QT обработчик для события выбора элементов
-     *
-     * \~english @brief QT slot-handler for selection changed
-     */
-    void on_selection_changed();
-    void settingsChangedSlot();
-
-protected:
-    void contextMenuEvent(QContextMenuEvent* event) override;
-    /**
-     * \~russian @brief перегрузите эту функцию, для обработки движений мышки
-     * \~russian @param event - событие движения мышки
-     *
-     * \~english @brief overload this function to process mouse moves
-     * \~english @param event - mouse move event
-     */
-    void mouseMoveEvent(QMouseEvent* event) override;
-
-    /**
-     * \~russian @brief перегрузите эту функцию, для обработки нажатий клавиш мышки
-     * \~russian @param event - событие нажатий клавиш мышки
-     *
-     * \~english @brief overload this function to process mouse button pressed
-     * \~english @param event - mouse press event
-     */
-    void mousePressEvent(QMouseEvent* event) override;
-
-    /**
-     * \~russian @brief перегрузите эту функцию, для обработки отпускания клавиш мышки
-     * \~russian @param event - событие отпускания клавиш мышки
-     *
-     * \~english @brief overload this function to process mouse button released
-     * \~english @param event - mouse release event
-     */
-    void mouseReleaseEvent(QMouseEvent* event) override;
-    void mouseDoubleClickEvent(QMouseEvent* event) override;
-    /**
-     * \~russian @brief перегрузите эту функцию, для обработки колёсика мышки
-     * \~russian @param event - событие колёсика мышки
-     *
-     * \~english @brief overload this function to process mouse wheel
-     * \~english @param event - mouse wheel event
-     */
-    void wheelEvent(QWheelEvent* event) override;
-
-    /**
-     * \~russian @brief перегрузите эту функцию, для обработки изменения размера
-     * \~russian @param event - событие колёсика мышки
-     *
-     * \~english @brief overload this function to process resize event
-     * \~english @param event - resize event
-     */
-    void resizeEvent(QResizeEvent* event) override;
-
-    /**
-     * \~russian @brief перегрузите эту функцию, для рисования на сцене
-     * \~russian @param painter - используется для рисования на сцене
-     * \~russian @param rect - прямоугольник для отрисовки
-     *
-     * \~english @brief overload this function to Draws the background of the scene
-     * \~english @param painter - using for painting on scene
-     * \~english @param rect - is the exposed rectangle.
-     */
-    void drawBackground(QPainter* painter, const QRectF& rect) override;
-
-
-private:
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;
     std::unique_ptr<QUndoStack> undoStack_;
     CanvasScene* scene_;
-    double zoomFactor_ = 1.15;
-    Qt::MouseButton pan_;
-    bool rightMoveflag_{false};
-    QPoint pressPos_;
-    QPoint wndPos_;
-    bool isMoving_{false};
-    qreal panStartX_;
-    qreal panStartY_;
     uint64_t zCounter_ = 0;
-    bool fitViewF_{false};
+
+    ActiveMode activeMode_ = ModeNone;
+    QPointF eventStart_;
+    QPointF eventAnchor_;
+    bool eventInverted_ = false;
+
+    std::unique_ptr<PreviousTransform> previousTransform_;
+
+    // Right-click: drag → move window, click → context menu
+    bool rightPressed_  = false;
+    bool rightDragging_ = false;
+    QPoint rightPressPos_;
+    QPoint rightWndPos_;
+
     QColor canvasColor_;
     QColor borderColor_;
     int currentOpacity_;
-    std::unique_ptr<PreviousTransform> previousTransform_;
 };
 
 #endif // CANVASVIEW_H
