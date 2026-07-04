@@ -24,6 +24,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
 {
+    controlTarget_ = this;
     setFrameShape(QFrame::NoFrame);
     setRenderHint(QPainter::Antialiasing, true);
 

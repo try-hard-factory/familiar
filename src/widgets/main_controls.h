@@ -111,6 +111,8 @@ public:
     }
 
 protected:
+    QWidget* controlTarget_ = nullptr;
+
     void enterMovewinMode()
     {
         // movewinActive_ = true;
