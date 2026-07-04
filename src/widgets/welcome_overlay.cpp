@@ -1,7 +1,6 @@
 #include "welcome_overlay.h"
 #include "mainwindow.h"
 #include <core/settings.h>
-#include <main_context_menu.h>
 #include <QLabel>
 #include <QVBoxLayout>
 
@@ -11,7 +10,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
 {
     setAutoFillBackground(true);
     init_main_controls(mainWindow);
-    setContextMenuPolicy(Qt::PreventContextMenu);
+    setContextMenuPolicy(Qt::DefaultContextMenu);
 
     // Recent files widget (hidden until there are recent files)
     filesWidget_ = new QWidget(this);
@@ -56,13 +55,10 @@ void WelcomeOverlay::enable_mouse_events()
     label_->setAttribute(Qt::WA_TransparentForMouseEvents, false);
 }
 
-// void WelcomeOverlay::on_context_menu(const QPoint& point)
-// {
-//     if (!mainWindow_)
-//         return;
-//     MainContextMenu menu(*mainWindow_, this);
-//     menu.exec(mapToGlobal(point));
-// }
+void WelcomeOverlay::on_context_menu(const QPoint& point)
+{
+    static_cast<CanvasView*>(parent())->on_context_menu(point);
+}
 
 void WelcomeOverlay::mousePressEvent(QMouseEvent* event)
 {
