@@ -80,6 +80,11 @@ MainWindow::MainWindow(QWidget* parent)
     // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
     // setWindowFlags(flags);
     // setWindowOpacity(0.6);
+    setMouseTracking(true);
+
+    // Central widget (tabpane_) covers the whole frameless window, so this
+    // watches every mouse move to keep the border-resize cursor in sync.
+    qApp->installEventFilter(this);
 }
 
 
