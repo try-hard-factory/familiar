@@ -387,7 +387,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 {
     QGraphicsView::resizeEvent(event);
     recalcSceneRect();
-    // welcomeOverlay_->resize(size());
+    welcomeOverlay_->resize(size());
 }
 
 

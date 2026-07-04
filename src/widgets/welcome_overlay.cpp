@@ -11,6 +11,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
 {
     setAutoFillBackground(true);
     init_main_controls(mainWindow);
+    setContextMenuPolicy(Qt::PreventContextMenu);
 
     // Recent files widget (hidden until there are recent files)
     filesWidget_ = new QWidget(this);
@@ -22,9 +23,10 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     filesLayout->addStretch(50);
     filesWidget_->hide();
 
-    // Help text (always visible)
+    // Help text (always visible, transparent to mouse so WelcomeOverlay stays the grabber)
     label_ = new QLabel(txt, this);
     label_->setAlignment(Qt::AlignVCenter | Qt::AlignCenter);
+    label_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     layout_ = new QHBoxLayout(this);
     layout_->addStretch(50);
     layout_->addWidget(label_);
