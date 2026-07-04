@@ -28,6 +28,7 @@ class IBaseItem;
 
 class CanvasScene : public QGraphicsScene
 {
+    Q_OBJECT
 public:
     CanvasScene(MainWindow& mw,
                 uint64_t& zc,

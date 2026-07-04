@@ -900,9 +900,14 @@ void CanvasScene::keyPressEvent(QKeyEvent* event)
 {
 }
 
+void CanvasScene::copyToClipboard()
+{
+    // TODOLATER: copy selected items to clipboard
+}
+
 void CanvasScene::pasteFromClipboard()
 {
-
+    // TODOLATER: paste items from clipboard
 }
 
 

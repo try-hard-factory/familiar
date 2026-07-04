@@ -1,20 +1,20 @@
 #pragma once
 
+#include <core/controls.h>
+#include <QCursor>
 #include <QDebug>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QImage>
+#include <QKeyEvent>
+#include <QMetaObject>
 #include <QMimeData>
+#include <QMouseEvent>
 #include <QPoint>
-
-// Forward declarations for control target interface
-// Mixin - требуется чтобы Mixin имел методы:
-// - scene() -> CanvasScene*
-// - undo_stack() -> QUndoStack*
-// - mapToScene(QPoint) -> QPointF
-// - do_insert_images(QList<QUrl>, QPoint) -> void
-// - open_from_file(QString) -> void
-
+#include <QPointF>
+#include <QWidget>
+#include <qdebug.h>
+#include <main_context_menu.h>
 template<typename Mixin, typename T>
 class MainControlsMixin : public T
 {
@@ -23,16 +23,131 @@ public:
         : T(parent)
     {}
 
-    void init_main_controls()
+    void init_main_controls(QWidget* mainWindow = nullptr)
     {
+        mainWindow_ = mainWindow;
         this->setContextMenuPolicy(Qt::CustomContextMenu);
-        // TODOLATER: connect customContextMenuRequested to on_context_menu
-        // connect(this, &QWidget::customContextMenuRequested,
-        //         control_target, &Mixin::on_context_menu);
+        QObject::connect(
+            static_cast<QWidget*>(this), &QWidget::customContextMenuRequested,
+            static_cast<QObject*>(static_cast<T*>(this)),
+            [this](const QPoint& pt) {
+                QMetaObject::invokeMethod(
+                    static_cast<QObject*>(static_cast<Mixin*>(this)),
+                    "on_context_menu",
+                    Qt::DirectConnection,
+                    Q_ARG(QPoint, pt));
+            });
         this->setAcceptDrops(true);
     }
 
+    void on_action_movewin_mode()
+    {
+        // if (movewinActive_)
+        //     exitMovewinMode();
+        // else
+        //     enterMovewinMode();
+    }
+
+    bool mousePressEventMainControls(QMouseEvent* event)
+    {
+        if (event->button() == Qt::RightButton) {
+            qDebug() << "Right mouse button pressed !!!!!!";
+            movewinStart_ = QCursor::pos();
+            isMoving_= true;
+            // enterMovewinMode();
+            event->accept();
+            return true;
+        }
+
+        // // if (movewinActive_) {
+        //     exitMovewinMode();
+        //     event->accept();
+        //     return true;
+        // // }
+        // auto match = KeyboardSettings().mouseActionForEvent(event);
+        // if (match && match->group == QLatin1String("movewindow")) {
+        //     enterMovewinMode();
+        //     event->accept();
+        //     return true;
+        // }
+        // return false;
+    }
+
+    bool mouseMoveEventMainControls(QMouseEvent* event)
+    {
+        if (event->buttons() & Qt::RightButton) {
+            rightMoveFlag_ = true;
+            if (isMoving_) {
+                QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(event->position());
+                QPointF delta = pos - movewinStart_;
+                movewinStart_ = pos;
+                if (mainWindow_) {
+                    mainWindow_->move(mainWindow_->x() + int(delta.x()),
+                                    mainWindow_->y() + int(delta.y()));
+                }
+            }
+            event->accept();
+            return true;
+        }
+        return false;
+        // // if (movewinActive_) {
+        //     QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(event->position());
+        //     QPointF delta = pos - movewinStart_;
+        //     movewinStart_ = pos;
+        //     if (mainWindow_)
+        //         mainWindow_->move(mainWindow_->x() + int(delta.x()),
+        //                           mainWindow_->y() + int(delta.y()));
+        //     event->accept();
+        //     return true;
+        // // }
+        // // return false;
+    }
+
+    bool mouseReleaseEventMainControls(QMouseEvent* event)
+    {
+        if (event->button() == Qt::RightButton) {
+            if (!rightMoveFlag_) {
+                qDebug() << "Right mouse button released CTX menu!!!!!!";
+            } else {
+                rightMoveFlag_ = false;
+            }
+            isMoving_ = false;
+            event->accept();
+            return true;
+        }
+        return false;
+        // // if (movewinActive_) {
+        //     exitMovewinMode();
+        //     event->accept();
+        //     return true;
+        // // }
+        // // return false;
+    }
+
+    bool keyPressEventMainControls(QKeyEvent* event)
+    {
+        // if (movewinActive_) {
+            exitMovewinMode();
+            event->accept();
+            return true;
+        // }
+        // return false;
+    }
+
 protected:
+    void enterMovewinMode()
+    {
+        // movewinActive_ = true;
+        static_cast<QWidget*>(this)->setCursor(Qt::SizeAllCursor);
+        movewinStart_ = QCursor::pos();
+    }
+
+    void exitMovewinMode()
+    {
+        // movewinActive_ = false;
+        static_cast<QWidget*>(this)->unsetCursor();
+    }
+
     void dragEnterEvent(QDragEnterEvent* event) override
     {
         const auto* mimedata = event->mimeData();
@@ -56,39 +171,27 @@ protected:
         const auto* mimedata = event->mimeData();
         qDebug() << "Handling file drop:" << mimedata->formats();
 
-        Mixin* control_target = static_cast<Mixin*>(this);
+        Mixin* self = static_cast<Mixin*>(this);
         QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
 
         if (mimedata->hasUrls()) {
             qDebug() << "Found dropped urls:" << mimedata->urls();
-
-            // TODOLATER: Check if scene is empty and we have a bee/fml file to open directly
-            // if (!control_target->scene()->items().isEmpty()) {
-            //     QList<QUrl> urls = mimedata->urls();
-            //     if (!urls.isEmpty() && urls[0].isLocalFile()) {
-            //         QString path = urls[0].toLocalFile();
-            //         if (is_bee_file(path)) {
-            //             control_target->open_from_file(path);
-            //             return;
-            //         }
-            //     }
-            // }
-
-            control_target->do_insert_images(mimedata->urls(), pos);
+            self->do_insert_images(mimedata->urls(), pos);
         } else if (mimedata->hasImage()) {
-            // Handle direct image drop (e.g. from browser)
             QImage img = qvariant_cast<QImage>(mimedata->imageData());
             if (!img.isNull()) {
                 // TODOLATER: create PixmapItem and insert via InsertItems command
-                // auto* item = new PixmapItem();
-                // item->setPixmap(QPixmap::fromImage(img));
-                // QPointF scenePos = control_target->mapToScene(pos);
-                // control_target->undo_stack()->push(
-                //     new InsertItems(control_target->scene(), {item}, scenePos));
                 qDebug() << "Image drop not yet implemented";
             }
         } else {
             qDebug() << "Drop not an image";
         }
     }
+
+private:
+    // bool movewinActive_ = false;
+    bool isMoving_ = false;
+    bool rightMoveFlag_ = false;
+    QPointF movewinStart_;
+    QWidget* mainWindow_ = nullptr;
 };
