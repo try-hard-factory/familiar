@@ -26,7 +26,7 @@ public:
     void do_insert_images(const QList<QUrl>&, const QPoint&) {}
 
 public slots:
-    // void on_context_menu(const QPoint& point);
+    void on_context_menu(const QPoint& point);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;

@@ -95,7 +95,7 @@ public:
     {
         if (event->button() == Qt::RightButton) {
             if (!rightMoveFlag_) {
-                // short click → context menu handled by caller
+                static_cast<Mixin*>(this)->on_context_menu(event->position().toPoint());
             } else {
                 rightMoveFlag_ = false;
             }

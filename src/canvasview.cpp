@@ -52,8 +52,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
     buildMenuAndActions();
     init_main_controls(&mw);
-    // QObject::disconnect(this, &QWidget::customContextMenuRequested, nullptr, nullptr);
-    setContextMenuPolicy(Qt::PreventContextMenu);
+    setContextMenuPolicy(Qt::DefaultContextMenu);
     viewport()->setMouseTracking(true);
 }
 
