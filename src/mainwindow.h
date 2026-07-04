@@ -15,9 +15,11 @@
 #include "file_actions.h"
 #include "tabpane.h"
 #include <canvasview.h>
+#include <QApplication>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QCursor>
+#include <QWindow>
 #include <core/settingshandler.h>
 #include <utils/utils.h>
 QT_BEGIN_NAMESPACE
@@ -91,6 +93,76 @@ public:
 protected:
     void closeEvent(QCloseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override
+    {
+        if (event->button() == Qt::LeftButton) {
+            // Определяем, за какую часть окна потянул пользователь
+            const Qt::Edges edges = resizeEdgesAt(event->pos());
+
+            if (edges && windowHandle()) {
+                // Запуск нативного изменения размера (доступно в Qt 5.15 и новее)
+                windowHandle()->startSystemResize(edges);
+            }
+        }
+        QMainWindow::mousePressEvent(event);
+    }
+    void mouseMoveEvent(QMouseEvent *event) override
+    {
+        updateResizeCursor(event->pos());
+        QMainWindow::mouseMoveEvent(event);
+    }
+
+    // Central widget covers the whole frameless window, so QMainWindow
+    // rarely gets its own mouseMoveEvent while hovering over it. Watch
+    // every mouse move application-wide so the resize cursor is reliably
+    // reset once the pointer leaves the border area.
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        if (event->type() == QEvent::MouseMove) {
+            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            updateResizeCursor(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+        }
+        return QMainWindow::eventFilter(watched, event);
+    }
+private:
+    static constexpr int kResizeBorder = 10; // Толщина невидимой границы для ресайза, в пикселях
+
+    Qt::Edges resizeEdgesAt(const QPoint& pos) const
+    {
+        Qt::Edges edges;
+        if (pos.x() < kResizeBorder) edges |= Qt::LeftEdge;
+        if (pos.x() > width() - kResizeBorder) edges |= Qt::RightEdge;
+        if (pos.y() < kResizeBorder) edges |= Qt::TopEdge;
+        if (pos.y() > height() - kResizeBorder) edges |= Qt::BottomEdge;
+        return edges;
+    }
+
+    void updateResizeCursor(const QPoint& pos)
+    {
+        if (!rect().contains(pos)) {
+            unsetCursor();
+            return;
+        }
+
+        const Qt::Edges edges = resizeEdgesAt(pos);
+
+        if ((edges & Qt::LeftEdge && edges & Qt::TopEdge)
+            || (edges & Qt::RightEdge && edges & Qt::BottomEdge))
+            setCursor(Qt::SizeFDiagCursor);
+        else if ((edges & Qt::RightEdge && edges & Qt::TopEdge)
+                 || (edges & Qt::LeftEdge && edges & Qt::BottomEdge))
+            setCursor(Qt::SizeBDiagCursor);
+        else if (edges & (Qt::LeftEdge | Qt::RightEdge))
+            setCursor(Qt::SizeHorCursor);
+        else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+            setCursor(Qt::SizeVerCursor);
+        else
+            unsetCursor();
+    }
+
+protected:
     // void mousePressEvent(QMouseEvent* _event)
     // {
     //     if (_event->button() == Qt::LeftButton
