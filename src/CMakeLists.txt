@@ -93,8 +93,6 @@ set(PROJECT_SOURCES
         ui/preferencesconf.cpp
         ui/colors_widget.h
         ui/colors_widget.cpp
-        main_context_menu.cpp
-        main_context_menu.h
         ui/extendedslider.cpp
         ui/extendedslider.h
         utils/utils.cpp
