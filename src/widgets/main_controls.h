@@ -51,7 +51,6 @@ public:
     bool mousePressEventMainControls(QMouseEvent* event)
     {
         if (event->button() == Qt::RightButton) {
-            qDebug() << "Right mouse button pressed !!!!!!";
             movewinStart_ = QCursor::pos();
             isMoving_= true;
             // enterMovewinMode();
@@ -59,18 +58,7 @@ public:
             return true;
         }
 
-        // // if (movewinActive_) {
-        //     exitMovewinMode();
-        //     event->accept();
-        //     return true;
-        // // }
-        // auto match = KeyboardSettings().mouseActionForEvent(event);
-        // if (match && match->group == QLatin1String("movewindow")) {
-        //     enterMovewinMode();
-        //     event->accept();
-        //     return true;
-        // }
-        // return false;
+        return false;
     }
 
     bool mouseMoveEventMainControls(QMouseEvent* event)
@@ -107,7 +95,7 @@ public:
     {
         if (event->button() == Qt::RightButton) {
             if (!rightMoveFlag_) {
-                qDebug() << "Right mouse button released CTX menu!!!!!!";
+                // short click → context menu handled by caller
             } else {
                 rightMoveFlag_ = false;
             }
