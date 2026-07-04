@@ -14,7 +14,6 @@
 #include <QPointF>
 #include <QWidget>
 #include <qdebug.h>
-#include <main_context_menu.h>
 template<typename Mixin, typename T>
 class MainControlsMixin : public T
 {
@@ -26,17 +25,6 @@ public:
     void init_main_controls(QWidget* mainWindow = nullptr)
     {
         mainWindow_ = mainWindow;
-        this->setContextMenuPolicy(Qt::CustomContextMenu);
-        QObject::connect(
-            static_cast<QWidget*>(this), &QWidget::customContextMenuRequested,
-            static_cast<QObject*>(static_cast<T*>(this)),
-            [this](const QPoint& pt) {
-                QMetaObject::invokeMethod(
-                    static_cast<QObject*>(static_cast<Mixin*>(this)),
-                    "on_context_menu",
-                    Qt::DirectConnection,
-                    Q_ARG(QPoint, pt));
-            });
         this->setAcceptDrops(true);
     }
 
