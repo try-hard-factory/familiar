@@ -3,63 +3,46 @@
 #include "main_controls.h"
 #include "recent_files_view.h"
 
-#include <QWidget>
-#include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLabel>
+#include <QList>
+#include <QMouseEvent>
+#include <QPoint>
+#include <QUrl>
+#include <QWidget>
+
+class MainWindow;
 
 class WelcomeOverlay : public MainControlsMixin<WelcomeOverlay, QWidget>
 {
+    Q_OBJECT
 public:
-    WelcomeOverlay(QWidget* parent = nullptr) : MainControlsMixin<WelcomeOverlay, QWidget>(parent)
-    {
-        control_target = parent;
-        this->setAttribute(Qt::WA_NoSystemBackground);
-        this->init_main_controls();
-        // Initialize your WelcomeOverlay-specific code here
+    explicit WelcomeOverlay(QWidget* parent, MainWindow* mainWindow = nullptr);
 
-        // Recent files
-        // files_layout = new QVBoxLayout(this);
-        // files_layout->addStretch(50);
-        // files_layout->addWidget(new QLabel("<h3>Recent Files</h3>", this));
-        // files_view = new RecentFilesView(this);
-        // files_layout->addWidget(files_view);
-        // files_layout->addStretch(50);
+    void show();
+    void disable_mouse_events();
+    void enable_mouse_events();
+    void do_insert_images(const QList<QUrl>&, const QPoint&) {}
 
-        // Help text
-        QLabel* label = new QLabel(txt, this);
-        label->setAlignment(Qt::AlignVCenter | Qt::AlignCenter);
-        layout = new QHBoxLayout(this);
-        layout->addStretch(50);
-        layout->addWidget(label);
-        layout->addStretch(50);
-        setLayout(layout);
-    }
+public slots:
+    // void on_context_menu(const QPoint& point);
 
-    // Define WelcomeOverlay-specific functions here
-    void show()
-    {
-        // TODO: get recent files
-        // files_view->update_files(BeeSettings().get_recent_files(true));
-        // if (BeeSettings().get_recent_files(true).size() && layout.indexOf(&files_layout) < 0)
-        // {
-        //     layout.insertLayout(0, &files_layout);
-        // }
-        QWidget::show();
-    }
-
-    auto do_insert_images(QList<QUrl>, QPoint) -> void {
-        
-    }
+protected:
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 private:
-    QVBoxLayout* files_layout = nullptr;
-    RecentFilesView* files_view = nullptr;
-    QHBoxLayout* layout = nullptr;
-    QWidget* control_target = nullptr;
-
     static constexpr char txt[] = R"(
         <p>Paste or drop images here.</p>
         <p>Right-click for more options.</p>
     )";
+
+    MainWindow*      mainWindow_;
+    QWidget*         filesWidget_;
+    RecentFilesView* filesView_;
+    QLabel*          label_;
+    QHBoxLayout*     layout_;
 };

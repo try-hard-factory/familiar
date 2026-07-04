@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QUndoStack>
 #include <QUrl>
+#include <qdebug.h>
 #include <cmath>
 
 #include <core/settingshandler.h>
@@ -21,7 +22,7 @@
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     : MainControlsMixin<CanvasView, ActionsMixin<QGraphicsView>>()
     , mainwindow_(mw)
-    , welcomeOverlay_(new WelcomeOverlay(&mw))
+    , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
 {
     setFrameShape(QFrame::NoFrame);
@@ -51,7 +52,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
     buildMenuAndActions();
     init_main_controls(&mw);
-    QObject::disconnect(this, &QWidget::customContextMenuRequested, nullptr, nullptr);
+    // QObject::disconnect(this, &QWidget::customContextMenuRequested, nullptr, nullptr);
     setContextMenuPolicy(Qt::PreventContextMenu);
     viewport()->setMouseTracking(true);
 }
@@ -92,6 +93,7 @@ void CanvasView::on_selection_changed()
 
 void CanvasView::on_context_menu(const QPoint& point)
 {
+    qDebug() << "CanvasView::on_context_menu";
     contextMenu()->exec(mapToGlobal(point));
 }
 
