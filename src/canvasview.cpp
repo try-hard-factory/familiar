@@ -16,7 +16,6 @@
 #include <cmath>
 
 #include <core/settingshandler.h>
-#include <main_context_menu.h>
 
 
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
