@@ -1,5 +1,6 @@
 #pragma once
 
+#include "widgets/dialogs.h"
 #include <core/controls.h>
 #include <QCursor>
 #include <QDebug>
@@ -135,7 +136,9 @@ protected:
         } else if (mimedata->hasImage()) {
             event->acceptProposedAction();
         } else {
-            qDebug() << "Attempted drop not an image";
+            const QString msg = "Attempted drop not an image or image too big";
+            qDebug() << msg;
+            FamNotification(controlTarget_, msg);
         }
     }
 
