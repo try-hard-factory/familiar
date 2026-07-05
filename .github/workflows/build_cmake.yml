@@ -12,9 +12,12 @@ on:
       - 'README.md'
       - 'LICENSE'
 
+  workflow_dispatch:
+
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
+  QT_VERSION: '6.11.1'
 
 jobs:
   linux-build:
@@ -22,18 +25,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-24.04]
 
     steps:
       - name: Checkout Source code
         if: github.event_name == 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
 
       - name: Checkout Source code
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
-        with: 
+        uses: actions/checkout@v6
+        with:
           ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Checkout Source code
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
 
       - name: Install Dependencies
         run: |
@@ -43,13 +52,21 @@ jobs:
             extra-cmake-modules \
             build-essential
 
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+      - name: Cache Qt
+        id: cache-qt-linux
+        uses: actions/cache@v4
         with:
-          version: 6.2.4
+          path: ${{ github.workspace }}/build/Qt
+          key: ${{ runner.os }}-QtCache-${{ env.QT_VERSION }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
           host: 'linux'
-          target:  desktop
+          target: 'desktop'
           dir: '${{ github.workspace }}/build/'
+          cache: ${{ steps.cache-qt-linux.outputs.cache-hit == 'true' }}
 
       - name: Create Build Environment
         # Some projects don't allow in-source building, so create a separate build directory
@@ -61,23 +78,20 @@ jobs:
         # access regardless of the host operating system
         shell: bash
         working-directory: ${{runner.workspace}}/build
-        # Note the current convention is to use the -S and -B options here to specify source 
-        # and build directories, but this is only available with CMake 3.13 and higher.  
-        # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-        # 
-        # We need to source the profile file to make sure conan is in PATH
+        # Note the current convention is to use the -S and -B options here to specify source
+        # and build directories. We need to source the profile file to make sure conan is in PATH
         run: |
           cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE
       - name: Build
         working-directory: ${{runner.workspace}}/build
         shell: bash
         # Execute the build.  You can specify a specific target with "--target <NAME>"
-        run: cmake --build . --config $BUILD_TYPE
+        run: cmake --build . --parallel 2 --config $BUILD_TYPE
 
       - name: Test
         working-directory: ${{runner.workspace}}/build
         shell: bash
-        # Execute tests defined by the CMake configuration.  
+        # Execute tests defined by the CMake configuration.
         # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
         run: ctest -C $BUILD_TYPE
 
@@ -88,33 +102,35 @@ jobs:
       matrix:
         config:
         - {
-            name: "Windows 2019 MSVC",
+            name: "Windows 2022 MSVC",
             artifact: "Windows-MSVC.tar.xz",
-            os: windows-2019,
+            os: windows-2022,
             cc: "cl", cxx: "cl",
-            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-          }
-        - {
-            name: "Windows 2019 MinGW",
-            artifact: "Windows-MinGW.tar.xz",
-            os: windows-2019,
-            cc: "gcc", cxx: "g++"
+            environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
+            qt_ver: '6.10.3'
           }
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
+
+      - name: Fix Python path
+        shell: pwsh
+        run: |
+          Remove-Item "$env:LOCALAPPDATA\Microsoft\WindowsApps\python*.exe" -Force -ErrorAction SilentlyContinue
 
       - name: Cache Qt
-        id: cache-qt
-        uses: actions/cache@v3
+        id: cache-qt-windows
+        uses: actions/cache@v4
         with:
-          path: ./build/Qt
-          key: ${{ runner.os }}-QtCache
+          path: ${{ github.workspace }}/build/Qt
+          key: ${{ runner.os }}-QtCache-${{ env.QT_VERSION }}
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v4
         with:
-          version: 6.2.4
+          version: ${{ matrix.config.qt_ver }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ matrix.config.qt_ver }}
           target:  desktop
           dir: '${{ github.workspace }}/build/'
 
@@ -122,8 +138,9 @@ jobs:
         working-directory: build
         shell: powershell
         run: |
-          cmake .. -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE:STRING=$env:BUILD_TYPE -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=OFF
+          cmake .. -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE:STRING=$env:BUILD_TYPE -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=OFF
           ls
+
       - name: Build
         working-directory: build
         shell: powershell
