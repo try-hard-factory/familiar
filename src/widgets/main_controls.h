@@ -29,20 +29,11 @@ public:
         this->setAcceptDrops(true);
     }
 
-    void on_action_movewin_mode()
-    {
-        // if (movewinActive_)
-        //     exitMovewinMode();
-        // else
-        //     enterMovewinMode();
-    }
-
     bool mousePressEventMainControls(QMouseEvent* event)
     {
         if (event->button() == Qt::RightButton) {
             movewinStart_ = QCursor::pos();
             isMoving_= true;
-            // enterMovewinMode();
             event->accept();
             return true;
         }
@@ -66,18 +57,8 @@ public:
             event->accept();
             return true;
         }
+
         return false;
-        // // if (movewinActive_) {
-        //     QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(event->position());
-        //     QPointF delta = pos - movewinStart_;
-        //     movewinStart_ = pos;
-        //     if (mainWindow_)
-        //         mainWindow_->move(mainWindow_->x() + int(delta.x()),
-        //                           mainWindow_->y() + int(delta.y()));
-        //     event->accept();
-        //     return true;
-        // // }
-        // // return false;
     }
 
     bool mouseReleaseEventMainControls(QMouseEvent* event)
@@ -92,23 +73,15 @@ public:
             event->accept();
             return true;
         }
+
         return false;
-        // // if (movewinActive_) {
-        //     exitMovewinMode();
-        //     event->accept();
-        //     return true;
-        // // }
-        // // return false;
     }
 
     bool keyPressEventMainControls(QKeyEvent* event)
     {
-        // if (movewinActive_) {
-            exitMovewinMode();
-            event->accept();
-            return true;
-        // }
-        // return false;
+        exitMovewinMode();
+        event->accept();
+        return true;
     }
 
 protected:
@@ -116,14 +89,12 @@ protected:
 
     void enterMovewinMode()
     {
-        // movewinActive_ = true;
         static_cast<QWidget*>(this)->setCursor(Qt::SizeAllCursor);
         movewinStart_ = QCursor::pos();
     }
 
     void exitMovewinMode()
     {
-        // movewinActive_ = false;
         static_cast<QWidget*>(this)->unsetCursor();
     }
 
@@ -170,7 +141,6 @@ protected:
     }
 
 private:
-    // bool movewinActive_ = false;
     bool isMoving_ = false;
     bool rightMoveFlag_ = false;
     QPointF movewinStart_;
