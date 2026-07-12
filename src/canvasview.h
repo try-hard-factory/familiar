@@ -7,6 +7,7 @@
 #include <widgets/main_controls.h>
 #include <widgets/welcome_overlay.h>
 #include <QGraphicsView>
+#include <QMimeData>
 #include <QMouseEvent>
 #include <QObject>
 #include <QScrollBar>
@@ -37,6 +38,7 @@ public:
 
     void setProjectSettings(project_settings* ps);
     void do_insert_images(const QList<QUrl>& urls, const QPoint& pos);
+    void handleDrop(const QMimeData* mimedata, const QPoint& pos);
     void addImage(const QString& path, QPointF point);
     void addImage(QImage* img, QPointF point);
     void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
@@ -150,6 +152,7 @@ protected:
     void resizeEvent(QResizeEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void drawBackground(QPainter* painter, const QRectF& rect) override;
+    void dropEvent(QDropEvent* event) override;
 
 private:
     void recalcSceneRect();

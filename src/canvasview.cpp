@@ -403,6 +403,34 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     painter->restore();
 }
 
+void CanvasView::dropEvent(QDropEvent* event)
+{
+    QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
+    handleDrop(event->mimeData(), pos);
+    event->acceptProposedAction();
+}
+
+void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
+{
+    qDebug() << "CanvasView::Handling file drop:" << mimedata->formats();
+
+    if (mimedata->hasUrls()) {
+        qDebug() << "Found dropped urls:" << mimedata->urls();
+        if (scene_->items().isEmpty()) {
+            // TODOLATER:
+        }
+        this->do_insert_images(mimedata->urls(), pos);
+    } else if (mimedata->hasImage()) {
+        QImage img = qvariant_cast<QImage>(mimedata->imageData());
+        if (!img.isNull()) {
+            // TODOLATER: create PixmapItem and insert via InsertItems command
+            qDebug() << "Image drop not yet implemented";
+        }
+    } else {
+        qDebug() << "Drop not an image";
+    }
+}
+
 // ─── File actions ─────────────────────────────────────────────────────────────
 
 void CanvasView::on_action_new_scene()
