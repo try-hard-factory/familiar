@@ -120,24 +120,7 @@ protected:
 
     void dropEvent(QDropEvent* event) override
     {
-        const auto* mimedata = event->mimeData();
-        qDebug() << "Handling file drop:" << mimedata->formats();
-
-        Mixin* self = static_cast<Mixin*>(this);
-        QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
-
-        if (mimedata->hasUrls()) {
-            qDebug() << "Found dropped urls:" << mimedata->urls();
-            self->do_insert_images(mimedata->urls(), pos);
-        } else if (mimedata->hasImage()) {
-            QImage img = qvariant_cast<QImage>(mimedata->imageData());
-            if (!img.isNull()) {
-                // TODOLATER: create PixmapItem and insert via InsertItems command
-                qDebug() << "Image drop not yet implemented";
-            }
-        } else {
-            qDebug() << "Drop not an image";
-        }
+        qDebug() << "MainControlMixin Handling file drop:";
     }
 
 private:

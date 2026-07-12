@@ -33,6 +33,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
+    void dropEvent(QDropEvent* event) override;
 
 private:
     static constexpr char txt[] = R"(
