@@ -2,12 +2,14 @@
 #include "canvasscene.h"
 #include "commands.h"
 #include "mainwindow.h"
+#include "moveitem.h"
 #include "project_settings.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QImageReader>
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QUndoStack>
@@ -610,7 +612,7 @@ void CanvasView::on_action_insert_images()
     urls.reserve(filenames.size());
     for (const QString& fn : filenames)
         urls.append(QUrl::fromLocalFile(fn));
-    do_insert_images(urls, getViewCenter().toPoint());
+    do_insert_images(urls);
 }
 
 void CanvasView::on_action_insert_text()
@@ -777,15 +779,62 @@ QByteArray CanvasView::fml_payload()
     return scene_->fml_payload();
 }
 
-void CanvasView::do_insert_images(const QList<QUrl>& urls, const QPoint& pos)
+void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint> pos)
 {
-    QPointF scenePos = mapToScene(pos);
+    QPoint insertPos = pos.value_or(getViewCenter().toPoint());
+    QPointF scenePos = mapToScene(insertPos);
+    bool newScene = scene_->items().isEmpty();
+
+    scene_->set_selected_all_items(false);
+
+    // TODOLATER: load in a worker thread with a progress dialog, as in
+    // BeeRef's fileio.ThreadedIO
+    QList<IBaseItem*> items;
+    QStringList errors;
     for (const QUrl& url : urls) {
-        if (url.isLocalFile())
-            addImage(url.toLocalFile(), scenePos);
-        else
+        if (!url.isLocalFile()) {
+            // TODOLATER: remote URLs via ImageDownloader
             qDebug() << "Remote URL not yet supported:" << url;
+            errors.append(url.toString());
+            continue;
+        }
+        const QString filename = url.toLocalFile();
+        qDebug() << "Loading image from file" << filename;
+        QImageReader reader(filename);
+        reader.setAutoTransform(true);  // apply EXIF rotation
+        QImage img = reader.read();
+        if (img.isNull()) {
+            qDebug() << "Could not load file" << filename;
+            errors.append(filename);
+            continue;
+        }
+        auto* item = new PixmapItem();
+        item->setPixmap(QPixmap::fromImage(img));
+        item->set_pos_center(scenePos);
+        items.append(item);
     }
+
+    if (!items.isEmpty()) {
+        undoStack_->beginMacro(tr("Insert Images"));
+        undoStack_->push(new InsertItemsCommand(scene_, items));
+        scene_->arrange_default();
+        undoStack_->endMacro();
+    }
+
+    if (!errors.isEmpty()) {
+        QStringList names;
+        for (const QString& fn : errors)
+            names.append(QStringLiteral("<li>%1</li>").arg(fn));
+        QMessageBox::warning(
+            this,
+            tr("Problem loading images"),
+            tr("%1 image(s) could not be opened.<br/>"
+               "Unknown format or too big?<ul>%2</ul>")
+                .arg(errors.size()).arg(names.join(QStringLiteral("\n"))));
+    }
+
+    if (newScene && !items.isEmpty())
+        on_action_fit_scene();
 }
 
 void CanvasView::addImage(const QString& /*path*/, QPointF /*point*/) {}

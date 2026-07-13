@@ -4,6 +4,7 @@
 #include <actions/action_mixin.h>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <widgets/main_controls.h>
 #include <widgets/welcome_overlay.h>
 #include <QGraphicsView>
@@ -37,7 +38,8 @@ public:
     ~CanvasView();
 
     void setProjectSettings(project_settings* ps);
-    void do_insert_images(const QList<QUrl>& urls, const QPoint& pos);
+    void do_insert_images(const QList<QUrl>& urls,
+                          std::optional<QPoint> pos = std::nullopt);
     void handleDrop(const QMimeData* mimedata, const QPoint& pos);
     void addImage(const QString& path, QPointF point);
     void addImage(QImage* img, QPointF point);
