@@ -3,6 +3,8 @@
 #include "main_controls.h"
 #include "recent_files_view.h"
 
+#include <optional>
+
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -23,7 +25,7 @@ public:
     void show();
     void disable_mouse_events();
     void enable_mouse_events();
-    void do_insert_images(const QList<QUrl>&, const QPoint&) {}
+    void do_insert_images(const QList<QUrl>&, std::optional<QPoint> = std::nullopt) {}
 
 public slots:
     void on_context_menu(const QPoint& point);

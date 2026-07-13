@@ -53,6 +53,7 @@ public:
     void normalize_size();
     void arrange(bool vertical = false);
     void arrange_optimal();
+    void arrange_default();
     void flip_items(bool vertical = false);
     void crop_items();
     void set_selected_all_items(bool value);

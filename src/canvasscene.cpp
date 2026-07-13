@@ -15,6 +15,7 @@
 
 #include "project_settings.h"
 #include "selector.h"
+#include <core/settings.h>
 #include <regex>
 
 #include "commands.h"
@@ -463,6 +464,18 @@ void CanvasScene::arrange_optimal()
     }
 
     undo_stack_->push(new ArrangeItemsCommand(this, items, scenePositions));
+}
+
+void CanvasScene::arrange_default()
+{
+    const QString mode = FamSettings()
+        .valueOrDefault(QStringLiteral("Items/arrange_default")).toString();
+    if (mode == QLatin1String("horizontal"))
+        arrange(false);
+    else if (mode == QLatin1String("vertical"))
+        arrange(true);
+    else  // "optimal"; TODOLATER: "square" needs arrange_square
+        arrange_optimal();
 }
 
 void CanvasScene::flip_items(bool vertical)

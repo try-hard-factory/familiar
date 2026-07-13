@@ -327,11 +327,9 @@ public:
                 QMarginsF(margin, margin, margin, margin));
             path.addRect(rect);
 
-            std::for_each(std::begin(corners()),
-                          std::end(corners()),
-                          [&path, this](const QPointF& corner) {
-                              path.addPath(this->getRotateBounds(corner));
-                          });
+            for (const QPointF& corner : corners()) {
+                path.addPath(this->getRotateBounds(corner));
+            }
         } else {
             path.addRect(this->bounding_rect_unselected());
         }
