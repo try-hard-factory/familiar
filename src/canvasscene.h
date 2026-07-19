@@ -30,6 +30,12 @@ class CanvasScene : public QGraphicsScene
 {
     Q_OBJECT
 public:
+    enum ESceneMode
+    {
+        kNone = 0,
+        kMoveMode = 1,
+        kRubberbandMode = 2,
+    };
     CanvasScene(MainWindow& mw,
                 uint64_t& zc,
                 QUndoStack* undoStack,
@@ -57,10 +63,13 @@ public:
     void flip_items(bool vertical = false);
     void crop_items();
     void set_selected_all_items(bool value);
+    void select_all_items();
+    void deselect_all_items();
     bool has_selection();
     bool has_single_selection();
     bool has_multi_selection();
-    bool has_croppable_selection();
+    bool has_single_image_selection();
+    ESceneMode active_mode() const;
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -127,8 +136,6 @@ private slots:
 
 public:
     // new code BEGIN
-    bool move_active = false;
-    bool rubberband_active = false;
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
     qreal min_z = 0;
@@ -140,6 +147,7 @@ public:
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
     QPointF event_start{};
+    ESceneMode active_mode_{kNone};
     // new code END
 
     bool clear_ongoing = false;

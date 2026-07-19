@@ -74,7 +74,7 @@ class FamSettings : public QSettings
 {
 public:
     FamSettings();
-
+    static FamSettings* getInstance();
     static const QMap<QString, FieldConfig>& fields();
 
     // Returns stored value with cast + validation applied; falls back to default.

@@ -2,18 +2,19 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
-#include <QGraphicsPixmapItem>
 #include <QHBoxLayout>
 #include <QImage>
 #include <QLabel>
-#include <QMap>
 #include <QPaintEvent>
-#include <QPixmap>
 #include <QSize>
 #include <QSlider>
 #include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include "moveitem.h"
+
+class GamutWidget;
 
 class GamutPainterThread : public QThread
 {
@@ -22,7 +23,7 @@ class GamutPainterThread : public QThread
 public:
     static constexpr int RADIUS = 250;
 
-    GamutPainterThread(QObject* parent, const QPixmap& pixmap);
+    GamutPainterThread(GamutWidget* parent, PixmapItem* item);
 
     void setThreshold(int threshold) { m_threshold = threshold; }
     void run() override;
@@ -31,12 +32,8 @@ signals:
     void imageReady(const QImage& image);
 
 private:
-    void computeGamut();
-
-    QPixmap m_pixmap;
+    PixmapItem* m_item;
     int m_threshold = 20;
-    QMap<int, int> m_gamut; // key = hue*256 + saturation
-    bool m_gamutComputed = false;
 };
 
 
@@ -45,10 +42,11 @@ class GamutWidget : public QWidget
     Q_OBJECT
 
 public:
-    GamutWidget(QWidget* parent, const QPixmap& pixmap);
+    GamutWidget(QWidget* parent, PixmapItem* item);
 
     QSize minimumSizeHint() const override { return QSize(200, 200); }
-    void updateValues(int threshold);
+    void updateValues();
+    int threshold() const;
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -67,7 +65,9 @@ class GamutDialog : public QDialog
     Q_OBJECT
 
 public:
-    GamutDialog(QWidget* parent, QGraphicsPixmapItem* item);
+    GamutDialog(QWidget* parent, PixmapItem* item);
+
+    int threshold() const { return m_thresholdInput->value(); }
 
 private slots:
     void onValueChanged(int value);

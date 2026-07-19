@@ -26,6 +26,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
 {
+    // TODOLATER:
     controlTarget_ = this;
     setFrameShape(QFrame::NoFrame);
     setRenderHint(QPainter::Antialiasing, true);
@@ -178,7 +179,10 @@ void CanvasView::recalcSceneRect()
 void CanvasView::resetPreviousTransform(QGraphicsItem* toggleItem)
 {
     if (previousTransform_ && previousTransform_->toggleItem != toggleItem)
+    {
+        // TODOLATER: std::optional ???
         previousTransform_.reset();
+    }
 }
 
 void CanvasView::fitRect(const QRectF& rect, QGraphicsItem* toggleItem)
@@ -786,7 +790,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     bool newScene = scene_->items().isEmpty();
 
     scene_->set_selected_all_items(false);
-
+    scene_->deselect_all_items();
     // TODOLATER: load in a worker thread with a progress dialog, as in
     // BeeRef's fileio.ThreadedIO
     QList<IBaseItem*> items;
@@ -808,8 +812,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
             errors.append(filename);
             continue;
         }
-        auto* item = new PixmapItem();
-        item->setPixmap(QPixmap::fromImage(img));
+        auto* item = new PixmapItem(img, filename);
         item->set_pos_center(scenePos);
         items.append(item);
     }

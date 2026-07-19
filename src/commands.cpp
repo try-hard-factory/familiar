@@ -153,27 +153,18 @@ void ScaleItemsByCommand::redo()
         return;
     }
     for (auto* item : items_) {
-        // Get the item's mixin to access setScale with anchor
-        // For now, use the item's transform
-        QPointF sceneAnchor = item->mapToScene(anchor_);
-        qreal newScale = item->scale() * factor_;
-
-        // Apply scale around anchor point
-        QPointF prev = item->mapToScene(anchor_);
-        item->setScale(newScale);
-        QPointF diff = item->mapToScene(anchor_) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setScale(item->scale() * factor_,
+                           item->mapFromScene(anchor_));
     }
 }
 
 void ScaleItemsByCommand::undo()
 {
     for (auto* item : items_) {
-        QPointF prev = item->mapToScene(anchor_);
-        qreal newScale = item->scale() / factor_;
-        item->setScale(newScale);
-        QPointF diff = item->mapToScene(anchor_) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setScale(item->scale() / factor_,
+                           item->mapFromScene(anchor_));
     }
 }
 
@@ -199,27 +190,18 @@ void RotateItemsByCommand::redo()
         return;
     }
     for (auto* item : items_) {
-        // Get flip factor from transform matrix m11
-        qreal flip = item->transform().m11() < 0 ? -1.0 : 1.0;
-        qreal newRotation = item->rotation() + delta_ * flip;
-
-        QPointF prev = item->mapToScene(anchor_);
-        item->setRotation(std::fmod(newRotation, 360.0));
-        QPointF diff = item->mapToScene(anchor_) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setRotation(item->rotation() + delta_ * baseItem->flip(),
+                              item->mapFromScene(anchor_));
     }
 }
 
 void RotateItemsByCommand::undo()
 {
     for (auto* item : items_) {
-        qreal flip = item->transform().m11() < 0 ? -1.0 : 1.0;
-        qreal newRotation = item->rotation() - delta_ * flip;
-
-        QPointF prev = item->mapToScene(anchor_);
-        item->setRotation(std::fmod(newRotation, 360.0));
-        QPointF diff = item->mapToScene(anchor_) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setRotation(item->rotation() - delta_ * baseItem->flip(),
+                              item->mapFromScene(anchor_));
     }
 }
 
@@ -239,14 +221,9 @@ void NormalizeItemsCommand::redo()
     oldScaleFactors_.clear();
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldScaleFactors_.append(item->scale());
-
-        // Apply scale around center
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-        item->setScale(item->scale() * scaleFactors_[i]);
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
+        baseItem->setScale(item->scale() * scaleFactors_[i], baseItem->center());
     }
 }
 
@@ -254,11 +231,8 @@ void NormalizeItemsCommand::undo()
 {
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-        item->setScale(oldScaleFactors_[i]);
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setScale(oldScaleFactors_[i], baseItem->center());
     }
 }
 
@@ -278,23 +252,8 @@ FlipItemsCommand::FlipItemsCommand(const QList<QGraphicsItem*>& items,
 void FlipItemsCommand::redo()
 {
     for (auto* item : items_) {
-        // Get current flip state from transform
-        qreal currentFlip = item->transform().m11();
-        QPointF localAnchor = item->mapFromScene(anchor_);
-
-        // Apply flip by scaling X by -1
-        QPointF prev = item->mapToScene(localAnchor);
-        QTransform transform = item->transform();
-        transform.scale(-1, 1);
-        item->setTransform(transform);
-
-        // If vertical flip, also rotate 180 degrees
-        if (vertical_) {
-            item->setRotation(item->rotation() + 180);
-        }
-
-        QPointF diff = item->mapToScene(localAnchor) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->do_flip(vertical_, item->mapFromScene(anchor_));
     }
 }
 
@@ -317,13 +276,9 @@ void ResetScaleCommand::redo()
 {
     oldScaleFactors_.clear();
     for (auto* item : items_) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldScaleFactors_.append(item->scale());
-
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-        item->setScale(1.0);
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
+        baseItem->setScale(1, baseItem->center());
     }
 }
 
@@ -331,11 +286,8 @@ void ResetScaleCommand::undo()
 {
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-        item->setScale(oldScaleFactors_[i]);
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setScale(oldScaleFactors_[i], baseItem->center());
     }
 }
 
@@ -352,13 +304,9 @@ void ResetRotationCommand::redo()
 {
     oldRotations_.clear();
     for (auto* item : items_) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldRotations_.append(item->rotation());
-
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-        item->setRotation(0);
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
+        baseItem->setRotation(0, baseItem->center());
     }
 }
 
@@ -366,11 +314,8 @@ void ResetRotationCommand::undo()
 {
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-        item->setRotation(oldRotations_[i]);
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->setRotation(oldRotations_[i], baseItem->center());
     }
 }
 
@@ -387,17 +332,11 @@ void ResetFlipCommand::redo()
 {
     oldFlips_.clear();
     for (auto* item : items_) {
-        qreal flip = item->transform().m11() < 0 ? -1.0 : 1.0;
-        oldFlips_.append(flip);
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        oldFlips_.append(baseItem->flip());
 
-        if (flip == -1) {
-            QPointF center = item->boundingRect().center();
-            QPointF prev = item->mapToScene(center);
-            QTransform transform = item->transform();
-            transform.scale(-1, 1);
-            item->setTransform(transform);
-            QPointF diff = item->mapToScene(center) - prev;
-            item->setPos(item->pos() - diff);
+        if (baseItem->flip() == -1) {
+            baseItem->do_flip(false, baseItem->center());
         }
     }
 }
@@ -407,13 +346,8 @@ void ResetFlipCommand::undo()
     for (int i = 0; i < items_.size(); ++i) {
         if (oldFlips_[i] == -1) {
             auto* item = items_[i];
-            QPointF center = item->boundingRect().center();
-            QPointF prev = item->mapToScene(center);
-            QTransform transform = item->transform();
-            transform.scale(-1, 1);
-            item->setTransform(transform);
-            QPointF diff = item->mapToScene(center) - prev;
-            item->setPos(item->pos() - diff);
+            auto* baseItem = dynamic_cast<IBaseItem*>(item);
+            baseItem->do_flip(false, baseItem->center());
         }
     }
 }
@@ -421,13 +355,13 @@ void ResetFlipCommand::undo()
 // ============================================================================
 // ResetCropCommand
 // ============================================================================
-ResetCropCommand::ResetCropCommand(const QList<PixmapItem*>& items)
+ResetCropCommand::ResetCropCommand(const QList<IBaseItem*>& items)
     : QUndoCommand(QObject::tr("Reset Crop"))
 {
     // Filter only croppable items
     for (auto* item : items) {
-        if (item->is_croppable()) {
-            items_.append(item);
+        if (item->is_image()) {
+            items_.append((PixmapItem*)item);
         }
     }
 }
@@ -462,16 +396,13 @@ void ResetTransformsCommand::redo()
     oldValues_.clear();
     for (auto* baseItem : items_) {
         auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
-        if (!item)
-            continue;
 
         TransformValues values;
         values.scale = item->scale();
         values.rotation = item->rotation();
-        values.flip = item->transform().m11() < 0 ? -1.0 : 1.0;
-        values.hasCrop = baseItem->is_croppable();
+        values.flip = baseItem->flip();
+        values.hasCrop = baseItem->is_image();
 
-        // Get crop if applicable
         if (values.hasCrop) {
             auto* pixmapItem = dynamic_cast<PixmapItem*>(baseItem);
             if (pixmapItem) {
@@ -482,22 +413,11 @@ void ResetTransformsCommand::redo()
 
         oldValues_.append(values);
 
-        // Apply reset transforms
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-
-        item->setScale(1.0);
-        item->setRotation(0);
-
-        // Reset flip if needed
-        if (values.flip == -1) {
-            QTransform transform = item->transform();
-            transform.scale(-1, 1);
-            item->setTransform(transform);
+        baseItem->setScale(1, baseItem->center());
+        baseItem->setRotation(0, baseItem->center());
+        if (baseItem->flip() == -1) {
+            baseItem->do_flip(false, baseItem->center());
         }
-
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
     }
 }
 
@@ -505,38 +425,20 @@ void ResetTransformsCommand::undo()
 {
     for (int i = 0; i < items_.size(); ++i) {
         auto* baseItem = items_[i];
-        auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
-        if (!item)
-            continue;
-
         const TransformValues& old = oldValues_[i];
 
-        QPointF center = item->boundingRect().center();
-        QPointF prev = item->mapToScene(center);
-
-        item->setScale(old.scale);
-        item->setRotation(old.rotation);
-
-        // Restore flip if needed
+        baseItem->setScale(old.scale, baseItem->center());
+        baseItem->setRotation(old.rotation, baseItem->center());
         if (old.flip == -1) {
-            qreal currentFlip = item->transform().m11() < 0 ? -1.0 : 1.0;
-            if (currentFlip != -1) {
-                QTransform transform = item->transform();
-                transform.scale(-1, 1);
-                item->setTransform(transform);
-            }
+            baseItem->do_flip(false, baseItem->center());
         }
 
-        // Restore crop if applicable
         if (old.hasCrop) {
             auto* pixmapItem = dynamic_cast<PixmapItem*>(baseItem);
             if (pixmapItem) {
                 pixmapItem->set_crop(old.crop);
             }
         }
-
-        QPointF diff = item->mapToScene(center) - prev;
-        item->setPos(item->pos() - diff);
     }
 }
 
