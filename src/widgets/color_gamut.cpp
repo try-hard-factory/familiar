@@ -9,38 +9,15 @@
 #include <cmath>
 
 // GamutPainterThread
-
-GamutPainterThread::GamutPainterThread(QObject* parent, const QPixmap& pixmap)
+// TODOLATER:
+GamutPainterThread::GamutPainterThread(GamutWidget* parent, PixmapItem* item)
     : QThread(parent)
-    , m_pixmap(pixmap)
+    , m_item(item)
 {}
-
-void GamutPainterThread::computeGamut()
-{
-    QImage img = m_pixmap.toImage();
-    int step = std::max(1, std::max(img.width(), img.height()) / 1000);
-
-    for (int i = 0; i < img.width(); i += step) {
-        for (int j = 0; j < img.height(); j += step) {
-            QColor rgb = img.pixelColor(i, j);
-            int r = rgb.red(), g = rgb.green(), b = rgb.blue();
-            int minVal = std::min({r, g, b});
-            int maxVal = std::max({r, g, b});
-            if (rgb.alpha() > 5 && minVal < 250 && maxVal > 5) {
-                int hue = rgb.hsvHue();
-                if (hue == -1)
-                    continue; // skip achromatic pixels
-                m_gamut[hue * 256 + rgb.hsvSaturation()]++;
-            }
-        }
-    }
-    m_gamutComputed = true;
-}
 
 void GamutPainterThread::run()
 {
-    if (!m_gamutComputed)
-        computeGamut();
+    const PixmapItem::ColorGamut& gamut = m_item->color_gamut();
 
     QImage image(RADIUS * 2, RADIUS * 2, QImage::Format_ARGB32);
     image.fill(QColor(0, 0, 0, 0));
@@ -53,12 +30,11 @@ void GamutPainterThread::run()
     QPoint center(RADIUS, RADIUS);
     painter.drawEllipse(center, RADIUS, RADIUS);
 
-    for (auto it = m_gamut.constBegin(); it != m_gamut.constEnd(); ++it) {
+    for (auto it = gamut.constBegin(); it != gamut.constEnd(); ++it) {
         if (it.value() < m_threshold)
             continue;
-        int key = it.key();
-        int hue = key / 256;
-        int saturation = key % 256;
+        int hue = it.key().first;
+        int saturation = it.key().second;
         double hypotenuse = saturation / 255.0 * RADIUS;
         double angle = M_PI / 180.0 * (-90.0 - hue);
         int x = int(std::sin(angle) * hypotenuse) + center.x();
@@ -75,18 +51,25 @@ void GamutPainterThread::run()
 
 // GamutWidget
 
-GamutWidget::GamutWidget(QWidget* parent, const QPixmap& pixmap)
+GamutWidget::GamutWidget(QWidget* parent, PixmapItem* item)
     : QWidget(parent)
-    , m_worker(new GamutPainterThread(this, pixmap))
+    , m_worker(new GamutPainterThread(this, item))
 {
     connect(m_worker, &GamutPainterThread::imageReady,
             this, &GamutWidget::onImageReady);
+    m_worker->setThreshold(threshold());
     m_worker->start();
 }
 
-void GamutWidget::updateValues(int threshold)
+int GamutWidget::threshold() const
 {
-    m_worker->setThreshold(threshold);
+    auto* dialog = qobject_cast<GamutDialog*>(parentWidget());
+    return dialog ? dialog->threshold() : 20;
+}
+
+void GamutWidget::updateValues()
+{
+    m_worker->setThreshold(threshold());
     if (!m_worker->isRunning())
         m_worker->start();
 }
@@ -114,7 +97,7 @@ void GamutWidget::paintEvent(QPaintEvent*)
 
 // GamutDialog
 
-GamutDialog::GamutDialog(QWidget* parent, QGraphicsPixmapItem* item)
+GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     : QDialog(parent)
 {
     setWindowTitle("Color Gamut");
@@ -137,14 +120,14 @@ GamutDialog::GamutDialog(QWidget* parent, QGraphicsPixmapItem* item)
     QHBoxLayout* layout = new QHBoxLayout();
     setLayout(layout);
 
-    m_gamutWidget = new GamutWidget(this, item->pixmap());
+    m_gamutWidget = new GamutWidget(this, item);
     layout->addWidget(m_gamutWidget, 1);
     layout->addLayout(controlsLayout, 0);
 
     show();
 }
 
-void GamutDialog::onValueChanged(int value)
+void GamutDialog::onValueChanged(int /*value*/)
 {
-    m_gamutWidget->updateValues(value);
+    m_gamutWidget->updateValues();
 }

@@ -166,6 +166,12 @@ FamSettings::FamSettings()
                 qApp->applicationName())
 {}
 
+FamSettings* FamSettings::getInstance()
+{
+    static FamSettings config;
+    return &config;
+}
+
 QVariant FamSettings::valueOrDefault(const QString& key) const
 {
     const auto& f = fields();

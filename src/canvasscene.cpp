@@ -97,7 +97,7 @@ void CanvasScene::end_rubberband_mode()
         qDebug() << "End rubberband mode";
         removeItem(rubberband_item_);
     }
-    rubberband_active = false;
+    active_mode_ = kNone;
 }
 
 // new code BEGIN
@@ -176,8 +176,6 @@ void CanvasScene::lower_to_bottom()
         item->setZValue(item->zValue() + delta);
     }
 }
-
-
 
 
 void CanvasScene::normalize_width_or_height(const QString& mode)
@@ -469,12 +467,14 @@ void CanvasScene::arrange_optimal()
 void CanvasScene::arrange_default()
 {
     const QString mode = FamSettings()
-        .valueOrDefault(QStringLiteral("Items/arrange_default")).toString();
+                             .valueOrDefault(
+                                 QStringLiteral("Items/arrange_default"))
+                             .toString();
     if (mode == QLatin1String("horizontal"))
         arrange(false);
     else if (mode == QLatin1String("vertical"))
         arrange(true);
-    else  // "optimal"; TODOLATER: "square" needs arrange_square
+    else // "optimal"; TODOLATER: "square" needs arrange_square
         arrange_optimal();
 }
 
@@ -490,10 +490,12 @@ void CanvasScene::crop_items()
 {
     if (crop_item)
         return;
-    if (has_croppable_selection()) {
+    if (has_single_image_selection()) {
+        // TODOLATER: assert?
         IBaseItem* item = (IBaseItem*) selectedItems(true).first();
-        if (item->is_croppable())
+        if (item->is_image()) {
             item->enter_crop_mode();
+        }
     }
 }
 
@@ -508,9 +510,23 @@ void CanvasScene::set_selected_all_items(bool value)
     setSelectionArea(path);
 }
 
+void CanvasScene::select_all_items()
+{
+    cancel_active_modes();
+    QPainterPath path;
+    path.addRect(itemsBoundingRect());
+    setSelectionArea(path);
+}
+
+void CanvasScene::deselect_all_items()
+{
+    cancel_active_modes();
+    clearSelection();
+}
+
 bool CanvasScene::has_selection()
 {
-    return !selectedItems(true).isEmpty();
+    return !(selectedItems(true).isEmpty());
 }
 
 bool CanvasScene::has_single_selection()
@@ -523,13 +539,19 @@ bool CanvasScene::has_multi_selection()
     return selectedItems(true).size() > 1;
 }
 
-bool CanvasScene::has_croppable_selection()
+bool CanvasScene::has_single_image_selection()
 {
     if (has_single_selection()) {
+        // TODOLATER: assert?
         return dynamic_cast<IBaseItem*>(selectedItems(true).first())
-            ->is_croppable();
+            ->is_image();
     }
     return false;
+}
+
+CanvasScene::ESceneMode CanvasScene::active_mode() const
+{
+    return active_mode_;
 }
 
 
@@ -562,9 +584,9 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
 
         if (item_at_pos) {
-            move_active = true;
+            active_mode_ = kMoveMode;
         } else if (!items().isEmpty()) {
-            rubberband_active = true;
+            active_mode_ = kRubberbandMode;
         }
     }
 
@@ -595,7 +617,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (rubberband_active) {
+    if (active_mode_ == kRubberbandMode) {
         if (!rubberband_item_->scene()) {
             qDebug() << "Activating rubberband selection";
             addItem(rubberband_item_);
@@ -612,21 +634,19 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (rubberband_active) {
-        if (rubberband_item_->scene()) {
-            end_rubberband_mode();
-        }
-        rubberband_active = false;
+    if (active_mode_ == kRubberbandMode) {
+        end_rubberband_mode();
     }
-    if (move_active && has_selection() && !multiselect_item_->is_action_active()
-        && !((IBaseItem*) selectedItems(true).first())->is_action_active()) {
+    if (active_mode_ == kMoveMode && has_selection()
+        && !multiselect_item_->is_action_active()
+        && !((IBaseItem*) selectedItems().first())->is_action_active()) {
         auto delta = event->scenePos() - event_start;
         if (!delta.isNull()) {
             undo_stack_->push(
                 new MoveItemsByCommand(selectedItems(), delta, true));
         }
     }
-    move_active = false;
+    active_mode_ = kNone;
     QGraphicsScene::mouseReleaseEvent(event);
 }
 
@@ -656,7 +676,8 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     QList<QGraphicsItem*> allItems = items();
 
     // Sort by zValue ascending (same as Qt.SortOrder.AscendingOrder)
-    std::sort(allItems.begin(), allItems.end(),
+    std::sort(allItems.begin(),
+              allItems.end(),
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return a->zValue() < b->zValue();
               });
@@ -771,12 +792,17 @@ void CanvasScene::on_selection_changed()
 
 void CanvasScene::on_change()
 {
+    // Ignore events while clearing the scene since the
+    // multiselect item will get cleared, too
+    if (clear_ongoing) {
+        return;
+    }
 
-    if (multiselect_item_->scene() && !multiselect_item_->is_scale_or_rotate_active()) {
+    if (multiselect_item_->scene()
+        && !multiselect_item_->is_action_active()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 }
-
 
 
 void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
@@ -806,8 +832,7 @@ void CanvasScene::add_queued_items()
             QVariant imageVariant = data.value("image");
             if (imageVariant.isValid()) {
                 QImage image = imageVariant.value<QImage>();
-                PixmapItem* pixmapItem = new PixmapItem();
-                pixmapItem->setPixmap(QPixmap::fromImage(image));
+                PixmapItem* pixmapItem = new PixmapItem(image);
 
                 // Handle extra data (crop, etc.)
                 QVariant extraData = data.value("data");
@@ -903,15 +928,10 @@ bool CanvasScene::itemAddByUser(int type) const
 }
 
 
-
-
-
 // OLD CODE
 
 
-void CanvasScene::keyPressEvent(QKeyEvent* event)
-{
-}
+void CanvasScene::keyPressEvent(QKeyEvent* event) {}
 
 void CanvasScene::copyToClipboard()
 {
@@ -922,7 +942,6 @@ void CanvasScene::pasteFromClipboard()
 {
     // TODOLATER: paste items from clipboard
 }
-
 
 
 QByteArray CanvasScene::fml_payload()
@@ -1131,4 +1150,3 @@ qint16 CanvasScene::objectsCount() const
                              return item->type() == targetObjectType;
                          });
 }
-

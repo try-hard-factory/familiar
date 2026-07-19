@@ -202,7 +202,7 @@ private:
 class ResetCropCommand : public QUndoCommand
 {
 public:
-    explicit ResetCropCommand(const QList<PixmapItem*>& items);
+    explicit ResetCropCommand(const QList<IBaseItem*>& items);
 
     void redo() override;
     void undo() override;

@@ -269,7 +269,6 @@ QVariant SettingsHandler::value(const QString& key) const
         return handler->fallback();
     }
 
-    qDebug() << "NOERROR: " << key << " = " << val;
     return handler->value(val);
 }
 
