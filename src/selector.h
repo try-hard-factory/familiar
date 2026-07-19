@@ -30,9 +30,9 @@ public:
     virtual void do_flip(bool vertical = false,
                          const QPointF& anchor = QPointF(0, 0))
         = 0;
-    virtual void setScale(qreal value, const QPointF& anchor = QPointF(0, 0))
+    virtual void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0))
         = 0;
-    virtual void setRotation(qreal value,
+    virtual void set_rotation(qreal value,
                              const QPointF& anchor = QPointF(0, 0))
         = 0;
     virtual QPointF center() const = 0;
@@ -47,7 +47,7 @@ public:
         : T(parent)
     {}
 
-    void setScale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
     {
         if (value <= 0) {
             return;
@@ -86,7 +86,7 @@ public:
         }
     }
 
-    void setRotation(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0)) override
     {
         qDebug() << "Setting rotation to" << value;
         QPointF prev = this->mapToScene(anchor);
@@ -108,7 +108,7 @@ public:
         QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
         if (vertical) {
-            this->setRotation(this->rotation() + 180, anchor);
+            this->set_rotation(this->rotation() + 180, anchor);
         }
         QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
@@ -694,7 +694,7 @@ protected:
             for (auto& item :
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                item_cast->setScale(item_cast->scaleOrigFactor_ * factor,
+                item_cast->set_scale(item_cast->scaleOrigFactor_ * factor,
                                     item->mapFromScene(eventAnchor_));
             }
             event->accept();
@@ -710,7 +710,7 @@ protected:
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 // need casting here
                 auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                item_cast->setRotation(item_cast->rotateOrigDegrees_
+                item_cast->set_rotation(item_cast->rotateOrigDegrees_
                                            + delta * item_cast->flip(),
                                        item->mapFromScene(eventAnchor_));
             }
