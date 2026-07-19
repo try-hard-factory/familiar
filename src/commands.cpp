@@ -154,7 +154,7 @@ void ScaleItemsByCommand::redo()
     }
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setScale(item->scale() * factor_,
+        baseItem->set_scale(item->scale() * factor_,
                            item->mapFromScene(anchor_));
     }
 }
@@ -163,7 +163,7 @@ void ScaleItemsByCommand::undo()
 {
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setScale(item->scale() / factor_,
+        baseItem->set_scale(item->scale() / factor_,
                            item->mapFromScene(anchor_));
     }
 }
@@ -191,7 +191,7 @@ void RotateItemsByCommand::redo()
     }
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setRotation(item->rotation() + delta_ * baseItem->flip(),
+        baseItem->set_rotation(item->rotation() + delta_ * baseItem->flip(),
                               item->mapFromScene(anchor_));
     }
 }
@@ -200,7 +200,7 @@ void RotateItemsByCommand::undo()
 {
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setRotation(item->rotation() - delta_ * baseItem->flip(),
+        baseItem->set_rotation(item->rotation() - delta_ * baseItem->flip(),
                               item->mapFromScene(anchor_));
     }
 }
@@ -223,7 +223,7 @@ void NormalizeItemsCommand::redo()
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldScaleFactors_.append(item->scale());
-        baseItem->setScale(item->scale() * scaleFactors_[i], baseItem->center());
+        baseItem->set_scale(item->scale() * scaleFactors_[i], baseItem->center());
     }
 }
 
@@ -232,7 +232,7 @@ void NormalizeItemsCommand::undo()
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setScale(oldScaleFactors_[i], baseItem->center());
+        baseItem->set_scale(oldScaleFactors_[i], baseItem->center());
     }
 }
 
@@ -278,7 +278,7 @@ void ResetScaleCommand::redo()
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldScaleFactors_.append(item->scale());
-        baseItem->setScale(1, baseItem->center());
+        baseItem->set_scale(1, baseItem->center());
     }
 }
 
@@ -287,7 +287,7 @@ void ResetScaleCommand::undo()
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setScale(oldScaleFactors_[i], baseItem->center());
+        baseItem->set_scale(oldScaleFactors_[i], baseItem->center());
     }
 }
 
@@ -306,7 +306,7 @@ void ResetRotationCommand::redo()
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldRotations_.append(item->rotation());
-        baseItem->setRotation(0, baseItem->center());
+        baseItem->set_rotation(0, baseItem->center());
     }
 }
 
@@ -315,7 +315,7 @@ void ResetRotationCommand::undo()
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->setRotation(oldRotations_[i], baseItem->center());
+        baseItem->set_rotation(oldRotations_[i], baseItem->center());
     }
 }
 
@@ -413,8 +413,8 @@ void ResetTransformsCommand::redo()
 
         oldValues_.append(values);
 
-        baseItem->setScale(1, baseItem->center());
-        baseItem->setRotation(0, baseItem->center());
+        baseItem->set_scale(1, baseItem->center());
+        baseItem->set_rotation(0, baseItem->center());
         if (baseItem->flip() == -1) {
             baseItem->do_flip(false, baseItem->center());
         }
@@ -427,8 +427,8 @@ void ResetTransformsCommand::undo()
         auto* baseItem = items_[i];
         const TransformValues& old = oldValues_[i];
 
-        baseItem->setScale(old.scale, baseItem->center());
-        baseItem->setRotation(old.rotation, baseItem->center());
+        baseItem->set_scale(old.scale, baseItem->center());
+        baseItem->set_rotation(old.rotation, baseItem->center());
         if (old.flip == -1) {
             baseItem->do_flip(false, baseItem->center());
         }
