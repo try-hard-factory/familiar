@@ -5,6 +5,7 @@
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <QMutex>
 #include <QRubberBand>
 #include <QVariantMap>
 
@@ -88,7 +89,7 @@ public:
                              = QList<QGraphicsItem*>()) const;
     QPointF get_selection_center();
     void add_item_later(const QVariantMap& itemdata, bool selected = false);
-    void add_queued_items();
+    QList<IBaseItem*> add_queued_items();
     bool itemAddByUser(int type) const;
     
 public slots:
@@ -143,6 +144,10 @@ public:
     MultiSelectItem* multiselect_item_;
     RubberbandItem* rubberband_item_;
     std::queue<QueuedItemData> items_to_add;
+    // Guards items_to_add: add_item_later() may be called from a
+    // background ThreadedIO worker while add_queued_items() drains it
+    // on the GUI thread.
+    QMutex itemsToAddMutex_;
     QList<IBaseItem*> internal_clipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
@@ -162,8 +167,6 @@ private:
 
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
-
-    EState state_ = eMouseMoving;
 
     ImageDownloader* imgdownloader_ = nullptr; //image loader need c++threads!!!
 

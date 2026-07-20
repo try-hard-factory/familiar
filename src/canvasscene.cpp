@@ -8,6 +8,7 @@
 #include <QGraphicsItem>
 #include <QKeyEvent>
 #include <QMimeData>
+#include <QMutexLocker>
 #include <QPainter>
 #include <QPen>
 
@@ -807,16 +808,25 @@ void CanvasScene::on_change()
 
 void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
 {
+    QMutexLocker locker(&itemsToAddMutex_);
     items_to_add.push({itemdata, selected});
 }
 
 
-// TODOLATER: ????????
-void CanvasScene::add_queued_items()
+QList<IBaseItem*> CanvasScene::add_queued_items()
 {
-    while (!items_to_add.empty()) {
-        QueuedItemData queuedData = items_to_add.front();
-        items_to_add.pop();
+    QList<IBaseItem*> addedItems;
+
+    while (true) {
+        QueuedItemData queuedData;
+        {
+            QMutexLocker locker(&itemsToAddMutex_);
+            if (items_to_add.empty()) {
+                break;
+            }
+            queuedData = items_to_add.front();
+            items_to_add.pop();
+        }
 
         QVariantMap data = queuedData.data;
         bool selected = queuedData.selected;
@@ -832,7 +842,8 @@ void CanvasScene::add_queued_items()
             QVariant imageVariant = data.value("image");
             if (imageVariant.isValid()) {
                 QImage image = imageVariant.value<QImage>();
-                PixmapItem* pixmapItem = new PixmapItem(image);
+                QString filename = data.value("filename").toString();
+                PixmapItem* pixmapItem = new PixmapItem(image, filename);
 
                 // Handle extra data (crop, etc.)
                 QVariant extraData = data.value("data");
@@ -906,9 +917,13 @@ void CanvasScene::add_queued_items()
                     item->setSelected(true);
                     baseItem->bring_to_front();
                 }
+
+                addedItems.append(baseItem);
             }
         }
     }
+
+    return addedItems;
 }
 
 
