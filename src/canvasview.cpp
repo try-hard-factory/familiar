@@ -1,15 +1,15 @@
 #include "canvasview.h"
 #include "canvasscene.h"
 #include "commands.h"
+#include "fileio.h"
 #include "mainwindow.h"
-#include "moveitem.h"
 #include "project_settings.h"
+#include "widgets/dialogs.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
-#include <QImageReader>
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QUndoStack>
@@ -789,55 +789,77 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     QPointF scenePos = mapToScene(insertPos);
     bool newScene = scene_->items().isEmpty();
 
-    scene_->set_selected_all_items(false);
     scene_->deselect_all_items();
-    // TODOLATER: load in a worker thread with a progress dialog, as in
-    // BeeRef's fileio.ThreadedIO
-    QList<IBaseItem*> items;
-    QStringList errors;
+    undoStack_->beginMacro(tr("Insert Images"));
+
+    QStringList filenames;
+    QStringList immediateErrors;
     for (const QUrl& url : urls) {
         if (!url.isLocalFile()) {
             // TODOLATER: remote URLs via ImageDownloader
             qDebug() << "Remote URL not yet supported:" << url;
-            errors.append(url.toString());
+            immediateErrors.append(url.toString());
             continue;
         }
-        const QString filename = url.toLocalFile();
-        qDebug() << "Loading image from file" << filename;
-        QImageReader reader(filename);
-        reader.setAutoTransform(true);  // apply EXIF rotation
-        QImage img = reader.read();
-        if (img.isNull()) {
-            qDebug() << "Could not load file" << filename;
-            errors.append(filename);
-            continue;
-        }
-        auto* item = new PixmapItem(img, filename);
-        item->set_pos_center(scenePos);
-        items.append(item);
+        filenames.append(url.toLocalFile());
     }
 
-    if (!items.isEmpty()) {
-        undoStack_->beginMacro(tr("Insert Images"));
-        undoStack_->push(new InsertItemsCommand(scene_, items));
-        scene_->arrange_default();
-        undoStack_->endMacro();
-    }
+    // Accumulates items added via CanvasScene::add_queued_items() across
+    // every progress tick plus the final drain, so they can all be
+    // wrapped into a single undoable InsertItemsCommand once loading
+    // finishes.
+    auto insertedItems = std::make_shared<QList<IBaseItem*>>();
+    CanvasScene* scene = scene_;
 
-    if (!errors.isEmpty()) {
-        QStringList names;
-        for (const QString& fn : errors)
-            names.append(QStringLiteral("<li>%1</li>").arg(fn));
-        QMessageBox::warning(
-            this,
-            tr("Problem loading images"),
-            tr("%1 image(s) could not be opened.<br/>"
-               "Unknown format or too big?<ul>%2</ul>")
-                .arg(errors.size()).arg(names.join(QStringLiteral("\n"))));
-    }
+    auto* worker = new ThreadedIO([filenames, scenePos, scene](ThreadedIO* w) {
+        load_images(filenames, scenePos, scene, w);
+    });
 
-    if (newScene && !items.isEmpty())
-        on_action_fit_scene();
+    connect(worker, &ThreadedIO::progress, this, [this, insertedItems](int) {
+        qDebug() << "On items loaded: add queued items";
+        *insertedItems += scene_->add_queued_items();
+    });
+
+    connect(worker, &ThreadedIO::finished, this,
+            [this, newScene, immediateErrors, insertedItems](
+                const QString&, const QStringList& errors) {
+                qDebug() << "Insert images finished";
+                *insertedItems += scene_->add_queued_items();
+
+                QStringList allErrors = immediateErrors + errors;
+                if (!allErrors.isEmpty()) {
+                    QStringList names;
+                    for (const QString& fn : allErrors)
+                        names.append(QStringLiteral("<li>%1</li>").arg(fn));
+                    QMessageBox::warning(
+                        this,
+                        tr("Problem loading images"),
+                        tr("%1 image(s) could not be opened.<br/>"
+                           "Unknown format or too big?<ul>%2</ul>")
+                            .arg(allErrors.size())
+                            .arg(names.join(QStringLiteral("\n"))));
+                }
+
+                if (!insertedItems->isEmpty()) {
+                    undoStack_->push(new InsertItemsCommand(
+                        scene_, *insertedItems, QPointF(), true));
+                    scene_->arrange_default();
+                }
+                undoStack_->endMacro();
+
+                if (newScene) {
+                    on_action_fit_scene();
+                }
+            });
+
+    // QThread's own finished() (not ThreadedIO's same-named result signal)
+    // only fires once the thread has actually stopped running, which is
+    // the documented-safe point to delete a QThread object.
+    connect(worker, &QThread::finished, worker, &QObject::deleteLater);
+
+    new ProgressDialog(tr("Loading images"), worker, 0, this);
+
+    worker->start();
 }
 
 void CanvasView::addImage(const QString& /*path*/, QPointF /*point*/) {}

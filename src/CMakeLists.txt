@@ -101,6 +101,8 @@ set(PROJECT_SOURCES
         selector.h
         commands.cpp
         commands.h
+        fileio.cpp
+        fileio.h
         widgets/main_controls.cpp
         widgets/main_controls.h
         widgets/recent_files_model.cpp

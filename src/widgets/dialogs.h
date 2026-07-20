@@ -37,39 +37,7 @@
 #include <QVariantMap>
 
 #include "commands.h"
-
-class Worker : public QThread
-{
-    Q_OBJECT
-
-signals:
-    void progress(int value);
-    void finished(const QString& filename, const QStringList& errors);
-    void beginProcessing(int value);
-
-public:
-    Worker(const std::function<void(Worker*)>& func,
-           const QStringList& args,
-           QVariantMap& kwargs)
-        : func(func)
-        , args(args)
-        , kwargs(kwargs)
-    {
-        QString key("worker");
-        kwargs.insert(key, QVariant::fromValue(this));
-        canceled = false;
-    }
-
-    void run() override { func(this); }
-
-    Q_INVOKABLE void onCanceled() { canceled = true; }
-
-private:
-    std::function<void(Worker*)> func;
-    QStringList args;
-    QVariantMap kwargs;
-    bool canceled;
-};
+#include "fileio.h"
 
 class ProgressDialog : public QProgressDialog
 {
@@ -77,7 +45,7 @@ class ProgressDialog : public QProgressDialog
 
 public:
     explicit ProgressDialog(const QString& label,
-                               Worker* worker,
+                               ThreadedIO* worker,
                                int maximum = 0,
                                QWidget* parent = nullptr)
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
@@ -88,18 +56,22 @@ public:
         setAutoReset(false);
         setAutoClose(false);
         connect(worker,
-                &Worker::beginProcessing,
+                &ThreadedIO::beginProcessing,
                 this,
                 &ProgressDialog::on_begin_processing);
         connect(worker,
-                &Worker::progress,
+                &ThreadedIO::progress,
                 this,
                 &ProgressDialog::on_progress);
         connect(worker,
-                &Worker::finished,
+                &ThreadedIO::finished,
                 this,
                 &ProgressDialog::on_finished);
-        connect(this, &ProgressDialog::canceled, worker, &Worker::onCanceled);
+        connect(worker,
+                &ThreadedIO::userInputRequired,
+                this,
+                [this](const QString&) { on_finished(QString(), {}); });
+        connect(this, &ProgressDialog::canceled, worker, &ThreadedIO::onCanceled);
     }
 
 private slots:
