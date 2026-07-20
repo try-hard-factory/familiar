@@ -622,10 +622,15 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         if (!rubberband_item_->scene()) {
             qDebug() << "Activating rubberband selection";
             addItem(rubberband_item_);
-            rubberband_item_->bring_to_front();
         }
         rubberband_item_->fit(event_start, event->scenePos());
         setSelectionArea(rubberband_item_->shape());
+        // Re-assert on top *after* setSelectionArea: selecting an item
+        // here can itself trigger ItemMixin::on_selected_change(), which
+        // brings that item to front too - without this, the first image
+        // touched by the drag would end up with a higher z-value than
+        // the rubberband and visually cover it.
+        rubberband_item_->bring_to_front();
         CanvasView* view = static_cast<CanvasView*>(views().first());
         view->resetPreviousTransform();
     }
