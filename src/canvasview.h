@@ -20,6 +20,7 @@ class MainWindow;
 class project_settings;
 class CanvasScene;
 class QUndoStack;
+class IBaseItem;
 
 struct PreviousTransform
 {
@@ -145,6 +146,13 @@ public slots:
     void on_action_about();
     void on_action_debuglog();
 
+private slots:
+    // do_insert_images callbacks (see fileio::load_images / ThreadedIO).
+    // Mirrors Python's CanvasView.on_items_loaded/on_insert_images_finished.
+    void on_items_loaded(int value);
+    void on_insert_images_finished(const QString& filename,
+                                   const QStringList& errors);
+
 protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -185,6 +193,14 @@ private:
     QColor canvasColor_;
     QColor borderColor_;
     int currentOpacity_;
+
+    // State for the in-flight do_insert_images() operation, read by
+    // on_items_loaded()/on_insert_images_finished(). Assumes at most one
+    // insert-images operation runs at a time (matches Python storing
+    // these on self.worker/instance state directly).
+    bool insertImagesNewScene_ = false;
+    QStringList insertImagesImmediateErrors_;
+    QList<IBaseItem*> insertImagesInsertedItems_;
 };
 
 #endif // CANVASVIEW_H
