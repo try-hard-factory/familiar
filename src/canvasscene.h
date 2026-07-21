@@ -11,13 +11,6 @@
 
 #include <queue>
 
-enum EState {
-    eMouseMoving = 0x0000,
-    eMouseSelection = 0x0001,
-    eGroupItemMoving = 0x0002,
-    eGroupItemResizing = 0x0003,
-};
-
 class MainWindow;
 class project_settings;
 class TextItem;
@@ -27,6 +20,9 @@ class MultiSelectItem;
 class QUndoStack;
 class IBaseItem;
 
+// Port of beeref/scene.py: BeeGraphicsScene. Methods below are kept in the
+// same order as their Python counterparts; C++-only additions and legacy
+// (pre-port) code follow in their own clearly marked sections at the end.
 class CanvasScene : public QGraphicsScene
 {
     Q_OBJECT
@@ -37,6 +33,20 @@ public:
         kMoveMode = 1,
         kRubberbandMode = 2,
     };
+
+signals:
+    void cursor_changed(QCursor);
+    void cursor_cleared();
+
+public:
+    // Holds data for an item queued via add_item_later(), consumed by
+    // add_queued_items().
+    struct QueuedItemData
+    {
+        QVariantMap data;
+        bool selected = false;
+    };
+
     CanvasScene(MainWindow& mw,
                 uint64_t& zc,
                 QUndoStack* undoStack,
@@ -44,12 +54,11 @@ public:
     ~CanvasScene();
 
     void clear();
-    void cancel_active_modes();
-    // new code BEGIN
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
-    void cancel_crop_mode();
+    void cancel_active_modes();
     void end_rubberband_mode();
+    void cancel_crop_mode();
     void copy_selection_to_internal_clipboard();
     void paste_from_internal_clipboard(QPointF position);
     void raise_to_top();
@@ -58,19 +67,19 @@ public:
     void normalize_height();
     void normalize_width();
     void normalize_size();
+    void arrange_default();
     void arrange(bool vertical = false);
     void arrange_optimal();
-    void arrange_default();
+    void arrange_square();
     void flip_items(bool vertical = false);
     void crop_items();
-    void set_selected_all_items(bool value);
+    QColor sample_color_at(const QPointF& position);
     void select_all_items();
     void deselect_all_items();
     bool has_selection();
     bool has_single_selection();
     bool has_multi_selection();
     bool has_single_image_selection();
-    ESceneMode active_mode() const;
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -88,55 +97,29 @@ public:
                              QList<QGraphicsItem*> items
                              = QList<QGraphicsItem*>()) const;
     QPointF get_selection_center();
-    void add_item_later(const QVariantMap& itemdata, bool selected = false);
-    QList<IBaseItem*> add_queued_items();
-    bool itemAddByUser(int type) const;
-    
+
 public slots:
     void on_selection_changed();
     void on_change();
-signals:
-    void cursor_changed(QCursor);
-    void cursor_cleared();
 
 public:
-    // Structure to hold item data for queued items
-    struct QueuedItemData {
-        QVariantMap data;
-        bool selected = false;
-    };
-    // new code END
+    void add_item_later(const QVariantMap& itemdata, bool selected = false);
+    QList<IBaseItem*> add_queued_items();
 
-    // old code
-    void pasteFromClipboard();
-    void copyToClipboard();
-    QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
-    QByteArray fml_payload();
-    void setProjectSettings(project_settings* ps);
-    void cleanupWorkplace();
-    QString path();
-    void setPath(const QString& path);
-    QString projectName();
-    void setProjectName(const QString& pn);
-    bool isModified();
-    void setModified(bool mod);
-    bool isUntitled();
+    // ────────────────────────────────────────────────────────────────────────
+    // C++-only additions (no direct equivalent in beeref/scene.py)
+    // ────────────────────────────────────────────────────────────────────────
 
+    // Getter for active_mode_ (Python code just reads self.active_mode
+    // directly; used e.g. by ItemMixin::on_selected_change()).
+    ESceneMode active_mode() const;
+    // Selects/deselects every item in the scene (Python only has
+    // select_all_items(), which uses setSelectionArea()).
+    void set_selected_all_items(bool value);
+    // Stand-in for Python's hasattr(item, 'save_id') duck-typing check:
+    // whether a QGraphicsItem::type() belongs to a real user-facing item.
+    bool itemAddByUser(int type) const;
 
-protected:
-    void keyPressEvent(QKeyEvent* event) override;
-    void drawForeground(QPainter* painter, const QRectF& rect) override;
-
-public slots:
-    void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
-    void settingsChangedSlot();
-
-private slots:
-    void clipboardChanged();
-
-
-public:
-    // new code BEGIN
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
     qreal min_z = 0;
@@ -153,9 +136,37 @@ public:
     PixmapItem* crop_item = nullptr;
     QPointF event_start{};
     ESceneMode active_mode_{kNone};
-    // new code END
-
     bool clear_ongoing = false;
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Legacy (pre-port; no equivalent in beeref) — project file I/O,
+    // clipboard glue, and other code that predates the Python port.
+    // ────────────────────────────────────────────────────────────────────────
+
+    void pasteFromClipboard();
+    void copyToClipboard();
+    QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
+    QByteArray fml_payload();
+    void setProjectSettings(project_settings* ps);
+    void cleanupWorkplace();
+    QString path();
+    void setPath(const QString& path);
+    QString projectName();
+    void setProjectName(const QString& pn);
+    bool isModified();
+    void setModified(bool mod);
+    bool isUntitled();
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override;
+    void drawForeground(QPainter* painter, const QRectF& rect) override;
+
+public slots:
+    void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
+    void settingsChangedSlot();
+
+private slots:
+    void clipboardChanged();
 
 private:
     qint16 objectsCount() const;
