@@ -27,7 +27,60 @@
 
 extern Logger logger;
 
-#define MOUSE_MOVE_DEBUG
+namespace {
+
+// Port of beeref/items.py: sort_by_filename(). Orders items by filename (if
+// any); items without a filename but with a save_id follow (ordered by
+// save_id); remaining items keep their current (insertion) order.
+QString itemFilename(QGraphicsItem* item)
+{
+    if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
+        return pixmapItem->filename_;
+    }
+    return QString();
+}
+
+std::optional<int> itemSaveId(QGraphicsItem* item)
+{
+    if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
+        return pixmapItem->save_id;
+    }
+    if (auto* textItem = dynamic_cast<TextItem*>(item)) {
+        return textItem->save_id;
+    }
+    return std::nullopt;
+}
+
+QList<QGraphicsItem*> sort_by_filename(const QList<QGraphicsItem*>& items)
+{
+    QList<QGraphicsItem*> byFilename;
+    QList<QGraphicsItem*> bySaveId;
+    QList<QGraphicsItem*> remaining;
+
+    for (QGraphicsItem* item : items) {
+        if (!itemFilename(item).isEmpty()) {
+            byFilename.append(item);
+        } else if (itemSaveId(item)) {
+            bySaveId.append(item);
+        } else {
+            remaining.append(item);
+        }
+    }
+
+    std::sort(byFilename.begin(), byFilename.end(),
+              [](QGraphicsItem* a, QGraphicsItem* b) {
+                  return itemFilename(a) < itemFilename(b);
+              });
+    std::sort(bySaveId.begin(), bySaveId.end(),
+              [](QGraphicsItem* a, QGraphicsItem* b) {
+                  return *itemSaveId(a) < *itemSaveId(b);
+              });
+
+    return byFilename + bySaveId + remaining;
+}
+
+} // namespace
+
 CanvasScene::CanvasScene(MainWindow& mw,
                          uint64_t& zc,
                          QUndoStack* undoStack,
@@ -45,18 +98,6 @@ CanvasScene::CanvasScene(MainWindow& mw,
     clear();
     clear_ongoing = false;
 
-    // itemGroup_ = new ItemGroup(zc);
-    // LOG_DEBUG(logger,
-    //           "itemGroup_ Adress: ",
-    //           itemGroup_,
-    //           ", Z: ",
-    //           itemGroup_->zValue());
-    // //    itemGroup_->setFiltersChildEvents(true);
-
-    // itemGroup_->setPos({0, 0});
-    // addItem(itemGroup_);
-
-    // connect(itemGroup_, &ItemGroup::signalMove, this, &CanvasScene::slotMove);
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
             this,
@@ -86,6 +127,18 @@ void CanvasScene::clear()
     clear_ongoing = false;
 }
 
+void CanvasScene::addItem(QGraphicsItem* item)
+{
+    qDebug() << "Adding item" << item;
+    QGraphicsScene::addItem(item);
+}
+
+void CanvasScene::removeItem(QGraphicsItem* item)
+{
+    qDebug() << "Removing item" << item;
+    QGraphicsScene::removeItem(item);
+}
+
 void CanvasScene::cancel_active_modes()
 {
     cancel_crop_mode();
@@ -99,20 +152,6 @@ void CanvasScene::end_rubberband_mode()
         removeItem(rubberband_item_);
     }
     active_mode_ = kNone;
-}
-
-// new code BEGIN
-
-void CanvasScene::addItem(QGraphicsItem* item)
-{
-    qDebug() << "Adding item" << item;
-    QGraphicsScene::addItem(item);
-}
-
-void CanvasScene::removeItem(QGraphicsItem* item)
-{
-    qDebug() << "Removing item" << item;
-    QGraphicsScene::removeItem(item);
 }
 
 void CanvasScene::cancel_crop_mode()
@@ -178,7 +217,6 @@ void CanvasScene::lower_to_bottom()
     }
 }
 
-
 void CanvasScene::normalize_width_or_height(const QString& mode)
 {
     cancel_crop_mode();
@@ -208,6 +246,7 @@ void CanvasScene::normalize_height()
 {
     normalize_width_or_height("height");
 }
+
 void CanvasScene::normalize_width()
 {
     normalize_width_or_height("width");
@@ -237,6 +276,22 @@ void CanvasScene::normalize_size()
     undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
+void CanvasScene::arrange_default()
+{
+    const QString mode = FamSettings()
+                             .valueOrDefault(
+                                 QStringLiteral("Items/arrange_default"))
+                             .toString();
+    if (mode == QLatin1String("horizontal"))
+        arrange(false);
+    else if (mode == QLatin1String("vertical"))
+        arrange(true);
+    else if (mode == QLatin1String("square"))
+        arrange_square();
+    else // "optimal"
+        arrange_optimal();
+}
+
 void CanvasScene::arrange(bool vertical)
 {
     cancel_crop_mode();
@@ -245,6 +300,9 @@ void CanvasScene::arrange(bool vertical)
     if (items.size() < 2)
         return;
 
+    qreal gap = FamSettings()
+                    .valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                    .toReal();
     QPointF center = get_selection_center();
     QList<QPointF> positions;
 
@@ -278,7 +336,7 @@ void CanvasScene::arrange(bool vertical)
         for (const auto& rect : rects) {
             positions.append(
                 QPointF(std::round(center.x() - rect.rect.width() / 2), y));
-            y += rect.rect.height();
+            y += rect.rect.height() + gap;
         }
     } else {
         // Сортировка по горизонтали (x)
@@ -297,7 +355,7 @@ void CanvasScene::arrange(bool vertical)
         for (const auto& rect : rects) {
             positions.append(
                 QPointF(x, std::round(center.y() - rect.rect.height() / 2)));
-            x += rect.rect.width();
+            x += rect.rect.width() + gap;
         }
     }
 
@@ -423,12 +481,16 @@ void CanvasScene::arrange_optimal()
     if (items.size() < 2)
         return;
 
+    qreal gap = FamSettings()
+                    .valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                    .toReal();
+
     // Получаем размеры элементов
     QList<RectPacker::Size> sizes;
     for (QGraphicsItem* item : items) {
         QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
-        sizes.append({static_cast<int>(std::round(rect.width())),
-                      static_cast<int>(std::round(rect.height()))});
+        sizes.append({static_cast<int>(std::round(rect.width() + gap)),
+                      static_cast<int>(std::round(rect.height() + gap))});
     }
 
     QPointF center = get_selection_center();
@@ -465,18 +527,45 @@ void CanvasScene::arrange_optimal()
     undo_stack_->push(new ArrangeItemsCommand(this, items, scenePositions));
 }
 
-void CanvasScene::arrange_default()
+void CanvasScene::arrange_square()
 {
-    const QString mode = FamSettings()
-                             .valueOrDefault(
-                                 QStringLiteral("Items/arrange_default"))
-                             .toString();
-    if (mode == QLatin1String("horizontal"))
-        arrange(false);
-    else if (mode == QLatin1String("vertical"))
-        arrange(true);
-    else // "optimal"; TODOLATER: "square" needs arrange_square
-        arrange_optimal();
+    cancel_active_modes();
+    qreal maxWidth = 0;
+    qreal maxHeight = 0;
+    qreal gap = FamSettings()
+                    .valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                    .toReal();
+    QList<QGraphicsItem*> items = sort_by_filename(selectedItems(true));
+
+    if (items.size() < 2)
+        return;
+
+    for (QGraphicsItem* item : items) {
+        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        maxWidth = std::max(maxWidth, rect.width() + gap);
+        maxHeight = std::max(maxHeight, rect.height() + gap);
+    }
+
+    // We want the items to center around the selection's center,
+    // not (0, 0)
+    int numRows = static_cast<int>(std::ceil(std::sqrt(items.size())));
+    QPointF center = get_selection_center();
+    QPointF diff = center - (numRows / 2.0) * QPointF(maxWidth, maxHeight);
+
+    QList<QPointF> positions;
+    auto it = items.constBegin();
+    for (int j = 0; j < numRows && it != items.constEnd(); ++j) {
+        for (int i = 0; i < numRows && it != items.constEnd(); ++i) {
+            QGraphicsItem* item = *it;
+            ++it;
+            QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+            QPointF point(i * maxWidth + (maxWidth - rect.width()) / 2.0,
+                         j * maxHeight + (maxHeight - rect.height()) / 2.0);
+            positions.append(point + diff);
+        }
+    }
+
+    undo_stack_->push(new ArrangeItemsCommand(this, items, positions));
 }
 
 void CanvasScene::flip_items(bool vertical)
@@ -500,15 +589,19 @@ void CanvasScene::crop_items()
     }
 }
 
-void CanvasScene::set_selected_all_items(bool value)
+QColor CanvasScene::sample_color_at(const QPointF& position)
 {
-    cancel_crop_mode();
-    for (QGraphicsItem* item : items()) {
-        item->setSelected(value);
+    auto* itemAtPos = itemAt(position, views().first()->transform());
+    if (itemAtPos) {
+        // sample_color_at() isn't part of IBaseItem's polymorphic interface
+        // (Python's BaseItemMixin has a no-op fallback returning None;
+        // only PixmapItem gives a real implementation, so we dynamic_cast
+        // here instead of crashing into BaseItemMixin's assert stub).
+        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(itemAtPos)) {
+            return pixmapItem->sample_color_at(position);
+        }
     }
-    QPainterPath path;
-    path.addRect(itemsBoundingRect());
-    setSelectionArea(path);
+    return QColor();
 }
 
 void CanvasScene::select_all_items()
@@ -549,12 +642,6 @@ bool CanvasScene::has_single_image_selection()
     }
     return false;
 }
-
-CanvasScene::ESceneMode CanvasScene::active_mode() const
-{
-    return active_mode_;
-}
-
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
@@ -671,6 +758,15 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
     return items;
 }
 
+QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
+{
+    QList<QGraphicsItem*> itemsl;
+    for (QGraphicsItem* item : items()) {
+        if (item->type() == type)
+            itemsl.append(item);
+    }
+    return itemsl;
+}
 
 QList<QGraphicsItem*> CanvasScene::items_for_save()
 {
@@ -703,7 +799,6 @@ void CanvasScene::clear_save_ids()
 {
     Q_ASSERT_X(false, "CanvasScene::clear_save_ids", "Not implemented");
 }
-
 
 void CanvasScene::on_view_scale_change()
 {
@@ -773,7 +868,6 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
     return QRectF(QPointF(minX, minY), QPointF(maxX, maxY));
 }
 
-
 QPointF CanvasScene::get_selection_center()
 {
     auto rect = itemsBoundingRect(true);
@@ -810,13 +904,11 @@ void CanvasScene::on_change()
     }
 }
 
-
 void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
 {
     QMutexLocker locker(&itemsToAddMutex_);
     items_to_add.push({itemdata, selected});
 }
-
 
 QList<IBaseItem*> CanvasScene::add_queued_items()
 {
@@ -931,15 +1023,24 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
     return addedItems;
 }
 
+// ============================================================================
+// C++-only additions (no direct equivalent in beeref/scene.py)
+// ============================================================================
 
-QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
+CanvasScene::ESceneMode CanvasScene::active_mode() const
 {
-    QList<QGraphicsItem*> itemsl;
+    return active_mode_;
+}
+
+void CanvasScene::set_selected_all_items(bool value)
+{
+    cancel_crop_mode();
     for (QGraphicsItem* item : items()) {
-        if (item->type() == type)
-            itemsl.append(item);
+        item->setSelected(value);
     }
-    return itemsl;
+    QPainterPath path;
+    path.addRect(itemsBoundingRect());
+    setSelectionArea(path);
 }
 
 bool CanvasScene::itemAddByUser(int type) const
@@ -947,9 +1048,9 @@ bool CanvasScene::itemAddByUser(int type) const
     return (type == 666) || (type == 777);
 }
 
-
-// OLD CODE
-
+// ============================================================================
+// Legacy (pre-port; no equivalent in beeref)
+// ============================================================================
 
 void CanvasScene::keyPressEvent(QKeyEvent* event) {}
 
@@ -962,7 +1063,6 @@ void CanvasScene::pasteFromClipboard()
 {
     // TODOLATER: paste items from clipboard
 }
-
 
 QByteArray CanvasScene::fml_payload()
 {
@@ -1052,7 +1152,6 @@ bool CanvasScene::isUntitled()
     return projectSettings_->isDefaultProjectName();
 }
 
-
 std::string stateText(int idx)
 {
     switch (idx) {
@@ -1067,7 +1166,6 @@ std::string stateText(int idx)
     }
     return "undefined";
 }
-
 
 void CanvasScene::deselectItems()
 {
@@ -1089,7 +1187,6 @@ bool CanvasScene::isAnySelectedUnderCursor() const
 
     return false;
 }
-
 
 void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
 {
@@ -1120,7 +1217,6 @@ void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
     //     painter->restore();
 }
 
-
 void CanvasScene::handleHtmlFromClipboard(const QString& html)
 {
     std::regex r("<img[^>]*src=['|\"](.*?)['|\"].*?>");
@@ -1135,7 +1231,6 @@ void CanvasScene::handleHtmlFromClipboard(const QString& html)
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
     }
 }
-
 
 //ItemGroup
 void CanvasScene::slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy)
@@ -1153,7 +1248,6 @@ void CanvasScene::settingsChangedSlot()
     auto colorPreset = settings->getCurrentColorPreset();
     selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
 }
-
 
 void CanvasScene::clipboardChanged()
 {
