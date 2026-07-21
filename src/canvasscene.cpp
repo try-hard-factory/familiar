@@ -21,7 +21,9 @@
 
 #include "commands.h"
 #include <QUndoStack>
+#include <qassert.h>
 
+#include "core/settings.h"
 #include <algorithm>
 #include <cmath>
 
@@ -29,9 +31,6 @@ extern Logger logger;
 
 namespace {
 
-// Port of beeref/items.py: sort_by_filename(). Orders items by filename (if
-// any); items without a filename but with a save_id follow (ordered by
-// save_id); remaining items keep their current (insertion) order.
 QString itemFilename(QGraphicsItem* item)
 {
     if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
@@ -67,11 +66,13 @@ QList<QGraphicsItem*> sort_by_filename(const QList<QGraphicsItem*>& items)
         }
     }
 
-    std::sort(byFilename.begin(), byFilename.end(),
+    std::sort(byFilename.begin(),
+              byFilename.end(),
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return itemFilename(a) < itemFilename(b);
               });
-    std::sort(bySaveId.begin(), bySaveId.end(),
+    std::sort(bySaveId.begin(),
+              bySaveId.end(),
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return *itemSaveId(a) < *itemSaveId(b);
               });
@@ -89,6 +90,7 @@ CanvasScene::CanvasScene(MainWindow& mw,
     , mainwindow_(mw)
     , zCounter_(zc)
 {
+    settings = FamSettings::getInstance();
     connect(this,
             &CanvasScene::selectionChanged,
             this,
@@ -120,6 +122,25 @@ CanvasScene::~CanvasScene()
 void CanvasScene::clear()
 {
     clear_ongoing = true;
+
+    // rubberband_item_/multiselect_item_ are our own long-lived helper
+    // items (not user content); on repeat calls (e.g. "New Scene") the
+    // previous instances would otherwise leak when overwritten below.
+    // Detach first if still in the scene so QGraphicsScene::clear()
+    // below doesn't also try to delete them (double free).
+    if (rubberband_item_) {
+        if (rubberband_item_->scene()) {
+            removeItem(rubberband_item_);
+        }
+        delete rubberband_item_;
+    }
+    if (multiselect_item_) {
+        if (multiselect_item_->scene()) {
+            removeItem(multiselect_item_);
+        }
+        delete multiselect_item_;
+    }
+
     QGraphicsScene::clear();
     internal_clipboard.clear();
     rubberband_item_ = new RubberbandItem();
@@ -147,7 +168,8 @@ void CanvasScene::cancel_active_modes()
 
 void CanvasScene::end_rubberband_mode()
 {
-    if (rubberband_item_ && rubberband_item_->scene()) {
+    Q_ASSERT_X(rubberband_item_, "end_rubberband_mode", "rubberband_item_ == null!");
+    if (rubberband_item_->scene()) {
         qDebug() << "End rubberband mode";
         removeItem(rubberband_item_);
     }
@@ -172,19 +194,19 @@ void CanvasScene::copy_selection_to_internal_clipboard()
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
-    set_selected_all_items(false);
+    // set_selected_all_items(false);
     QList<IBaseItem*> copies;
     for (IBaseItem* item : internal_clipboard) {
         IBaseItem* copy = item->create_copy();
         copies.append(copy);
     }
-    // TODOLATER: use undo stack
+
     undo_stack_->push(new InsertItemsCommand(this, copies, position));
 }
 
 void CanvasScene::raise_to_top()
 {
-    cancel_crop_mode();
+    cancel_active_modes();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
     z_values.reserve(items.size());
@@ -196,13 +218,13 @@ void CanvasScene::raise_to_top()
     double delta = max_z + Z_STEP - min_z_value;
     qDebug() << "Raise to top, delta: " << delta;
     for (auto& item : items) {
-        item->setZValue(item->zValue() + delta);
+        dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
     }
 }
 
 void CanvasScene::lower_to_bottom()
 {
-    cancel_crop_mode();
+    cancel_active_modes();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
     std::transform(items.begin(),
@@ -213,13 +235,13 @@ void CanvasScene::lower_to_bottom()
     double delta = min_z - Z_STEP - max_z_value;
     qDebug() << "Lower to bottom, delta: " << delta;
     for (auto& item : items) {
-        item->setZValue(item->zValue() + delta);
+        dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
     }
 }
 
 void CanvasScene::normalize_width_or_height(const QString& mode)
 {
-    cancel_crop_mode();
+    cancel_active_modes();
     QList<qreal> values;
     QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
@@ -560,7 +582,7 @@ void CanvasScene::arrange_square()
             ++it;
             QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
             QPointF point(i * maxWidth + (maxWidth - rect.width()) / 2.0,
-                         j * maxHeight + (maxHeight - rect.height()) / 2.0);
+                          j * maxHeight + (maxHeight - rect.height()) / 2.0);
             positions.append(point + diff);
         }
     }
@@ -637,8 +659,7 @@ bool CanvasScene::has_single_image_selection()
 {
     if (has_single_selection()) {
         // TODOLATER: assert?
-        return dynamic_cast<IBaseItem*>(selectedItems(true).first())
-            ->is_image();
+        return dynamic_cast<IBaseItem*>(selectedItems(true).first())->is_image();
     }
     return false;
 }
@@ -898,8 +919,7 @@ void CanvasScene::on_change()
         return;
     }
 
-    if (multiselect_item_->scene()
-        && !multiselect_item_->is_action_active()) {
+    if (multiselect_item_->scene() && !multiselect_item_->is_action_active()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 }
