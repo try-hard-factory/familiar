@@ -70,6 +70,7 @@ void load_images(const QStringList& filenames,
     }
 
     emit worker->finished(QString(), errors);
+    worker->quit();
 }
 
 // ─── load_fml / save_fml ───────────────────────────────────────────────────
