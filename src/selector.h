@@ -27,6 +27,7 @@ public:
     virtual bool is_action_active() const = 0;
     virtual QVector<QPointF> corners_scene_coords() const = 0;
     virtual void bring_to_front() = 0;
+    virtual void set_z_value(qreal value) = 0;
     virtual void do_flip(bool vertical = false,
                          const QPointF& anchor = QPointF(0, 0))
         = 0;
@@ -61,7 +62,7 @@ public:
         this->setPos(this->pos() - diff);
     }
 
-    void setZValue(qreal value)
+    void set_z_value(qreal value) override
     {
         qDebug() << "Setting z-value to" << value;
         QGraphicsItem::setZValue(value);
@@ -80,7 +81,7 @@ public:
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
-            setZValue(scene->max_z + scene->Z_STEP);
+            set_z_value(scene->max_z + scene->Z_STEP);
         } else {
             qDebug() << "BaseItemMixin::bring_to_front Scene not found";
         }

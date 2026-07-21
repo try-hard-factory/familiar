@@ -1,6 +1,7 @@
 #ifndef CANVASSCENE_H
 #define CANVASSCENE_H
 
+#include "core/settings.h"
 #include "image_downloader.h"
 #include <QGraphicsItem>
 #include <QGraphicsScene>
@@ -19,6 +20,7 @@ class RubberbandItem;
 class MultiSelectItem;
 class QUndoStack;
 class IBaseItem;
+class FamSettings;
 
 class CanvasScene : public QGraphicsScene
 {
@@ -50,7 +52,6 @@ public:
                 QGraphicsScene* scene = 0);
     ~CanvasScene();
 
-    void clear();
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
     void cancel_active_modes();
@@ -96,6 +97,7 @@ public:
     QPointF get_selection_center();
 
 public slots:
+    void clear();
     void on_selection_changed();
     void on_change();
 
@@ -103,9 +105,6 @@ public:
     void add_item_later(const QVariantMap& itemdata, bool selected = false);
     QList<IBaseItem*> add_queued_items();
 
-    // ────────────────────────────────────────────────────────────────────────
-    // C++-only additions (no direct equivalent in beeref/scene.py)
-    // ────────────────────────────────────────────────────────────────────────
 
     // Getter for active_mode_ (Python code just reads self.active_mode
     // directly; used e.g. by ItemMixin::on_selected_change()).
@@ -121,8 +120,8 @@ public:
     qreal max_z = 0;
     qreal min_z = 0;
     qreal Z_STEP = 0.001;
-    MultiSelectItem* multiselect_item_;
-    RubberbandItem* rubberband_item_;
+    MultiSelectItem* multiselect_item_ = nullptr;
+    RubberbandItem* rubberband_item_ = nullptr;
     std::queue<QueuedItemData> items_to_add;
     // Guards items_to_add: add_item_later() may be called from a
     // background ThreadedIO worker while add_queued_items() drains it
@@ -135,9 +134,6 @@ public:
     ESceneMode active_mode_{kNone};
     bool clear_ongoing = false;
 
-    // ────────────────────────────────────────────────────────────────────────
-    // Legacy (pre-port; no equivalent in beeref) — project file I/O,
-    // clipboard glue, and other code that predates the Python port.
     // ────────────────────────────────────────────────────────────────────────
 
     void pasteFromClipboard();
@@ -185,6 +181,7 @@ private:
     QRectF rubberBand_;
     QPointF lastClickedPoint_{0, 0};
     QColor selectionColor_;
+    FamSettings* settings{nullptr};
 };
 
 #endif // CANVASSCENE_H
