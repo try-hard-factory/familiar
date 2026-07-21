@@ -3,6 +3,7 @@
 #include "commands.h"
 #include "fileio.h"
 #include "mainwindow.h"
+#include "moveitem.h"
 #include "project_settings.h"
 #include "widgets/dialogs.h"
 #include <QApplication>
@@ -12,6 +13,7 @@
 #include <QFileDialog>
 #include <QKeyEvent>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QUndoStack>
 #include <QUrl>
 #include <qdebug.h>
@@ -519,14 +521,92 @@ void CanvasView::on_action_cut()
 
 void CanvasView::on_action_copy()
 {
+    qDebug() << "Copying to clipboard...";
     cancelActiveModes();
-    scene_->copyToClipboard();
+    QClipboard* clipboard = QApplication::clipboard();
+    QList<QGraphicsItem*> items = scene_->selectedItems(true);
+    if (items.isEmpty()) {
+        return;
+    }
+
+    // At the moment, we can only copy one image to the global
+    // clipboard. (Later, we might create an image of the whole
+    // selection for external copying.)
+    if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items.first())) {
+        pixmapItem->copy_to_clipboard(clipboard);
+    } else if (auto* textItem = dynamic_cast<TextItem*>(items.first())) {
+        textItem->copy_to_clipboard(clipboard);
+    }
+
+    // However, we can copy all items to the internal clipboard:
+    scene_->copy_selection_to_internal_clipboard();
+
+    // We set a marker for ourselves in the clipboard so that we know to
+    // look up the internal clipboard when pasting. copy_to_clipboard()
+    // above already replaced the clipboard's QMimeData via
+    // setPixmap()/setText(), and QClipboard::mimeData() only returns a
+    // const snapshot, so the marker has to go in via a fresh QMimeData
+    // that also carries over whatever was just set.
+    auto* mimeData = new QMimeData();
+    for (const QString& format : clipboard->mimeData()->formats()) {
+        mimeData->setData(format, clipboard->mimeData()->data(format));
+    }
+    mimeData->setData(QStringLiteral("familiar/items"),
+                      QByteArray::number(items.size()));
+    clipboard->setMimeData(mimeData);
 }
 
 void CanvasView::on_action_paste()
 {
     cancelActiveModes();
-    scene_->pasteFromClipboard();
+    qDebug() << "Pasting from clipboard...";
+    QClipboard* clipboard = QApplication::clipboard();
+    QPoint pos = mapFromGlobal(cursor().pos());
+
+    // See if we need to look up the internal clipboard:
+    QByteArray marker
+        = clipboard->mimeData()->data(QStringLiteral("familiar/items"));
+    qDebug() << "Custom data in clipboard:" << marker;
+    if (!marker.isEmpty() && !scene_->internal_clipboard.isEmpty()) {
+        // Checking that the internal clipboard exists since the user
+        // may have opened a new scene since copying.
+        scene_->paste_from_internal_clipboard(mapToScene(pos));
+        return;
+    }
+
+    // A file copied in a file manager (e.g. Nautilus) puts a list of
+    // file:// URLs on the clipboard rather than actual image data - load
+    // it the same way as drag-and-dropped/inserted images, instead of
+    // falling through to pasting the raw path as text below.
+    if (clipboard->mimeData()->hasUrls()) {
+        do_insert_images(clipboard->mimeData()->urls(), pos);
+        return;
+    }
+
+    QImage img = clipboard->image();
+    if (!img.isNull()) {
+        bool wasEmpty = scene_->items().isEmpty();
+        auto* item = new PixmapItem(img);
+        undoStack_->push(new InsertItemsCommand(
+            scene_, QList<IBaseItem*>{item}, mapToScene(pos)));
+        if (wasEmpty) {
+            // This is the first image in the scene
+            on_action_fit_scene();
+        }
+        return;
+    }
+
+    QString text = clipboard->text();
+    if (!text.isEmpty()) {
+        auto* item = new TextItem(text);
+        item->setScale(1.0 / get_scale());
+        undoStack_->push(new InsertItemsCommand(
+            scene_, QList<IBaseItem*>{item}, mapToScene(pos)));
+        return;
+    }
+
+    // TODOLATER: user-facing notification (Python shows a BeeNotification)
+    qDebug() << "No image data or text in clipboard or image too big";
 }
 
 void CanvasView::on_action_raise_to_top()

@@ -56,8 +56,13 @@ public:
     virtual void on_selected_change(bool value)
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        // Only bring to front when the user directly clicked this item
+        // (kMoveMode). During a rubber-band drag (kRubberbandMode),
+        // stacked/overlapping images would otherwise get reshuffled in
+        // z-order just by being swept over, which is surprising and
+        // unwanted - selecting shouldn't itself change stacking order.
         if (value && scene && !scene->has_selection()
-            && scene->active_mode() != CanvasScene::ESceneMode::kNone) {
+            && scene->active_mode() == CanvasScene::ESceneMode::kMoveMode) {
             this->bring_to_front();
         }
     }

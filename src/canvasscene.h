@@ -20,9 +20,6 @@ class MultiSelectItem;
 class QUndoStack;
 class IBaseItem;
 
-// Port of beeref/scene.py: BeeGraphicsScene. Methods below are kept in the
-// same order as their Python counterparts; C++-only additions and legacy
-// (pre-port) code follow in their own clearly marked sections at the end.
 class CanvasScene : public QGraphicsScene
 {
     Q_OBJECT
