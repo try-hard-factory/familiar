@@ -601,7 +601,7 @@ void CanvasScene::crop_items()
     if (crop_item)
         return;
     if (has_single_image_selection()) {
-        IBaseItem* item = (IBaseItem*) selectedItems(true).first();
+        IBaseItem* item = dynamic_cast<IBaseItem*>(selectedItems(true).first());
         Q_ASSERT_X(item, "CanvasScene::crop_items", "item == null");
         if (item->is_image()) {
             item->enter_crop_mode();
@@ -705,7 +705,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
         if (!item->isSelected()) {
             item->setSelected(true);
         }
-        if (((IBaseItem*) item)->is_editable()) {
+        if (dynamic_cast<IBaseItem*>(item)->is_editable()) {
             ((TextItem*) item)->enter_edit_mode();
             // TODOLATER:
             QGraphicsScene::mousePressEvent(event);
@@ -750,7 +750,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     }
     if (active_mode_ == kMoveMode && has_selection()
         && !multiselect_item_->is_action_active()
-        && !((IBaseItem*) selectedItems().first())->is_action_active()) {
+        && !dynamic_cast<IBaseItem*>(selectedItems().first())->is_action_active()) {
         auto delta = event->scenePos() - event_start;
         if (!delta.isNull()) {
             undo_stack_->push(
