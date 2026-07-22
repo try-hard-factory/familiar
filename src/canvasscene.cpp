@@ -765,8 +765,13 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 new MoveItemsByCommand(selectedItems(), delta, true));
         }
     }
-    active_mode_ = kNone;
+    // Reset after the base call, not before (unlike Python's exact
+    // ordering): Qt defers a ctrl+click deselect-toggle on an
+    // already-selected item to this base mouseReleaseEvent call, and
+    // ItemMixin::on_selected_change() needs active_mode() to still read
+    // kMoveMode when that fires.
     QGraphicsScene::mouseReleaseEvent(event);
+    active_mode_ = kNone;
 }
 
 QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
