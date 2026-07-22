@@ -11,6 +11,7 @@
 #include <QVariantMap>
 
 #include <queue>
+#include <string>
 
 class MainWindow;
 class project_settings;
@@ -87,7 +88,7 @@ protected:
 
 public:
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
-    QList<QGraphicsItem*> items_by_type(int type);
+    QList<QGraphicsItem*> items_by_type(const std::string& type);
     QList<QGraphicsItem*> items_for_save();
     void clear_save_ids();
     void on_view_scale_change();
