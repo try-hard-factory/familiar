@@ -650,7 +650,7 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
         if (!crop_mode) {
-            QGraphicsItem::mousePressEvent(event);
+            ItemMixin<PixmapItem, QGraphicsPixmapItem>::mousePressEvent(event);
             return;
         }
 
@@ -738,7 +738,7 @@ protected:
             crop_mode_event_start = event->pos();
             event->accept();
         } else {
-            QGraphicsPixmapItem::mouseMoveEvent(event);
+            ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseMoveEvent(event);
         }
     }
 
@@ -749,7 +749,7 @@ protected:
             crop_mode_event_start = std::nullopt;
             event->accept();
         } else {
-            QGraphicsPixmapItem::mouseReleaseEvent(event);
+            ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseReleaseEvent(event);
         }
     }
 };

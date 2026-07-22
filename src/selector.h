@@ -43,6 +43,15 @@ public:
     virtual void set_save_id(int value) = 0;
     virtual void clear_save_id() = 0;
     virtual void on_view_scale_change() = 0;
+    // Transient per-drag state for scale/rotate handle interactions
+    // (selection_action_items() can be heterogeneous - e.g. MultiSelectItem
+    // driving a mix of PixmapItem/TextItem - so this can't be stashed via a
+    // dynamic_cast to the initiating item's own concrete SelectableMixin
+    // type, which only succeeds for items of that exact type).
+    virtual qreal scale_orig_factor() const = 0;
+    virtual void set_scale_orig_factor(qreal value) = 0;
+    virtual qreal rotate_orig_degrees() const = 0;
+    virtual void set_rotate_orig_degrees(qreal value) = 0;
 };
 
 template<typename T>
@@ -156,6 +165,30 @@ public:
     void clear_save_id() override
     {
         Q_ASSERT_X(false, "BaseItemMixin::clear_save_id", "Should not be called");
+    }
+
+    qreal scale_orig_factor() const override
+    {
+        Q_ASSERT_X(false, "BaseItemMixin::scale_orig_factor", "Should not be called");
+        return 1;
+    }
+
+    void set_scale_orig_factor(qreal value) override
+    {
+        Q_UNUSED(value)
+        Q_ASSERT_X(false, "BaseItemMixin::set_scale_orig_factor", "Should not be called");
+    }
+
+    qreal rotate_orig_degrees() const override
+    {
+        Q_ASSERT_X(false, "BaseItemMixin::rotate_orig_degrees", "Should not be called");
+        return 0;
+    }
+
+    void set_rotate_orig_degrees(qreal value) override
+    {
+        Q_UNUSED(value)
+        Q_ASSERT_X(false, "BaseItemMixin::set_rotate_orig_degrees", "Should not be called");
     }
 
     // RubberbandItem is the only BaseItemMixin-direct user and never sets
@@ -379,6 +412,11 @@ public:
     // Whether this item is currently mid scale/rotate/flip drag.
     bool is_action_active() const override { return active_mode_ != kNone; }
 
+    qreal scale_orig_factor() const override { return scaleOrigFactor_; }
+    void set_scale_orig_factor(qreal value) override { scaleOrigFactor_ = value; }
+    qreal rotate_orig_degrees() const override { return rotateOrigDegrees_; }
+    void set_rotate_orig_degrees(qreal value) override { rotateOrigDegrees_ = value; }
+
     QPainterPath get_scale_bounds(const QPointF& corner, int margin = 0) const
     {
         QPainterPath path;
@@ -581,9 +619,8 @@ protected:
                     eventAnchor_ = this->mapToScene(get_scale_anchor(corner));
                     for (auto& item :
                          static_cast<Mixin*>(this)->selection_action_items()) {
-                        // need casting here
-                        auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                        item_cast->scaleOrigFactor_ = item_cast->scale();
+                        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+                        baseItem->set_scale_orig_factor(item->scale());
                     }
                     event->accept();
                     return;
@@ -596,9 +633,8 @@ protected:
                     rotateStartAngle_ = get_rotate_angle(event->scenePos());
                     for (auto& item :
                          static_cast<Mixin*>(this)->selection_action_items()) {
-                        // need casting here
-                        auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                        item_cast->rotateOrigDegrees_ = item_cast->rotation();
+                        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+                        baseItem->set_rotate_orig_degrees(item->rotation());
                     }
                     event->accept();
                     return;
@@ -735,9 +771,9 @@ protected:
             qreal factor = get_scale_factor(event);
             for (auto& item :
                  static_cast<Mixin*>(this)->selection_action_items()) {
-                auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                item_cast->set_scale(item_cast->scaleOrigFactor_ * factor,
-                                    item->mapFromScene(eventAnchor_));
+                auto* baseItem = dynamic_cast<IBaseItem*>(item);
+                baseItem->set_scale(baseItem->scale_orig_factor() * factor,
+                                   item->mapFromScene(eventAnchor_));
             }
             event->accept();
             return;
@@ -750,11 +786,10 @@ protected:
             qreal delta = get_rotate_delta(event->scenePos(), snap);
             for (auto& item :
                  static_cast<Mixin*>(this)->selection_action_items()) {
-                // need casting here
-                auto* item_cast = dynamic_cast<SelectableMixin*>(item);
-                item_cast->set_rotation(item_cast->rotateOrigDegrees_
-                                           + delta * item_cast->flip(),
-                                       item->mapFromScene(eventAnchor_));
+                auto* baseItem = dynamic_cast<IBaseItem*>(item);
+                baseItem->set_rotation(baseItem->rotate_orig_degrees()
+                                          + delta * baseItem->flip(),
+                                      item->mapFromScene(eventAnchor_));
             }
             event->accept();
             return;
@@ -951,7 +986,7 @@ protected:
             return;
         }
 
-        QGraphicsItem::mousePressEvent(event);
+        SelectableMixin<MultiSelectItem, QGraphicsRectItem>::mousePressEvent(event);
     }
 
 public:
@@ -962,13 +997,11 @@ public:
                    "Should not be called");
         return nullptr;
     }
-    bool is_editable() override
-    {
-        Q_ASSERT_X(false,
-                   "MultiSelectItem::is_editable",
-                   "Should not be called");
-        return false;
-    }
+    // Matches Python's init_selectable() defaulting self.is_editable to
+    // False for every SelectableMixin item (not an "unreachable" case:
+    // double-clicking inside the multi-select area legitimately reaches
+    // this, e.g. via CanvasScene::mouseDoubleClickEvent).
+    bool is_editable() override { return false; }
     void enter_crop_mode() override
     {
         Q_ASSERT_X(false,
@@ -991,11 +1024,6 @@ public:
     // rectangle itself (Python's MultiSelectItem has no on_selected_change,
     // so BeeItemMixin's hasattr() guard silently skips it there).
     void on_selected_change(bool value) { Q_UNUSED(value) }
-
-    QRectF boundingRect() const override
-    {
-        return QGraphicsRectItem::boundingRect();
-    }
 };
 
 class RubberbandItem : public BaseItemMixin<QGraphicsRectItem>
