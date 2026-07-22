@@ -856,17 +856,12 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
 
     for (QGraphicsItem* item : base) {
         IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (baseItem) {
-            QVector<QPointF> corners = baseItem->corners_scene_coords();
-            for (const QPointF& corner : corners) {
-                x.append(corner.x());
-                y.append(corner.y());
-            }
+        Q_ASSERT_X(baseItem, "CanvasScene::itemsBoundingRect", "item is not an IBaseItem");
+        QVector<QPointF> corners = baseItem->corners_scene_coords();
+        for (const QPointF& corner : corners) {
+            x.append(corner.x());
+            y.append(corner.y());
         }
-    }
-
-    if (x.isEmpty() || y.isEmpty()) {
-        return QRectF(0, 0, 0, 0);
     }
 
     qreal minX = *std::min_element(x.constBegin(), x.constEnd());
