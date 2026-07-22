@@ -788,7 +788,7 @@ protected:
             return;
         } else if (active_mode_ == kRotateMode) {
             CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
-            scene->on_selection_changed(); // or emit selectionChange()
+            scene->on_selection_change(); // or emit selectionChange()
             qreal delta = get_rotate_delta(event->scenePos());
             if (delta != 0) {
                 scene->undo_stack_->push(
