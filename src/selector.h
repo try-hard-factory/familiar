@@ -38,6 +38,10 @@ public:
         = 0;
     virtual QPointF center() const = 0;
     virtual qreal flip() const = 0;
+    virtual bool has_save_id() const = 0;
+    virtual int get_save_id() const = 0;
+    virtual void set_save_id(int value) = 0;
+    virtual void clear_save_id() = 0;
 };
 
 template<typename T>
@@ -127,6 +131,31 @@ public:
     QPointF center() const override { return bounding_rect_unselected().center(); }
 
     QPointF center_scene_coords() const { return this->mapToScene(center()); }
+
+    // Default for items that structurally can't have a save_id
+    // (MultiSelectItem, RubberbandItem, ErrorItem - the latter uses
+    // original_save_id instead, matching Python's BeeErrorItem). Mirrors
+    // Python's hasattr(item, 'save_id') being False for these: querying
+    // is safe and just says "no", but actually getting/setting one is a
+    // logic error and asserts.
+    bool has_save_id() const override { return false; }
+
+    int get_save_id() const override
+    {
+        Q_ASSERT_X(false, "BaseItemMixin::get_save_id", "Should not be called");
+        return -1;
+    }
+
+    void set_save_id(int value) override
+    {
+        Q_UNUSED(value)
+        Q_ASSERT_X(false, "BaseItemMixin::set_save_id", "Should not be called");
+    }
+
+    void clear_save_id() override
+    {
+        Q_ASSERT_X(false, "BaseItemMixin::clear_save_id", "Should not be called");
+    }
 
     void set_cursor(Qt::CursorShape c)
     {

@@ -113,8 +113,9 @@ public:
     // select_all_items(), which uses setSelectionArea()).
     void set_selected_all_items(bool value);
     // Stand-in for Python's hasattr(item, 'save_id') duck-typing check:
-    // whether a QGraphicsItem::type() belongs to a real user-facing item.
-    bool itemAddByUser(int type) const;
+    // whether an item is a real user-facing one (pixmap/text), based on
+    // IBaseItem::get_type()'s string tag rather than a numeric type().
+    bool itemAddByUser(QGraphicsItem* item) const;
 
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;

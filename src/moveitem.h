@@ -161,6 +161,18 @@ public:
     // TODOTALER: use standart type func
     std::string get_type() const override { return TYPE; }
 
+    bool has_save_id() const override { return save_id.has_value(); }
+
+    int get_save_id() const override
+    {
+        Q_ASSERT_X(save_id.has_value(), "PixmapItem::get_save_id", "save_id not set");
+        return *save_id;
+    }
+
+    void set_save_id(int value) override { save_id = value; }
+
+    void clear_save_id() override { save_id = std::nullopt; }
+
     QColor sample_color_at(const QPointF& pos)
     {
         QPointF ipos = this->mapFromScene(pos);
@@ -743,6 +755,18 @@ public:
     std::string get_type() const override { return TYPE; }
     // int type() const override { return 666; }
     bool is_editable() override { return true; }
+
+    bool has_save_id() const override { return save_id.has_value(); }
+
+    int get_save_id() const override
+    {
+        Q_ASSERT_X(save_id.has_value(), "TextItem::get_save_id", "save_id not set");
+        return *save_id;
+    }
+
+    void set_save_id(int value) override { save_id = value; }
+
+    void clear_save_id() override { save_id = std::nullopt; }
 
     QString toString() const
     {
