@@ -42,6 +42,7 @@ public:
     virtual int get_save_id() const = 0;
     virtual void set_save_id(int value) = 0;
     virtual void clear_save_id() = 0;
+    virtual void on_view_scale_change() = 0;
 };
 
 template<typename T>
@@ -155,6 +156,18 @@ public:
     void clear_save_id() override
     {
         Q_ASSERT_X(false, "BaseItemMixin::clear_save_id", "Should not be called");
+    }
+
+    // RubberbandItem is the only BaseItemMixin-direct user and never sets
+    // ItemIsSelectable, so it structurally never appears in selectedItems()
+    // and this is unreachable. SelectableMixin overrides this for every
+    // selectable item (pixmap/text/multiselect) with the real
+    // prepareGeometryChange() implementation.
+    void on_view_scale_change() override
+    {
+        Q_ASSERT_X(false,
+                   "BaseItemMixin::on_view_scale_change",
+                   "Should not be called");
     }
 
     void set_cursor(Qt::CursorShape c)
@@ -451,7 +464,6 @@ public:
 
     QRectF boundingRect() const override
     {
-        // TODOLATER: has_selection_outline check this func
         if (static_cast<const Mixin*>(this)->has_selection_outline() == false) {
             return this->bounding_rect_unselected();
         }
@@ -464,7 +476,7 @@ public:
     QPainterPath shape() const override
     {
         QPainterPath path;
-        if (static_cast<const Mixin*>(this)->has_selection_outline() == true) {
+        if (static_cast<const Mixin*>(this)->has_selection_handles() == true) {
             auto margin = select_resize_size() / 2;
             auto rect = this->bounding_rect_unselected().marginsAdded(
                 QMarginsF(margin, margin, margin, margin));
@@ -812,7 +824,7 @@ protected:
     }
 
 public slots:
-    void on_view_scale_change() { this->prepareGeometryChange(); }
+    void on_view_scale_change() override { this->prepareGeometryChange(); }
 
 protected:
     QVariant itemChange(QGraphicsItem::GraphicsItemChange change,
@@ -877,7 +889,7 @@ public:
     }
 
     virtual bool has_selection_outline() const { return true; }
-    virtual bool has_selection_handles() { return true; }
+    virtual bool has_selection_handles() const { return true; }
 
     virtual QVector<QGraphicsItem*> selection_action_items()
     {

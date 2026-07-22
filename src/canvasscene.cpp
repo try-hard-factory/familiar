@@ -116,6 +116,14 @@ CanvasScene::CanvasScene(MainWindow& mw,
 
 CanvasScene::~CanvasScene()
 {
+    // Disconnect everything involving this before ~QGraphicsScene() runs:
+    // it deletes remaining items, which can fire selectionChanged()/
+    // changed(). By then this object's own (CanvasScene) destructor has
+    // already run, so Qt asserts ("class destructor may have already
+    // run") if it tries to invoke a slot declared on this class.
+    disconnect(this, nullptr, nullptr, nullptr);
+    disconnect(SettingsHandler::getInstance(), nullptr, this, nullptr);
+    disconnect(QApplication::clipboard(), nullptr, this, nullptr);
     delete projectSettings_;
 }
 
@@ -792,23 +800,8 @@ QList<QGraphicsItem*> CanvasScene::items_by_type(const std::string& type)
 
 QList<QGraphicsItem*> CanvasScene::items_for_save()
 {
-    // Returns the items that are to be saved.
-    // Items to be saved are items that have a save_id attribute.
-    // In Python: filter(lambda i: hasattr(i, 'save_id'),
-    //                    self.items(order=Qt.SortOrder.AscendingOrder))
-
-    QList<QGraphicsItem*> allItems = items();
-
-    // Sort by zValue ascending (same as Qt.SortOrder.AscendingOrder)
-    std::sort(allItems.begin(),
-              allItems.end(),
-              [](QGraphicsItem* a, QGraphicsItem* b) {
-                  return a->zValue() < b->zValue();
-              });
-
-    // Filter user items (those that would have save_id in Python)
     QList<QGraphicsItem*> userItems;
-    for (QGraphicsItem* item : allItems) {
+    for (QGraphicsItem* item : items(Qt::AscendingOrder)) {
         if (itemAddByUser(item))
             userItems.append(item);
     }
@@ -816,22 +809,18 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     return userItems;
 }
 
-// TODOLATER:
 void CanvasScene::clear_save_ids()
 {
-    Q_ASSERT_X(false, "CanvasScene::clear_save_ids", "Not implemented");
+    for (QGraphicsItem* item : items_for_save()) {
+        dynamic_cast<IBaseItem*>(item)->clear_save_id();
+    }
 }
 
 void CanvasScene::on_view_scale_change()
 {
     for (QGraphicsItem* item : selectedItems()) {
-        // TODOLATER: Может сделать в IBaseItem виртуальный метод,
-        // который я переопределю в SelectableMixin
-        if (auto* pixmap_item = dynamic_cast<PixmapItem*>(item)) {
-            pixmap_item->on_view_scale_change();
-        } else if (auto* text_item = dynamic_cast<TextItem*>(item)) {
-            text_item->on_view_scale_change();
-        }
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+            baseItem->on_view_scale_change();
     }
 }
 
