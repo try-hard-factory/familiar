@@ -763,12 +763,15 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
 {
+    // If user_only is set to true, only return items added by the user
+    // (i.e. no multi select outlines and other UI items). Python checks
+    // hasattr(i, 'save_id'); itemAddByUser() is the C++ stand-in for that
+    // (only PixmapItem/TextItem carry a save_id member).
     QList<QGraphicsItem*> items = QGraphicsScene::selectedItems();
     if (userOnly) {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : items) {
-            // TODOLATER: save_id ???
-            if (item->data(0).isValid() && itemAddByUser(item->type()))
+            if (itemAddByUser(item))
                 userItems.append(item);
         }
         return userItems;
@@ -805,7 +808,7 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     // Filter user items (those that would have save_id in Python)
     QList<QGraphicsItem*> userItems;
     for (QGraphicsItem* item : allItems) {
-        if (itemAddByUser(item->type()))
+        if (itemAddByUser(item))
             userItems.append(item);
     }
 
@@ -823,11 +826,9 @@ void CanvasScene::on_view_scale_change()
     for (QGraphicsItem* item : selectedItems()) {
         // TODOLATER: Может сделать в IBaseItem виртуальный метод,
         // который я переопределю в SelectableMixin
-        if (item->type() == 777) {
-            auto* pixmap_item = (PixmapItem*) item;
+        if (auto* pixmap_item = dynamic_cast<PixmapItem*>(item)) {
             pixmap_item->on_view_scale_change();
-        } else if (item->type() == 666) {
-            auto* text_item = (TextItem*) item;
+        } else if (auto* text_item = dynamic_cast<TextItem*>(item)) {
             text_item->on_view_scale_change();
         }
     }
@@ -840,7 +841,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
         [this](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : itemList) {
-            if (item->data(0).isValid() && this->itemAddByUser(item->type()))
+            if (this->itemAddByUser(item))
                 userItems.append(item);
         }
         return userItems;
@@ -1060,9 +1061,14 @@ void CanvasScene::set_selected_all_items(bool value)
     setSelectionArea(path);
 }
 
-bool CanvasScene::itemAddByUser(int type) const
+bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
 {
-    return (type == 666) || (type == 777);
+    auto* baseItem = dynamic_cast<IBaseItem*>(item);
+    if (!baseItem) {
+        return false;
+    }
+    const std::string type = baseItem->get_type();
+    return type == "pixmap" || type == "text";
 }
 
 // ============================================================================
