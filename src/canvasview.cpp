@@ -499,12 +499,12 @@ void CanvasView::on_action_redo()
 
 void CanvasView::on_action_select_all()
 {
-    scene_->set_selected_all_items(true);
+    scene_->select_all_items();
 }
 
 void CanvasView::on_action_deselect_all()
 {
-    scene_->set_selected_all_items(false);
+    scene_->deselect_all_items();
 }
 
 void CanvasView::on_action_delete_items()

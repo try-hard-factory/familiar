@@ -94,7 +94,7 @@ CanvasScene::CanvasScene(MainWindow& mw,
     connect(this,
             &CanvasScene::selectionChanged,
             this,
-            &CanvasScene::on_selection_changed);
+            &CanvasScene::on_selection_change);
     connect(this, &CanvasScene::changed, this, &CanvasScene::on_change);
     (void) scene;
     clear();
@@ -204,7 +204,6 @@ void CanvasScene::copy_selection_to_internal_clipboard()
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
-    // set_selected_all_items(false);
     QList<IBaseItem*> copies;
     for (IBaseItem* item : internal_clipboard) {
         IBaseItem* copy = item->create_copy();
@@ -322,110 +321,110 @@ void CanvasScene::arrange_default()
     else // "optimal"
         arrange_optimal();
 }
-    // ============================================================================
-    // Rectangle Packer для arrange_optimal
-    // ============================================================================
+// ============================================================================
+// Rectangle Packer для arrange_optimal
+// ============================================================================
 
-    class RectPacker
+class RectPacker
+{
+public:
+    struct Size
     {
-    public:
-        struct Size
-        {
-            int width;
-            int height;
-        };
-
-        struct Position
-        {
-            int x;
-            int y;
-        };
-
-        struct Shelf
-        {
-            int x = 0;
-            int y = 0;
-            int maxHeight = 0;
-        };
-
-        struct FreeRect
-        {
-            int x, y, width, height;
-        };
-
-        static QList<Position> pack(const QList<Size>& sizes,
-                                    int maxWidth,
-                                    int maxHeight,
-                                    int& outWidth,
-                                    int& outHeight)
-        {
-            QList<Position> positions;
-            QList<FreeRect> freeRects;
-            freeRects.append({0, 0, maxWidth, maxHeight});
-
-            for (const auto& size : sizes) {
-                Position pos;
-                if (!packRect(size.width, size.height, freeRects, pos)) {
-                    return QList<Position>(); // Packing impossible
-                }
-                positions.append(pos);
-            }
-
-            // Calculate bounding box
-            outWidth = 0;
-            outHeight = 0;
-            for (int i = 0; i < positions.size(); ++i) {
-                outWidth = std::max(outWidth, positions[i].x + sizes[i].width);
-                outHeight = std::max(outHeight, positions[i].y + sizes[i].height);
-            }
-
-            return positions;
-        }
-
-    private:
-        static bool packRect(int width,
-                            int height,
-                            QList<FreeRect>& freeRects,
-                            Position& pos)
-        {
-            // Find best free rectangle
-            int bestIndex = -1;
-            int bestArea = INT_MAX;
-
-            for (int i = 0; i < freeRects.size(); ++i) {
-                const auto& fr = freeRects[i];
-                if (fr.width >= width && fr.height >= height) {
-                    int area = fr.width * fr.height;
-                    if (area < bestArea) {
-                        bestArea = area;
-                        bestIndex = i;
-                    }
-                }
-            }
-
-            if (bestIndex == -1) {
-                return false;
-            }
-
-            FreeRect fr = freeRects[bestIndex];
-            pos.x = fr.x;
-            pos.y = fr.y;
-
-            // Split free rectangle
-            if (width < fr.width) {
-                freeRects.append({fr.x + width, fr.y, fr.width - width, height});
-            }
-            if (height < fr.height) {
-                freeRects.append(
-                    {fr.x, fr.y + height, fr.width, fr.height - height});
-            }
-
-            // Remove used free rectangle
-            freeRects.removeAt(bestIndex);
-
-            return true;
-        }
+        int width;
+        int height;
     };
+
+    struct Position
+    {
+        int x;
+        int y;
+    };
+
+    struct Shelf
+    {
+        int x = 0;
+        int y = 0;
+        int maxHeight = 0;
+    };
+
+    struct FreeRect
+    {
+        int x, y, width, height;
+    };
+
+    static QList<Position> pack(const QList<Size>& sizes,
+                                int maxWidth,
+                                int maxHeight,
+                                int& outWidth,
+                                int& outHeight)
+    {
+        QList<Position> positions;
+        QList<FreeRect> freeRects;
+        freeRects.append({0, 0, maxWidth, maxHeight});
+
+        for (const auto& size : sizes) {
+            Position pos;
+            if (!packRect(size.width, size.height, freeRects, pos)) {
+                return QList<Position>(); // Packing impossible
+            }
+            positions.append(pos);
+        }
+
+        // Calculate bounding box
+        outWidth = 0;
+        outHeight = 0;
+        for (int i = 0; i < positions.size(); ++i) {
+            outWidth = std::max(outWidth, positions[i].x + sizes[i].width);
+            outHeight = std::max(outHeight, positions[i].y + sizes[i].height);
+        }
+
+        return positions;
+    }
+
+private:
+    static bool packRect(int width,
+                         int height,
+                         QList<FreeRect>& freeRects,
+                         Position& pos)
+    {
+        // Find best free rectangle
+        int bestIndex = -1;
+        int bestArea = INT_MAX;
+
+        for (int i = 0; i < freeRects.size(); ++i) {
+            const auto& fr = freeRects[i];
+            if (fr.width >= width && fr.height >= height) {
+                int area = fr.width * fr.height;
+                if (area < bestArea) {
+                    bestArea = area;
+                    bestIndex = i;
+                }
+            }
+        }
+
+        if (bestIndex == -1) {
+            return false;
+        }
+
+        FreeRect fr = freeRects[bestIndex];
+        pos.x = fr.x;
+        pos.y = fr.y;
+
+        // Split free rectangle
+        if (width < fr.width) {
+            freeRects.append({fr.x + width, fr.y, fr.width - width, height});
+        }
+        if (height < fr.height) {
+            freeRects.append(
+                {fr.x, fr.y + height, fr.width, fr.height - height});
+        }
+
+        // Remove used free rectangle
+        freeRects.removeAt(bestIndex);
+
+        return true;
+    }
+};
 void CanvasScene::arrange(bool vertical)
 {
     cancel_active_modes();
@@ -661,7 +660,9 @@ bool CanvasScene::has_single_image_selection()
 {
     if (has_single_selection()) {
         auto* item = dynamic_cast<IBaseItem*>(selectedItems(true).first());
-        Q_ASSERT_X(item, "CanvasScene::has_single_image_selection", "item == null");
+        Q_ASSERT_X(item,
+                   "CanvasScene::has_single_image_selection",
+                   "item == null");
         return item->is_image();
     }
     return false;
@@ -758,7 +759,8 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     }
     if (active_mode_ == kMoveMode && has_selection()
         && !multiselect_item_->is_action_active()
-        && !dynamic_cast<IBaseItem*>(selectedItems().first())->is_action_active()) {
+        && !dynamic_cast<IBaseItem*>(selectedItems().first())
+                ->is_action_active()) {
         auto delta = event->scenePos() - event_start;
         if (!delta.isNull()) {
             undo_stack_->push(
@@ -861,7 +863,9 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
 
     for (QGraphicsItem* item : base) {
         IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
-        Q_ASSERT_X(baseItem, "CanvasScene::itemsBoundingRect", "item is not an IBaseItem");
+        Q_ASSERT_X(baseItem,
+                   "CanvasScene::itemsBoundingRect",
+                   "item is not an IBaseItem");
         QVector<QPointF> corners = baseItem->corners_scene_coords();
         for (const QPointF& corner : corners) {
             x.append(corner.x());
@@ -883,8 +887,12 @@ QPointF CanvasScene::get_selection_center()
     return (rect.topLeft() + rect.bottomRight()) / 2;
 }
 
-void CanvasScene::on_selection_changed()
+void CanvasScene::on_selection_change()
 {
+    if (clear_ongoing) {
+        return;
+    }
+
     if (has_multi_selection()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
@@ -1031,24 +1039,9 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
     return addedItems;
 }
 
-// ============================================================================
-// C++-only additions (no direct equivalent in beeref/scene.py)
-// ============================================================================
-
 CanvasScene::ESceneMode CanvasScene::active_mode() const
 {
     return active_mode_;
-}
-
-void CanvasScene::set_selected_all_items(bool value)
-{
-    cancel_crop_mode();
-    for (QGraphicsItem* item : items()) {
-        item->setSelected(value);
-    }
-    QPainterPath path;
-    path.addRect(itemsBoundingRect());
-    setSelectionArea(path);
 }
 
 bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
@@ -1062,7 +1055,7 @@ bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
 }
 
 // ============================================================================
-// Legacy (pre-port; no equivalent in beeref)
+// Legacy
 // ============================================================================
 
 void CanvasScene::keyPressEvent(QKeyEvent* event) {}
@@ -1079,35 +1072,8 @@ void CanvasScene::pasteFromClipboard()
 
 QByteArray CanvasScene::fml_payload()
 {
+    // TODOLATER: fml atchive
     QByteArray arr;
-    // QDataStream ds(&arr, QIODevice::ReadWrite);
-
-    // qint16 count = objectsCount();
-    // ds << count;
-    // auto items = this->items();
-    // for (auto& it : items) {
-    //     // \TODO: type.h header with all types (image, textline, multitextline)
-    //     if (it->type() != 3)
-    //         continue;
-    //     auto widget = qgraphicsitem_cast<MoveItem*>(it);
-
-    //     ds << widget->scenePos() << (qint32) widget->height()
-    //        << (qint32) widget->width() << widget->boundingRect()
-    //        << (quint16) widget->format();
-
-    //     QByteArray compressed = qCompress(widget->qimage().constBits(),
-    //                                       widget->qimage().sizeInBytes(),
-    //                                       7);
-
-    //     qDebug() << widget->qimage().sizeInBytes() << " " << compressed.size()
-    //              << " " << widget->qimage().bitPlaneCount();
-
-    //     ds << (quint64) compressed.size();
-    //     qDebug() << "fml_payload::save sizeInBytes: "
-    //              << widget->qimage().sizeInBytes();
-    //     ds.writeRawData((const char*) compressed.data(), compressed.size());
-    // }
-
     return arr;
 }
 
@@ -1165,73 +1131,10 @@ bool CanvasScene::isUntitled()
     return projectSettings_->isDefaultProjectName();
 }
 
-std::string stateText(int idx)
-{
-    switch (idx) {
-    case 0:
-        return "eMouseMoving";
-    case 1:
-        return "eMouseSelection";
-    case 2:
-        return "eGroupItemMoving";
-    case 3:
-        return "eGroupItemResizing";
-    }
-    return "undefined";
-}
-
-void CanvasScene::deselectItems()
-{
-    foreach (QGraphicsItem* item, selectedItems()) {
-        item->setSelected(false);
-    }
-    selectedItems().clear();
-}
-
-bool CanvasScene::isAnySelectedUnderCursor() const
-{
-    auto selItems = selectedItems();
-    //    LOG_DEBUG(logger, "Selected Items: ", selItems.size());
-
-    for (auto& it : selItems) {
-        if (it->isUnderMouse())
-            return true;
-    }
-
-    return false;
-}
-
-void CanvasScene::drawForeground(QPainter* painter, const QRectF& rect)
-{
-    // #ifdef GRID_DEBUG
-    //     painter->setPen(QPen(Qt::green, 3));
-    //     painter->drawEllipse(itemGroup_->pos(), 6, 6);
-    //     painter->setPen(QPen(Qt::red, 3));
-    //     painter->drawEllipse(itemGroup_->scenePos(), 10, 10);
-    //     painter->setPen(QPen(Qt::white, 3));
-    //     painter->drawEllipse({0, 0}, 2, 2);
-    //     painter->setPen(QPen(Qt::black, 1));
-    //     int begin = -3000;
-    //     while (begin != 3000) {
-    //         painter->drawLine(-99999, begin, 9999, begin);
-    //         painter->drawLine(begin, -99999, begin, 99999);
-    //         begin += 100;
-    //     }
-    // #endif
-    //     if (!mainSelArea_.isReady())
-    //         return;
-    //     painter->save();
-    //     qreal wsize = 2;
-    //     QPen outline_pen{selectionColor_, wsize};
-    //     outline_pen.setCosmetic(true);
-    //     painter->setPen(outline_pen);
-    //     auto r = itemGroup_->sceneBoundingRect();
-    //     painter->drawRect(r);
-    //     painter->restore();
-}
 
 void CanvasScene::handleHtmlFromClipboard(const QString& html)
 {
+    // TODOLATER:
     std::regex r("<img[^>]*src=['|\"](.*?)['|\"].*?>");
     std::smatch results;
     auto str = html.toStdString();
@@ -1242,16 +1145,6 @@ void CanvasScene::handleHtmlFromClipboard(const QString& html)
         imgdownloader_->download(QString::fromStdString((*it)[1].str()), {0, 0});
     } else {
         LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
-    }
-}
-
-//ItemGroup
-void CanvasScene::slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy)
-{
-    for (QGraphicsItem* item : selectedItems()) {
-        if (item != signalOwner) {
-            item->moveBy(dx, dy);
-        }
     }
 }
 
@@ -1269,7 +1162,7 @@ void CanvasScene::clipboardChanged()
 
 qint16 CanvasScene::objectsCount() const
 {
-    // \TODO: type.h header with all types (image, textline, multitextline)
+    // TODO: type.h header with all types (image, textline, multitextline)
     const int targetObjectType = 3;
     return std::count_if(items().begin(),
                          items().end(),

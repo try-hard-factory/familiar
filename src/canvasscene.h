@@ -99,7 +99,7 @@ public:
 
 public slots:
     void clear();
-    void on_selection_changed();
+    void on_selection_change();
     void on_change();
 
 public:
@@ -110,9 +110,6 @@ public:
     // Getter for active_mode_ (Python code just reads self.active_mode
     // directly; used e.g. by ItemMixin::on_selected_change()).
     ESceneMode active_mode() const;
-    // Selects/deselects every item in the scene (Python only has
-    // select_all_items(), which uses setSelectionArea()).
-    void set_selected_all_items(bool value);
     // Stand-in for Python's hasattr(item, 'save_id') duck-typing check:
     // whether an item is a real user-facing one (pixmap/text), based on
     // IBaseItem::get_type()'s string tag rather than a numeric type().
@@ -154,10 +151,8 @@ public:
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
-    void drawForeground(QPainter* painter, const QRectF& rect) override;
 
 public slots:
-    void slotMove(QGraphicsItem* signalOwner, qreal dx, qreal dy);
     void settingsChangedSlot();
 
 private slots:
@@ -165,8 +160,6 @@ private slots:
 
 private:
     qint16 objectsCount() const;
-    bool isAnySelectedUnderCursor() const;
-    void deselectItems();
 
     void handleImageFromClipboard(const QImage& image);
     void handleHtmlFromClipboard(const QString& html);
