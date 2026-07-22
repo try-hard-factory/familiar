@@ -25,6 +25,7 @@
 #include <QVariantMap>
 #include <QWheelEvent>
 #include <QtGlobal>
+#include <qassert.h>
 #include <qdebug.h>
 
 template<typename U, typename T>
@@ -56,6 +57,7 @@ public:
     virtual void on_selected_change(bool value)
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        Q_ASSERT(scene);
         // Only bring to front when the user directly clicked this item
         // (kMoveMode). During a rubber-band drag (kRubberbandMode),
         // stacked/overlapping images would otherwise get reshuffled in
@@ -64,6 +66,28 @@ public:
         if (value && scene && !scene->has_selection()
             && scene->active_mode() == CanvasScene::ESceneMode::kMoveMode) {
             this->bring_to_front();
+        }
+
+        // fixed:
+        // Ctrl+click excluding this item from an existing multi-selection:
+        // send it behind whatever is still selected, so the remaining
+        // selected images stay visually on top of the one just excluded
+        // instead of it covering them.
+        if (!value && scene
+            && scene->active_mode() == CanvasScene::ESceneMode::kMoveMode) {
+            QList<QGraphicsItem*> others;
+            for (QGraphicsItem* other : scene->selectedItems(true)) {
+                if (other != this) {
+                    others.append(other);
+                }
+            }
+            if (!others.isEmpty()) {
+                qreal minZ = others.first()->zValue();
+                for (QGraphicsItem* other : others) {
+                    minZ = qMin(minZ, other->zValue());
+                }
+                this->set_z_value(minZ - scene->Z_STEP);
+            }
         }
     }
 
