@@ -168,7 +168,9 @@ void CanvasScene::cancel_active_modes()
 
 void CanvasScene::end_rubberband_mode()
 {
-    Q_ASSERT_X(rubberband_item_, "end_rubberband_mode", "rubberband_item_ == null!");
+    Q_ASSERT_X(rubberband_item_,
+               "end_rubberband_mode",
+               "rubberband_item_ == null!");
     if (rubberband_item_->scene()) {
         qDebug() << "End rubberband mode";
         removeItem(rubberband_item_);
@@ -294,16 +296,15 @@ void CanvasScene::normalize_size()
         QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         scaleFactors.append(std::sqrt(avg / (rect.width() * rect.height())));
     }
-    // TODOLATER: use undo stack
+
     undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
 void CanvasScene::arrange_default()
 {
-    const QString mode = FamSettings()
-                             .valueOrDefault(
-                                 QStringLiteral("Items/arrange_default"))
-                             .toString();
+    const QString mode
+        = settings->valueOrDefault(QStringLiteral("Items/arrange_default"))
+              .toString();
     if (mode == QLatin1String("horizontal"))
         arrange(false);
     else if (mode == QLatin1String("vertical"))
@@ -313,10 +314,113 @@ void CanvasScene::arrange_default()
     else // "optimal"
         arrange_optimal();
 }
+    // ============================================================================
+    // Rectangle Packer для arrange_optimal
+    // ============================================================================
 
+    class RectPacker
+    {
+    public:
+        struct Size
+        {
+            int width;
+            int height;
+        };
+
+        struct Position
+        {
+            int x;
+            int y;
+        };
+
+        struct Shelf
+        {
+            int x = 0;
+            int y = 0;
+            int maxHeight = 0;
+        };
+
+        struct FreeRect
+        {
+            int x, y, width, height;
+        };
+
+        static QList<Position> pack(const QList<Size>& sizes,
+                                    int maxWidth,
+                                    int maxHeight,
+                                    int& outWidth,
+                                    int& outHeight)
+        {
+            QList<Position> positions;
+            QList<FreeRect> freeRects;
+            freeRects.append({0, 0, maxWidth, maxHeight});
+
+            for (const auto& size : sizes) {
+                Position pos;
+                if (!packRect(size.width, size.height, freeRects, pos)) {
+                    return QList<Position>(); // Packing impossible
+                }
+                positions.append(pos);
+            }
+
+            // Calculate bounding box
+            outWidth = 0;
+            outHeight = 0;
+            for (int i = 0; i < positions.size(); ++i) {
+                outWidth = std::max(outWidth, positions[i].x + sizes[i].width);
+                outHeight = std::max(outHeight, positions[i].y + sizes[i].height);
+            }
+
+            return positions;
+        }
+
+    private:
+        static bool packRect(int width,
+                            int height,
+                            QList<FreeRect>& freeRects,
+                            Position& pos)
+        {
+            // Find best free rectangle
+            int bestIndex = -1;
+            int bestArea = INT_MAX;
+
+            for (int i = 0; i < freeRects.size(); ++i) {
+                const auto& fr = freeRects[i];
+                if (fr.width >= width && fr.height >= height) {
+                    int area = fr.width * fr.height;
+                    if (area < bestArea) {
+                        bestArea = area;
+                        bestIndex = i;
+                    }
+                }
+            }
+
+            if (bestIndex == -1) {
+                return false;
+            }
+
+            FreeRect fr = freeRects[bestIndex];
+            pos.x = fr.x;
+            pos.y = fr.y;
+
+            // Split free rectangle
+            if (width < fr.width) {
+                freeRects.append({fr.x + width, fr.y, fr.width - width, height});
+            }
+            if (height < fr.height) {
+                freeRects.append(
+                    {fr.x, fr.y + height, fr.width, fr.height - height});
+            }
+
+            // Remove used free rectangle
+            freeRects.removeAt(bestIndex);
+
+            return true;
+        }
+    };
 void CanvasScene::arrange(bool vertical)
 {
-    cancel_crop_mode();
+    cancel_active_modes();
 
     QList<QGraphicsItem*> items = selectedItems(true);
     if (items.size() < 2)
@@ -389,115 +493,9 @@ void CanvasScene::arrange(bool vertical)
 
     undo_stack_->push(new ArrangeItemsCommand(this, sortedItems, positions));
 }
-
-// ============================================================================
-// Rectangle Packer для arrange_optimal
-// ============================================================================
-
-class RectPacker
-{
-public:
-    struct Size
-    {
-        int width;
-        int height;
-    };
-
-    struct Position
-    {
-        int x;
-        int y;
-    };
-
-    struct Shelf
-    {
-        int x = 0;
-        int y = 0;
-        int maxHeight = 0;
-    };
-
-    struct FreeRect
-    {
-        int x, y, width, height;
-    };
-
-    static QList<Position> pack(const QList<Size>& sizes,
-                                int maxWidth,
-                                int maxHeight,
-                                int& outWidth,
-                                int& outHeight)
-    {
-        QList<Position> positions;
-        QList<FreeRect> freeRects;
-        freeRects.append({0, 0, maxWidth, maxHeight});
-
-        for (const auto& size : sizes) {
-            Position pos;
-            if (!packRect(size.width, size.height, freeRects, pos)) {
-                return QList<Position>(); // Packing impossible
-            }
-            positions.append(pos);
-        }
-
-        // Calculate bounding box
-        outWidth = 0;
-        outHeight = 0;
-        for (int i = 0; i < positions.size(); ++i) {
-            outWidth = std::max(outWidth, positions[i].x + sizes[i].width);
-            outHeight = std::max(outHeight, positions[i].y + sizes[i].height);
-        }
-
-        return positions;
-    }
-
-private:
-    static bool packRect(int width,
-                         int height,
-                         QList<FreeRect>& freeRects,
-                         Position& pos)
-    {
-        // Find best free rectangle
-        int bestIndex = -1;
-        int bestArea = INT_MAX;
-
-        for (int i = 0; i < freeRects.size(); ++i) {
-            const auto& fr = freeRects[i];
-            if (fr.width >= width && fr.height >= height) {
-                int area = fr.width * fr.height;
-                if (area < bestArea) {
-                    bestArea = area;
-                    bestIndex = i;
-                }
-            }
-        }
-
-        if (bestIndex == -1) {
-            return false;
-        }
-
-        FreeRect fr = freeRects[bestIndex];
-        pos.x = fr.x;
-        pos.y = fr.y;
-
-        // Split free rectangle
-        if (width < fr.width) {
-            freeRects.append({fr.x + width, fr.y, fr.width - width, height});
-        }
-        if (height < fr.height) {
-            freeRects.append(
-                {fr.x, fr.y + height, fr.width, fr.height - height});
-        }
-
-        // Remove used free rectangle
-        freeRects.removeAt(bestIndex);
-
-        return true;
-    }
-};
-
 void CanvasScene::arrange_optimal()
 {
-    cancel_crop_mode();
+    cancel_active_modes();
 
     QList<QGraphicsItem*> items = selectedItems(true);
     if (items.size() < 2)
@@ -592,7 +590,7 @@ void CanvasScene::arrange_square()
 
 void CanvasScene::flip_items(bool vertical)
 {
-    cancel_crop_mode();
+    cancel_active_modes();
     undo_stack_->push(new FlipItemsCommand(selectedItems(true),
                                            get_selection_center(),
                                            vertical));
@@ -603,8 +601,8 @@ void CanvasScene::crop_items()
     if (crop_item)
         return;
     if (has_single_image_selection()) {
-        // TODOLATER: assert?
         IBaseItem* item = (IBaseItem*) selectedItems(true).first();
+        Q_ASSERT_X(item, "CanvasScene::crop_items", "item == null");
         if (item->is_image()) {
             item->enter_crop_mode();
         }
@@ -615,10 +613,6 @@ QColor CanvasScene::sample_color_at(const QPointF& position)
 {
     auto* itemAtPos = itemAt(position, views().first()->transform());
     if (itemAtPos) {
-        // sample_color_at() isn't part of IBaseItem's polymorphic interface
-        // (Python's BaseItemMixin has a no-op fallback returning None;
-        // only PixmapItem gives a real implementation, so we dynamic_cast
-        // here instead of crashing into BaseItemMixin's assert stub).
         if (auto* pixmapItem = dynamic_cast<PixmapItem*>(itemAtPos)) {
             return pixmapItem->sample_color_at(position);
         }
@@ -658,8 +652,9 @@ bool CanvasScene::has_multi_selection()
 bool CanvasScene::has_single_image_selection()
 {
     if (has_single_selection()) {
-        // TODOLATER: assert?
-        return dynamic_cast<IBaseItem*>(selectedItems(true).first())->is_image();
+        auto* item = dynamic_cast<IBaseItem*>(selectedItems(true).first());
+        Q_ASSERT_X(item, "CanvasScene::has_single_image_selection", "item == null");
+        return item->is_image();
     }
     return false;
 }
@@ -704,6 +699,7 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
+    cancel_active_modes();
     auto* item = itemAt(event->scenePos(), views().first()->transform());
     if (item) {
         if (!item->isSelected()) {
@@ -740,6 +736,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         // the rubberband and visually cover it.
         rubberband_item_->bring_to_front();
         CanvasView* view = static_cast<CanvasView*>(views().first());
+        Q_ASSERT_X(view, "CanvasScene::mouseMoveEvent", "view == null");
         view->resetPreviousTransform();
     }
 
