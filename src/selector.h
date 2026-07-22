@@ -968,11 +968,12 @@ public:
         Q_ASSERT_X(false, "MultiSelectItem::is_image", "Should not be called");
         return false;
     }
-    std::string get_type() const override
-    {
-        Q_ASSERT_X(false, "MultiSelectItem::get_type", "Should not be called");
-        return {};
-    }
+    // Unlike is_image()/get_save_id() etc., this genuinely gets called
+    // during unfiltered scene iteration (itemAddByUser(), items_by_type())
+    // since rubberband_item_/multiselect_item_ are real scene items while
+    // active. Mirrors Python's getattr(i, 'TYPE', None): a safe "no type"
+    // answer, not a logic error.
+    std::string get_type() const override { return {}; }
 
     // No selection-driven bring-to-front logic for the multi-select
     // rectangle itself (Python's MultiSelectItem has no on_selected_change,
@@ -1037,11 +1038,10 @@ public:
         Q_ASSERT_X(false, "RubberbandItem::is_image", "Should not be called");
         return false;
     }
-    std::string get_type() const override
-    {
-        Q_ASSERT_X(false, "RubberbandItem::get_type", "Should not be called");
-        return {};
-    }
+    // See MultiSelectItem::get_type(): rubberband_item_ is a real scene
+    // item while dragging, so this is reached during unfiltered scene
+    // iteration and must answer safely rather than assert.
+    std::string get_type() const override { return {}; }
     // Doesn't go through SelectableMixin in Python either, so it has no
     // concept of an active scale/rotate/flip drag.
     bool is_action_active() const override { return false; }

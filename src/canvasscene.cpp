@@ -779,11 +779,12 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
     return items;
 }
 
-QList<QGraphicsItem*> CanvasScene::items_by_type(int type)
+QList<QGraphicsItem*> CanvasScene::items_by_type(const std::string& type)
 {
     QList<QGraphicsItem*> itemsl;
     for (QGraphicsItem* item : items()) {
-        if (item->type() == type)
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (baseItem && baseItem->get_type() == type)
             itemsl.append(item);
     }
     return itemsl;
