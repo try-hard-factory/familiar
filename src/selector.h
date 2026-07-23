@@ -7,6 +7,7 @@
 #include "core/settingshandler.h"
 #include <utils/utils.h>
 #include <QBrush>
+#include <QCursor>
 #include <QDebug>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
@@ -531,6 +532,25 @@ public:
     }
 
 protected:
+    // Qt's QGraphicsItem::setCursor()/unsetCursor() don't reliably update
+    // the viewport cursor (QTBUG-4190); route through the scene's
+    // cursor_changed/cursor_cleared signals instead, same as Python.
+    void set_cursor(const QCursor& cursor)
+    {
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        if (scene) {
+            emit scene->cursor_changed(cursor);
+        }
+    }
+
+    void unset_cursor()
+    {
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        if (scene) {
+            emit scene->cursor_cleared();
+        }
+    }
+
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override
     {
         if (static_cast<Mixin*>(this)->has_selection_handles() == false) {
@@ -539,18 +559,17 @@ protected:
 
         QPointF pos = event->pos();
         if (isInHandleFreeCenter(pos)) {
-            // this->setCursor(Qt::ArrowCursor);
-            this->unsetCursor();
+            this->unset_cursor();
             return;
         }
 
         for (const QPointF& corner : corners()) {
             if (isInScaleHandle(corner, pos)) {
-                this->setCursor(get_corner_scale_cursor(corner));
+                this->set_cursor(get_corner_scale_cursor(corner));
                 return;
             } else if (isInRotateHandle(corner, pos)) {
                 // TODOLATER: custom rotate icon
-                this->setCursor(Qt::SizeAllCursor);
+                this->set_cursor(QCursor(Qt::SizeAllCursor));
                 return;
             }
         }
@@ -559,30 +578,27 @@ protected:
             if (isInFlipHandle(edge.rect, pos)) {
                 // TODOLATER: custom flip icons
                 if (get_edge_flips_v(edge)) {
-                    this->setCursor(Qt::SizeVerCursor);
+                    this->set_cursor(QCursor(Qt::SizeVerCursor));
                 } else {
-                    this->setCursor(Qt::SizeHorCursor);
+                    this->set_cursor(QCursor(Qt::SizeHorCursor));
                 }
                 return;
             }
         }
 
-        // this->setCursor(Qt::ArrowCursor);
-        this->unsetCursor();
+        this->unset_cursor();
     }
 
     void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override
     {
-        qDebug() << "hoverEnterEvent !!!!!!!!!!!!!!";
         if (static_cast<Mixin*>(this)->has_selection_handles() == false) {
-            // this->setCursor(Qt::ArrowCursor);
-            this->unsetCursor();
+            this->unset_cursor();
         }
     }
 
     void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override
     {
-        this->unsetCursor();
+        this->unset_cursor();
     }
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
