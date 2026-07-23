@@ -10,6 +10,9 @@
 #
 # Extra args are forwarded to the cmake configure step, e.g.:
 #   ./build.sh debug -DCMAKE_CXX_COMPILER=clang++
+#
+# Also (re)points ./compile_commands.json at the mode just built, for
+# clangd/ccls.
 
 set -euo pipefail
 
@@ -54,6 +57,8 @@ rm -rf "$BUILD_DIR"
 
 echo "==> [$MODE] Configuring in $BUILD_DIR"
 cmake -B "$BUILD_DIR" "${CMAKE_ARGS[@]}" "$@"
+
+ln -sf "$BUILD_DIR/compile_commands.json" compile_commands.json
 
 echo "==> [$MODE] Building with $JOBS jobs"
 cmake --build "$BUILD_DIR" -j"$JOBS"
