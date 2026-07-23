@@ -95,12 +95,6 @@ public:
     {
         // TODOLATER:
     }
-    void unset_cursor()
-    {
-        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        // TODOLATER:
-        emit scene->cursor_cleared();
-    }
 };
 
 class PixmapItem : public ItemMixin<PixmapItem, QGraphicsPixmapItem>
@@ -624,25 +618,25 @@ protected:
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override
     {
         if (!crop_mode) {
-            QGraphicsItem::hoverMoveEvent(event);
+            ItemMixin<PixmapItem, QGraphicsPixmapItem>::hoverMoveEvent(event);
             return;
         }
 
         for (auto handle : crop_handles()) {
             if ((this->*handle)().contains(event->pos())) {
-                setCursor(get_crop_handle_cursor(handle));
+                set_cursor(get_crop_handle_cursor(handle));
                 return;
             }
         }
 
         for (auto edge : crop_edges()) {
             if ((this->*edge)().contains(event->pos())) {
-                setCursor(get_crop_edge_cursor(edge));
+                set_cursor(get_crop_edge_cursor(edge));
                 return;
             }
         }
 
-        unsetCursor();
+        unset_cursor();
         // setCursor(Qt::ArrowCursor);
         // unset_cursor();
     }
