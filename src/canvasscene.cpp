@@ -1084,16 +1084,7 @@ void CanvasScene::setProjectSettings(project_settings* ps)
 
 void CanvasScene::cleanupWorkplace()
 {
-    // itemGroup_->clearItemGroup();
 
-    // auto childs = this->items(Qt::DescendingOrder);
-
-    // for (auto& it : childs) {
-    //     if (it == itemGroup_)
-    //         continue;
-    //     removeItem(it);
-    //     //        delete it;
-    // }
 }
 
 QString CanvasScene::path()
