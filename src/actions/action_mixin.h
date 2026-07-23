@@ -10,6 +10,7 @@
 #include "actions.h"
 #include "menu_structure.h"
 #include <core/settings.h>
+#include <core/settingshandler.h>
 
 // TODO:
 
@@ -38,6 +39,13 @@ public:
     void buildMenuAndActions()
     {
         contextMenu_ = new QMenu(static_cast<T*>(this));
+        // The main window is a translucent/frameless overlay
+        // (Qt::WA_TranslucentBackground in MainWindow); QMenu is its own
+        // top-level popup window and doesn't inherit that attribute, so
+        // without it the popup gets no alpha channel and paints as solid
+        // black instead of the intended (semi-)transparent look.
+        contextMenu_->setAttribute(Qt::WA_TranslucentBackground);
+        contextMenu_->setStyleSheet(menuStyleSheet_());
         toplevelMenus_.clear();
         actionGroups_.clear();
         createActions_();
@@ -61,6 +69,52 @@ public:
     QMenu* contextMenu() const { return contextMenu_; }
 
 private:
+    // QMenu paints its own popup window (no inherited widget background),
+    // so give it an explicit stylesheet built from the current color
+    // preset instead of leaving it to render with nothing but text.
+    QString menuStyleSheet_() const
+    {
+        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        QColor text = colorPreset[EPresetsColorIdx::kTextColor];
+        QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
+        QColor selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+
+        auto rgba = [](const QColor& c, int alpha) {
+            return QStringLiteral("rgba(%1, %2, %3, %4)")
+                .arg(c.red()).arg(c.green()).arg(c.blue()).arg(alpha);
+        };
+
+        return QStringLiteral(
+                   "QMenu {"
+                   "  background-color: %1;"
+                   "  color: %2;"
+                   "  border: 1px solid %3;"
+                   "  border-radius: 6px;"
+                   "  padding: 4px;"
+                   "}"
+                   "QMenu::item {"
+                   "  padding: 4px 24px;"
+                   "  background-color: transparent;"
+                   "}"
+                   "QMenu::item:disabled {"
+                   "  color: %4;"
+                   "}"
+                   "QMenu::item:selected {"
+                   "  background-color: %5;"
+                   "}"
+                   "QMenu::separator {"
+                   "  height: 1px;"
+                   "  background: %3;"
+                   "  margin: 4px 8px;"
+                   "}")
+            .arg(rgba(background, 255),
+                 text.name(),
+                 border.name(),
+                 rgba(text, 120),
+                 rgba(selection, 160));
+    }
+
     void createActions_()
     {
         for (Action* action : getActions().all()) {
@@ -140,6 +194,8 @@ private:
                 break;
             case MenuNode::Type::Submenu: {
                 QMenu* sub = menu->addMenu(node.label);
+                sub->setAttribute(Qt::WA_TranslucentBackground);
+                sub->setStyleSheet(menuStyleSheet_());
                 if (menu == contextMenu_)
                     toplevelMenus_.append(sub);
                 createMenu_(sub, node.children);

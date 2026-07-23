@@ -18,7 +18,7 @@ struct Action {
     bool checkable = false;
     bool checked = false;  // initial checked state
     QString group;         // action group name; empty = no group
-    QString settingsKey;   // BeeSettings key for persisting checkable state
+    QString settingsKey;   // Settings key for persisting checkable state
     bool enabled = true;
     QString menuId;        // builder id for dynamic submenus
     QAction* qaction = nullptr;
