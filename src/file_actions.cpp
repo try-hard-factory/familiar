@@ -24,6 +24,17 @@ void FileActions::newFile()
 void FileActions::openFile()
 {
     QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
+    // MainWindow is a translucent/frameless overlay (transparent
+    // stylesheet + WA_TranslucentBackground); as a separate top-level
+    // window without its own alpha channel, this dialog would otherwise
+    // inherit "background: transparent" and paint solid black instead.
+    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
+    // Clearing our own stylesheet isn't enough - Qt's QSS cascades from
+    // MainWindow's "background: transparent" rule regardless, since an
+    // empty child stylesheet doesn't cancel an inherited one. Define an
+    // explicit competing rule here instead.
+    fileDialog->setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
     fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
     fileDialog->setDirectory(QDir::homePath());
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
@@ -98,6 +109,13 @@ int FileActions::saveFileAs()
 {
     int retval = QDialog::Rejected;
     QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
+    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
+    // Clearing our own stylesheet isn't enough - Qt's QSS cascades from
+    // MainWindow's "background: transparent" rule regardless, since an
+    // empty child stylesheet doesn't cancel an inherited one. Define an
+    // explicit competing rule here instead.
+    fileDialog->setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
     fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
     fileDialog->setDirectory(QDir::homePath());
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
