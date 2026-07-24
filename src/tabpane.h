@@ -33,6 +33,12 @@ public:
     void setCurrentIndex(int index);
     int count();
 
+signals:
+    // Forwards the internal QTabWidget's currentChanged(int), so
+    // MainWindow can resync its shared action enabled-state to whichever
+    // tab is now active (see MainWindow::resyncActionsForTab).
+    void currentTabChanged(int index);
+
 protected:
     // void paintEvent(QPaintEvent* event) override;
 

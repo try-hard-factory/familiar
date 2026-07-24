@@ -23,7 +23,7 @@
 
 
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
-    : MainControlsMixin<CanvasView, ActionsMixin<QGraphicsView>>()
+    : MainControlsMixin<CanvasView, QGraphicsView>()
     , mainwindow_(mw)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
@@ -34,8 +34,6 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setRenderHint(QPainter::Antialiasing, true);
 
     undoStack_->setUndoLimit(100);
-    connect(undoStack_.get(), &QUndoStack::canRedoChanged, this, &CanvasView::on_can_redo_changed);
-    connect(undoStack_.get(), &QUndoStack::canUndoChanged, this, &CanvasView::on_can_undo_changed);
     connect(undoStack_.get(), &QUndoStack::cleanChanged,   this, &CanvasView::on_undo_clean_changed);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -55,7 +53,6 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
             this, &CanvasView::settingsChangedSlot);
     settingsChangedSlot();
 
-    buildMenuAndActions();
     init_main_controls(&mw);
     setContextMenuPolicy(Qt::DefaultContextMenu);
     viewport()->setMouseTracking(true);
@@ -76,29 +73,23 @@ void CanvasView::on_scene_changed()
         welcomeOverlay_->setFocus();
         clearFocus();
         welcomeOverlay_->show();
-        actiongroupSetEnabled("active_when_items_in_scene", false);
     } else {
         setFocus();
         welcomeOverlay_->clearFocus();
         welcomeOverlay_->hide();
-        actiongroupSetEnabled("active_when_items_in_scene", true);
     }
     recalcSceneRect();
 }
 
 void CanvasView::on_selection_changed()
 {
-    bool hasSelection = scene_->has_selection();
-    actiongroupSetEnabled("active_when_selection", hasSelection);
-    actiongroupSetEnabled("active_when_single_image", scene_->has_single_selection());
     // TODOLATER: update grayscale action checked state from selected item
     viewport()->repaint();
 }
 
 void CanvasView::on_context_menu(const QPoint& point)
 {
-    qDebug() << "CanvasView::on_context_menu";
-    contextMenu()->exec(mapToGlobal(point));
+    mainwindow_.contextMenu()->exec(mapToGlobal(point));
 }
 
 void CanvasView::on_cursor_changed(QCursor cursor)
@@ -111,16 +102,6 @@ void CanvasView::on_cursor_cleared()
 {
     if (activeMode_ == ModeNone)
         viewport()->unsetCursor();
-}
-
-void CanvasView::on_can_redo_changed(bool canRedo)
-{
-    actiongroupSetEnabled("active_when_can_redo", canRedo);
-}
-
-void CanvasView::on_can_undo_changed(bool canUndo)
-{
-    actiongroupSetEnabled("active_when_can_undo", canUndo);
 }
 
 void CanvasView::on_undo_clean_changed(bool /*clean*/)
@@ -441,21 +422,6 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
 
 // ─── File actions ─────────────────────────────────────────────────────────────
 
-void CanvasView::on_action_new_scene()
-{
-    mainwindow_.fileActions().newFile();
-}
-
-void CanvasView::on_action_open()
-{
-    mainwindow_.fileActions().openFile();
-}
-
-void CanvasView::on_action_open_recent_file(const QString& filename)
-{
-    mainwindow_.fileActions().processOpenFile(filename);
-}
-
 void CanvasView::on_action_save()
 {
     cancelActiveModes();
@@ -476,11 +442,6 @@ void CanvasView::on_action_export_scene()
 void CanvasView::on_action_export_images()
 {
     // TODOLATER: export individual images to directory
-}
-
-void CanvasView::on_action_quit()
-{
-    mainwindow_.quitProject();
 }
 
 // ─── Edit actions ─────────────────────────────────────────────────────────────
@@ -631,21 +592,6 @@ void CanvasView::on_action_fit_selection()
     fitRect(scene_->itemsBoundingRect(true));
 }
 
-void CanvasView::on_action_fullscreen(bool checked)
-{
-    if (checked)
-        mainwindow_.showFullScreen();
-    else
-        mainwindow_.showNormal();
-}
-
-void CanvasView::on_action_always_on_top(bool checked)
-{
-    mainwindow_.setWindowFlag(Qt::WindowStaysOnTopHint, checked);
-    mainwindow_.hide();
-    mainwindow_.show();
-}
-
 void CanvasView::on_action_show_scrollbars(bool checked)
 {
     if (checked) {
@@ -655,29 +601,6 @@ void CanvasView::on_action_show_scrollbars(bool checked)
         setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
         setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     }
-}
-
-void CanvasView::on_action_show_menubar(bool checked)
-{
-    if (checked)
-        mainwindow_.setMenuBar(createMenubar());
-    else
-        mainwindow_.setMenuBar(nullptr);
-}
-
-void CanvasView::on_action_show_titlebar(bool checked)
-{
-    mainwindow_.setWindowFlag(Qt::FramelessWindowHint, !checked);
-    mainwindow_.hide();
-    mainwindow_.show();
-}
-
-void CanvasView::on_action_move_window()
-{
-    // if (welcomeOverlay_->isHidden())
-    //     on_action_movewin_mode();
-    // else
-    //     welcomeOverlay_->on_action_movewin_mode();
 }
 
 // ─── Insert actions ───────────────────────────────────────────────────────────
@@ -814,41 +737,6 @@ void CanvasView::on_action_sample_color()
     viewport()->setCursor(Qt::CrossCursor);
     activeMode_ = ModeSampleColor;
     // TODOLATER: show SampleColorWidget
-}
-
-// ─── Settings / Help actions ──────────────────────────────────────────────────
-
-void CanvasView::on_action_settings()
-{
-    // TODOLATER: open SettingsDialog
-}
-
-void CanvasView::on_action_keyboard_settings()
-{
-    // TODOLATER: open keyboard/mouse controls dialog
-}
-
-void CanvasView::on_action_open_settings_dir()
-{
-    QString dir = QFileInfo(FamSettings().fileName()).absolutePath();
-    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
-}
-
-void CanvasView::on_action_help()
-{
-    // TODOLATER: open help dialog
-}
-
-void CanvasView::on_action_about()
-{
-    QMessageBox::about(this, "About Familiar",
-        "<h2>Familiar</h2>"
-        "<p>Reference board application.</p>");
-}
-
-void CanvasView::on_action_debuglog()
-{
-    // TODOLATER: open debug log dialog
 }
 
 // ─── Project helpers (existing interface) ────────────────────────────────────
