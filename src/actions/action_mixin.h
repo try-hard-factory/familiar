@@ -41,6 +41,10 @@ public:
         contextMenu_ = new QMenu(static_cast<T*>(this));
         toplevelMenus_.clear();
         actionGroups_.clear();
+        _create_actions();
+        createMenu_(contextMenu_, menuStructure());
+        fireInitialCheckableCallbacks_();
+
         // The main window is a translucent/frameless overlay
         // (Qt::WA_TranslucentBackground in MainWindow); QMenu is its own
         // top-level popup window and doesn't inherit that attribute, so
@@ -48,18 +52,15 @@ public:
         // black instead of the intended (semi-)transparent look.
         contextMenu_->setAttribute(Qt::WA_TranslucentBackground);
         contextMenu_->setStyleSheet(menuStyleSheet_());
-        createActions_();
-        createMenu_(contextMenu_, menuStructure());
-        fireInitialCheckableCallbacks_();
     }
 
     // Rebuild the "Open Recent" submenu (call after recent-files list changes).
-    void updateMenuAndActions()
+    void update_menu_and_actions()
     {
-        buildRecentFiles_();
+        _build_recent_files();
     }
 
-    QMenuBar* createMenubar()
+    QMenuBar* create_menubar()
     {
         QMenuBar* bar = new QMenuBar();
         for (QMenu* m : toplevelMenus_)
@@ -67,7 +68,7 @@ public:
         return bar;
     }
 
-    QMenu* contextMenu() const { return contextMenu_; }
+    QMenu* context_menu() const { return contextMenu_; }
 
 private:
     // QMenu paints its own popup window (no inherited widget background),
@@ -116,7 +117,7 @@ private:
                  rgba(selection, 160));
     }
 
-    void createActions_()
+    void _create_actions()
     {
         for (Action* action : getActions().all()) {
             QAction* qa = new QAction(action->text, static_cast<T*>(this));
@@ -183,9 +184,9 @@ private:
     }
 
     // Fires each checkable+settingsKey action's callback with its current
-    // (persisted) checked state. Split out from createActions_() so it
+    // (persisted) checked state. Split out from _create_actions() so it
     // runs after createMenu_() has populated toplevelMenus_/contextMenu_ -
-    // see the comment in createActions_() for why firing early breaks
+    // see the comment in _create_actions() for why firing early breaks
     // callbacks like on_action_show_menubar.
     void fireInitialCheckableCallbacks_()
     {
@@ -222,13 +223,13 @@ private:
                 break;
             }
             case MenuNode::Type::Dynamic:
-                buildRecentFiles_(menu);
+                _build_recent_files(menu);
                 break;
             }
         }
     }
 
-    void buildRecentFiles_(QMenu* menu = nullptr)
+    void _build_recent_files(QMenu* menu = nullptr)
     {
         if (menu)
             recentFilesSubmenu_ = menu;
