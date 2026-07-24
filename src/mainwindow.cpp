@@ -313,7 +313,7 @@ void MainWindow::on_action_always_on_top(bool checked)
 void MainWindow::on_action_show_menubar(bool checked)
 {
     if (checked)
-        setMenuBar(createMenubar());
+        setMenuBar(create_menubar());
     else
         setMenuBar(nullptr);
 }

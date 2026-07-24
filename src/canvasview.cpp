@@ -89,7 +89,7 @@ void CanvasView::on_selection_changed()
 
 void CanvasView::on_context_menu(const QPoint& point)
 {
-    mainwindow_.contextMenu()->exec(mapToGlobal(point));
+    mainwindow_.context_menu()->exec(mapToGlobal(point));
 }
 
 void CanvasView::on_cursor_changed(QCursor cursor)
