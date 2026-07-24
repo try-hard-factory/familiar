@@ -127,7 +127,7 @@ public:
     // Saves even if equal to default (saveUnknownShortcuts flag controls this).
     void setShortcuts(const QString& group, const QString& key,
                       const QStringList& values);
-    QStringList getShortcuts(const QString& group, const QString& key,
+    QStringList get_shortcuts(const QString& group, const QString& key,
                               const QStringList& defaultValues = {});
 
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────

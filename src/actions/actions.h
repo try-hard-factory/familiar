@@ -32,7 +32,7 @@ struct Action {
         const QString& group = {}, const QString& settingsKey = {},
         bool enabled = true, const QString& menuId = {});
 
-    QStringList getShortcuts() const;
+    QStringList get_shortcuts() const;
     void setShortcuts(const QStringList& values);
     QKeySequence getKeySequence(int index) const;
     bool shortcutsChanged() const;
