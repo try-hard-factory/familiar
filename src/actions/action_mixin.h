@@ -50,6 +50,7 @@ public:
         actionGroups_.clear();
         createActions_();
         createMenu_(contextMenu_, menuStructure());
+        fireInitialCheckableCallbacks_();
     }
 
     // Rebuild the "Open Recent" submenu (call after recent-files list changes).
@@ -141,13 +142,13 @@ private:
                     QObject::connect(qa, &QAction::toggled, [key](bool v) {
                         FamSettings().setValue(key, v);
                     });
-                    // fire callback immediately with initial value
-                    if (!action->callback.isEmpty())
-                        QMetaObject::invokeMethod(
-                            static_cast<T*>(this),
-                            action->callback.toUtf8().constData(),
-                            Qt::DirectConnection,
-                            Q_ARG(bool, init));
+                    // The initial-value callback is NOT fired here: some
+                    // callbacks (e.g. on_action_show_menubar) depend on
+                    // toplevelMenus_/contextMenu_, which createMenu_() only
+                    // populates AFTER this loop runs. Firing early would
+                    // see an empty menu structure. Deferred to
+                    // fireInitialCheckableCallbacks_(), called once
+                    // buildMenuAndActions() has fully built everything.
                 }
                 if (!action->callback.isEmpty()) {
                     const QByteArray cb = action->callback.toUtf8();
@@ -178,6 +179,25 @@ private:
             }
 
             action->qaction = qa;
+        }
+    }
+
+    // Fires each checkable+settingsKey action's callback with its current
+    // (persisted) checked state. Split out from createActions_() so it
+    // runs after createMenu_() has populated toplevelMenus_/contextMenu_ -
+    // see the comment in createActions_() for why firing early breaks
+    // callbacks like on_action_show_menubar.
+    void fireInitialCheckableCallbacks_()
+    {
+        for (Action* action : getActions().all()) {
+            if (action->checkable && !action->settingsKey.isEmpty()
+                && !action->callback.isEmpty() && action->qaction) {
+                QMetaObject::invokeMethod(
+                    static_cast<T*>(this),
+                    action->callback.toUtf8().constData(),
+                    Qt::DirectConnection,
+                    Q_ARG(bool, action->qaction->isChecked()));
+            }
         }
     }
 

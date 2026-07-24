@@ -40,11 +40,13 @@ int main(int argc, char* argv[])
 #else
     qDebug() << "NDEBUG notDEFINED";
 #endif
-
     qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
     qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
 
     QApplication a(argc, argv);
+    // TODOLATER:
+    // app.setOrganizationName(constants.APPNAME)
+    // app.setApplicationName(constants.APPNAME)
     MainWindow w;
     w.show();
     return a.exec();

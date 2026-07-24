@@ -15,13 +15,13 @@
 #include "file_actions.h"
 #include "tabpane.h"
 #include <canvasview.h>
-#include <QApplication>
-#include <QMainWindow>
-#include <QMessageBox>
-#include <QCursor>
-#include <QWindow>
 #include <core/settingshandler.h>
 #include <utils/utils.h>
+#include <QApplication>
+#include <QCursor>
+#include <QMainWindow>
+#include <QMessageBox>
+#include <QWindow>
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -43,11 +43,6 @@ enum EShortcutButtons {
 
 constexpr QPoint kInvalidPoint(-1, -1);
 
-/**
- * \~russian @brief The MainWindow класс
- *
- * \~english @brief The MainWindow class
- */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -62,18 +57,9 @@ public:
      *                           is normal)
      */
     MainWindow(QWidget* parent = nullptr);
-
-    /**
-     * \~russian @brief деструктор
-     *
-     * \~english @brief class destructor
-     */
     ~MainWindow();
 
-
-    /* Part of feature FileActions class */
     void quitProject();
-
     void saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m);
     void cleanupWorkplace();
     void exitProject();
@@ -95,7 +81,7 @@ protected:
     void paintEvent(QPaintEvent* event) override;
 
 protected:
-    void mouseMoveEvent(QMouseEvent *event) override
+    void mouseMoveEvent(QMouseEvent* event) override
     {
         updateResizeCursor(event->pos());
         QMainWindow::mouseMoveEvent(event);
@@ -110,25 +96,33 @@ protected:
     {
         if (event->type() == QEvent::MouseMove) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            updateResizeCursor(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+            updateResizeCursor(
+                mapFromGlobal(mouseEvent->globalPosition().toPoint()));
         } else if (event->type() == QEvent::MouseButtonPress) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             if (mouseEvent->button() == Qt::LeftButton) {
-                tryStartSystemResize(mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+                tryStartSystemResize(
+                    mapFromGlobal(mouseEvent->globalPosition().toPoint()));
             }
         }
         return QMainWindow::eventFilter(watched, event);
     }
+
 private:
-    static constexpr int kResizeBorder = 10; // Толщина невидимой границы для ресайза, в пикселях
+    static constexpr int kResizeBorder
+        = 10; // Толщина невидимой границы для ресайза, в пикселях
 
     Qt::Edges resizeEdgesAt(const QPoint& pos) const
     {
         Qt::Edges edges;
-        if (pos.x() < kResizeBorder) edges |= Qt::LeftEdge;
-        if (pos.x() > width() - kResizeBorder) edges |= Qt::RightEdge;
-        if (pos.y() < kResizeBorder) edges |= Qt::TopEdge;
-        if (pos.y() > height() - kResizeBorder) edges |= Qt::BottomEdge;
+        if (pos.x() < kResizeBorder)
+            edges |= Qt::LeftEdge;
+        if (pos.x() > width() - kResizeBorder)
+            edges |= Qt::RightEdge;
+        if (pos.y() < kResizeBorder)
+            edges |= Qt::TopEdge;
+        if (pos.y() > height() - kResizeBorder)
+            edges |= Qt::BottomEdge;
         return edges;
     }
 
@@ -167,47 +161,11 @@ private:
             unsetCursor();
     }
 
-protected:
-    // void mousePressEvent(QMouseEvent* _event)
-    // {
-    //     if (_event->button() == Qt::LeftButton
-    //         && _event->modifiers() == Qt::NoModifier) {
-    //         pos_ = _event->globalPosition().toPoint();
-    //         setCursor(Qt::ClosedHandCursor);
-    //         return;
-    //     }
-    //     QWidget::mousePressEvent(_event);
-    // }
-    // void mouseMoveEvent(QMouseEvent* _event)
-    // {
-    //     if (pos_ == kInvalidPoint)
-    //         return QWidget::mouseMoveEvent(_event);
-
-    //     const QPoint delta = _event->globalPosition().toPoint() - pos_;
-    //     move(pos() + delta);
-    //     pos_ = _event->globalPosition().toPoint();
-    // }
-
-    // void mouseReleaseEvent(QMouseEvent* _event)
-    // {
-    //     pos_ = kInvalidPoint;
-    //     setCursor(Qt::OpenHandCursor);
-    //     QWidget::mouseReleaseEvent(_event);
-    // }
-
 private:
     QPoint pos_ = kInvalidPoint;
 
 private:
-    //    void saveFile(const QString& path);
     bool checkSave();
-    void initShortcuts();
-    void newShortcut(EShortcutButtons as_key,
-                     const QKeySequence& key,
-                     QWidget* parent,
-                     const char* slot);
-    void createActions();
-    void createMenus();
 
 public slots:
     void settingsChangedSlot();
@@ -224,28 +182,14 @@ private slots:
 
 private:
     SettingsHandler settings_;
-    Ui::MainWindow*
-        ui; ///< \~english Main window ui \~russian графический интерфейс главного окна
+    Ui::MainWindow* ui;
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
 
-    QMenu* fileMenu_ = nullptr;
-    QAction* saveAllAction_ = nullptr;
-    QAction* newAction_ = nullptr;
-    QAction* settingsAction_ = nullptr;
-    QAction* saveAction_ = nullptr;
-    QAction* quitAction_ = nullptr;
-    QAction* openAction_ = nullptr;
-    QAction* saveAsAction_ = nullptr;
-
     int currentOpacity_;
     QColor backGroundColor_;
     QString rgbaBackGroundStr_;
-
-    QVarLengthArray<QAction*, EShortcutButtons::k_ALL> actionsArr_
-        = {nullptr, nullptr, nullptr, nullptr};
-    //    QVarLengthArray<QShortcut*, EShortcutButtons::k_ALL> shortcutArr_;
 };
 
 #endif // MAINWINDOW_H
