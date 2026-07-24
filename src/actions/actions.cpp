@@ -16,9 +16,9 @@ Action Action::make(
             group, settingsKey, enabled, menuId, nullptr};
 }
 
-QStringList Action::getShortcuts() const
+QStringList Action::get_shortcuts() const
 {
-    return KeyboardSettings().getShortcuts(
+    return KeyboardSettings().get_shortcuts(
         QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
 }
 
@@ -36,7 +36,7 @@ void Action::setShortcuts(const QStringList& values)
 
 QKeySequence Action::getKeySequence(int index) const
 {
-    const QStringList sc = getShortcuts();
+    const QStringList sc = get_shortcuts();
     if (index < sc.size())
         return QKeySequence(sc[index]);
     return {};
@@ -44,7 +44,7 @@ QKeySequence Action::getKeySequence(int index) const
 
 bool Action::shortcutsChanged() const
 {
-    return getShortcuts() != shortcuts;
+    return get_shortcuts() != shortcuts;
 }
 
 QString Action::getDefaultShortcut(int index) const

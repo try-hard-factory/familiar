@@ -20,7 +20,7 @@ KeyboardShortcutsEditor::KeyboardShortcutsEditor(QWidget* parent,
 
     if (action_) {
         const int shortcutIndex = index.column() - 2;
-        const QStringList shortcuts = action_->getShortcuts();
+        const QStringList shortcuts = action_->get_shortcuts();
         if (shortcutIndex >= 0 && shortcutIndex < shortcuts.size())
             oldValue_ = shortcuts[shortcutIndex];
         else
@@ -53,7 +53,7 @@ void KeyboardShortcutsEditor::onEditingFinished()
     for (int i = 0; i < all.size(); ++i) {
         if (all[i] == action_)
             continue;
-        if (all[i]->getShortcuts().contains(shortcut)) {
+        if (all[i]->get_shortcuts().contains(shortcut)) {
             QString txt = all[i]->text;
             txt.remove(QLatin1Char('&'));
             if (txt.endsWith(QLatin1String("...")))
@@ -205,7 +205,7 @@ bool KeyboardShortcutsModel::setDataEx(const QModelIndex& index,
         return false;
 
     Action* action = all[index.row()];
-    QStringList shortcuts = action->getShortcuts();
+    QStringList shortcuts = action->get_shortcuts();
 
     // Extend to cover the target column.
     while (shortcuts.size() < index.column() - 1)
@@ -239,7 +239,7 @@ bool KeyboardShortcutsModel::setDataEx(const QModelIndex& index,
     if (removeFromOtherRow >= 0 && removeFromOtherRow < all.size()) {
         const QString shortcutStr = keySeq.toString();
         Action* other = all[removeFromOtherRow];
-        QStringList otherShortcuts = other->getShortcuts();
+        QStringList otherShortcuts = other->get_shortcuts();
         otherShortcuts.removeAll(shortcutStr);
         other->setShortcuts(otherShortcuts);
 

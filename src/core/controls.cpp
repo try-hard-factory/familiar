@@ -249,7 +249,8 @@ void KeyboardSettings::setShortcuts(const QString& group, const QString& key,
     setValue(group + QLatin1Char('/') + key, values.join(QStringLiteral(", ")));
 }
 
-QStringList KeyboardSettings::getShortcuts(const QString& group, const QString& key,
+// TODOLATER: ?? this fn doesn't exist in python
+QStringList KeyboardSettings::get_shortcuts(const QString& group, const QString& key,
                                            const QStringList& defaultValues)
 {
     const QVariant v = value(group + QLatin1Char('/') + key);
