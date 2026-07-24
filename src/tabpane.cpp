@@ -24,6 +24,7 @@ TabPane::TabPane(QWidget* parent, MainWindow& mw)
     
     // // setStyleSheet("background: transparent; background-color: rgba(0, 0, 0, 128);");
     connect(tabs_, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
+    connect(tabs_, &QTabWidget::currentChanged, this, &TabPane::currentTabChanged);
 }
 
 TabPane::~TabPane()

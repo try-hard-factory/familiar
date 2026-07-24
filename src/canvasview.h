@@ -1,7 +1,6 @@
 #ifndef CANVASVIEW_H
 #define CANVASVIEW_H
 
-#include <actions/action_mixin.h>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -29,7 +28,7 @@ struct PreviousTransform
     QPointF center;
 };
 
-class CanvasView : public MainControlsMixin<CanvasView, ActionsMixin<QGraphicsView>>
+class CanvasView : public MainControlsMixin<CanvasView, QGraphicsView>
 {
     Q_OBJECT
 public:
@@ -45,6 +44,11 @@ public:
     void addImage(const QString& path, QPointF point);
     void addImage(QImage* img, QPointF point);
     void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
+
+    // Used by MainWindow to (re)wire action enabled-state to whichever
+    // tab is currently active (see MainWindow::resyncActionsForTab).
+    CanvasScene* scene() const { return scene_; }
+    QUndoStack* undoStack() const { return undoStack_.get(); }
 
     qreal get_scale() const { return transform().m11(); }
     QPointF getViewCenter() const;
@@ -70,20 +74,21 @@ public slots:
     void on_context_menu(const QPoint& point);
     void on_cursor_changed(QCursor cursor);
     void on_cursor_cleared();
-    void on_can_redo_changed(bool canRedo);
-    void on_can_undo_changed(bool canUndo);
     void on_undo_clean_changed(bool clean);
     void settingsChangedSlot();
 
+public:
+    // Per-tab action bodies. No longer QMetaObject::invokeMethod-driven
+    // slots: MainWindow now owns the single QAction set (see
+    // ActionsMixin<QMainWindow> there) and forwards to
+    // tabpane_->currentWidget() for whichever of these applies to the
+    // active tab. Plain methods, called by ordinary C++ call from there.
+
     // File
-    void on_action_new_scene();
-    void on_action_open();
-    void on_action_open_recent_file(const QString& filename);
     void on_action_save();
     void on_action_save_as();
     void on_action_export_scene();
     void on_action_export_images();
-    void on_action_quit();
 
     // Edit
     void on_action_undo();
@@ -100,12 +105,7 @@ public slots:
     // View
     void on_action_fit_scene();
     void on_action_fit_selection();
-    void on_action_fullscreen(bool checked);
-    void on_action_always_on_top(bool checked);
     void on_action_show_scrollbars(bool checked);
-    void on_action_show_menubar(bool checked);
-    void on_action_show_titlebar(bool checked);
-    void on_action_move_window();
 
     // Insert
     void on_action_insert_images();
@@ -137,14 +137,6 @@ public slots:
     void on_action_grayscale(bool checked);
     void on_action_show_color_gamut();
     void on_action_sample_color();
-
-    // Settings / Help
-    void on_action_settings();
-    void on_action_keyboard_settings();
-    void on_action_open_settings_dir();
-    void on_action_help();
-    void on_action_about();
-    void on_action_debuglog();
 
 private slots:
     // do_insert_images callbacks (see fileio::load_images / ThreadedIO).

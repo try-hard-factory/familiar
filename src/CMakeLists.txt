@@ -42,7 +42,6 @@ set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
         mainwindow.h
-        mainwindow.ui
         canvasview.cpp
         canvasview.h
         moveitem.cpp

@@ -28,7 +28,7 @@ public:
     explicit ActionsMixin(QWidget* parent = nullptr) : T(parent) {}
 
     // Enable/disable every QAction belonging to the named group.
-    void actiongroupSetEnabled(const QString& group, bool enabled)
+    void actiongroup_set_enabled(const QString& group, bool enabled)
     {
         for (QAction* a : actionGroups_.value(group))
             a->setEnabled(enabled);
@@ -36,9 +36,11 @@ public:
 
     // Build all QActions and populate contextMenu_ / toplevelMenus_.
     // Call once after the widget is fully constructed.
-    void buildMenuAndActions()
+    void build_menu_and_actions()
     {
         contextMenu_ = new QMenu(static_cast<T*>(this));
+        toplevelMenus_.clear();
+        actionGroups_.clear();
         // The main window is a translucent/frameless overlay
         // (Qt::WA_TranslucentBackground in MainWindow); QMenu is its own
         // top-level popup window and doesn't inherit that attribute, so
@@ -46,8 +48,6 @@ public:
         // black instead of the intended (semi-)transparent look.
         contextMenu_->setAttribute(Qt::WA_TranslucentBackground);
         contextMenu_->setStyleSheet(menuStyleSheet_());
-        toplevelMenus_.clear();
-        actionGroups_.clear();
         createActions_();
         createMenu_(contextMenu_, menuStructure());
         fireInitialCheckableCallbacks_();
@@ -148,7 +148,7 @@ private:
                     // populates AFTER this loop runs. Firing early would
                     // see an empty menu structure. Deferred to
                     // fireInitialCheckableCallbacks_(), called once
-                    // buildMenuAndActions() has fully built everything.
+                    // build_menu_and_actions() has fully built everything.
                 }
                 if (!action->callback.isEmpty()) {
                     const QByteArray cb = action->callback.toUtf8();
