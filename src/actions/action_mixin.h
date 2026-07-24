@@ -25,7 +25,9 @@ template<typename T>
 class ActionsMixin : public T
 {
 public:
-    explicit ActionsMixin(QWidget* parent = nullptr) : T(parent) {}
+    explicit ActionsMixin(QWidget* parent = nullptr)
+        : T(parent)
+    {}
 
     // Enable/disable every QAction belonging to the named group.
     void actiongroup_set_enabled(const QString& group, bool enabled)
@@ -55,10 +57,7 @@ public:
     }
 
     // Rebuild the "Open Recent" submenu (call after recent-files list changes).
-    void update_menu_and_actions()
-    {
-        _build_recent_files();
-    }
+    void update_menu_and_actions() { _build_recent_files(); }
 
     QMenuBar* create_menubar()
     {
@@ -76,7 +75,8 @@ private:
     // preset instead of leaving it to render with nothing but text.
     QString menuStyleSheet_() const
     {
-        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        auto colorPreset
+            = SettingsHandler::getInstance()->getCurrentColorPreset();
         QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
         QColor text = colorPreset[EPresetsColorIdx::kTextColor];
         QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -84,32 +84,34 @@ private:
 
         auto rgba = [](const QColor& c, int alpha) {
             return QStringLiteral("rgba(%1, %2, %3, %4)")
-                .arg(c.red()).arg(c.green()).arg(c.blue()).arg(alpha);
+                .arg(c.red())
+                .arg(c.green())
+                .arg(c.blue())
+                .arg(alpha);
         };
 
-        return QStringLiteral(
-                   "QMenu {"
-                   "  background-color: %1;"
-                   "  color: %2;"
-                   "  border: 1px solid %3;"
-                   "  border-radius: 6px;"
-                   "  padding: 4px;"
-                   "}"
-                   "QMenu::item {"
-                   "  padding: 4px 24px;"
-                   "  background-color: transparent;"
-                   "}"
-                   "QMenu::item:disabled {"
-                   "  color: %4;"
-                   "}"
-                   "QMenu::item:selected {"
-                   "  background-color: %5;"
-                   "}"
-                   "QMenu::separator {"
-                   "  height: 1px;"
-                   "  background: %3;"
-                   "  margin: 4px 8px;"
-                   "}")
+        return QStringLiteral("QMenu {"
+                              "  background-color: %1;"
+                              "  color: %2;"
+                              "  border: 1px solid %3;"
+                              "  border-radius: 6px;"
+                              "  padding: 4px;"
+                              "}"
+                              "QMenu::item {"
+                              "  padding: 4px 24px;"
+                              "  background-color: transparent;"
+                              "}"
+                              "QMenu::item:disabled {"
+                              "  color: %4;"
+                              "}"
+                              "QMenu::item:selected {"
+                              "  background-color: %5;"
+                              "}"
+                              "QMenu::separator {"
+                              "  height: 1px;"
+                              "  background: %3;"
+                              "  margin: 4px 8px;"
+                              "}")
             .arg(rgba(background, 255),
                  text.name(),
                  border.name(),
@@ -117,87 +119,114 @@ private:
                  rgba(selection, 160));
     }
 
-    void _create_actions()
+    // Mirrors Python's _init_action_checkable(actiondef, qaction): sets up
+    // a checkable QAction's initial state (persisted value if it has a
+    // settingsKey, else its static default) and wires persistence +
+    // callback for future toggles.
+    //
+    // One deliberate difference: Python connects toggled->callback BEFORE
+    // either setChecked() call, so its own initial setChecked(val) fires
+    // the callback synchronously, immediately - too early for menu-
+    // dependent callbacks like on_action_show_menubar, since
+    // _create_menu() hasn't populated toplevel_menus yet. Python papers
+    // over this by unconditionally re-firing every checkable action's
+    // callback afterwards anyway (see _post_create_functions in
+    // build_menu_and_actions), so the premature call is harmless - just
+    // redundant. We connect toggled->callback only at the end, after both
+    // setChecked() calls, so there's no premature call to begin with, and
+    // rely solely on fireInitialCheckableCallbacks_() (our equivalent of
+    // _post_create_functions) for the single, correctly-timed initial
+    // invocation - for every checkable action, not just settingsKey ones,
+    // matching Python's actual coverage (a checked-by-default action
+    // with no settingsKey, e.g. "show_titlebar", still gets its callback
+    // fired once in Python's connect-before-set flow).
+    void _init_action_checkable(Action* action, QAction* qa)
     {
-        for (Action* action : getActions().all()) {
-            QAction* qa = new QAction(action->text, static_cast<T*>(this));
-            qa->setAutoRepeat(false);
+        qa->setCheckable(true);
 
-            const QStringList sc = action->getShortcuts();
-            if (!sc.isEmpty()) {
-                QList<QKeySequence> seqs;
-                for (const QString& s : sc)
-                    seqs.append(QKeySequence(s));
-                qa->setShortcuts(seqs);
-            }
+        const QString settingsKey = action->settingsKey;
+        const bool defaultChecked = action->checked;
+        qa->setChecked(defaultChecked);
 
-            if (action->checkable) {
-                qa->setCheckable(true);
-                const bool init = action->settingsKey.isEmpty()
-                    ? action->checked
-                    : FamSettings().value(action->settingsKey, action->checked).toBool();
-                qa->setChecked(init);
+        if (!settingsKey.isEmpty()) {
+            const bool val
+                = FamSettings().value(settingsKey, defaultChecked).toBool();
+            qa->setChecked(val);
+            QObject::connect(qa, &QAction::toggled, [settingsKey](bool v) {
+                FamSettings().setValue(settingsKey, v);
+            });
+        }
 
-                if (!action->settingsKey.isEmpty()) {
-                    const QString key = action->settingsKey;
-                    QObject::connect(qa, &QAction::toggled, [key](bool v) {
-                        FamSettings().setValue(key, v);
-                    });
-                    // The initial-value callback is NOT fired here: some
-                    // callbacks (e.g. on_action_show_menubar) depend on
-                    // toplevelMenus_/contextMenu_, which createMenu_() only
-                    // populates AFTER this loop runs. Firing early would
-                    // see an empty menu structure. Deferred to
-                    // fireInitialCheckableCallbacks_(), called once
-                    // build_menu_and_actions() has fully built everything.
-                }
-                if (!action->callback.isEmpty()) {
-                    const QByteArray cb = action->callback.toUtf8();
-                    QObject::connect(qa, &QAction::toggled,
-                                     static_cast<T*>(this), [this, cb](bool v) {
-                        QMetaObject::invokeMethod(
-                            static_cast<T*>(this), cb.constData(),
-                            Qt::DirectConnection, Q_ARG(bool, v));
-                    });
-                }
-            } else if (!action->callback.isEmpty()) {
-                const QByteArray cb = action->callback.toUtf8();
-                QObject::connect(qa, &QAction::triggered,
-                                 static_cast<T*>(this), [this, cb]() {
-                    QMetaObject::invokeMethod(
-                        static_cast<T*>(this), cb.constData(),
-                        Qt::DirectConnection);
-                });
-            }
-
-            static_cast<T*>(this)->addAction(qa);
-
-            if (!action->group.isEmpty()) {
-                actionGroups_[action->group].append(qa);
-                qa->setEnabled(false);
-            } else {
-                qa->setEnabled(action->enabled);
-            }
-
-            action->qaction = qa;
+        if (!action->callback.isEmpty()) {
+            const QByteArray cb = action->callback.toUtf8();
+            QObject::connect(qa,
+                             &QAction::toggled,
+                             static_cast<T*>(this),
+                             [this, cb](bool v) {
+                                 QMetaObject::invokeMethod(static_cast<T*>(this),
+                                                           cb.constData(),
+                                                           Qt::DirectConnection,
+                                                           Q_ARG(bool, v));
+                             });
         }
     }
 
-    // Fires each checkable+settingsKey action's callback with its current
-    // (persisted) checked state. Split out from _create_actions() so it
-    // runs after createMenu_() has populated toplevelMenus_/contextMenu_ -
-    // see the comment in _create_actions() for why firing early breaks
-    // callbacks like on_action_show_menubar.
+    void _create_actions()
+    {
+        for (Action* action : getActions().all()) {
+            QAction* qaction = new QAction(action->text, static_cast<T*>(this));
+            qaction->setAutoRepeat(false);
+
+            const QStringList shortcuts = action->getShortcuts();
+            if (!shortcuts.isEmpty()) {
+                QList<QKeySequence> seqs;
+                for (const QString& s : shortcuts)
+                    seqs.append(QKeySequence(s));
+                qaction->setShortcuts(seqs);
+            }
+
+            if (action->checkable) {
+                _init_action_checkable(action, qaction);
+            } else if (!action->callback.isEmpty()) {
+                const QByteArray cb = action->callback.toUtf8();
+                QObject::connect(
+                    qaction, &QAction::triggered, static_cast<T*>(this), [this, cb]() {
+                        QMetaObject::invokeMethod(static_cast<T*>(this),
+                                                  cb.constData(),
+                                                  Qt::DirectConnection);
+                    });
+            }
+
+            static_cast<T*>(this)->addAction(qaction);
+
+            if (!action->group.isEmpty()) {
+                actionGroups_[action->group].append(qaction);
+                qaction->setEnabled(false);
+            } else {
+                qaction->setEnabled(action->enabled);
+            }
+
+            action->qaction = qaction;
+        }
+    }
+
+
+    // Fires each checkable action's callback with its current (initial)
+    // checked state. Split out from _create_actions()/_init_action_checkable()
+    // so it runs after createMenu_() has populated toplevelMenus_/
+    // contextMenu_ - see _init_action_checkable() for why firing any
+    // earlier breaks callbacks like on_action_show_menubar. Our take on
+    // Python's _post_create_functions loop in build_menu_and_actions().
     void fireInitialCheckableCallbacks_()
     {
         for (Action* action : getActions().all()) {
-            if (action->checkable && !action->settingsKey.isEmpty()
-                && !action->callback.isEmpty() && action->qaction) {
-                QMetaObject::invokeMethod(
-                    static_cast<T*>(this),
-                    action->callback.toUtf8().constData(),
-                    Qt::DirectConnection,
-                    Q_ARG(bool, action->qaction->isChecked()));
+            if (action->checkable && !action->callback.isEmpty()
+                && action->qaction) {
+                QMetaObject::invokeMethod(static_cast<T*>(this),
+                                          action->callback.toUtf8().constData(),
+                                          Qt::DirectConnection,
+                                          Q_ARG(bool,
+                                                action->qaction->isChecked()));
             }
         }
     }
@@ -238,28 +267,29 @@ private:
         if (!recentFilesSubmenu_)
             return;
 
-        const QStringList files = FamSettings().getRecentFiles(/*existingOnly=*/true);
+        const QStringList files = FamSettings().getRecentFiles(
+            /*existingOnly=*/true);
 
         for (int i = 0; i < 10; ++i) {
             const QString aid = QStringLiteral("recent_files_%1").arg(i);
             const int key = (i == 9) ? 0 : i + 1;
 
-            Action a = Action::make(
-                aid,
-                QStringLiteral("File %1").arg(i + 1),
-                {},
-                {QStringLiteral("Ctrl+%1").arg(key)},
-                false, false, {},
-                {},
-                true,
-                QStringLiteral("_build_recent_files"));
+            Action a = Action::make(aid,
+                                    QStringLiteral("File %1").arg(i + 1),
+                                    {},
+                                    {QStringLiteral("Ctrl+%1").arg(key)},
+                                    false,
+                                    false,
+                                    {},
+                                    {},
+                                    true,
+                                    QStringLiteral("_build_recent_files"));
             getActions().add(a);
 
             if (i < files.size()) {
                 const QString filename = files[i];
-                QAction* qa = new QAction(
-                    QFileInfo(filename).fileName(),
-                    static_cast<T*>(this));
+                QAction* qa = new QAction(QFileInfo(filename).fileName(),
+                                          static_cast<T*>(this));
 
                 const QStringList sc = getActions()[aid].getShortcuts();
                 QList<QKeySequence> seqs;
@@ -267,14 +297,16 @@ private:
                     seqs.append(QKeySequence(s));
                 qa->setShortcuts(seqs);
 
-                QObject::connect(qa, &QAction::triggered,
-                                 static_cast<T*>(this), [this, filename]() {
-                    QMetaObject::invokeMethod(
-                        static_cast<T*>(this),
-                        "on_action_open_recent_file",
-                        Qt::DirectConnection,
-                        Q_ARG(QString, filename));
-                });
+                QObject::connect(qa,
+                                 &QAction::triggered,
+                                 static_cast<T*>(this),
+                                 [this, filename]() {
+                                     QMetaObject::invokeMethod(
+                                         static_cast<T*>(this),
+                                         "on_action_open_recent_file",
+                                         Qt::DirectConnection,
+                                         Q_ARG(QString, filename));
+                                 });
                 static_cast<T*>(this)->addAction(qa);
                 getActions()[aid].qaction = qa;
                 recentFilesSubmenu_->addAction(qa);
