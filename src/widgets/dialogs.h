@@ -51,7 +51,7 @@ public:
                                QWidget* parent = nullptr)
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
     {
-        FLOG_DEBUG(fml::log::Ch::UI, "Initialized progress bar");
+        FLOG_DEBUG(familiar::log::Ch::UI, "Initialized progress bar");
         setMinimumDuration(0);
         setWindowModality(Qt::WindowModal);
         setAutoReset(false);
@@ -78,19 +78,19 @@ public:
 private slots:
     void on_progress(int value)
     {
-        FLOG_DEBUG(fml::log::Ch::UI, "Progress dialog: {}", value);
+        FLOG_DEBUG(familiar::log::Ch::UI, "Progress dialog: {}", value);
         setValue(value);
     }
 
     void on_begin_processing(int value)
     {
-        FLOG_DEBUG(fml::log::Ch::UI, "Begin progress dialog: {}", value);
+        FLOG_DEBUG(familiar::log::Ch::UI, "Begin progress dialog: {}", value);
         setMaximum(value);
     }
 
     void on_finished(const QString& filename, const QStringList& errors)
     {
-        FLOG_DEBUG(fml::log::Ch::UI, "Finished progress dialog");
+        FLOG_DEBUG(familiar::log::Ch::UI, "Finished progress dialog");
         setValue(maximum());
         reset();
         hide();

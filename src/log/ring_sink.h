@@ -12,7 +12,7 @@
 
 #include "quill/sinks/Sink.h"
 
-namespace fml::log {
+namespace familiar::log {
 
 // In-memory ring buffer of the most recent formatted log lines. Feeds
 // DebugLogDialog's live tail and gives a crash handler something to dump
@@ -51,4 +51,4 @@ private:
     QStringList ring_;
 };
 
-} // namespace fml::log
+} // namespace familiar::log

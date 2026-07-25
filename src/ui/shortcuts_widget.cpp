@@ -18,6 +18,7 @@
 #include <core/settingshandler.h>
 
 #include "log/log.h"
+using namespace familiar::log;
 
 ShortcutsWidget::ShortcutsWidget(QWidget* parent)
     : QWidget(parent)
@@ -129,7 +130,7 @@ void ShortcutsWidget::onShortcutCellClicked(int row, int col)
 
         // set no shortcut is Backspace
         if (shortcutValue == QKeySequence(Qt::Key_Backspace)) {
-            FLOG_WARN(fml::log::Ch::UI, "BACKSPACE!!!!!!! {}", shortcutName);
+            FLOG_WARN(Ch::UI, "BACKSPACE!!!!!!! {}", shortcutName);
             shortcutValue = QKeySequence("");
         }
 

@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include "canvasview.h"
 #include "log/log.h"
+using namespace familiar::log;
 
 WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     : MainControlsMixin<WelcomeOverlay, QWidget>(parent)
@@ -93,7 +94,7 @@ void WelcomeOverlay::keyPressEvent(QKeyEvent* event)
 
 void WelcomeOverlay::dropEvent(QDropEvent* event)
 {
-    FLOG_DEBUG(fml::log::Ch::UI, "WelcomeOverlay::Handling file drop:");
+    FLOG_DEBUG(Ch::UI, "WelcomeOverlay::Handling file drop:");
     if (auto* canvas = qobject_cast<CanvasView*>(parent())) {
         QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
         canvas->handleDrop(event->mimeData(), pos);

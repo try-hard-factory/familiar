@@ -21,7 +21,7 @@
 #include "quill/sinks/ConsoleSink.h"
 #include "quill/sinks/RotatingFileSink.h"
 
-namespace fml::log {
+namespace familiar::log {
 namespace {
 
 // Brackets are baked into the registered logger name (rather than the
@@ -214,4 +214,4 @@ RingSink* ringSink()
     return g_ringSink;
 }
 
-} // namespace fml::log
+} // namespace familiar::log

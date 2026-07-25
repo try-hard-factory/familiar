@@ -3,6 +3,7 @@
 #include "moveitem.h"
 
 #include "log/log.h"
+using namespace familiar::log;
 
 ImageDownloader::ImageDownloader(CanvasScene& s, QObject* parent)
     : QObject(parent)
@@ -37,11 +38,11 @@ void ImageDownloader::finished()
 {
     QImage img;
     img.loadFromData(reply_->readAll());
-    FLOG_DEBUG(fml::log::Ch::Net, "{}", fml::log::debugString(reply_->error()));
-    FLOG_DEBUG(fml::log::Ch::Net, "{}", reply_->url());
-    FLOG_DEBUG(fml::log::Ch::Net,
+    FLOG_DEBUG(Ch::Net, "{}", debugString(reply_->error()));
+    FLOG_DEBUG(Ch::Net, "{}", reply_->url());
+    FLOG_DEBUG(Ch::Net,
                "finished onDownloadFileComplete. {}",
-               fml::log::debugString(img.size()));
+               debugString(img.size()));
     isReady_ = true;
     reply_->deleteLater();
     // done
@@ -49,7 +50,7 @@ void ImageDownloader::finished()
 
 void ImageDownloader::errorOccurred(QNetworkReply::NetworkError err)
 {
-    FLOG_DEBUG(fml::log::Ch::Net, "errorOccurred: {}", fml::log::debugString(err));
+    FLOG_DEBUG(Ch::Net, "errorOccurred: {}", debugString(err));
     // Manage error here.
     reply_->deleteLater();
 }
