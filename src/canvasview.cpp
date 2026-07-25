@@ -820,6 +820,14 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     }
     undoStack_->endMacro();
 
+    // Items were added one at a time as they loaded (see on_items_loaded()),
+    // each triggering its own repaint at whatever raw/overlapping position
+    // add_queued_items() gave it - visible as a flicker/scatter before
+    // arrange_default() above snaps them into their final layout.
+    // Suppressed since do_insert_images() below; one repaint now shows
+    // only the already-arranged result.
+    setUpdatesEnabled(true);
+
     if (insertImagesNewScene_) {
         on_action_fit_scene();
     }
@@ -873,6 +881,9 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
 
     new ProgressDialog(tr("Loading images"), worker, 0, this);
 
+    // Re-enabled in on_insert_images_finished() once arrange_default()
+    // has given every item its final position - see the comment there.
+    setUpdatesEnabled(false);
     worker->start();
 }
 
