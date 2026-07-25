@@ -777,13 +777,22 @@ void CanvasView::on_action_reset_flip()
 void CanvasView::on_action_reset_crop()
 {
     cancelActiveModes();
-    // TODOLATER: filter selectedItems to PixmapItem* for ResetCropCommand
+    QList<IBaseItem*> items;
+    for (QGraphicsItem* item : scene_->selectedItems(true)) {
+        items.append(dynamic_cast<IBaseItem*>(item));
+    }
+    undoStack_->push(new ResetCropCommand(items));
 }
 
 void CanvasView::on_action_reset_transforms()
 {
     cancelActiveModes();
-    // TODOLATER: cast selectedItems to IBaseItem* for ResetTransformsCommand
+    QList<IBaseItem*> items;
+    for (QGraphicsItem* item : scene_->selectedItems(true)) {
+        items.append(dynamic_cast<IBaseItem*>(item));
+    }
+    undoStack_->push(new ResetTransformsCommand(items,
+                                                scene_->get_selection_center()));
 }
 
 // ─── Normalize actions ────────────────────────────────────────────────────────

@@ -398,9 +398,11 @@ void ResetCropCommand::undo()
 // ============================================================================
 // ResetTransformsCommand
 // ============================================================================
-ResetTransformsCommand::ResetTransformsCommand(const QList<IBaseItem*>& items)
+ResetTransformsCommand::ResetTransformsCommand(const QList<IBaseItem*>& items,
+                                               const QPointF& anchor)
     : QUndoCommand(QObject::tr("Reset All Transformations"))
     , items_(items)
+    , anchor_(anchor)
 {
 }
 
@@ -426,10 +428,11 @@ void ResetTransformsCommand::redo()
 
         oldValues_.append(values);
 
-        baseItem->set_scale(1, baseItem->center());
-        baseItem->set_rotation(0, baseItem->center());
+        const QPointF localAnchor = item->mapFromScene(anchor_);
+        baseItem->set_scale(1, localAnchor);
+        baseItem->set_rotation(0, localAnchor);
         if (baseItem->flip() == -1) {
-            baseItem->do_flip(false, baseItem->center());
+            baseItem->do_flip(false, localAnchor);
         }
     }
 }
@@ -438,12 +441,14 @@ void ResetTransformsCommand::undo()
 {
     for (int i = 0; i < items_.size(); ++i) {
         auto* baseItem = items_[i];
+        auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
         const TransformValues& old = oldValues_[i];
+        const QPointF localAnchor = item->mapFromScene(anchor_);
 
-        baseItem->set_scale(old.scale, baseItem->center());
-        baseItem->set_rotation(old.rotation, baseItem->center());
+        baseItem->set_scale(old.scale, localAnchor);
+        baseItem->set_rotation(old.rotation, localAnchor);
         if (old.flip == -1) {
-            baseItem->do_flip(false, baseItem->center());
+            baseItem->do_flip(false, localAnchor);
         }
 
         if (old.hasCrop) {
