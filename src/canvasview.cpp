@@ -11,6 +11,7 @@
 #include <QContextMenuEvent>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QImageReader>
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QMimeData>
@@ -654,14 +655,49 @@ void CanvasView::on_action_fit_selection()
 
 // ─── Insert actions ───────────────────────────────────────────────────────────
 
+QString CanvasView::getSupportedImageFormats() const
+{
+    // beeref's Python equivalent lists both "*.jpg" and "*.JPG" - dropped
+    // here since Qt's file dialog name-filter matching is already
+    // case-insensitive, so the uppercase copies match nothing extra and
+    // just roughly double the filter string's length. That length is
+    // what forced the whole dialog absurdly wide (the "Files of type"
+    // combo box shows it unelided) - see the 2026-07-25 conversation.
+    QStringList formats;
+    for (const QByteArray& f : QImageReader::supportedImageFormats()) {
+        formats << QStringLiteral("*.%1").arg(QString::fromLatin1(f));
+    }
+    return formats.join(QStringLiteral(" "));
+}
+
 void CanvasView::on_action_insert_images()
 {
     cancelActiveModes();
-    QStringList filenames = QFileDialog::getOpenFileNames(
-        this,
-        "Select one or more images to open",
-        QString(),
-        "Images (*.png *.jpg *.jpeg *.bmp *.gif *.webp *.tiff *.tif)");
+    const QString formats = getSupportedImageFormats();
+    qDebug() << "Supported image types for reading:" << formats;
+
+    QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
+    // See FileActions::openFile()/saveFileAs() for why this is needed:
+    // MainWindow is a translucent/frameless overlay (transparent
+    // stylesheet + WA_TranslucentBackground); as a separate top-level
+    // window without its own alpha channel, this dialog would otherwise
+    // inherit "background: transparent" and paint solid black, with an
+    // empty competing stylesheet not being enough to cancel it out.
+    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
+    fileDialog->setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setWindowTitle(tr("Select one or more images to open"));
+    fileDialog->setNameFilter(tr("Images (%1)").arg(formats));
+    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
+    fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
+    fileDialog->setFileMode(QFileDialog::ExistingFiles);
+    fileDialog->resize(800, 500);
+
+    QStringList filenames;
+    if (fileDialog->exec()) {
+        filenames = fileDialog->selectedFiles();
+    }
+    delete fileDialog;
     if (filenames.isEmpty())
         return;
     QList<QUrl> urls;
