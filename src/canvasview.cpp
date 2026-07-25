@@ -831,6 +831,7 @@ void CanvasView::on_action_arrange_vertical()
 
 void CanvasView::on_action_arrange_square()
 {
+    scene_->arrange_square();
     // TODOLATER: implement arrange_square in CanvasScene
 }
 
@@ -838,7 +839,14 @@ void CanvasView::on_action_arrange_square()
 
 void CanvasView::on_action_change_opacity()
 {
-    // TODOLATER: open ChangeOpacityDialog
+    QList<QGraphicsItem*> images;
+    for (QGraphicsItem* item : scene_->selectedItems(true)) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (baseItem && baseItem->is_image()) {
+            images.append(item);
+        }
+    }
+    new ChangeOpacityDialog(this, images, undoStack_.get());
 }
 
 void CanvasView::on_action_grayscale(bool /*checked*/)
