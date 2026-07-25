@@ -33,6 +33,14 @@
 
 int main(int argc, char* argv[])
 {
+#ifdef Q_OS_LINUX
+    // The Wayland QPA plugin has been unreliable/slow on this app; xcb
+    // (X11, via XWayland where needed) is the known-good path. Only
+    // applies if the user hasn't already chosen a platform themselves.
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM", "xcb");
+#endif
+
 #ifdef NDEBUG
     qDebug() << "NDEBUG DEFINED";
 #else
