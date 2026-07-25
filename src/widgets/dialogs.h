@@ -106,6 +106,15 @@ public:
     HelpDialog(QWidget* parent = nullptr)
         : QDialog(parent)
     {
+        // See ChangeOpacityDialog: shown non-modally via show() below and
+        // never explicitly deleted by whoever calls "new HelpDialog(...)".
+        setAttribute(Qt::WA_DeleteOnClose);
+        // See FileActions::openFile(): MainWindow's translucent/frameless
+        // stylesheet cascades into this otherwise-unstyled top-level
+        // dialog, painting it solid black.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
         setWindowTitle(qApp->applicationName() + " Help");
         QString docDir = QCoreApplication::applicationDirPath()
                          + "/documentation";
@@ -145,6 +154,15 @@ public:
     DebugLogDialog(QWidget* parent)
         : QDialog(parent)
     {
+        // See ChangeOpacityDialog: shown non-modally via show() below and
+        // never explicitly deleted by whoever calls "new DebugLogDialog(...)".
+        setAttribute(Qt::WA_DeleteOnClose);
+        // See FileActions::openFile(): MainWindow's translucent/frameless
+        // stylesheet cascades into this otherwise-unstyled top-level
+        // dialog, painting it solid black.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
         setWindowTitle(qApp->applicationName() + " Debug Log");
         QString logPath = logfileName();
         QFile file(logPath);
@@ -213,6 +231,12 @@ public:
         if (defaultSize.width() > MAX_SIZE || defaultSize.width() >= MAX_SIZE)
             defaultSize.scale(MAX_SIZE, MAX_SIZE, Qt::KeepAspectRatio);
 
+        // See FileActions::openFile(): MainWindow's translucent/frameless
+        // stylesheet cascades into this otherwise-unstyled top-level
+        // dialog, painting it solid black.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
         setWindowTitle("Export Scene to Image");
         setWindowModality(Qt::WindowModal);
         QGridLayout* layout = new QGridLayout();
@@ -288,8 +312,25 @@ public:
     {
         int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
 
+        // See FileActions::openFile()/saveFileAs(): MainWindow's
+        // translucent/frameless stylesheet ("background: transparent",
+        // no selector) cascades into any child top-level widget without
+        // its own stylesheet, painting it solid black instead.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
+
+        // Not owned/deleted anywhere by the caller (it's a "new
+        // ChangeOpacityDialog(...)" fire-and-forget, WindowModal rather
+        // than exec()'d) - without this it'd just stay a hidden child of
+        // its parent, accumulating for as long as that parent's alive,
+        // on every single open. command is already nulled out by both
+        // accept() and reject() before this fires, so the destructor's
+        // "delete command" is a safe no-op either way.
+        setAttribute(Qt::WA_DeleteOnClose);
         setWindowTitle("Change Opacity:");
         setWindowModality(Qt::WindowModal);
+        setMinimumWidth(250);
         QVBoxLayout* layout = new QVBoxLayout();
         setLayout(layout);
 
@@ -433,6 +474,12 @@ public:
     ExportImagesFileExistsDialog(QWidget* parent, const QString& filename)
         : QDialog(parent)
     {
+        // See FileActions::openFile(): MainWindow's translucent/frameless
+        // stylesheet cascades into this otherwise-unstyled top-level
+        // dialog, painting it solid black.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
         setWindowTitle("File exists");
 
         QVBoxLayout* layout = new QVBoxLayout();

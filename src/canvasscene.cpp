@@ -1030,11 +1030,13 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             textItem->setPlainText(text);
             item = textItem;
         } else {
-            // Unknown type - create text item with warning message
+            // Unknown type (e.g. saved by a newer app version) - a visibly
+            // distinct red placeholder instead of a plain text item, so the
+            // data loss is obvious rather than silent. Matches beeref's
+            // ErrorItem fallback in add_queued_items().
             qWarning() << "Encountered item of unknown type:" << typ;
-            TextItem* textItem = new TextItem();
-            textItem->setPlainText(QString("Item of unknown type: %1").arg(typ));
-            item = textItem;
+            item = new ErrorItem(
+                QString("Item of unknown type: %1").arg(typ));
         }
 
         if (item) {
