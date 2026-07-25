@@ -1101,8 +1101,6 @@ bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
 // Legacy
 // ============================================================================
 
-void CanvasScene::keyPressEvent(QKeyEvent* event) {}
-
 void CanvasScene::copyToClipboard()
 {
     // TODOLATER: copy selected items to clipboard

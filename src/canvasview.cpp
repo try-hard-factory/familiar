@@ -729,7 +729,11 @@ void CanvasView::on_action_insert_images()
 void CanvasView::on_action_insert_text()
 {
     cancelActiveModes();
-    // TODOLATER: create TextItem and insert via InsertItems command
+    auto* item = new TextItem();
+    QPointF pos = mapToScene(mapFromGlobal(cursor().pos()));
+    item->setScale(1.0 / get_scale());
+    undoStack_->push(
+        new InsertItemsCommand(scene_, QList<IBaseItem*>{item}, pos));
 }
 
 // ─── Transform actions ────────────────────────────────────────────────────────

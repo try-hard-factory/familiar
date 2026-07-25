@@ -165,9 +165,6 @@ public:
     void setModified(bool mod);
     bool isUntitled();
 
-protected:
-    void keyPressEvent(QKeyEvent* event) override;
-
 public slots:
     void settingsChangedSlot();
 
