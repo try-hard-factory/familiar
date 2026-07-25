@@ -568,7 +568,7 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
     // edge-triggered and don't replay the current state on connect.
     actiongroup_set_enabled("active_when_items_in_scene", !cv->scene()->items().isEmpty());
     actiongroup_set_enabled("active_when_selection", cv->scene()->has_selection());
-    actiongroup_set_enabled("active_when_single_image", cv->scene()->has_single_selection());
+    actiongroup_set_enabled("active_when_single_image", cv->scene()->has_single_image_selection());
     actiongroup_set_enabled("active_when_can_undo", cv->undoStack()->canUndo());
     actiongroup_set_enabled("active_when_can_redo", cv->undoStack()->canRedo());
 }
@@ -586,7 +586,7 @@ void MainWindow::on_active_scene_changed()
 void MainWindow::on_active_selection_changed()
 {
     actiongroup_set_enabled("active_when_selection", hookedScene_->has_selection());
-    actiongroup_set_enabled("active_when_single_image", hookedScene_->has_single_selection());
+    actiongroup_set_enabled("active_when_single_image", hookedScene_->has_single_image_selection());
 }
 
 void MainWindow::on_active_can_undo_changed(bool canUndo)

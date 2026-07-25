@@ -430,7 +430,7 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     // canvasRect_ (see on_scene_changed()) reimplements the same
     // grow-never-shrink look ourselves, with an explicit reset to empty
     // when the scene genuinely has zero items.
-    static constexpr qreal kCanvasMargin = 80;
+    static constexpr qreal kCanvasMargin = 10;
     const QRectF paddedCanvasRect = canvasRect_.isEmpty()
         ? canvasRect_
         : canvasRect_.marginsAdded(
