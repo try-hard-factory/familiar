@@ -18,7 +18,6 @@
 #include <QMimeData>
 #include <QUndoStack>
 #include <QUrl>
-#include <qdebug.h>
 #include <cmath>
 
 #include <core/settingshandler.h>

@@ -12,7 +12,6 @@
 
 #include <string>
 #include <QByteArray>
-#include <QDebug>
 #include <QFile>
 #include <QImage>
 #include <QMessageBox>

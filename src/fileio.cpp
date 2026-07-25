@@ -2,7 +2,6 @@
 
 #include "canvasscene.h"
 
-#include <QDebug>
 #include <QImageReader>
 
 #include "log/log.h"

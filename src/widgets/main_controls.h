@@ -3,7 +3,6 @@
 #include "widgets/dialogs.h"
 #include <core/controls.h>
 #include <QCursor>
-#include <QDebug>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QImage>
@@ -14,7 +13,6 @@
 #include <QPoint>
 #include <QPointF>
 #include <QWidget>
-#include <qdebug.h>
 
 #include "log/log.h"
 template<typename Mixin, typename T>

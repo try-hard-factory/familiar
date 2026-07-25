@@ -3,7 +3,6 @@
 #include "moveitem.h"
 #include "selector.h"
 
-#include <QDebug>
 #include <QGraphicsScene>
 
 // ============================================================================
