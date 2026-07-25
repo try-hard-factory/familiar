@@ -243,7 +243,7 @@ void CanvasView::zoom(double delta, QPointF anchor)
         else
             return;
     } else {
-        if (getZoomSize([](double w, double h) { return std::min(w, h); }) > 50.0)
+        if (getZoomSize([](double w, double h) { return std::min(w, h); }) > 10.0)
             doScale(1.0 / factor, 1.0 / factor);
         else
             return;
@@ -392,8 +392,26 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
 
 void CanvasView::resizeEvent(QResizeEvent* event)
 {
+    // setTransformationAnchor(NoAnchor) (see the constructor) means Qt
+    // keeps the viewport's top-left corner fixed in scene coordinates
+    // across a resize, not the center - deliberately, so it doesn't
+    // fight our own zoom-under-cursor math in zoom(). But that also
+    // means a drastic resize (entering/exiting fullscreen) visibly
+    // shifts previously-centered content toward the bottom-right edge.
+    // Recompute where the OLD center was (scrollbar position/transform
+    // haven't changed yet at this point, only the geometry) and re-center
+    // on it once the resize is done, so content stays visually in place.
+    QPointF oldCenter;
+    if (!previousTransform_) {
+        oldCenter = mapToScene(QPoint(event->oldSize().width() / 2,
+                                      event->oldSize().height() / 2));
+    }
+
     QGraphicsView::resizeEvent(event);
     recalcSceneRect();
+    if (!previousTransform_) {
+        centerOn(oldCenter);
+    }
     welcomeOverlay_->resize(size());
 }
 
