@@ -143,13 +143,15 @@ target_sources(
         main.cpp)
 
 if (MSVC)
-    # MSVC's __FUNCTION__ is a runtime-initialized local, not a compile-time
-    # constant the way GCC/Clang treat it - quill's LOG_* macros bake it into
-    # a `static constexpr MacroMetadata`, which fails to compile on MSVC
-    # ("expression did not evaluate to a constant"). Disabling it here drops
-    # %(caller_function) from Windows log lines but keeps everything else;
-    # Linux/macOS builds are unaffected.
-    target_compile_definitions(familiar PRIVATE QUILL_DISABLE_FUNCTION_NAME)
+    # Our FLOG_* macros add a second layer of variadic-macro forwarding on
+    # top of quill's own LOG_* macros (FLOG_DEBUG -> LOG_DEBUG ->
+    # QUILL_LOG_DEBUG -> ...). MSVC's legacy (non-conformant) preprocessor
+    # mishandles __VA_ARGS__ across multiple macro-to-macro forwards,
+    # producing garbled arguments to quill's `static constexpr MacroMetadata`
+    # initializer ("cannot convert from initializer list" / "expression did
+    # not evaluate to a constant"). The conformant preprocessor (default on
+    # GCC/Clang) handles this correctly; MSVC needs it opted in explicitly.
+    target_compile_options(familiar PRIVATE /Zc:preprocessor)
 endif()
 
 if (WIN32)
