@@ -498,12 +498,31 @@ void CanvasView::on_action_export_images()
 void CanvasView::on_action_undo()
 {
     cancelActiveModes();
+    // Mirrors the suppression on_action_delete_items()/on_action_cut()
+    // set for the initial action: undoing an InsertItemsCommand can
+    // empty the scene the same way a delete does, and on_scene_changed()
+    // would otherwise jarringly reset the zoom/pan for what's often just
+    // one step in a longer undo/redo sequence.
+    if (dynamic_cast<const InsertItemsCommand*>(
+            undoStack_->command(undoStack_->index() - 1))) {
+        suppressNextEmptySceneReset_ = true;
+    }
     undoStack_->undo();
 }
 
 void CanvasView::on_action_redo()
 {
     cancelActiveModes();
+    // See on_action_undo(): redoing a DeleteItemsCommand re-empties the
+    // scene the same way the original delete/cut action did, but that
+    // action's own suppressNextEmptySceneReset_ was already consumed by
+    // the first empty-scene transition - without this, a second delete
+    // via redo resets the transform, leaving it unfitted if the scene
+    // then gets un-emptied again by a later undo.
+    if (dynamic_cast<const DeleteItemsCommand*>(
+            undoStack_->command(undoStack_->index()))) {
+        suppressNextEmptySceneReset_ = true;
+    }
     undoStack_->redo();
 }
 
