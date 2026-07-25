@@ -31,18 +31,22 @@ jobs:
       - name: Checkout Source code
         if: github.event_name == 'push'
         uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Checkout Source code
         if: github.event_name == 'pull_request'
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha }}
+          submodules: true
 
       - name: Checkout Source code
         if: github.event_name == 'workflow_dispatch'
         uses: actions/checkout@v6
         with:
           ref: ${{ github.sha }}
+          submodules: true
 
       - name: Install Dependencies
         run: |
@@ -112,6 +116,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          submodules: true
 
       - name: Fix Python path
         shell: pwsh
