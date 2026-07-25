@@ -631,7 +631,16 @@ void CanvasView::on_action_paste()
     if (!marker.isEmpty() && !scene_->internal_clipboard.isEmpty()) {
         // Checking that the internal clipboard exists since the user
         // may have opened a new scene since copying.
+        bool wasEmpty = scene_->items().isEmpty();
         scene_->paste_from_internal_clipboard(mapToScene(pos));
+        if (wasEmpty) {
+            // First items in this scene - not in beeref's own
+            // paste_from_internal_clipboard, since it's single-scene and
+            // can never hit this: there's nowhere to have copied from
+            // otherwise. Our internal clipboard is shared across tabs, so
+            // copy-on-tab-A/paste-into-fresh-tab-B is a real path here.
+            on_action_fit_scene();
+        }
         return;
     }
 
