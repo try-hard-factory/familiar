@@ -214,6 +214,7 @@ void ColorsWidget::colorInit()
 
 void ColorsWidget::sliderInit()
 {
+    // TODOLATER
     auto* settings = SettingsHandler::getInstance();
     // slider init
     opacitySlider_->setFocusPolicy(Qt::NoFocus);
