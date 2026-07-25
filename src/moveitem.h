@@ -11,7 +11,6 @@
 #include <QBuffer>
 #include <QClipboard>
 #include <QCursor>
-#include <QDebug>
 #include <QFileInfo>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
@@ -26,7 +25,6 @@
 #include <QWheelEvent>
 #include <QtGlobal>
 #include <qassert.h>
-#include <qdebug.h>
 
 #include "log/log.h"
 

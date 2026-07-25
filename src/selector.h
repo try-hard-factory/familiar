@@ -10,7 +10,6 @@
 #include "log/log.h"
 #include <QBrush>
 #include <QCursor>
-#include <QDebug>
 #include <QGraphicsRectItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>

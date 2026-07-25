@@ -1,6 +1,5 @@
 #include "settingshandler.h"
 #include <QCoreApplication>
-#include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileSystemWatcher>
