@@ -165,7 +165,11 @@ void CanvasScene::clear()
 
     detachAllItems();
     QGraphicsScene::clear();
-    internal_clipboard.clear();
+    // internal_clipboard is intentionally NOT cleared here - it's shared
+    // across all tabs (see its declaration) and its shared_ptr entries
+    // keep copied items alive independently of this scene, so wiping it
+    // just because this one scene is being reset would break paste on
+    // other tabs.
     rubberband_item_ = new RubberbandItem();
     multiselect_item_ = new MultiSelectItem();
     clear_ongoing = false;

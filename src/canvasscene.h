@@ -136,7 +136,13 @@ public:
     // background ThreadedIO worker while add_queued_items() drains it
     // on the GUI thread.
     QMutex itemsToAddMutex_;
-    QList<std::shared_ptr<IBaseItem>> internal_clipboard;
+    // Shared (not per-tab) so copy on one tab's scene can be pasted into
+    // another's - the "familiar/items" marker CanvasView::on_action_copy()
+    // sets is on the system clipboard already, which is inherently
+    // global; the actual items need to be too. Holding shared_ptr keeps
+    // a copied item alive even if the scene it came from gets cleared/
+    // closed before the paste happens.
+    static inline QList<std::shared_ptr<IBaseItem>> internal_clipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
     QPointF event_start{};
