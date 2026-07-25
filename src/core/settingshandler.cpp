@@ -12,9 +12,7 @@
 
 #include <core/valuehandler.h>
 
-#include "Logger.h"
-
-extern Logger logger;
+#include "log/log.h"
 
 #define OPTION(KEY, TYPE) \
     { \
@@ -176,7 +174,7 @@ void SettingsHandler::setDefaultCurrentPreset()
 
 bool SettingsHandler::setShortcut(const QString& actionName, const QString& shortcut)
 {
-    LOG_DEBUG(logger, shortcut.toStdString());
+    FLOG_DEBUG(fml::log::Ch::Settings, "{}", shortcut);
 
     static QVector<QKeySequence> reservedShortcuts = {
         Qt::Key_Backspace,
@@ -584,12 +582,12 @@ void SettingsHandler::setErrorState(bool error) const
     // Notify user every time m_hasError changes
     if (!hadError && hasError_) {
         QString msg = errorMessage();
-        LOG_WARNING(logger, msg.toStdString());
+        FLOG_WARN(fml::log::Ch::Settings, "{}", msg);
         //        AbstractLogger::error() << msg;
         emit getInstance()->error();
     } else if (hadError && !hasError_) {
         auto msg = tr("You have successfully resolved the configuration error.");
-        LOG_INFO(logger, msg.toStdString());
+        FLOG_INFO(fml::log::Ch::Settings, "{}", msg);
         //        AbstractLogger::info() << msg;
         emit getInstance()->errorResolved();
     }

@@ -18,9 +18,7 @@
 #include <QUndoStack>
 #include <ui/settings_window.h>
 
-#include "Logger.h"
-
-extern Logger logger;
+#include "log/log.h"
 
 static QHash<QString, EShortcutButtons> recognizedShortcutsActions = {
     {"TYPE_NEW", k_TYPE_NEW},
@@ -168,11 +166,10 @@ void MainWindow::saveFileAs()
 void MainWindow::notifyShortcut(const QString& actionName)
 {
     auto settings = SettingsHandler::getInstance();
-    LOG_WARNING(logger,
-                "notifyShortcut. actionName: ",
-                actionName.toStdString(),
-                ", shortcut: ",
-                settings->shortcut(actionName).toStdString());
+    FLOG_WARN(fml::log::Ch::UI,
+              "notifyShortcut. actionName: {}, shortcut: {}",
+              actionName,
+              settings->shortcut(actionName));
     auto idx = recognizedShortcutsActions[actionName];
     auto keyseq = QKeySequence(SettingsHandler().shortcut(actionName));
 }

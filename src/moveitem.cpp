@@ -3,10 +3,7 @@
 #include <QPen>
 #include <core/settingshandler.h>
 
-#include "Logger.h"
 #include "Vec2d.h"
-
-extern Logger logger;
 
 #define MOUSE_MOVE_DEBUG
 

@@ -12,7 +12,7 @@
 #include <QPainter>
 #include <QPen>
 
-#include "Logger.h"
+#include "log/log.h"
 
 #include "project_settings.h"
 #include "selector.h"
@@ -26,8 +26,6 @@
 #include "core/settings.h"
 #include <algorithm>
 #include <cmath>
-
-extern Logger logger;
 
 namespace {
 
@@ -1178,7 +1176,7 @@ void CanvasScene::handleHtmlFromClipboard(const QString& html)
     if (it != end) {
         imgdownloader_->download(QString::fromStdString((*it)[1].str()), {0, 0});
     } else {
-        LOG_WARNING(logger, "[UI]:::CANNOT DISPLAY DATA.");
+        FLOG_WARN(fml::log::Ch::Scene, "CANNOT DISPLAY DATA.");
     }
 }
 
