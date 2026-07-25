@@ -38,11 +38,7 @@ const QList<MenuNode>& menuStructure()
             MenuNode::sep(),
             MenuNode::action("fullscreen"),
             MenuNode::action("always_on_top"),
-            MenuNode::action("show_scrollbars"),
             MenuNode::action("show_menubar"),
-            MenuNode::action("show_titlebar"),
-            MenuNode::sep(),
-            MenuNode::action("move_window"),
         }),
         MenuNode::submenu("&Insert", {
             MenuNode::action("insert_images"),

@@ -154,14 +154,8 @@ static ActionRegistry buildRegistry()
                   {"F11"},          true));
     r.add(A::make("always_on_top",  "&Always On Top",       "on_action_always_on_top",
                   {},               true));
-    r.add(A::make("show_scrollbars","Show &Scrollbars",     "on_action_show_scrollbars",
-                  {},               true,  false, {}, "View/show_scrollbars"));
     r.add(A::make("show_menubar",   "Show &Menu Bar",       "on_action_show_menubar",
                   {},               true,  false, {}, "View/show_menubar"));
-    r.add(A::make("show_titlebar",  "Show &Title Bar",      "on_action_show_titlebar",
-                  {},               true,  true));
-    r.add(A::make("move_window",    "Move &Window",         "on_action_move_window",
-                  {"Ctrl+M"}));
 
     // ── Insert ────────────────────────────────────────────────────────────────
     r.add(A::make("insert_images",  "&Images...",           "on_action_insert_images",

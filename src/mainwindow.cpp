@@ -324,21 +324,6 @@ void MainWindow::on_action_show_menubar(bool checked)
         setMenuBar(nullptr);
 }
 
-void MainWindow::on_action_show_titlebar(bool checked)
-{
-    setWindowFlag(Qt::FramelessWindowHint, !checked);
-    hide();
-    show();
-}
-
-void MainWindow::on_action_move_window()
-{
-    // if (welcomeOverlay_->isHidden())
-    //     on_action_movewin_mode();
-    // else
-    //     welcomeOverlay_->on_action_movewin_mode();
-}
-
 // Settings / Help
 void MainWindow::on_action_settings()
 {
@@ -448,11 +433,6 @@ void MainWindow::on_action_fit_selection()
 {
     if (auto* cv = tabpane_->currentWidget()) cv->on_action_fit_selection();
 }
-void MainWindow::on_action_show_scrollbars(bool checked)
-{
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_show_scrollbars(checked);
-}
-
 // Insert
 void MainWindow::on_action_insert_images()
 {
