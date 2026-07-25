@@ -6,6 +6,7 @@
 #include <QGraphicsItem>
 #include <QRectF>
 #include <QString>
+#include <optional>
 
 class CanvasScene;
 class IBaseItem;
@@ -20,7 +21,7 @@ class InsertItemsCommand : public QUndoCommand
 public:
     InsertItemsCommand(CanvasScene* scene,
                        const QList<IBaseItem*>& items,
-                       const QPointF& position = QPointF(),
+                       std::optional<QPointF> position = std::nullopt,
                        bool ignoreFirstRedo = false);
 
     void redo() override;
@@ -29,7 +30,7 @@ public:
 private:
     CanvasScene* scene_;
     QList<IBaseItem*> items_;
-    QPointF position_;
+    std::optional<QPointF> position_;
     QList<QPointF> oldPositions_;
     bool ignoreFirstRedo_;
 };

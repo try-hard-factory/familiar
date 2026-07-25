@@ -808,7 +808,7 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
 
     if (!insertImagesInsertedItems_.isEmpty()) {
         undoStack_->push(new InsertItemsCommand(
-            scene_, insertImagesInsertedItems_, QPointF(), true));
+            scene_, insertImagesInsertedItems_, std::nullopt, true));
         scene_->arrange_default();
     }
     undoStack_->endMacro();

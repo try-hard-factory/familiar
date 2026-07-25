@@ -11,7 +11,7 @@
 // ============================================================================
 InsertItemsCommand::InsertItemsCommand(CanvasScene* scene,
                                        const QList<IBaseItem*>& items,
-                                       const QPointF& position,
+                                       std::optional<QPointF> position,
                                        bool ignoreFirstRedo)
     : QUndoCommand(QObject::tr("Insert items"))
     , scene_(scene)
@@ -31,8 +31,9 @@ void InsertItemsCommand::redo()
         return;
     }
 
-    // Calculate offset if position is specified
-    if (!position_.isNull()) {
+    scene_->deselect_all_items();
+    if (position_) {
+        oldPositions_.clear();
         QList<QGraphicsItem*> graphicsItems;
         for (auto* item : items_) {
             graphicsItems.append(dynamic_cast<QGraphicsItem*>(item));
@@ -42,34 +43,32 @@ void InsertItemsCommand::redo()
         for (int i = 0; i < items_.size(); ++i) {
             auto* item = dynamic_cast<QGraphicsItem*>(items_[i]);
             oldPositions_.append(item->pos());
-            QPointF newPos = item->pos() + position_ - rect.center();
+            QPointF newPos = item->pos() + *position_ - rect.center();
             item->setPos(newPos);
         }
     }
 
-    scene_->clearSelection();
     for (auto* item : items_) {
         auto* graphicsItem = dynamic_cast<QGraphicsItem*>(item);
         scene_->addItem(graphicsItem);
         graphicsItem->setSelected(true);
+        item->bring_to_front();
     }
 }
 
 void InsertItemsCommand::undo()
 {
-    scene_->clearSelection();
+    scene_->deselect_all_items();
     for (auto* item : items_) {
         auto* graphicsItem = dynamic_cast<QGraphicsItem*>(item);
         scene_->removeItem(graphicsItem);
     }
 
-    // Restore old positions if we modified them
-    if (!position_.isNull() && !oldPositions_.isEmpty()) {
+    if (position_) {
         for (int i = 0; i < items_.size(); ++i) {
             auto* item = dynamic_cast<QGraphicsItem*>(items_[i]);
             item->setPos(oldPositions_[i]);
         }
-        oldPositions_.clear();
     }
 }
 
