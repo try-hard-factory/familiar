@@ -6,6 +6,7 @@
 #include <QGraphicsItem>
 #include <QRectF>
 #include <QString>
+#include <memory>
 #include <optional>
 
 class CanvasScene;
@@ -30,6 +31,11 @@ public:
 private:
     CanvasScene* scene_;
     QList<IBaseItem*> items_;
+    // Shares ownership with CanvasScene::attachedItems_ (while attached)
+    // and any other command referencing the same items (e.g. a later
+    // DeleteItemsCommand for one of them) - see IBaseItem::acquireShared().
+    // Plain RAII: whichever owner is destroyed last frees the item.
+    QList<std::shared_ptr<IBaseItem>> ownedRefs_;
     std::optional<QPointF> position_;
     QList<QPointF> oldPositions_;
     bool ignoreFirstRedo_;
@@ -49,6 +55,8 @@ public:
 private:
     CanvasScene* scene_;
     QList<QGraphicsItem*> items_;
+    // See InsertItemsCommand::ownedRefs_.
+    QList<std::shared_ptr<IBaseItem>> ownedRefs_;
 };
 
 // ============================================================================

@@ -19,8 +19,10 @@ InsertItemsCommand::InsertItemsCommand(CanvasScene* scene,
     , ignoreFirstRedo_(ignoreFirstRedo)
 {
     items_.reserve(items.size());
+    ownedRefs_.reserve(items.size());
     for (auto* item : items) {
         items_.append(item);
+        ownedRefs_.append(item->acquireShared());
     }
 }
 
@@ -81,6 +83,12 @@ DeleteItemsCommand::DeleteItemsCommand(CanvasScene* scene,
     , scene_(scene)
     , items_(items)
 {
+    ownedRefs_.reserve(items.size());
+    for (auto* item : items) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            ownedRefs_.append(baseItem->acquireShared());
+        }
+    }
 }
 
 void DeleteItemsCommand::redo()

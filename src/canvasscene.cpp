@@ -124,6 +124,20 @@ CanvasScene::~CanvasScene()
     disconnect(this, nullptr, nullptr, nullptr);
     disconnect(SettingsHandler::getInstance(), nullptr, this, nullptr);
     disconnect(QApplication::clipboard(), nullptr, this, nullptr);
+
+    // Same reasoning as clear(): detach rubberband_item_/multiselect_item_
+    // and every remaining user item via our own removeItem() before
+    // ~QGraphicsScene() runs, so attachedItems_ releases its shared_ptr
+    // references properly instead of racing Qt's own direct-delete of
+    // whatever's still attached.
+    if (rubberband_item_->scene())
+        removeItem(rubberband_item_);
+    delete rubberband_item_;
+    if (multiselect_item_->scene())
+        removeItem(multiselect_item_);
+    delete multiselect_item_;
+    detachAllItems();
+
     delete projectSettings_;
 }
 
@@ -149,6 +163,7 @@ void CanvasScene::clear()
         delete multiselect_item_;
     }
 
+    detachAllItems();
     QGraphicsScene::clear();
     internal_clipboard.clear();
     rubberband_item_ = new RubberbandItem();
@@ -160,12 +175,34 @@ void CanvasScene::addItem(QGraphicsItem* item)
 {
     qDebug() << "Adding item" << item;
     QGraphicsScene::addItem(item);
+    // rubberband_item_/multiselect_item_ implement IBaseItem too (needed
+    // for corners_scene_coords()/get_type()/etc.) but aren't part of the
+    // shared-ownership system at all - they're singletons with manual
+    // new/delete lifetime in clear() and get repeatedly attached/detached
+    // as selection changes. itemAddByUser() is the existing filter for
+    // "real" pixmap/text items (see itemsBoundingRect()); without it,
+    // the first attach here would hand out the item's only shared_ptr,
+    // and detaching it on deselect would free it out from under the
+    // scene's own still-live raw pointer.
+    if (itemAddByUser(item)) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        attachedItems_.insert(item, baseItem->acquireShared());
+    }
 }
 
 void CanvasScene::removeItem(QGraphicsItem* item)
 {
     qDebug() << "Removing item" << item;
     QGraphicsScene::removeItem(item);
+    attachedItems_.remove(item);
+}
+
+void CanvasScene::detachAllItems()
+{
+    const QList<QGraphicsItem*> current = items();
+    for (QGraphicsItem* item : current) {
+        removeItem(item);
+    }
 }
 
 void CanvasScene::cancel_active_modes()
@@ -198,14 +235,16 @@ void CanvasScene::copy_selection_to_internal_clipboard()
 {
     internal_clipboard.clear();
     for (QGraphicsItem* item : selectedItems(true)) {
-        internal_clipboard.append(dynamic_cast<IBaseItem*>(item));
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            internal_clipboard.append(baseItem->acquireShared());
+        }
     }
 }
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
     QList<IBaseItem*> copies;
-    for (IBaseItem* item : internal_clipboard) {
+    for (const std::shared_ptr<IBaseItem>& item : internal_clipboard) {
         IBaseItem* copy = item->create_copy();
         copies.append(copy);
     }
