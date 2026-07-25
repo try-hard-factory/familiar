@@ -244,8 +244,8 @@ public:
 template<typename Mixin, typename T>
 class SelectableMixin : public BaseItemMixin<T>
 {
-    qreal selectLineWidth_{4};
-    qreal selectHandleSize_{15};
+    qreal selectLineWidth_{2};
+    qreal selectHandleSize_{9};
     qreal selectResizeSize_{20};
     qreal selectRotateSize_{10};
     qreal selectFreeCenter_{20};
