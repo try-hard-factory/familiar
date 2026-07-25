@@ -49,8 +49,6 @@ set(PROJECT_SOURCES
         canvasscene.cpp
         canvasscene.h
         debug_macros.h
-        Logger.h
-        MessageBuilder.h
         Vec2d.h
         log/log.h
         log/log.cpp

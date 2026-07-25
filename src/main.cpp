@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 
-#include <Logger.h>
 #include <QApplication>
 #include <QMetaType>
 
@@ -31,9 +30,6 @@
  *
  * \~english etc...
  */
-
-
-Logger logger;
 
 int main(int argc, char* argv[])
 {
