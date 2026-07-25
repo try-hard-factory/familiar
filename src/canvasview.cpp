@@ -869,7 +869,7 @@ void CanvasView::on_action_change_opacity()
     new ChangeOpacityDialog(this, images, undoStack_.get());
 }
 
-void CanvasView::on_action_grayscale(bool checked)
+void CanvasView::on_action_grayscale()
 {
     QList<PixmapItem*> images;
     for (QGraphicsItem* item : scene_->selectedItems(true)) {
@@ -879,7 +879,7 @@ void CanvasView::on_action_grayscale(bool checked)
         }
     }
     if (!images.isEmpty()) {
-        undoStack_->push(new ToggleGrayscaleCommand(images, checked));
+        undoStack_->push(new ToggleGrayscaleCommand(images));
     }
 }
 

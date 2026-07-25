@@ -514,9 +514,9 @@ void MainWindow::on_action_change_opacity()
 {
     if (auto* cv = tabpane_->currentWidget()) cv->on_action_change_opacity();
 }
-void MainWindow::on_action_grayscale(bool checked)
+void MainWindow::on_action_grayscale()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_grayscale(checked);
+    if (auto* cv = tabpane_->currentWidget()) cv->on_action_grayscale();
 }
 void MainWindow::on_action_show_color_gamut()
 {

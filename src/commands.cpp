@@ -576,26 +576,22 @@ void ChangeTextCommand::undo()
 // ============================================================================
 // ToggleGrayscaleCommand
 // ============================================================================
-ToggleGrayscaleCommand::ToggleGrayscaleCommand(const QList<PixmapItem*>& items, bool grayscale)
+ToggleGrayscaleCommand::ToggleGrayscaleCommand(const QList<PixmapItem*>& items)
     : QUndoCommand(QObject::tr("Toggle Grayscale"))
     , items_(items)
-    , grayscale_(grayscale)
 {
-    for (auto* item : items_) {
-        oldGrayscales_.append(item->grayscale());
-    }
 }
 
 void ToggleGrayscaleCommand::redo()
 {
     for (auto* item : items_) {
-        item->setGrayscale(grayscale_);
+        item->setGrayscale(!item->grayscale());
     }
 }
 
 void ToggleGrayscaleCommand::undo()
 {
-    for (int i = 0; i < items_.size(); ++i) {
-        items_[i]->setGrayscale(oldGrayscales_[i]);
-    }
+    // Self-inverse: applying the same per-item inversion again exactly
+    // undoes it, like FlipItemsCommand.
+    redo();
 }

@@ -134,7 +134,7 @@ public:
 
     // Images
     void on_action_change_opacity();
-    void on_action_grayscale(bool checked);
+    void on_action_grayscale();
     void on_action_show_color_gamut();
     void on_action_sample_color();
 
