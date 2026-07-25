@@ -306,7 +306,13 @@ void MainWindow::on_action_fullscreen(bool checked)
 void MainWindow::on_action_always_on_top(bool checked)
 {
     setWindowFlag(Qt::WindowStaysOnTopHint, checked);
-    hide();
+    // destroy()+create(), not hide()+show(): the window manager (X11's
+    // WindowStaysOnTopHint maps to _NET_WM_STATE_ABOVE) can ignore a flag
+    // change on an already-mapped window - hide/show remaps the same
+    // native window handle, while destroy/create forces Qt to hand the
+    // WM a brand new one with the current flags applied from scratch.
+    destroy();
+    create();
     show();
 }
 
