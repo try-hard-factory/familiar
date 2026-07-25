@@ -68,12 +68,24 @@ CanvasView::~CanvasView()
 
 void CanvasView::on_scene_changed()
 {
+    const QRectF currentItemsRect = scene_->itemsBoundingRect();
+    canvasRect_ = currentItemsRect.isEmpty() ? QRectF()
+                                             : canvasRect_.united(currentItemsRect);
+
     if (scene_->items().isEmpty()) {
-        setTransform(QTransform());
+        // Stays set across every redundant on_scene_changed() firing
+        // while the scene remains empty (setTransform() below itself
+        // re-triggers scene_->changed(), so this can fire several times
+        // in a row for one Cut) - only cleared once real content is back
+        // (the else branch), not "used up" on the first call.
+        if (!suppressNextEmptySceneReset_) {
+            setTransform(QTransform());
+        }
         welcomeOverlay_->setFocus();
         clearFocus();
         welcomeOverlay_->show();
     } else {
+        suppressNextEmptySceneReset_ = false;
         setFocus();
         welcomeOverlay_->clearFocus();
         welcomeOverlay_->hide();
@@ -386,9 +398,20 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     setCacheMode(CacheNone);
     painter->save();
     scene_->setBackgroundBrush(QBrush(canvasColor_));
-    painter->fillRect(scene_->sceneRect(), scene_->backgroundBrush());
+    // Not scene_->sceneRect(): QGraphicsScene's own sceneRect grows with
+    // items but never shrinks back (documented Qt behavior), so after Cut
+    // removed the only item it stayed stuck at the old bounds forever.
+    // canvasRect_ (see on_scene_changed()) reimplements the same
+    // grow-never-shrink look ourselves, with an explicit reset to empty
+    // when the scene genuinely has zero items.
+    static constexpr qreal kCanvasMargin = 80;
+    const QRectF paddedCanvasRect = canvasRect_.isEmpty()
+        ? canvasRect_
+        : canvasRect_.marginsAdded(
+              QMarginsF(kCanvasMargin, kCanvasMargin, kCanvasMargin, kCanvasMargin));
+    painter->fillRect(paddedCanvasRect, scene_->backgroundBrush());
     painter->setPen(QPen(borderColor_, 2));
-    painter->drawRect(scene_->sceneRect());
+    painter->drawRect(paddedCanvasRect);
     painter->restore();
 }
 
@@ -471,12 +494,18 @@ void CanvasView::on_action_deselect_all()
 void CanvasView::on_action_delete_items()
 {
     cancelActiveModes();
+    // Dropping items can include whatever previousTransform_->toggleItem
+    // points to (set by double-click zoom-to-fit); left dangling, it
+    // would permanently block recalcSceneRect()'s early-return guard.
+    resetPreviousTransform();
     undoStack_->push(new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
 }
 
 void CanvasView::on_action_cut()
 {
     on_action_copy();
+    suppressNextEmptySceneReset_ = true;
+    resetPreviousTransform();
     undoStack_->push(new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
 }
 

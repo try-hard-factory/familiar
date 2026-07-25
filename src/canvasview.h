@@ -176,6 +176,29 @@ private:
 
     std::unique_ptr<PreviousTransform> previousTransform_;
 
+    // Set by on_action_cut() right before removing the cut items, so the
+    // resulting (transient) empty-scene state doesn't reset the view's
+    // zoom in on_scene_changed() - only Cut sets this, since a Delete
+    // that's genuinely never followed by a paste should still reset to
+    // the default view like an ordinary empty scene. scene_->changed()
+    // is emitted asynchronously (Qt batches updates), so this can't be a
+    // simple before/after-push() bracket: it's consumed - cleared to
+    // false - the very next time on_scene_changed() runs, whatever the
+    // outcome, so it suppresses exactly one reaction and nothing beyond
+    // that even if paste (or nothing at all) follows much later.
+    bool suppressNextEmptySceneReset_ = false;
+
+    // The visible "canvas" rect drawn in drawBackground(): grows to
+    // include items as they're added/moved (united() only ever expands),
+    // but never shrinks back on its own - matching how it used to look
+    // when drawBackground read QGraphicsScene::sceneRect() (which has
+    // that exact "grows but never shrinks" behavior built in). The one
+    // difference from Qt's own version: this is explicitly reset to
+    // empty the moment the scene has zero items, instead of staying
+    // stuck at wherever the largest-ever item bounds were (which is what
+    // caused the stale box after Cut). Updated in on_scene_changed().
+    QRectF canvasRect_;
+
     // Right-click: drag → move window, click → context menu
     bool rightPressed_  = false;
     bool rightDragging_ = false;
