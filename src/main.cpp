@@ -42,11 +42,6 @@ int main(int argc, char* argv[])
         qputenv("QT_QPA_PLATFORM", "xcb");
 #endif
 
-#ifdef NDEBUG
-    qDebug() << "NDEBUG DEFINED";
-#else
-    qDebug() << "NDEBUG notDEFINED";
-#endif
     qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
     qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
 
@@ -56,6 +51,12 @@ int main(int argc, char* argv[])
     // app.setApplicationName(constants.APPNAME)
 
     familiar::log::init();
+
+#ifdef NDEBUG
+    FLOG_DEBUG(Ch::Core, "NDEBUG defined");
+#else
+    FLOG_DEBUG(Ch::Core, "NDEBUG not defined");
+#endif
 
     MainWindow w;
     w.show();
