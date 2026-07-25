@@ -161,6 +161,11 @@ private:
     double getZoomSize(std::function<double(double, double)> func) const;
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
+    // QFileDialog filter string built from whatever image formats Qt can
+    // actually load in this build/environment (QImageReader's installed
+    // codec plugins), not a fixed guess - mirrors beeref's
+    // get_supported_image_formats().
+    QString getSupportedImageFormats() const;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;
