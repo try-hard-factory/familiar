@@ -17,6 +17,8 @@
 #include <QImage>
 #include <QMessageBox>
 
+#include "log/log.h"
+
 /**
   * \~russian @brief The fml_file_buffer класс
   *
@@ -35,7 +37,7 @@ public:
     {
         QFile file(filename);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            qDebug() << "Unnable to save file";
+            FLOG_DEBUG(fml::log::Ch::IO, "Unnable to save file");
             return;
         }
 

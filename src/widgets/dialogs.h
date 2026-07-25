@@ -38,6 +38,7 @@
 
 #include "commands.h"
 #include "fileio.h"
+#include "log/log.h"
 
 class ProgressDialog : public QProgressDialog
 {
@@ -50,7 +51,7 @@ public:
                                QWidget* parent = nullptr)
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
     {
-        qDebug() << "Initialized progress bar";
+        FLOG_DEBUG(fml::log::Ch::UI, "Initialized progress bar");
         setMinimumDuration(0);
         setWindowModality(Qt::WindowModal);
         setAutoReset(false);
@@ -77,19 +78,19 @@ public:
 private slots:
     void on_progress(int value)
     {
-        qDebug() << "Progress dialog:" << value;
+        FLOG_DEBUG(fml::log::Ch::UI, "Progress dialog: {}", value);
         setValue(value);
     }
 
     void on_begin_processing(int value)
     {
-        qDebug() << "Begin progress dialog:" << value;
+        FLOG_DEBUG(fml::log::Ch::UI, "Begin progress dialog: {}", value);
         setMaximum(value);
     }
 
     void on_finished(const QString& filename, const QStringList& errors)
     {
-        qDebug() << "Finished progress dialog";
+        FLOG_DEBUG(fml::log::Ch::UI, "Finished progress dialog");
         setValue(maximum());
         reset();
         hide();

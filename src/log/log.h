@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstddef>
 
+#include <QDebug>
 #include <QString>
 
 #include "quill/LogMacros.h"
@@ -48,6 +49,18 @@ void setChannelLevel(Ch channel, Level level);
 void setQtBridgeVerboseFunctions(bool verbose);
 
 quill::Logger* channelLogger(Ch channel);
+
+// Captures whatever operator<<(QDebug, const T&) already prints for a type
+// that has Qt debug-stream support but no fmtquill::formatter of its own
+// (QGraphicsItem*, QList<T>, enums with QDebug support, ...). Use as
+// FLOG_DEBUG(Ch::X, "item: {}", fml::log::debugString(item)).
+template<typename T>
+QString debugString(const T& value)
+{
+    QString result;
+    QDebug(&result) << value;
+    return result;
+}
 
 // Last N formatted lines, for a future DebugLogDialog live-tail; returns
 // nullptr if init() hasn't run yet.

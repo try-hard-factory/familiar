@@ -28,6 +28,8 @@
 #include <qassert.h>
 #include <qdebug.h>
 
+#include "log/log.h"
+
 template<typename U, typename T>
 class ItemMixin : public SelectableMixin<U, T>
 {
@@ -127,7 +129,7 @@ public:
     {
         setPixmap(QPixmap::fromImage(image));
         reset_crop();
-        qDebug() << "Initialized " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Initialized {}", toString());
         // save_id = nullptr;
         crop_mode = false;
         init_selectable();
@@ -151,7 +153,7 @@ public:
     QRectF crop() { return crop_; }
     void set_crop(const QRectF& crop)
     {
-        qDebug() << "Setting crop for " << toString() << " to " << crop;
+        FLOG_DEBUG(fml::log::Ch::Items, "Setting crop for {} to {}", toString(), crop);
         this->prepareGeometryChange();
         this->crop_ = crop;
         this->update();
@@ -160,7 +162,7 @@ public:
     bool grayscale() const { return grayscale_; }
     void setGrayscale(bool value)
     {
-        qDebug() << "Setting grayscale for " << toString() << " to " << value;
+        FLOG_DEBUG(fml::log::Ch::Items, "Setting grayscale for {} to {}", toString(), value);
         grayscale_ = value;
         if (value) {
             QImage img(pixmap().size(), QImage::Format_Grayscale8);
@@ -261,7 +263,7 @@ public:
             }
         }
 
-        qDebug() << "Found format " << formt << " for " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Found format {} for {}", formt, toString());
         return formt;
     }
 
@@ -321,14 +323,14 @@ public:
     const ColorGamut& color_gamut() const
     {
         if (!colorGamut_) {
-            qDebug() << "Calculating color gamut for " << toString();
+            FLOG_DEBUG(fml::log::Ch::Items, "Calculating color gamut for {}", toString());
             ColorGamut gamut;
             QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
             int step = std::max(1,
                                 static_cast<int>(
                                     std::max(img.width(), img.height()) / 1000));
-            qDebug() << "Considering every " << step << ". row/column";
+            FLOG_DEBUG(fml::log::Ch::Items, "Considering every {}. row/column", step);
 
             for (int i = 0; i < img.width(); i += step) {
                 for (int j = 0; j < img.height(); j += step) {
@@ -343,7 +345,7 @@ public:
                 }
             }
 
-            qDebug() << "Got " << gamut.size() << " color gamut values";
+            FLOG_DEBUG(fml::log::Ch::Items, "Got {} color gamut values", gamut.size());
             colorGamut_ = gamut;
         }
         return *colorGamut_;
@@ -568,7 +570,7 @@ public:
 
     void enter_crop_mode() override
     {
-        qDebug() << "Entering crop mode on " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Entering crop mode on {}", toString());
         this->prepareGeometryChange();
         crop_mode = true;
         crop_temp = crop();
@@ -582,8 +584,10 @@ public:
 
     void exit_crop_mode(bool confirm)
     {
-        qDebug() << "Exiting crop mode with " << confirm << " on "
-                 << toString();
+        FLOG_DEBUG(fml::log::Ch::Items,
+                   "Exiting crop mode with {} on {}",
+                   confirm,
+                   toString());
         if (confirm && crop() != *crop_temp) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             // TODOLATER: interface
@@ -760,13 +764,13 @@ public:
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
-        
+
         init_selectable();
         edit_mode = false;
         auto colorPreset
             = SettingsHandler::getInstance()->getCurrentColorPreset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
-        qDebug() << "Initialized " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Initialized {}", toString());
     }
 
     bool is_image() const override { return false; }
@@ -839,7 +843,7 @@ public:
 
     void enter_edit_mode()
     {
-        qDebug() << "Entering edit mode on " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Entering edit mode on {}", toString());
         edit_mode = true;
         old_text = this->toPlainText();
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
@@ -849,7 +853,7 @@ public:
 
     void exit_edit_mode(bool commit = true)
     {
-        qDebug() << "Exiting edit mode on " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Exiting edit mode on {}", toString());
         edit_mode = false;
         // Reset selection:
         this->setTextCursor(QTextCursor(document()));
@@ -860,7 +864,7 @@ public:
             scene->undo_stack_->push(
                 new ChangeTextCommand(this, this->toPlainText(), old_text));
             if (this->toPlainText().trimmed().isEmpty()) {
-                qDebug() << "Removing empty text item";
+                FLOG_DEBUG(fml::log::Ch::Items, "Removing empty text item");
                 scene->undo_stack_->push(
                     new DeleteItemsCommand(scene, QList<QGraphicsItem*>{this}));
             }
@@ -924,7 +928,7 @@ public:
         auto colorPreset
             = SettingsHandler::getInstance()->getCurrentColorPreset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
-        qDebug() << "Initialized " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Initialized {}", toString());
     }
 
     bool is_image() const override { return false; }

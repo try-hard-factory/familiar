@@ -239,7 +239,7 @@ QString SettingsHandler::shortcut(const QString& actionName)
 
 void SettingsHandler::setValue(const QString& key, const QVariant& value)
 {
-    qDebug() << "Setting " << key << " to " << value;
+    FLOG_DEBUG(fml::log::Ch::Settings, "Setting {} to {}", key, fml::log::debugString(value));
     assertKeyRecognized(key);
     if (!hasError()) {
         // don't let the file watcher initiate another error check
@@ -263,7 +263,7 @@ QVariant SettingsHandler::value(const QString& key) const
         setErrorState(true);
     }
     if (hasError_) {
-        qDebug() << "ERROR: " << key << " = " << val;
+        FLOG_DEBUG(fml::log::Ch::Settings, "ERROR: {} = {}", key, fml::log::debugString(val));
         return handler->fallback();
     }
 
