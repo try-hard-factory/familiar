@@ -498,6 +498,12 @@ void CanvasView::on_action_delete_items()
     // points to (set by double-click zoom-to-fit); left dangling, it
     // would permanently block recalcSceneRect()'s early-return guard.
     resetPreviousTransform();
+    // Same as on_action_cut(): don't snap the zoom back to identity for
+    // what might just be a transient empty scene - e.g. Undo bringing
+    // the deleted item(s) straight back. suppressNextEmptySceneReset_
+    // stays armed until the scene is non-empty again (on_scene_changed()),
+    // however that happens, so this covers undo just as well as paste.
+    suppressNextEmptySceneReset_ = true;
     undoStack_->push(new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
 }
 
