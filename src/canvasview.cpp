@@ -60,6 +60,13 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
 CanvasView::~CanvasView()
 {
+    // undoStack_ must be destroyed before scene_: commands like
+    // InsertItemsCommand hold item pointers and, in their own
+    // destructor, check item->scene() to decide whether they still own
+    // the item and must free it. If scene_ (and the items still attached
+    // to it) were destroyed first, those checks - and the dynamic_cast
+    // before them - would run on already-freed items.
+    undoStack_.reset();
     delete scene_;
     delete welcomeOverlay_;
 }

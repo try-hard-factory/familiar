@@ -15,11 +15,29 @@
 #include <QPainter>
 #include <QPen>
 #include <qnamespace.h>
+#include <memory>
 
-class IBaseItem
+class IBaseItem : public std::enable_shared_from_this<IBaseItem>
 {
 public:
     virtual ~IBaseItem() = default;
+
+    // Multiple independent owners can end up referencing the same item
+    // across its lifetime - e.g. the InsertItemsCommand that created it
+    // and, later, a DeleteItemsCommand for the same item are both alive
+    // on the undo stack at once, and CanvasScene itself holds a
+    // reference while the item is attached. Each caller obtains its
+    // share via this method instead of independently wrapping the raw
+    // pointer, so they end up sharing one control block/refcount rather
+    // than each thinking it's the sole owner (which would double-free).
+    // The first call for a given object creates the control block; every
+    // later call (from anyone) just shares it.
+    std::shared_ptr<IBaseItem> acquireShared()
+    {
+        if (auto existing = weak_from_this().lock())
+            return existing;
+        return std::shared_ptr<IBaseItem>(this);
+    }
     virtual IBaseItem* create_copy() = 0;
     virtual bool is_image() const = 0;
     virtual std::string get_type() const = 0;

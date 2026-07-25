@@ -6,10 +6,12 @@
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <QHash>
 #include <QMutex>
 #include <QRubberBand>
 #include <QVariantMap>
 
+#include <memory>
 #include <queue>
 #include <string>
 
@@ -55,6 +57,14 @@ public:
 
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
+    // Detaches every item still in the scene via our own removeItem()
+    // above, instead of leaving it to QGraphicsScene::clear()/its own
+    // destructor - both of those delete remaining items directly,
+    // bypassing our removeItem() override. If attachedItems_ still held
+    // a shared_ptr for one of them at that point, we'd double-free: Qt
+    // deletes the object directly, then attachedItems_'s own shared_ptr
+    // destruction tries to delete it again.
+    void detachAllItems();
     void cancel_active_modes();
     void end_rubberband_mode();
     void cancel_crop_mode();
@@ -126,7 +136,7 @@ public:
     // background ThreadedIO worker while add_queued_items() drains it
     // on the GUI thread.
     QMutex itemsToAddMutex_;
-    QList<IBaseItem*> internal_clipboard;
+    QList<std::shared_ptr<IBaseItem>> internal_clipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
     QPointF event_start{};
@@ -177,6 +187,15 @@ private:
     QPointF lastClickedPoint_{0, 0};
     QColor selectionColor_;
     FamSettings* settings{nullptr};
+
+    // Keeps every currently-attached item alive (shared with whichever
+    // undo commands also reference it) for as long as it's actually in
+    // the scene - see IBaseItem::acquireShared(). Keyed by the same
+    // QGraphicsItem* passed to addItem()/removeItem(). Without this, an
+    // item referenced by no command (e.g. its InsertItemsCommand got
+    // trimmed off the undo stack by setUndoLimit() while the item is
+    // still visible) would have nothing left to keep it alive.
+    QHash<QGraphicsItem*, std::shared_ptr<IBaseItem>> attachedItems_;
 };
 
 #endif // CANVASSCENE_H
