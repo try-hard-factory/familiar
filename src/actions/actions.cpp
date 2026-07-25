@@ -206,8 +206,8 @@ static ActionRegistry buildRegistry()
     // ── Images ────────────────────────────────────────────────────────────────
     r.add(A::make("change_opacity",    "Change &Opacity...", "on_action_change_opacity",
                   {},            false, false, "active_when_selection"));
-    r.add(A::make("grayscale",         "&Grayscale",         "on_action_grayscale",
-                  {"G"},         true,  false, "active_when_selection"));
+    r.add(A::make("grayscale",         "&Toggle Grayscale",  "on_action_grayscale",
+                  {"G"},         false, false, "active_when_selection"));
     r.add(A::make("show_color_gamut",  "Show &Color Gamut",  "on_action_show_color_gamut",
                   {},            false, false, "active_when_single_image"));
     r.add(A::make("sample_color",      "Sample Color",       "on_action_sample_color",

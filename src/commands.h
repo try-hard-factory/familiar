@@ -343,13 +343,16 @@ private:
 class ToggleGrayscaleCommand : public QUndoCommand
 {
 public:
-    ToggleGrayscaleCommand(const QList<PixmapItem*>& items, bool grayscale);
+    // Each item independently inverts its own current grayscale state -
+    // no shared target value, so a mixed selection (some grayscale, some
+    // not) does something sensible instead of forcing everything to one
+    // checkbox's state. Self-inverse, like FlipItemsCommand: undo() is
+    // just redo() again.
+    explicit ToggleGrayscaleCommand(const QList<PixmapItem*>& items);
 
     void redo() override;
     void undo() override;
 
 private:
     QList<PixmapItem*> items_;
-    bool grayscale_;
-    QList<bool> oldGrayscales_;
 };
