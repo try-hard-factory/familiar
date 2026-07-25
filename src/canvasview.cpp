@@ -5,6 +5,7 @@
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "project_settings.h"
+#include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
 #include <QApplication>
 #include <QClipboard>
@@ -144,7 +145,13 @@ void CanvasView::cancelSampleColorMode()
 {
     activeMode_ = ModeNone;
     viewport()->unsetCursor();
-    // TODOLATER: hide/delete sample_color_widget
+    if (sampleColorWidget_) {
+        delete sampleColorWidget_;
+        sampleColorWidget_ = nullptr;
+    }
+    if (scene_->has_multi_selection()) {
+        scene_->multiselect_item_->bring_to_front();
+    }
 }
 
 void CanvasView::cancelActiveModes()
@@ -293,7 +300,18 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
     if (activeMode_ == ModeSampleColor) {
         if (event->button() == Qt::LeftButton) {
-            // TODOLATER: sample color at click position and copy to clipboard
+            QColor color = scene_->sample_color_at(mapToScene(event->pos()));
+            if (color.isValid()) {
+                QString name = color.name();
+                QApplication::clipboard()->setText(name);
+                scene_->internal_clipboard.clear();
+                qDebug() << "Copied color to clipboard:" << name;
+                new FamNotification(
+                    this,
+                    QString("Copied color to clipboard: %1").arg(name));
+            } else {
+                qDebug() << "No color found";
+            }
         }
         cancelSampleColorMode();
         event->accept();
@@ -346,7 +364,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
     }
 
     if (activeMode_ == ModeSampleColor) {
-        // TODOLATER: update sample_color_widget position and color
+        sampleColorWidget_->update(
+            event->position(),
+            scene_->sample_color_at(mapToScene(event->pos())));
         event->accept();
         return;
     }
@@ -849,22 +869,42 @@ void CanvasView::on_action_change_opacity()
     new ChangeOpacityDialog(this, images, undoStack_.get());
 }
 
-void CanvasView::on_action_grayscale(bool /*checked*/)
+void CanvasView::on_action_grayscale(bool checked)
 {
-    // TODOLATER: push ToggleGrayscaleCommand for selected PixmapItems
+    QList<PixmapItem*> images;
+    for (QGraphicsItem* item : scene_->selectedItems(true)) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (baseItem && baseItem->is_image()) {
+            images.append(dynamic_cast<PixmapItem*>(item));
+        }
+    }
+    if (!images.isEmpty()) {
+        undoStack_->push(new ToggleGrayscaleCommand(images, checked));
+    }
 }
 
 void CanvasView::on_action_show_color_gamut()
 {
-    // TODOLATER: open GamutDialog
+    auto* item = dynamic_cast<PixmapItem*>(scene_->selectedItems().first());
+    new GamutDialog(this, item);
 }
 
 void CanvasView::on_action_sample_color()
 {
     cancelActiveModes();
+    qDebug() << "Entering sample color mode";
     viewport()->setCursor(Qt::CrossCursor);
     activeMode_ = ModeSampleColor;
-    // TODOLATER: show SampleColorWidget
+
+    if (scene_->has_multi_selection()) {
+        // We don't want to sample the multi select item, so temporarily
+        // send it to the back:
+        scene_->multiselect_item_->lower_behind_selection();
+    }
+
+    QPoint pos = mapFromGlobal(cursor().pos());
+    sampleColorWidget_ = new SampleColorWidget(
+        this, pos, scene_->sample_color_at(mapToScene(pos)));
 }
 
 // ─── Project helpers (existing interface) ────────────────────────────────────

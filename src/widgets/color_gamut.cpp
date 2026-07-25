@@ -100,6 +100,15 @@ void GamutWidget::paintEvent(QPaintEvent*)
 GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     : QDialog(parent)
 {
+    // See ChangeOpacityDialog: shown non-modally via show() below and
+    // never explicitly deleted by whoever calls "new GamutDialog(...)".
+    setAttribute(Qt::WA_DeleteOnClose);
+    // See FileActions::openFile(): MainWindow's translucent/frameless
+    // stylesheet cascades into this otherwise-unstyled top-level dialog,
+    // painting it solid black.
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
     setWindowTitle("Color Gamut");
 
     QVBoxLayout* controlsLayout = new QVBoxLayout();

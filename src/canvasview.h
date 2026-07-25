@@ -20,6 +20,7 @@ class project_settings;
 class CanvasScene;
 class QUndoStack;
 class IBaseItem;
+class SampleColorWidget;
 
 struct PreviousTransform
 {
@@ -177,6 +178,10 @@ private:
     QPointF eventStart_;
     QPointF eventAnchor_;
     bool eventInverted_ = false;
+    // Live color-preview swatch shown while ModeSampleColor is active;
+    // owned here (not self-deleting) since it must survive across
+    // multiple mouseMoveEvent updates, unlike FamNotification.
+    SampleColorWidget* sampleColorWidget_ = nullptr;
 
     std::unique_ptr<PreviousTransform> previousTransform_;
 
