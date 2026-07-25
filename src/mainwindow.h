@@ -176,9 +176,10 @@ protected:
                 mapFromGlobal(mouseEvent->globalPosition().toPoint()));
         } else if (event->type() == QEvent::MouseButtonPress) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            if (mouseEvent->button() == Qt::LeftButton) {
-                tryStartSystemResize(
-                    mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+            if (mouseEvent->button() == Qt::LeftButton
+                && tryStartSystemResize(
+                    mapFromGlobal(mouseEvent->globalPosition().toPoint()))) {
+                return true;
             }
         }
         return QMainWindow::eventFilter(watched, event);
@@ -202,16 +203,22 @@ private:
         return edges;
     }
 
-    void tryStartSystemResize(const QPoint& pos)
+    // Returns true if a resize was actually started, so the caller can
+    // consume the press event - otherwise it falls through to whatever's
+    // underneath (e.g. CanvasScene), which would start a rubber-band
+    // selection for the same click.
+    bool tryStartSystemResize(const QPoint& pos)
     {
         if (!rect().contains(pos) || !windowHandle())
-            return;
+            return false;
 
         // Запуск нативного изменения размера (доступно в Qt 5.15 и новее)
         const Qt::Edges edges = resizeEdgesAt(pos);
         if (edges) {
             windowHandle()->startSystemResize(edges);
+            return true;
         }
+        return false;
     }
 
     void updateResizeCursor(const QPoint& pos)
