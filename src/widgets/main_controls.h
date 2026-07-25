@@ -79,9 +79,12 @@ public:
 
     bool keyPressEventMainControls(QKeyEvent* event)
     {
-        exitMovewinMode();
-        event->accept();
-        return true;
+        if (isMoving_) {
+            exitMovewinMode();
+            event->accept();
+            return true;
+        }
+        return false;
     }
 
 protected:
@@ -91,10 +94,12 @@ protected:
     {
         static_cast<QWidget*>(this)->setCursor(Qt::SizeAllCursor);
         movewinStart_ = QCursor::pos();
+        isMoving_ = true;
     }
 
     void exitMovewinMode()
     {
+        isMoving_ = false;
         static_cast<QWidget*>(this)->unsetCursor();
     }
 

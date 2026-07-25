@@ -818,7 +818,7 @@ public:
         painter->setBrush(QBrush(color));
         painter->drawRect(QGraphicsTextItem::boundingRect());
         QStyleOptionGraphicsItem updatedOption(*option);
-        updatedOption.state |= QStyle::State_Enabled;
+        updatedOption.state = QStyle::State_Enabled;
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
         this->paint_selectable(painter, option, widget);
     }
@@ -954,7 +954,7 @@ public:
         painter->setBrush(QBrush(QColor(200, 0, 0)));
         painter->drawRect(QGraphicsTextItem::boundingRect());
         QStyleOptionGraphicsItem updatedOption(*option);
-        updatedOption.state |= QStyle::State_Enabled;
+        updatedOption.state = QStyle::State_Enabled;
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
         this->paint_selectable(painter, option, widget);
     }
