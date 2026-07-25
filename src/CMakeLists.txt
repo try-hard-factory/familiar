@@ -52,6 +52,12 @@ set(PROJECT_SOURCES
         Logger.h
         MessageBuilder.h
         Vec2d.h
+        log/log.h
+        log/log.cpp
+        log/qt_formatters.h
+        log/qt_bridge.cpp
+        log/ring_sink.h
+        log/ring_sink.cpp
         image_downloader.cpp
         image_downloader.h
         fml_file_buffer.cpp
@@ -143,14 +149,16 @@ if (WIN32)
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
+        quill::quill
         "${CMAKE_BINARY_DIR}\\include\\kColorPicker\\lib\\Release\\kColorPicker.lib"
     )
 elseif(APPLE)
-    
+
 else()
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
+        quill::quill
         ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
     )
 endif()
