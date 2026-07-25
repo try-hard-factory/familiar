@@ -23,6 +23,8 @@
 
 #include <core/settingshandler.h>
 
+#include "log/log.h"
+
 
 CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     : MainControlsMixin<CanvasView, QGraphicsView>()
@@ -305,12 +307,12 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
                 QString name = color.name();
                 QApplication::clipboard()->setText(name);
                 scene_->internal_clipboard.clear();
-                qDebug() << "Copied color to clipboard:" << name;
+                FLOG_DEBUG(fml::log::Ch::View, "Copied color to clipboard: {}", name);
                 new FamNotification(
                     this,
                     QString("Copied color to clipboard: %1").arg(name));
             } else {
-                qDebug() << "No color found";
+                FLOG_DEBUG(fml::log::Ch::View, "No color found");
             }
         }
         cancelSampleColorMode();
@@ -470,10 +472,14 @@ void CanvasView::dropEvent(QDropEvent* event)
 
 void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
 {
-    qDebug() << "CanvasView::Handling file drop:" << mimedata->formats();
+    FLOG_DEBUG(fml::log::Ch::View,
+               "CanvasView::Handling file drop: {}",
+               fml::log::debugString(mimedata->formats()));
 
     if (mimedata->hasUrls()) {
-        qDebug() << "Found dropped urls:" << mimedata->urls();
+        FLOG_DEBUG(fml::log::Ch::View,
+                   "Found dropped urls: {}",
+                   fml::log::debugString(mimedata->urls()));
         if (scene_->items().isEmpty()) {
             // TODOLATER:
         }
@@ -482,10 +488,10 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
         QImage img = qvariant_cast<QImage>(mimedata->imageData());
         if (!img.isNull()) {
             // TODOLATER: create PixmapItem and insert via InsertItems command
-            qDebug() << "Image drop not yet implemented";
+            FLOG_DEBUG(fml::log::Ch::View, "Image drop not yet implemented");
         }
     } else {
-        qDebug() << "Drop not an image";
+        FLOG_DEBUG(fml::log::Ch::View, "Drop not an image");
     }
 }
 
@@ -582,7 +588,7 @@ void CanvasView::on_action_cut()
 
 void CanvasView::on_action_copy()
 {
-    qDebug() << "Copying to clipboard...";
+    FLOG_DEBUG(fml::log::Ch::View, "Copying to clipboard...");
     cancelActiveModes();
     QClipboard* clipboard = QApplication::clipboard();
     QList<QGraphicsItem*> items = scene_->selectedItems(true);
@@ -620,14 +626,14 @@ void CanvasView::on_action_copy()
 void CanvasView::on_action_paste()
 {
     cancelActiveModes();
-    qDebug() << "Pasting from clipboard...";
+    FLOG_DEBUG(fml::log::Ch::View, "Pasting from clipboard...");
     QClipboard* clipboard = QApplication::clipboard();
     QPoint pos = mapFromGlobal(cursor().pos());
 
     // See if we need to look up the internal clipboard:
     QByteArray marker
         = clipboard->mimeData()->data(QStringLiteral("familiar/items"));
-    qDebug() << "Custom data in clipboard:" << marker;
+    FLOG_DEBUG(fml::log::Ch::View, "Custom data in clipboard: {}", fml::log::debugString(marker));
     if (!marker.isEmpty() && !scene_->internal_clipboard.isEmpty()) {
         // Checking that the internal clipboard exists since the user
         // may have opened a new scene since copying.
@@ -676,7 +682,7 @@ void CanvasView::on_action_paste()
     }
 
     // TODOLATER: user-facing notification (Python shows a BeeNotification)
-    qDebug() << "No image data or text in clipboard or image too big";
+    FLOG_DEBUG(fml::log::Ch::View, "No image data or text in clipboard or image too big");
 }
 
 void CanvasView::on_action_raise_to_top()
@@ -722,7 +728,7 @@ void CanvasView::on_action_insert_images()
 {
     cancelActiveModes();
     const QString formats = getSupportedImageFormats();
-    qDebug() << "Supported image types for reading:" << formats;
+    FLOG_DEBUG(fml::log::Ch::View, "Supported image types for reading: {}", formats);
 
     QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
     // See FileActions::openFile()/saveFileAs() for why this is needed:
@@ -901,7 +907,7 @@ void CanvasView::on_action_show_color_gamut()
 void CanvasView::on_action_sample_color()
 {
     cancelActiveModes();
-    qDebug() << "Entering sample color mode";
+    FLOG_DEBUG(fml::log::Ch::View, "Entering sample color mode");
     viewport()->setCursor(Qt::CrossCursor);
     activeMode_ = ModeSampleColor;
 
@@ -931,7 +937,7 @@ QByteArray CanvasView::fml_payload()
 void CanvasView::on_insert_images_finished(const QString& /*filename*/,
                                            const QStringList& errors)
 {
-    qDebug() << "Insert images finished";
+    FLOG_DEBUG(fml::log::Ch::View, "Insert images finished");
     insertImagesInsertedItems_ += scene_->add_queued_items();
 
     QStringList allErrors = insertImagesImmediateErrors_ + errors;
@@ -984,7 +990,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     for (const QUrl& url : urls) {
         if (!url.isLocalFile()) {
             // TODOLATER: remote URLs via ImageDownloader
-            qDebug() << "Remote URL not yet supported:" << url;
+            FLOG_DEBUG(fml::log::Ch::View, "Remote URL not yet supported: {}", url);
             insertImagesImmediateErrors_.append(url.toString());
             continue;
         }
@@ -1005,13 +1011,18 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     // the documented-safe point to delete a QThread object.
     // connect(worker, &QThread::finished, worker, &QObject::deleteLater);
     connect(worker, &QThread::finished, this, [worker]() {
-        qDebug() << "Thread finished. Scheduling deleteLater for" 
-                 << "Thread ID:" << (worker->objectName().isEmpty() 
-                    ? "unnamed" : worker->objectName());
-        
+        const QString threadId = worker->objectName().isEmpty()
+                                      ? QStringLiteral("unnamed")
+                                      : worker->objectName();
+        FLOG_DEBUG(fml::log::Ch::View,
+                   "Thread finished. Scheduling deleteLater for Thread ID: {}",
+                   threadId);
+
         worker->deleteLater();
-        
-        qDebug() << "deleteLater() called for worker" << worker;
+
+        FLOG_DEBUG(fml::log::Ch::View,
+                   "deleteLater() called for worker {}",
+                   fml::log::debugString(worker));
     });
 
     new ProgressDialog(tr("Loading images"), worker, 0, this);
@@ -1024,7 +1035,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
 
 void CanvasView::on_items_loaded(int /*value*/)
 {
-    qDebug() << "On items loaded: add queued items";
+    FLOG_DEBUG(fml::log::Ch::View, "On items loaded: add queued items");
     insertImagesInsertedItems_ += scene_->add_queued_items();
 }
 

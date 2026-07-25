@@ -15,6 +15,8 @@
 #include <QPointF>
 #include <QWidget>
 #include <qdebug.h>
+
+#include "log/log.h"
 template<typename Mixin, typename T>
 class MainControlsMixin : public T
 {
@@ -106,14 +108,16 @@ protected:
     void dragEnterEvent(QDragEnterEvent* event) override
     {
         const auto* mimedata = event->mimeData();
-        qDebug() << "Drag enter event:" << mimedata->formats();
+        FLOG_DEBUG(fml::log::Ch::UI,
+                   "Drag enter event: {}",
+                   fml::log::debugString(mimedata->formats()));
         if (mimedata->hasUrls()) {
             event->acceptProposedAction();
         } else if (mimedata->hasImage()) {
             event->acceptProposedAction();
         } else {
             const QString msg = "Attempted drop not an image or image too big";
-            qDebug() << msg;
+            FLOG_DEBUG(fml::log::Ch::UI, "{}", msg);
             FamNotification(controlTarget_, msg);
         }
     }
@@ -125,7 +129,7 @@ protected:
 
     void dropEvent(QDropEvent* event) override
     {
-        qDebug() << "MainControlMixin Handling file drop:";
+        FLOG_DEBUG(fml::log::Ch::UI, "MainControlMixin Handling file drop:");
     }
 
 private:

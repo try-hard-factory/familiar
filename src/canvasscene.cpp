@@ -175,7 +175,7 @@ void CanvasScene::clear()
 
 void CanvasScene::addItem(QGraphicsItem* item)
 {
-    qDebug() << "Adding item" << item;
+    FLOG_DEBUG(fml::log::Ch::Scene, "Adding item {}", fml::log::debugString(item));
     QGraphicsScene::addItem(item);
     // rubberband_item_/multiselect_item_ implement IBaseItem too (needed
     // for corners_scene_coords()/get_type()/etc.) but aren't part of the
@@ -194,7 +194,7 @@ void CanvasScene::addItem(QGraphicsItem* item)
 
 void CanvasScene::removeItem(QGraphicsItem* item)
 {
-    qDebug() << "Removing item" << item;
+    FLOG_DEBUG(fml::log::Ch::Scene, "Removing item {}", fml::log::debugString(item));
     QGraphicsScene::removeItem(item);
     attachedItems_.remove(item);
 }
@@ -219,7 +219,7 @@ void CanvasScene::end_rubberband_mode()
                "end_rubberband_mode",
                "rubberband_item_ == null!");
     if (rubberband_item_->scene()) {
-        qDebug() << "End rubberband mode";
+        FLOG_DEBUG(fml::log::Ch::Scene, "End rubberband mode");
         removeItem(rubberband_item_);
     }
     active_mode_ = kNone;
@@ -228,7 +228,7 @@ void CanvasScene::end_rubberband_mode()
 void CanvasScene::cancel_crop_mode()
 {
     if (crop_item) {
-        qDebug() << "End crop mode";
+        FLOG_DEBUG(fml::log::Ch::Scene, "End crop mode");
         crop_item->exit_crop_mode(false);
     }
 }
@@ -266,7 +266,7 @@ void CanvasScene::raise_to_top()
                    [](const auto& i) { return i->zValue(); });
     double min_z_value = *std::min_element(z_values.begin(), z_values.end());
     double delta = max_z + Z_STEP - min_z_value;
-    qDebug() << "Raise to top, delta: " << delta;
+    FLOG_DEBUG(fml::log::Ch::Scene, "Raise to top, delta: {}", delta);
     for (auto& item : items) {
         dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
     }
@@ -283,7 +283,7 @@ void CanvasScene::lower_to_bottom()
                    [](const auto& i) { return i->zValue(); });
     double max_z_value = *std::max_element(z_values.begin(), z_values.end());
     double delta = min_z - Z_STEP - max_z_value;
-    qDebug() << "Lower to bottom, delta: " << delta;
+    FLOG_DEBUG(fml::log::Ch::Scene, "Lower to bottom, delta: {}", delta);
     for (auto& item : items) {
         dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
     }
@@ -302,7 +302,7 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
         return;
     qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
                 / values.size();
-    qDebug() << "Calculated average" << mode << avg;
+    FLOG_DEBUG(fml::log::Ch::Scene, "Calculated average {} {}", mode, avg);
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
@@ -337,7 +337,7 @@ void CanvasScene::normalize_size()
         return;
     qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
                 / sizes.size();
-    qDebug() << "Calculated average size" << avg;
+    FLOG_DEBUG(fml::log::Ch::Scene, "Calculated average size {}", avg);
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
@@ -774,7 +774,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     if (active_mode_ == kRubberbandMode) {
         if (!rubberband_item_->scene()) {
-            qDebug() << "Activating rubberband selection";
+            FLOG_DEBUG(fml::log::Ch::Scene, "Activating rubberband selection");
             addItem(rubberband_item_);
         }
         rubberband_item_->fit(event_start, event->scenePos());
@@ -1032,7 +1032,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             // distinct red placeholder instead of a plain text item, so the
             // data loss is obvious rather than silent. Matches beeref's
             // ErrorItem fallback in add_queued_items().
-            qWarning() << "Encountered item of unknown type:" << typ;
+            FLOG_WARN(fml::log::Ch::Scene, "Encountered item of unknown type: {}", typ);
             item = new ErrorItem(
                 QString("Item of unknown type: %1").arg(typ));
         }

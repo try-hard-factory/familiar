@@ -1,6 +1,8 @@
 #include "saveallwindow.h"
 #include "mainwindow.h"
 
+#include "log/log.h"
+
 SaveAllWindow::SaveAllWindow(MainWindow* wm,
                              std::map<int, QString> items,
                              QWidget* parent)
@@ -58,7 +60,7 @@ SaveAllWindow::SaveAllWindow(MainWindow* wm,
 
 SaveAllWindow::~SaveAllWindow()
 {
-    qDebug() << "Save all window destructor";
+    FLOG_DEBUG(fml::log::Ch::UI, "Save all window destructor");
     delete save_btn;
     delete cancel_btn;
     delete closeWS_btn;
@@ -75,22 +77,22 @@ SaveAllWindow::~SaveAllWindow()
 
 void SaveAllWindow::onCloseWithoutSaveClicked()
 {
-    qDebug() << "onCloseWithoutSaveClicked";
+    FLOG_DEBUG(fml::log::Ch::UI, "onCloseWithoutSaveClicked");
     window_->exitProject();
 }
 
 void SaveAllWindow::onCancelClicked()
 {
-    qDebug() << "onCancelClicked";
+    FLOG_DEBUG(fml::log::Ch::UI, "onCancelClicked");
     this->close();
 }
 
 void SaveAllWindow::onSaveClicked()
 {
-    qDebug() << "onSaveClicked";
+    FLOG_DEBUG(fml::log::Ch::UI, "onSaveClicked");
     std::map<int, bool> m;
     for (auto& [id, chbox] : savecheckboxMap_) {
-        qDebug() << id << " " << chbox->text() << " " << chbox->isChecked();
+        FLOG_DEBUG(fml::log::Ch::UI, "{} {} {}", id, chbox->text(), chbox->isChecked());
         m.emplace(id, chbox->isChecked());
     }
     window_->saveAllWindowSaveCB(this, std::move(m));
@@ -99,5 +101,5 @@ void SaveAllWindow::onSaveClicked()
 void SaveAllWindow::onSaveBoxToggled()
 {
     SaveCheckBox* chbox = (SaveCheckBox*) sender();
-    qDebug() << "TOGGLED: " << chbox->id() << ", state: " << chbox->isChecked();
+    FLOG_DEBUG(fml::log::Ch::UI, "TOGGLED: {}, state: {}", chbox->id(), chbox->isChecked());
 }

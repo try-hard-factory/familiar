@@ -5,6 +5,8 @@
 #include <QDebug>
 #include <QImageReader>
 
+#include "log/log.h"
+
 // ─── ThreadedIO ────────────────────────────────────────────────────────────
 
 ThreadedIO::ThreadedIO(WorkerFunc func, QObject* parent)
@@ -34,7 +36,7 @@ void load_images(const QStringList& filenames,
 
     for (int i = 0; i < filenames.size(); ++i) {
         const QString& filename = filenames.at(i);
-        qDebug() << "Loading image from file" << filename;
+        FLOG_DEBUG(fml::log::Ch::IO, "Loading image from file {}", filename);
 
         QImageReader reader(filename);
         reader.setAutoTransform(true); // apply EXIF rotation
@@ -42,7 +44,7 @@ void load_images(const QStringList& filenames,
         emit worker->progress(i);
 
         if (img.isNull()) {
-            qDebug() << "Could not load file" << filename;
+            FLOG_DEBUG(fml::log::Ch::IO, "Could not load file {}", filename);
             errors.append(filename);
             continue;
         }
@@ -77,7 +79,7 @@ void load_images(const QStringList& filenames,
 
 void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
 {
-    qDebug() << "Loading from file" << filename << "...";
+    FLOG_DEBUG(fml::log::Ch::IO, "Loading from file {} ...", filename);
     Q_UNUSED(scene)
     Q_UNUSED(worker)
     // TODOLATER: archive/manifest-based read, once that format is designed.
@@ -88,10 +90,10 @@ void save_fml(const QString& filename,
              bool createNew,
              ThreadedIO* worker)
 {
-    qDebug() << "Saving to file" << filename << "...";
-    qDebug() << "Create new:" << createNew;
+    FLOG_DEBUG(fml::log::Ch::IO, "Saving to file {} ...", filename);
+    FLOG_DEBUG(fml::log::Ch::IO, "Create new: {}", createNew);
     Q_UNUSED(scene)
     Q_UNUSED(worker)
     // TODOLATER: archive/manifest-based write, once that format is designed.
-    qDebug() << "End save";
+    FLOG_DEBUG(fml::log::Ch::IO, "End save");
 }

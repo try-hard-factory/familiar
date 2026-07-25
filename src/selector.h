@@ -6,6 +6,8 @@
 #include "core/settings.h"
 #include "core/settingshandler.h"
 #include <utils/utils.h>
+
+#include "log/log.h"
 #include <QBrush>
 #include <QCursor>
 #include <QDebug>
@@ -87,7 +89,7 @@ public:
             return;
         }
 
-        qDebug() << "Setting scale to" << value;
+        FLOG_DEBUG(fml::log::Ch::Items, "Setting scale to {}", value);
         this->prepareGeometryChange();
         QPointF prev = this->mapToScene(anchor);
         QGraphicsItem::setScale(value);
@@ -97,7 +99,7 @@ public:
 
     void set_z_value(qreal value) override
     {
-        qDebug() << "Setting z-value to" << value;
+        FLOG_DEBUG(fml::log::Ch::Items, "Setting z-value to {}", value);
         QGraphicsItem::setZValue(value);
 
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -106,7 +108,7 @@ public:
             scene->max_z = qMax(scene->max_z, value);
             scene->min_z = qMin(scene->min_z, value);
         } else {
-            qDebug() << "BaseItemMixin::setZValue Scene not found";
+            FLOG_DEBUG(fml::log::Ch::Items, "BaseItemMixin::setZValue Scene not found");
         }
     }
 
@@ -116,13 +118,13 @@ public:
         if (scene) {
             set_z_value(scene->max_z + scene->Z_STEP);
         } else {
-            qDebug() << "BaseItemMixin::bring_to_front Scene not found";
+            FLOG_DEBUG(fml::log::Ch::Items, "BaseItemMixin::bring_to_front Scene not found");
         }
     }
 
     void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0)) override
     {
-        qDebug() << "Setting rotation to" << value;
+        FLOG_DEBUG(fml::log::Ch::Items, "Setting rotation to {}", value);
         QPointF prev = this->mapToScene(anchor);
         QGraphicsItem::setRotation(std::fmod(value, 360.0));
         QPointF diff = this->mapToScene(anchor) - prev;
@@ -940,7 +942,7 @@ public:
         : SelectableMixin<MultiSelectItem, QGraphicsRectItem>(parent)
     {
         this->init_selectable();
-        qDebug() << "Initialized " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Initialized {}", toString());
     }
 
     QString toString() const
@@ -1088,7 +1090,7 @@ public:
     void fit(const QPointF& point1, const QPointF& point2)
     {
         this->setRect(get_rect_from_points(point1, point2));
-        qDebug() << "Updated rubberband " << toString();
+        FLOG_DEBUG(fml::log::Ch::Items, "Updated rubberband {}", toString());
     }
 
     IBaseItem* create_copy() override

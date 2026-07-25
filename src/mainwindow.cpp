@@ -225,13 +225,16 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m)
 
     for (auto it = m.rbegin(); it != m.rend(); it++) {
         if (!it->second) {
-            qDebug() << "close ID = " << it->first << " " << tabpane_->getCurrentTabPath();
+            FLOG_DEBUG(fml::log::Ch::UI,
+                       "close ID = {} {}",
+                       it->first,
+                       tabpane_->getCurrentTabPath());
             tabpane_->closeTabByIndex(it->first);
         }
     }
 
     for (int i = tabpane_->count() - 1; i >= 0; --i) {
-        qDebug() << "save ID = " << i << " " << tabpane_->getCurrentTabPath();
+        FLOG_DEBUG(fml::log::Ch::UI, "save ID = {} {}", i, tabpane_->getCurrentTabPath());
         tabpane_->setCurrentIndex(i);
 
         auto ret = fileactions_->saveFile();
