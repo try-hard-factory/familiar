@@ -105,7 +105,6 @@ public:
     // View
     void on_action_fit_scene();
     void on_action_fit_selection();
-    void on_action_show_scrollbars(bool checked);
 
     // Insert
     void on_action_insert_images();

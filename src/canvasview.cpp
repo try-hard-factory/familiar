@@ -652,17 +652,6 @@ void CanvasView::on_action_fit_selection()
     fitRect(scene_->itemsBoundingRect(true));
 }
 
-void CanvasView::on_action_show_scrollbars(bool checked)
-{
-    if (checked) {
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    } else {
-        setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    }
-}
-
 // ─── Insert actions ───────────────────────────────────────────────────────────
 
 void CanvasView::on_action_insert_images()

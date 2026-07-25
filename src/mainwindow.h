@@ -87,8 +87,6 @@ public slots:
     void on_action_fullscreen(bool checked);
     void on_action_always_on_top(bool checked);
     void on_action_show_menubar(bool checked);
-    void on_action_show_titlebar(bool checked);
-    void on_action_move_window();
 
     // Settings / Help
     void on_action_settings();
@@ -122,7 +120,6 @@ public slots:
     // View
     void on_action_fit_scene();
     void on_action_fit_selection();
-    void on_action_show_scrollbars(bool checked);
 
     // Insert
     void on_action_insert_images();
