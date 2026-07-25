@@ -237,7 +237,12 @@ private:
 class ResetTransformsCommand : public QUndoCommand
 {
 public:
-    explicit ResetTransformsCommand(const QList<IBaseItem*>& items);
+    // See ResetScaleCommand::ResetScaleCommand() (commands.h) for why
+    // anchor is needed: a shared scene-space point (the selection's
+    // bounding-box center) so a multi-item selection resets as one
+    // cohesive group instead of each item scaling/rotating/flipping in
+    // place around its own center.
+    ResetTransformsCommand(const QList<IBaseItem*>& items, const QPointF& anchor);
 
     void redo() override;
     void undo() override;
@@ -253,6 +258,7 @@ private:
     };
 
     QList<IBaseItem*> items_;
+    QPointF anchor_;
     QList<TransformValues> oldValues_;
 };
 
