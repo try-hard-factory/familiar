@@ -4,6 +4,8 @@
 #include <QApplication>
 #include <QMetaType>
 
+#include "log/log.h"
+
 /*!
  * \~russian \mainpage RU
  *
@@ -47,7 +49,13 @@ int main(int argc, char* argv[])
     // TODOLATER:
     // app.setOrganizationName(constants.APPNAME)
     // app.setApplicationName(constants.APPNAME)
+
+    fml::log::init();
+
     MainWindow w;
     w.show();
-    return a.exec();
+    const int result = a.exec();
+
+    fml::log::shutdown();
+    return result;
 }
