@@ -142,6 +142,16 @@ target_sources(
         ${CMAKE_CURRENT_SOURCE_DIR}/../data/familiar.rc # windows binary icon resource file
         main.cpp)
 
+if (MSVC)
+    # MSVC's __FUNCTION__ is a runtime-initialized local, not a compile-time
+    # constant the way GCC/Clang treat it - quill's LOG_* macros bake it into
+    # a `static constexpr MacroMetadata`, which fails to compile on MSVC
+    # ("expression did not evaluate to a constant"). Disabling it here drops
+    # %(caller_function) from Windows log lines but keeps everything else;
+    # Linux/macOS builds are unaffected.
+    target_compile_definitions(familiar PRIVATE QUILL_DISABLE_FUNCTION_NAME)
+endif()
+
 if (WIN32)
     message(!!!!!!!!)
     target_link_libraries(familiar PRIVATE
