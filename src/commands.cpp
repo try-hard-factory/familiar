@@ -273,9 +273,11 @@ void FlipItemsCommand::undo()
 // ============================================================================
 // ResetScaleCommand
 // ============================================================================
-ResetScaleCommand::ResetScaleCommand(const QList<QGraphicsItem*>& items)
+ResetScaleCommand::ResetScaleCommand(const QList<QGraphicsItem*>& items,
+                                     const QPointF& anchor)
     : QUndoCommand(QObject::tr("Reset Scale"))
     , items_(items)
+    , anchor_(anchor)
 {
 }
 
@@ -283,9 +285,9 @@ void ResetScaleCommand::redo()
 {
     oldScaleFactors_.clear();
     for (auto* item : items_) {
-        auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldScaleFactors_.append(item->scale());
-        baseItem->set_scale(1, baseItem->center());
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->set_scale(1, item->mapFromScene(anchor_));
     }
 }
 
@@ -294,16 +296,18 @@ void ResetScaleCommand::undo()
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->set_scale(oldScaleFactors_[i], baseItem->center());
+        baseItem->set_scale(oldScaleFactors_[i], item->mapFromScene(anchor_));
     }
 }
 
 // ============================================================================
 // ResetRotationCommand
 // ============================================================================
-ResetRotationCommand::ResetRotationCommand(const QList<QGraphicsItem*>& items)
+ResetRotationCommand::ResetRotationCommand(const QList<QGraphicsItem*>& items,
+                                           const QPointF& anchor)
     : QUndoCommand(QObject::tr("Reset Rotation"))
     , items_(items)
+    , anchor_(anchor)
 {
 }
 
@@ -311,9 +315,9 @@ void ResetRotationCommand::redo()
 {
     oldRotations_.clear();
     for (auto* item : items_) {
-        auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldRotations_.append(item->rotation());
-        baseItem->set_rotation(0, baseItem->center());
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        baseItem->set_rotation(0, item->mapFromScene(anchor_));
     }
 }
 
@@ -322,16 +326,18 @@ void ResetRotationCommand::undo()
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->set_rotation(oldRotations_[i], baseItem->center());
+        baseItem->set_rotation(oldRotations_[i], item->mapFromScene(anchor_));
     }
 }
 
 // ============================================================================
 // ResetFlipCommand
 // ============================================================================
-ResetFlipCommand::ResetFlipCommand(const QList<QGraphicsItem*>& items)
+ResetFlipCommand::ResetFlipCommand(const QList<QGraphicsItem*>& items,
+                                   const QPointF& anchor)
     : QUndoCommand(QObject::tr("Reset Flip"))
     , items_(items)
+    , anchor_(anchor)
 {
 }
 
@@ -343,7 +349,7 @@ void ResetFlipCommand::redo()
         oldFlips_.append(baseItem->flip());
 
         if (baseItem->flip() == -1) {
-            baseItem->do_flip(false, baseItem->center());
+            baseItem->do_flip(false, item->mapFromScene(anchor_));
         }
     }
 }
@@ -354,7 +360,7 @@ void ResetFlipCommand::undo()
         if (oldFlips_[i] == -1) {
             auto* item = items_[i];
             auto* baseItem = dynamic_cast<IBaseItem*>(item);
-            baseItem->do_flip(false, baseItem->center());
+            baseItem->do_flip(false, item->mapFromScene(anchor_));
         }
     }
 }

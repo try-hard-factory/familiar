@@ -163,13 +163,19 @@ private:
 class ResetScaleCommand : public QUndoCommand
 {
 public:
-    explicit ResetScaleCommand(const QList<QGraphicsItem*>& items);
+    // anchor is a shared scene-space point (typically the selection's
+    // bounding-box center) all items reset around, so a multi-item
+    // selection reverts as one cohesive group instead of each item
+    // spinning/scaling in place around its own center - matching how
+    // ScaleItemsByCommand/RotateItemsByCommand apply a group transform.
+    ResetScaleCommand(const QList<QGraphicsItem*>& items, const QPointF& anchor);
 
     void redo() override;
     void undo() override;
 
 private:
     QList<QGraphicsItem*> items_;
+    QPointF anchor_;
     QList<qreal> oldScaleFactors_;
 };
 
@@ -179,13 +185,15 @@ private:
 class ResetRotationCommand : public QUndoCommand
 {
 public:
-    explicit ResetRotationCommand(const QList<QGraphicsItem*>& items);
+    // See ResetScaleCommand::ResetScaleCommand() for why anchor is needed.
+    ResetRotationCommand(const QList<QGraphicsItem*>& items, const QPointF& anchor);
 
     void redo() override;
     void undo() override;
 
 private:
     QList<QGraphicsItem*> items_;
+    QPointF anchor_;
     QList<qreal> oldRotations_;
 };
 
@@ -195,13 +203,15 @@ private:
 class ResetFlipCommand : public QUndoCommand
 {
 public:
-    explicit ResetFlipCommand(const QList<QGraphicsItem*>& items);
+    // See ResetScaleCommand::ResetScaleCommand() for why anchor is needed.
+    ResetFlipCommand(const QList<QGraphicsItem*>& items, const QPointF& anchor);
 
     void redo() override;
     void undo() override;
 
 private:
     QList<QGraphicsItem*> items_;
+    QPointF anchor_;
     QList<qreal> oldFlips_;
 };
 

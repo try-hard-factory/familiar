@@ -756,19 +756,22 @@ void CanvasView::on_action_flip_vertically()
 void CanvasView::on_action_reset_scale()
 {
     cancelActiveModes();
-    undoStack_->push(new ResetScaleCommand(scene_->selectedItems(true)));
+    undoStack_->push(new ResetScaleCommand(scene_->selectedItems(true),
+                                           scene_->get_selection_center()));
 }
 
 void CanvasView::on_action_reset_rotation()
 {
     cancelActiveModes();
-    undoStack_->push(new ResetRotationCommand(scene_->selectedItems(true)));
+    undoStack_->push(new ResetRotationCommand(scene_->selectedItems(true),
+                                              scene_->get_selection_center()));
 }
 
 void CanvasView::on_action_reset_flip()
 {
     cancelActiveModes();
-    undoStack_->push(new ResetFlipCommand(scene_->selectedItems(true)));
+    undoStack_->push(new ResetFlipCommand(scene_->selectedItems(true),
+                                          scene_->get_selection_center()));
 }
 
 void CanvasView::on_action_reset_crop()
