@@ -37,7 +37,7 @@ public:
     {
         QFile file(filename);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            FLOG_DEBUG(fml::log::Ch::IO, "Unnable to save file");
+            FLOG_DEBUG(familiar::log::Ch::IO, "Unnable to save file");
             return;
         }
 

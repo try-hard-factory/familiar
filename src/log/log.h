@@ -16,7 +16,7 @@
 #include "qt_formatters.h"
 #include "ring_sink.h"
 
-namespace fml::log {
+namespace familiar::log {
 
 enum class Level { Trace, Debug, Info, Warning, Error, Critical };
 
@@ -53,7 +53,7 @@ quill::Logger* channelLogger(Ch channel);
 // Captures whatever operator<<(QDebug, const T&) already prints for a type
 // that has Qt debug-stream support but no fmtquill::formatter of its own
 // (QGraphicsItem*, QList<T>, enums with QDebug support, ...). Use as
-// FLOG_DEBUG(Ch::X, "item: {}", fml::log::debugString(item)).
+// FLOG_DEBUG(Ch::X, "item: {}", familiar::log::debugString(item)).
 template<typename T>
 QString debugString(const T& value)
 {
@@ -94,27 +94,27 @@ private:
 };
 } // namespace detail
 
-} // namespace fml::log
+} // namespace familiar::log
 
 #define FML_LOG_CONCAT_INNER(a, b) a##b
 #define FML_LOG_CONCAT(a, b) FML_LOG_CONCAT_INNER(a, b)
 
 #define FLOG_TRACE(channel, ...) \
-    LOG_TRACE_L1(::fml::log::channelLogger(channel), __VA_ARGS__)
+    LOG_TRACE_L1(::familiar::log::channelLogger(channel), __VA_ARGS__)
 #define FLOG_DEBUG(channel, ...) \
-    LOG_DEBUG(::fml::log::channelLogger(channel), __VA_ARGS__)
+    LOG_DEBUG(::familiar::log::channelLogger(channel), __VA_ARGS__)
 #define FLOG_INFO(channel, ...) \
-    LOG_INFO(::fml::log::channelLogger(channel), __VA_ARGS__)
+    LOG_INFO(::familiar::log::channelLogger(channel), __VA_ARGS__)
 #define FLOG_WARN(channel, ...) \
-    LOG_WARNING(::fml::log::channelLogger(channel), __VA_ARGS__)
+    LOG_WARNING(::familiar::log::channelLogger(channel), __VA_ARGS__)
 #define FLOG_ERROR(channel, ...) \
-    LOG_ERROR(::fml::log::channelLogger(channel), __VA_ARGS__)
+    LOG_ERROR(::familiar::log::channelLogger(channel), __VA_ARGS__)
 #define FLOG_CRITICAL(channel, ...) \
-    LOG_CRITICAL(::fml::log::channelLogger(channel), __VA_ARGS__)
+    LOG_CRITICAL(::familiar::log::channelLogger(channel), __VA_ARGS__)
 
 // RAII scope timer: logs the elapsed wall time when the enclosing scope exits.
 #define FLOG_TIMER(channel, label) \
-    ::fml::log::detail::ScopeTimer FML_LOG_CONCAT(flog_timer_, __LINE__) \
+    ::familiar::log::detail::ScopeTimer FML_LOG_CONCAT(flog_timer_, __LINE__) \
     { \
         channel, label, __FILE__, __LINE__, __FUNCTION__ \
     }
@@ -122,7 +122,7 @@ private:
 // Debug-level log, rate-limited to once every n occurrences - for hot paths
 // like mouseMoveEvent/paintEvent.
 #define FLOG_EVERY_N(channel, n, ...) \
-    QUILL_LOG_DEBUG_LIMIT_EVERY_N(n, ::fml::log::channelLogger(channel), __VA_ARGS__)
+    QUILL_LOG_DEBUG_LIMIT_EVERY_N(n, ::familiar::log::channelLogger(channel), __VA_ARGS__)
 
 // Debug-level log that fires only the first time this call site is reached.
 #define FLOG_ONCE(channel, ...) \

@@ -2,7 +2,7 @@
 
 #include <QMutexLocker>
 
-namespace fml::log {
+namespace familiar::log {
 
 RingSink::RingSink(size_t capacity, QObject* parent)
     : QObject(parent)
@@ -49,4 +49,4 @@ QStringList RingSink::entries() const
     return ring_;
 }
 
-} // namespace fml::log
+} // namespace familiar::log

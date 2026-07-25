@@ -8,7 +8,7 @@
 #include <QMessageLogContext>
 #include <QtGlobal>
 
-namespace fml::log {
+namespace familiar::log {
 namespace {
 std::atomic<bool> g_verboseFunctions{false};
 } // namespace
@@ -86,4 +86,4 @@ void installQtMessageBridge()
 }
 
 } // namespace detail
-} // namespace fml::log
+} // namespace familiar::log

@@ -19,6 +19,7 @@
 #include <ui/settings_window.h>
 
 #include "log/log.h"
+using namespace familiar::log;
 
 static QHash<QString, EShortcutButtons> recognizedShortcutsActions = {
     {"TYPE_NEW", k_TYPE_NEW},
@@ -166,7 +167,7 @@ void MainWindow::saveFileAs()
 void MainWindow::notifyShortcut(const QString& actionName)
 {
     auto settings = SettingsHandler::getInstance();
-    FLOG_WARN(fml::log::Ch::UI,
+    FLOG_WARN(Ch::UI,
               "notifyShortcut. actionName: {}, shortcut: {}",
               actionName,
               settings->shortcut(actionName));
@@ -225,7 +226,7 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m)
 
     for (auto it = m.rbegin(); it != m.rend(); it++) {
         if (!it->second) {
-            FLOG_DEBUG(fml::log::Ch::UI,
+            FLOG_DEBUG(Ch::UI,
                        "close ID = {} {}",
                        it->first,
                        tabpane_->getCurrentTabPath());
@@ -234,7 +235,7 @@ void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m)
     }
 
     for (int i = tabpane_->count() - 1; i >= 0; --i) {
-        FLOG_DEBUG(fml::log::Ch::UI, "save ID = {} {}", i, tabpane_->getCurrentTabPath());
+        FLOG_DEBUG(Ch::UI, "save ID = {} {}", i, tabpane_->getCurrentTabPath());
         tabpane_->setCurrentIndex(i);
 
         auto ret = fileactions_->saveFile();

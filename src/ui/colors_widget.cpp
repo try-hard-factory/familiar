@@ -2,6 +2,7 @@
 #include <core/settingshandler.h>
 
 #include "log/log.h"
+using namespace familiar::log;
 #include <ui/extendedslider.h>
 #include <ui/presetsave_window.h>
 #include <utils/utils.h>
@@ -129,7 +130,7 @@ void ColorsWidget::colorInit()
     auto* settings = SettingsHandler::getInstance();
     auto current_preset = settings->getCurrentColorPreset();
     for (auto& color : current_preset) {
-        FLOG_DEBUG(fml::log::Ch::UI, "{}", color);
+        FLOG_DEBUG(Ch::UI, "{}", color);
     }
     auto* colors_layout = new QVBoxLayout();
     colors_layout->setAlignment(Qt::AlignRight);
@@ -228,9 +229,9 @@ void ColorsWidget::sliderInit()
 
     opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
-        FLOG_DEBUG(fml::log::Ch::UI,
+        FLOG_DEBUG(Ch::UI,
                    "Master opacity from settings = {}",
-                   fml::log::debugString(SettingsHandler::getInstance()->masterOpacity()));
+                   debugString(SettingsHandler::getInstance()->masterOpacity()));
         SettingsHandler::getInstance()->setCurrentOpacity(opacitySlider_->mappedValue(0, 255));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
         emit SettingsHandler::getInstance()->settingsChanged();

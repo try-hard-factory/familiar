@@ -108,16 +108,16 @@ protected:
     void dragEnterEvent(QDragEnterEvent* event) override
     {
         const auto* mimedata = event->mimeData();
-        FLOG_DEBUG(fml::log::Ch::UI,
+        FLOG_DEBUG(familiar::log::Ch::UI,
                    "Drag enter event: {}",
-                   fml::log::debugString(mimedata->formats()));
+                   familiar::log::debugString(mimedata->formats()));
         if (mimedata->hasUrls()) {
             event->acceptProposedAction();
         } else if (mimedata->hasImage()) {
             event->acceptProposedAction();
         } else {
             const QString msg = "Attempted drop not an image or image too big";
-            FLOG_DEBUG(fml::log::Ch::UI, "{}", msg);
+            FLOG_DEBUG(familiar::log::Ch::UI, "{}", msg);
             FamNotification(controlTarget_, msg);
         }
     }
@@ -129,7 +129,7 @@ protected:
 
     void dropEvent(QDropEvent* event) override
     {
-        FLOG_DEBUG(fml::log::Ch::UI, "MainControlMixin Handling file drop:");
+        FLOG_DEBUG(familiar::log::Ch::UI, "MainControlMixin Handling file drop:");
     }
 
 private:

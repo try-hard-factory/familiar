@@ -4,6 +4,7 @@
 #include <QMetaType>
 
 #include "log/log.h"
+using namespace familiar::log;
 
 /*!
  * \~russian \mainpage RU
@@ -54,12 +55,12 @@ int main(int argc, char* argv[])
     // app.setOrganizationName(constants.APPNAME)
     // app.setApplicationName(constants.APPNAME)
 
-    fml::log::init();
+    familiar::log::init();
 
     MainWindow w;
     w.show();
     const int result = a.exec();
 
-    fml::log::shutdown();
+    familiar::log::shutdown();
     return result;
 }

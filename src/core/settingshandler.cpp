@@ -13,6 +13,7 @@
 #include <core/valuehandler.h>
 
 #include "log/log.h"
+using namespace familiar::log;
 
 #define OPTION(KEY, TYPE) \
     { \
@@ -174,7 +175,7 @@ void SettingsHandler::setDefaultCurrentPreset()
 
 bool SettingsHandler::setShortcut(const QString& actionName, const QString& shortcut)
 {
-    FLOG_DEBUG(fml::log::Ch::Settings, "{}", shortcut);
+    FLOG_DEBUG(Ch::Settings, "{}", shortcut);
 
     static QVector<QKeySequence> reservedShortcuts = {
         Qt::Key_Backspace,
@@ -239,7 +240,7 @@ QString SettingsHandler::shortcut(const QString& actionName)
 
 void SettingsHandler::setValue(const QString& key, const QVariant& value)
 {
-    FLOG_DEBUG(fml::log::Ch::Settings, "Setting {} to {}", key, fml::log::debugString(value));
+    FLOG_DEBUG(Ch::Settings, "Setting {} to {}", key, debugString(value));
     assertKeyRecognized(key);
     if (!hasError()) {
         // don't let the file watcher initiate another error check
@@ -263,7 +264,7 @@ QVariant SettingsHandler::value(const QString& key) const
         setErrorState(true);
     }
     if (hasError_) {
-        FLOG_DEBUG(fml::log::Ch::Settings, "ERROR: {} = {}", key, fml::log::debugString(val));
+        FLOG_DEBUG(Ch::Settings, "ERROR: {} = {}", key, debugString(val));
         return handler->fallback();
     }
 
@@ -582,12 +583,12 @@ void SettingsHandler::setErrorState(bool error) const
     // Notify user every time m_hasError changes
     if (!hadError && hasError_) {
         QString msg = errorMessage();
-        FLOG_WARN(fml::log::Ch::Settings, "{}", msg);
+        FLOG_WARN(Ch::Settings, "{}", msg);
         //        AbstractLogger::error() << msg;
         emit getInstance()->error();
     } else if (hadError && !hasError_) {
         auto msg = tr("You have successfully resolved the configuration error.");
-        FLOG_INFO(fml::log::Ch::Settings, "{}", msg);
+        FLOG_INFO(Ch::Settings, "{}", msg);
         //        AbstractLogger::info() << msg;
         emit getInstance()->errorResolved();
     }
