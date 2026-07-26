@@ -8,14 +8,19 @@
 
 #include "recent_files_model.h"
 
+class MainWindow;
+
 class RecentFilesView : public QListView
 {
     Q_OBJECT
 
 public:
-    RecentFilesView(QWidget* parent, const QStringList& files)
+    RecentFilesView(QWidget* parent,
+                    const QStringList& files,
+                    MainWindow* mainWindow = nullptr)
         : QListView(parent)
         , files(files)
+        , mainWindow_(mainWindow)
     {
         connect(this, &QListView::clicked, this, &RecentFilesView::on_clicked);
         setModel(new RecentFilesModel(nullptr, files)); // TODO: memory leak?
@@ -71,14 +76,12 @@ protected:
     }
 
 private slots:
-    void on_clicked(const QModelIndex& index)
-    {
-        if (index.isValid() && index.row() < files.size()) {
-            // TODO: open from file
-            // parentWidget()->parentWidget()->open_from_file(files[index.row()]);
-        }
-    }
+    // Defined in recent_files_view.cpp (needs mainwindow.h's full
+    // definition to reach FileActions - not included here to avoid
+    // pulling that into every widget that includes this header).
+    void on_clicked(const QModelIndex& index);
 
 private:
     QStringList files;
+    MainWindow* mainWindow_;
 };

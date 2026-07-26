@@ -21,7 +21,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     auto* filesLayout = new QVBoxLayout(filesWidget_);
     filesLayout->addStretch(50);
     filesLayout->addWidget(new QLabel(QStringLiteral("<h3>Recent Files</h3>")));
-    filesView_ = new RecentFilesView(this, {});
+    filesView_ = new RecentFilesView(this, {}, mainWindow_);
     filesLayout->addWidget(filesView_);
     filesLayout->addStretch(50);
     filesWidget_->hide();
