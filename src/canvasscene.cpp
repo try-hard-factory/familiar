@@ -38,28 +38,14 @@ QString itemFilename(QGraphicsItem* item)
     return QString();
 }
 
-std::optional<int> itemSaveId(QGraphicsItem* item)
-{
-    if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
-        return pixmapItem->save_id;
-    }
-    if (auto* textItem = dynamic_cast<TextItem*>(item)) {
-        return textItem->save_id;
-    }
-    return std::nullopt;
-}
-
 QList<QGraphicsItem*> sort_by_filename(const QList<QGraphicsItem*>& items)
 {
     QList<QGraphicsItem*> byFilename;
-    QList<QGraphicsItem*> bySaveId;
     QList<QGraphicsItem*> remaining;
 
     for (QGraphicsItem* item : items) {
         if (!itemFilename(item).isEmpty()) {
             byFilename.append(item);
-        } else if (itemSaveId(item)) {
-            bySaveId.append(item);
         } else {
             remaining.append(item);
         }
@@ -70,13 +56,8 @@ QList<QGraphicsItem*> sort_by_filename(const QList<QGraphicsItem*>& items)
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return itemFilename(a) < itemFilename(b);
               });
-    std::sort(bySaveId.begin(),
-              bySaveId.end(),
-              [](QGraphicsItem* a, QGraphicsItem* b) {
-                  return *itemSaveId(a) < *itemSaveId(b);
-              });
 
-    return byFilename + bySaveId + remaining;
+    return byFilename + remaining;
 }
 
 } // namespace
@@ -821,9 +802,8 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
 {
     // If user_only is set to true, only return items added by the user
-    // (i.e. no multi select outlines and other UI items). Python checks
-    // hasattr(i, 'save_id'); itemAddByUser() is the C++ stand-in for that
-    // (only PixmapItem/TextItem carry a save_id member).
+    // (i.e. no multi select outlines and other UI items) - see
+    // itemAddByUser().
     QList<QGraphicsItem*> items = QGraphicsScene::selectedItems();
     if (userOnly) {
         QList<QGraphicsItem*> userItems;
@@ -856,13 +836,6 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     }
 
     return userItems;
-}
-
-void CanvasScene::clear_save_ids()
-{
-    for (QGraphicsItem* item : items_for_save()) {
-        dynamic_cast<IBaseItem*>(item)->clear_save_id();
-    }
 }
 
 void CanvasScene::on_view_scale_change()
@@ -1042,6 +1015,15 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             // Apply common item properties from data
             IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
             if (baseItem) {
+                // Restore identity when loading a saved file (see
+                // docs/fml_format_design.md §5.1/§9). Absent for a
+                // freshly-constructed item (e.g. paste, legacy .fml) -
+                // it already has the uid its constructor generated.
+                QUuid uid = data.value("id").toUuid();
+                if (!uid.isNull()) {
+                    baseItem->set_uid(uid);
+                }
+
                 // Set position
                 qreal x = data.value("x", 0.0).toReal();
                 qreal y = data.value("y", 0.0).toReal();
@@ -1110,13 +1092,6 @@ void CanvasScene::copyToClipboard()
 void CanvasScene::pasteFromClipboard()
 {
     // TODOLATER: paste items from clipboard
-}
-
-QByteArray CanvasScene::fml_payload()
-{
-    // TODOLATER: fml atchive
-    QByteArray arr;
-    return arr;
 }
 
 void CanvasScene::setProjectSettings(project_settings* ps)

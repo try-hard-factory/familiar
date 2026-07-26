@@ -13,6 +13,10 @@ if (NOT CMAKE_BUILD_TYPE MATCHES Debug)
     add_definitions(-DNDEBUG)
 endif()
 
+# appVersion in the .fml manifest (docs/fml_format_design.md §5) -
+# platform-independent, unlike the WIN32-only FAMILIAR_VERSION_* block below.
+add_definitions(-DFAMILIAR_VERSION_STRING="${PROJECT_VERSION}")
+
 if (APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 endif()
@@ -26,7 +30,6 @@ if(WIN32)
   add_definitions(-DFAMILIAR_VERSION_MINOR=${CMAKE_PROJECT_VERSION_MINOR})
   add_definitions(-DFAMILIAR_VERSION_BUGFIX=${CMAKE_PROJECT_VERSION_PATCH})
   add_definitions(-DFAMILIAR_VERSION_BUILD=1)
-  add_definitions(-DFAMILIAR_VERSION_STRING="${PROJECT_VERSION}")
 elseif(APPLE)
   set(Qt6_DIR "$(brew --prefix qt6)/lib/cmake/Qt6/" CACHE PATH "directory where Qt6Config.cmake exists.")
   set(CMAKE_MACOSX_BUNDLE ON)
@@ -54,6 +57,18 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/include/kColorPicker)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/quill)
+
+# miniz: zip read/write for the .fml project file format (see
+# docs/fml_format_design.md). Standalone-project defaults (examples,
+# fuzzers, tests, install rules) are off automatically once PROJECT_NAME
+# is already defined by us, but set them explicitly so a future miniz
+# default change can't silently pull them back in.
+set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(BUILD_FUZZERS OFF CACHE BOOL "" FORCE)
+set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(INSTALL_PROJECT OFF CACHE BOOL "" FORCE)
+add_subdirectory(${CMAKE_SOURCE_DIR}/include/miniz)
+
 add_subdirectory(src)
 
 # CPack

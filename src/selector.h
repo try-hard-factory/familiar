@@ -15,6 +15,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QPen>
+#include <QUuid>
+#include <QVariantMap>
 #include <qnamespace.h>
 #include <memory>
 
@@ -58,10 +60,19 @@ public:
         = 0;
     virtual QPointF center() const = 0;
     virtual qreal flip() const = 0;
-    virtual bool has_save_id() const = 0;
-    virtual int get_save_id() const = 0;
-    virtual void set_save_id(int value) = 0;
-    virtual void clear_save_id() = 0;
+    // Permanent per-item identity, generated once when the item is
+    // constructed (see BaseItemMixin::uid_) and never reassigned except
+    // when restoring it from a loaded .fml file (set_uid()). Used as the
+    // item's id in manifest.json and as its image filename in the archive
+    // - see docs/fml_format_design.md §5.1. Replaces the old save_id
+    // (an SQLite-rowid concept ported from beeref that doesn't apply to
+    // the zip-based format, where there's no incremental row to key off).
+    virtual QUuid uid() const = 0;
+    virtual void set_uid(const QUuid& value) = 0;
+    // Type-specific fields for manifest.json's "data" object (crop, text,
+    // ...). Empty for items that structurally aren't saved (MultiSelectItem,
+    // RubberbandItem, ErrorItem).
+    virtual QVariantMap get_extra_save_data() const = 0;
     virtual void on_view_scale_change() = 0;
     // Transient per-drag state for scale/rotate handle interactions
     // (selection_action_items() can be heterogeneous - e.g. MultiSelectItem
@@ -77,6 +88,9 @@ public:
 template<typename T>
 class BaseItemMixin : public T, public IBaseItem
 {
+    // See uid()/set_uid() below.
+    QUuid uid_{QUuid::createUuid()};
+
 public:
     explicit BaseItemMixin(T* parent = nullptr)
         : T(parent)
@@ -162,30 +176,18 @@ public:
 
     QPointF center_scene_coords() const { return this->mapToScene(center()); }
 
-    // Default for items that structurally can't have a save_id
+    // Permanent identity - see IBaseItem::uid(). Generated once here for
+    // every item (including helper items like MultiSelectItem/
+    // RubberbandItem that are never saved; a uid is harmless for those,
+    // and giving every IBaseItem one unconditionally is simpler than
+    // tracking which concrete types opt in).
+    QUuid uid() const override { return uid_; }
+    void set_uid(const QUuid& value) override { uid_ = value; }
+
+    // Default for items that carry no type-specific save data
     // (MultiSelectItem, RubberbandItem, ErrorItem - the latter uses
-    // original_save_id instead, matching Python's BeeErrorItem). Mirrors
-    // Python's hasattr(item, 'save_id') being False for these: querying
-    // is safe and just says "no", but actually getting/setting one is a
-    // logic error and asserts.
-    bool has_save_id() const override { return false; }
-
-    int get_save_id() const override
-    {
-        Q_ASSERT_X(false, "BaseItemMixin::get_save_id", "Should not be called");
-        return -1;
-    }
-
-    void set_save_id(int value) override
-    {
-        Q_UNUSED(value)
-        Q_ASSERT_X(false, "BaseItemMixin::set_save_id", "Should not be called");
-    }
-
-    void clear_save_id() override
-    {
-        Q_ASSERT_X(false, "BaseItemMixin::clear_save_id", "Should not be called");
-    }
+    // original_uid instead, matching Python's BeeErrorItem).
+    QVariantMap get_extra_save_data() const override { return {}; }
 
     qreal scale_orig_factor() const override
     {
@@ -1048,7 +1050,7 @@ public:
         Q_ASSERT_X(false, "MultiSelectItem::is_image", "Should not be called");
         return false;
     }
-    // Unlike is_image()/get_save_id() etc., this genuinely gets called
+    // Unlike is_image()/uid() etc., this genuinely gets called
     // during unfiltered scene iteration (itemAddByUser(), items_by_type())
     // since rubberband_item_/multiselect_item_ are real scene items while
     // active. Mirrors Python's getattr(i, 'TYPE', None): a safe "no type"

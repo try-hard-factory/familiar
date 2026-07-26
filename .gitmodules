@@ -1,3 +1,6 @@
 [submodule "include/quill"]
 	path = include/quill
 	url = https://github.com/odygrd/quill.git
+[submodule "include/miniz"]
+	path = include/miniz
+	url = https://github.com/richgel999/miniz.git

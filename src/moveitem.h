@@ -21,6 +21,7 @@
 #include <QStyle>
 #include <QStyleOptionGraphicsItem>
 #include <QTextCursor>
+#include <QUuid>
 #include <QVariantMap>
 #include <QWheelEvent>
 #include <QtGlobal>
@@ -104,7 +105,6 @@ public:
     const qreal CROP_HANDLE_SIZE = 15; // static constexpr
     using ColorGamut = QMap<QPair<int, int>, int>;
     using CropHandleFn = QRectF (PixmapItem::*)() const;
-    std::optional<int> save_id{};
     QString filename_;
     bool is_image_{true};
     bool crop_mode = false;
@@ -128,7 +128,6 @@ public:
         setPixmap(QPixmap::fromImage(image));
         reset_crop();
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
-        // save_id = nullptr;
         crop_mode = false;
         init_selectable();
         settings = FamSettings::getInstance();
@@ -179,18 +178,6 @@ public:
     // TODOTALER: use standart type func
     std::string get_type() const override { return TYPE; }
 
-    bool has_save_id() const override { return save_id.has_value(); }
-
-    int get_save_id() const override
-    {
-        Q_ASSERT_X(save_id.has_value(), "PixmapItem::get_save_id", "save_id not set");
-        return *save_id;
-    }
-
-    void set_save_id(int value) override { save_id = value; }
-
-    void clear_save_id() override { save_id = std::nullopt; }
-
     QColor sample_color_at(const QPointF& pos)
     {
         QPointF ipos = this->mapFromScene(pos);
@@ -214,7 +201,7 @@ public:
         return crop_;
     }
 
-    QVariantMap get_extra_save_data() const
+    QVariantMap get_extra_save_data() const override
     {
         QVariantMap data;
         data[QStringLiteral("filename")] = filename_;
@@ -227,21 +214,16 @@ public:
         return data;
     }
 
-    // TODOLATER
-    QString get_filename_for_export(const QString& imgformat,
-                                    std::optional<int> save_id_default
-                                    = std::nullopt) const
+    // TODOLATER: not wired up to a caller yet (batch export).
+    QString get_filename_for_export(const QString& imgformat) const
     {
-        std::optional<int> id = save_id ? save_id : save_id_default;
-        Q_ASSERT(id.has_value());
+        QString id = uid().toString(QUuid::WithoutBraces);
 
         if (!filename_.isEmpty()) {
             QString basename = QFileInfo(filename_).completeBaseName();
-            return QString("%1-%2.%3")
-                .arg(*id, 4, 10, QChar('0'))
-                .arg(basename, imgformat);
+            return QString("%1-%2.%3").arg(id, basename, imgformat);
         }
-        return QString("%1.%2").arg(*id, 4, 10, QChar('0')).arg(imgformat);
+        return QString("%1.%2").arg(id, imgformat);
     }
 
     // Determines the format for storing this image.
@@ -756,7 +738,6 @@ public:
     const std::string TYPE = "text"; // static constexpr
     bool edit_mode = false;
     QString old_text;
-    std::optional<int> save_id{};
 
     TextItem(const QString& text = QString(), QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
@@ -776,18 +757,6 @@ public:
     // int type() const override { return 666; }
     bool is_editable() override { return true; }
 
-    bool has_save_id() const override { return save_id.has_value(); }
-
-    int get_save_id() const override
-    {
-        Q_ASSERT_X(save_id.has_value(), "TextItem::get_save_id", "save_id not set");
-        return *save_id;
-    }
-
-    void set_save_id(int value) override { save_id = value; }
-
-    void clear_save_id() override { save_id = std::nullopt; }
-
     QString toString() const
     {
         return QString("Text \"%1\"").arg(this->toPlainText().left(40));
@@ -798,7 +767,7 @@ public:
         return new TextItem(data.value(QStringLiteral("text")).toString());
     }
 
-    QVariantMap get_extra_save_data() const
+    QVariantMap get_extra_save_data() const override
     {
         QVariantMap data;
         data[QStringLiteral("text")] = this->toPlainText();
@@ -915,7 +884,11 @@ class ErrorItem : public ItemMixin<ErrorItem, QGraphicsTextItem>
 {
 public:
     const std::string TYPE = "error"; // static constexpr
-    std::optional<int> original_save_id{};
+    // The uid of the manifest item this stand-in couldn't load (see
+    // docs/fml_format_design.md §5.1/§6) - preserved so a re-save doesn't
+    // mint a new identity for data that's otherwise round-tripped as-is.
+    // Null if unknown (e.g. the manifest item itself was malformed).
+    QUuid original_uid{};
 
     ErrorItem(const QString& text = QString(),
               QGraphicsTextItem* parent = nullptr)
@@ -964,7 +937,7 @@ public:
     void update_from_data()
     {
         // TODOLATER: kwargs-driven data loading isn't wired up yet;
-        // Python sets original_save_id/pos/z/scale/rotation from the
+        // Python sets original_uid/pos/z/scale/rotation from the
         // loaded data here.
     }
 

@@ -42,9 +42,6 @@ public:
     void do_insert_images(const QList<QUrl>& urls,
                           std::optional<QPoint> pos = std::nullopt);
     void handleDrop(const QMimeData* mimedata, const QPoint& pos);
-    void addImage(const QString& path, QPointF point);
-    void addImage(QImage* img, QPointF point);
-    void addImage(QByteArray ba, int w, int h, QRect br, qsizetype bpl, QImage::Format f);
 
     // Used by MainWindow to (re)wire action enabled-state to whichever
     // tab is currently active (see MainWindow::resyncActionsForTab).
@@ -59,7 +56,6 @@ public:
     void cancelActiveModes();
     void cancelSampleColorMode();
 
-    QByteArray fml_payload();
     void cleanupWorkplace();
     QString path();
     void setPath(const QString& path);
