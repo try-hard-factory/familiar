@@ -1,0 +1,540 @@
+#include "fml_archive.h"
+
+#include "canvasscene.h"
+#include "fileio.h"
+#include "moveitem.h"
+
+#include "miniz.h"
+#include "miniz_zip.h"
+
+#include <QDataStream>
+#include <QFile>
+#include <QFileInfo>
+#include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QJsonValue>
+#include <QPointF>
+#include <QRectF>
+#include <QSaveFile>
+#include <QSet>
+#include <QUuid>
+#include <QVariantMap>
+
+#include <cstring>
+#include <optional>
+
+#include "log/log.h"
+using namespace familiar::log;
+
+// ============================================================================
+// Manifest DTOs and JSON (de)serialization.
+//
+// Per docs/fml_format_design.md §7.1, Qt JSON types (QJsonDocument/Object/
+// Array/Value) never leave this file. Everything outside this translation
+// unit deals in the plain structs below - swapping the JSON backend later
+// means rewriting only write_manifest()/parse_manifest().
+// ============================================================================
+
+namespace {
+
+constexpr int kFormatVersion = 1;
+const char kFormatMagic[] = "familiar";
+const unsigned char kZipMagic[4] = {'P', 'K', 0x03, 0x04};
+
+struct ManifestItem
+{
+    QUuid id;
+    QString type;
+    qreal x = 0;
+    qreal y = 0;
+    qreal z = 0;
+    qreal scale = 1;
+    qreal rotation = 0;
+    int flip = 1;
+    QString image; // empty for non-pixmap items
+    QVariantMap data;
+};
+
+struct Manifest
+{
+    int formatVersion = kFormatVersion;
+    QString appVersion;
+    QList<ManifestItem> items;
+};
+
+QByteArray write_manifest(const Manifest& manifest)
+{
+    QJsonObject root;
+    root[QStringLiteral("format")] = QString::fromLatin1(kFormatMagic);
+    root[QStringLiteral("formatVersion")] = manifest.formatVersion;
+    root[QStringLiteral("appVersion")] = manifest.appVersion;
+    root[QStringLiteral("scene")] = QJsonObject{};
+
+    QJsonArray items;
+    for (const ManifestItem& item : manifest.items) {
+        QJsonObject obj;
+        obj[QStringLiteral("id")] = item.id.toString(QUuid::WithoutBraces);
+        obj[QStringLiteral("type")] = item.type;
+        obj[QStringLiteral("x")] = item.x;
+        obj[QStringLiteral("y")] = item.y;
+        obj[QStringLiteral("z")] = item.z;
+        obj[QStringLiteral("scale")] = item.scale;
+        obj[QStringLiteral("rotation")] = item.rotation;
+        obj[QStringLiteral("flip")] = item.flip;
+        if (!item.image.isEmpty()) {
+            obj[QStringLiteral("image")] = item.image;
+        }
+        obj[QStringLiteral("data")] = QJsonObject::fromVariantMap(item.data);
+        items.append(obj);
+    }
+    root[QStringLiteral("items")] = items;
+
+    return QJsonDocument(root).toJson(QJsonDocument::Indented);
+}
+
+// Returns nullopt on a fatal problem (not JSON, not a familiar manifest,
+// or from a formatVersion we don't understand yet) with `error` set.
+// A manifest item with a missing/duplicate id is not fatal - see the
+// per-item warning below (docs/fml_format_design.md §5.1).
+std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
+{
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
+    if (parseError.error != QJsonParseError::NoError) {
+        error = QStringLiteral("Invalid manifest.json: %1")
+                    .arg(parseError.errorString());
+        return std::nullopt;
+    }
+    if (!doc.isObject()) {
+        error = QStringLiteral("manifest.json is not a JSON object");
+        return std::nullopt;
+    }
+
+    QJsonObject root = doc.object();
+
+    if (root.value(QStringLiteral("format")).toString()
+        != QString::fromLatin1(kFormatMagic)) {
+        error = QStringLiteral(
+            "Not a familiar project file (missing format marker)");
+        return std::nullopt;
+    }
+
+    int formatVersion = root.value(QStringLiteral("formatVersion")).toInt(-1);
+    if (formatVersion <= 0 || formatVersion > kFormatVersion) {
+        error = QStringLiteral("This file was created by a newer version of "
+                               "familiar (formatVersion %1)")
+                    .arg(formatVersion);
+        return std::nullopt;
+    }
+
+    Manifest manifest;
+    manifest.formatVersion = formatVersion;
+    manifest.appVersion = root.value(QStringLiteral("appVersion")).toString();
+
+    QSet<QUuid> seenIds;
+    const QJsonArray items = root.value(QStringLiteral("items")).toArray();
+    for (const QJsonValue& v : items) {
+        QJsonObject obj = v.toObject();
+        ManifestItem item;
+
+        QUuid id = QUuid::fromString(
+            obj.value(QStringLiteral("id")).toString());
+        if (id.isNull() || seenIds.contains(id)) {
+            FLOG_WARN(Ch::IO,
+                     "manifest.json item has a missing or duplicate id; "
+                     "generating a new one");
+            id = QUuid::createUuid();
+        }
+        seenIds.insert(id);
+
+        item.id = id;
+        item.type = obj.value(QStringLiteral("type")).toString();
+        item.x = obj.value(QStringLiteral("x")).toDouble();
+        item.y = obj.value(QStringLiteral("y")).toDouble();
+        item.z = obj.value(QStringLiteral("z")).toDouble();
+        item.scale = obj.value(QStringLiteral("scale")).toDouble(1.0);
+        item.rotation = obj.value(QStringLiteral("rotation")).toDouble();
+        item.flip = obj.value(QStringLiteral("flip")).toInt(1);
+        item.image = obj.value(QStringLiteral("image")).toString();
+        item.data = obj.value(QStringLiteral("data")).toObject().toVariantMap();
+
+        manifest.items.append(item);
+    }
+
+    return manifest;
+}
+
+// RAII for mz_zip_archive. miniz's C API needs an explicit matching
+// mz_zip_writer_end()/mz_zip_reader_end() call, and save()/load() below
+// each have several early-return error paths; binding the call to scope
+// removes the need to get every one of those right by hand. Both _end()
+// functions are safe to call even if init (below) was never reached or
+// failed - they check the archive's internal state and no-op.
+class ZipWriter
+{
+public:
+    ZipWriter() = default;
+    ~ZipWriter() { mz_zip_writer_end(&archive_); }
+
+    ZipWriter(const ZipWriter&) = delete;
+    ZipWriter& operator=(const ZipWriter&) = delete;
+
+    bool initHeap() { return mz_zip_writer_init_heap(&archive_, 0, 0); }
+    mz_zip_archive* get() { return &archive_; }
+
+private:
+    mz_zip_archive archive_{};
+};
+
+class ZipReader
+{
+public:
+    ZipReader() = default;
+    ~ZipReader() { mz_zip_reader_end(&archive_); }
+
+    ZipReader(const ZipReader&) = delete;
+    ZipReader& operator=(const ZipReader&) = delete;
+
+    bool initMem(const void* mem, size_t size)
+    {
+        return mz_zip_reader_init_mem(&archive_, mem, size, 0);
+    }
+    mz_zip_archive* get() { return &archive_; }
+
+private:
+    mz_zip_archive archive_{};
+};
+
+bool looks_like_zip(QFile& file)
+{
+    QByteArray header = file.peek(4);
+    return header.size() == 4
+           && std::memcmp(header.constData(), kZipMagic, 4) == 0;
+}
+
+// ============================================================================
+// Legacy pre-zip .fml reader (docs/fml_format_design.md §10). The format
+// this reads from was written by fml_file_buffer.h's save_to_file() /
+// CanvasScene::fml_payload(); both fml_payload() and CanvasView::addImage()
+// were stubs that never actually produced or consumed image data, so no
+// real file with content is known to exist for this branch - it exists as
+// a safety net, not a verified-working migration path.
+// ============================================================================
+
+FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
+{
+    FmlResult result;
+
+    QDataStream stream(&file);
+
+    qint16 count = 0;
+    stream >> count;
+    if (stream.status() != QDataStream::Ok || count < 0) {
+        result.error = QStringLiteral("Not a valid familiar project file");
+        return result;
+    }
+
+    if (worker) {
+        emit worker->beginProcessing(count);
+    }
+
+    for (int i = 0; i < count; ++i) {
+        if (worker && worker->canceled) {
+            break;
+        }
+
+        QPointF scenePos;
+        stream >> scenePos;
+        qint32 h = 0, w = 0;
+        stream >> h >> w;
+        QRectF br;
+        stream >> br;
+        quint16 format = 0;
+        stream >> format;
+        quint64 size = 0;
+        stream >> size;
+
+        if (stream.status() != QDataStream::Ok) {
+            result.itemErrors.append(
+                QStringLiteral("Item %1: truncated file").arg(i));
+            break;
+        }
+
+        QByteArray compressed = file.read(static_cast<qint64>(size));
+        QByteArray raw = qUncompress(compressed);
+        if (raw.isEmpty() && size > 0) {
+            result.itemErrors.append(
+                QStringLiteral("Item %1: could not decompress image data")
+                    .arg(i));
+            if (worker) {
+                emit worker->progress(i);
+            }
+            continue;
+        }
+
+        // Let QImage compute its own (aligned) bytesPerLine from w/format
+        // instead of trusting whatever the writer used - safer than
+        // replaying the original save_to_file() code, which was never
+        // actually exercised (see the comment above).
+        QImage image(reinterpret_cast<const uchar*>(raw.constData()),
+                    w,
+                    h,
+                    QImage::Format(format));
+        image = image.copy(); // detach before `raw` goes out of scope
+
+        QVariantMap itemData;
+        itemData[QStringLiteral("type")] = QStringLiteral("pixmap");
+        itemData[QStringLiteral("image")] = image;
+        itemData[QStringLiteral("x")] = scenePos.x();
+        itemData[QStringLiteral("y")] = scenePos.y();
+        scene->add_item_later(itemData, false);
+
+        if (worker) {
+            emit worker->progress(i);
+        }
+    }
+
+    return result;
+}
+
+} // namespace
+
+// ============================================================================
+// FmlArchive
+// ============================================================================
+
+FmlResult FmlArchive::save(CanvasScene* scene,
+                           const QString& filename,
+                           ThreadedIO* worker)
+{
+    FmlResult result;
+
+    QList<QGraphicsItem*> items = scene->items_for_save();
+
+    ZipWriter zip;
+    if (!zip.initHeap()) {
+        result.error = QStringLiteral("Could not initialize zip writer");
+        return result;
+    }
+
+    Manifest manifest;
+#ifdef FAMILIAR_VERSION_STRING
+    manifest.appVersion = QStringLiteral(FAMILIAR_VERSION_STRING);
+#endif
+
+    if (worker) {
+        emit worker->beginProcessing(items.size());
+    }
+
+    bool canceled = false;
+    for (int i = 0; i < items.size(); ++i) {
+        if (worker && worker->canceled) {
+            canceled = true;
+            break;
+        }
+
+        auto* baseItem = dynamic_cast<IBaseItem*>(items[i]);
+        Q_ASSERT_X(baseItem, "FmlArchive::save", "item is not an IBaseItem");
+
+        ManifestItem mi;
+        mi.id = baseItem->uid();
+        mi.type = QString::fromStdString(baseItem->get_type());
+        mi.x = items[i]->pos().x();
+        mi.y = items[i]->pos().y();
+        mi.z = items[i]->zValue();
+        mi.scale = items[i]->scale();
+        mi.rotation = items[i]->rotation();
+        mi.flip = (baseItem->flip() == -1) ? -1 : 1;
+        mi.data = baseItem->get_extra_save_data();
+
+        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
+            auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
+            QString idStr = mi.id.toString(QUuid::WithoutBraces);
+            mi.image = QStringLiteral("images/%1.%2").arg(idStr, imgformat);
+
+            QByteArray archiveName = mi.image.toUtf8();
+            if (!mz_zip_writer_add_mem(zip.get(),
+                                       archiveName.constData(),
+                                       bytes.constData(),
+                                       static_cast<size_t>(bytes.size()),
+                                       MZ_NO_COMPRESSION)) {
+                result.itemErrors.append(
+                    QStringLiteral("Could not store image for item %1")
+                        .arg(idStr));
+            }
+        }
+
+        manifest.items.append(mi);
+
+        if (worker) {
+            emit worker->progress(i);
+        }
+    }
+
+    if (canceled) {
+        // Don't write anything to disk - the previous file (if any) stays
+        // untouched. Mirrors load_images()'s silent-stop-on-cancel
+        // convention (empty error, no dialog).
+        return result;
+    }
+
+    QByteArray manifestJson = write_manifest(manifest);
+    if (!mz_zip_writer_add_mem(zip.get(),
+                               "manifest.json",
+                               manifestJson.constData(),
+                               static_cast<size_t>(manifestJson.size()),
+                               MZ_DEFAULT_LEVEL)) {
+        result.error = QStringLiteral("Could not write manifest.json");
+        return result;
+    }
+
+    void* buf = nullptr;
+    size_t size = 0;
+    if (!mz_zip_writer_finalize_heap_archive(zip.get(), &buf, &size)) {
+        result.error = QStringLiteral("Could not finalize archive");
+        return result;
+    }
+
+    QSaveFile file(filename);
+    if (!file.open(QIODevice::WriteOnly)) {
+        result.error = QStringLiteral("Could not open %1 for writing: %2")
+                            .arg(filename, file.errorString());
+        mz_free(buf);
+        return result;
+    }
+    file.write(static_cast<const char*>(buf), static_cast<qint64>(size));
+    mz_free(buf);
+
+    if (!file.commit()) {
+        result.error = QStringLiteral("Could not save %1: %2")
+                            .arg(filename, file.errorString());
+        return result;
+    }
+
+    return result;
+}
+
+FmlResult FmlArchive::load(const QString& filename,
+                           CanvasScene* scene,
+                           ThreadedIO* worker)
+{
+    FmlResult result;
+
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly)) {
+        result.error = QStringLiteral("Could not open %1: %2")
+                            .arg(filename, file.errorString());
+        return result;
+    }
+
+    if (!looks_like_zip(file)) {
+        return load_legacy(file, scene, worker);
+    }
+
+    QByteArray bytes = file.readAll();
+    file.close();
+
+    ZipReader zip;
+    if (!zip.initMem(bytes.constData(), static_cast<size_t>(bytes.size()))) {
+        result.error
+            = QStringLiteral("%1 is not a valid zip archive").arg(filename);
+        return result;
+    }
+
+    int manifestIndex
+        = mz_zip_reader_locate_file(zip.get(), "manifest.json", nullptr, 0);
+    if (manifestIndex < 0) {
+        result.error
+            = QStringLiteral("%1 has no manifest.json").arg(filename);
+        return result;
+    }
+
+    size_t manifestSize = 0;
+    void* manifestBuf = mz_zip_reader_extract_to_heap(
+        zip.get(), static_cast<mz_uint>(manifestIndex), &manifestSize, 0);
+    if (!manifestBuf) {
+        result.error
+            = QStringLiteral("Could not read manifest.json from %1")
+                  .arg(filename);
+        return result;
+    }
+    QByteArray manifestJson(static_cast<const char*>(manifestBuf),
+                            static_cast<int>(manifestSize));
+    mz_free(manifestBuf);
+
+    QString parseError;
+    std::optional<Manifest> manifest = parse_manifest(manifestJson, parseError);
+    if (!manifest) {
+        result.error = parseError;
+        return result;
+    }
+
+    if (worker) {
+        emit worker->beginProcessing(manifest->items.size());
+    }
+
+    for (int i = 0; i < manifest->items.size(); ++i) {
+        if (worker && worker->canceled) {
+            break;
+        }
+
+        const ManifestItem& mi = manifest->items.at(i);
+
+        QVariantMap itemData;
+        itemData[QStringLiteral("type")] = mi.type;
+        itemData[QStringLiteral("id")] = mi.id;
+        itemData[QStringLiteral("x")] = mi.x;
+        itemData[QStringLiteral("y")] = mi.y;
+        itemData[QStringLiteral("z")] = mi.z;
+        itemData[QStringLiteral("scale")] = mi.scale;
+        itemData[QStringLiteral("rotation")] = mi.rotation;
+        itemData[QStringLiteral("flip")] = mi.flip;
+        itemData[QStringLiteral("data")] = mi.data;
+
+        if (mi.type == QStringLiteral("pixmap")) {
+            QByteArray imagePath = mi.image.toUtf8();
+            int imageIndex = mz_zip_reader_locate_file(
+                zip.get(), imagePath.constData(), nullptr, 0);
+
+            bool ok = false;
+            if (imageIndex >= 0) {
+                size_t imgSize = 0;
+                void* imgBuf = mz_zip_reader_extract_to_heap(
+                    zip.get(), static_cast<mz_uint>(imageIndex), &imgSize, 0);
+                if (imgBuf) {
+                    QImage image;
+                    ok = image.loadFromData(
+                        static_cast<const uchar*>(imgBuf),
+                        static_cast<int>(imgSize));
+                    if (ok) {
+                        itemData[QStringLiteral("image")] = image;
+                        itemData[QStringLiteral("filename")]
+                            = mi.data.value(QStringLiteral("filename"));
+                    }
+                    mz_free(imgBuf);
+                }
+            }
+
+            if (!ok) {
+                result.itemErrors.append(
+                    QStringLiteral("Could not load image for item %1")
+                        .arg(mi.id.toString(QUuid::WithoutBraces)));
+                if (worker) {
+                    emit worker->progress(i);
+                }
+                continue;
+            }
+        }
+
+        scene->add_item_later(itemData, false);
+
+        if (worker) {
+            emit worker->progress(i);
+        }
+    }
+
+    return result;
+}

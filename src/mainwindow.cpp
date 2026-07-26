@@ -9,7 +9,6 @@
 #include <QStatusBar>
 
 #include "canvasscene.h"
-#include "fml_file_buffer.h"
 #include "project_settings.h"
 #include "saveallwindow.h"
 #include "tabpane.h"

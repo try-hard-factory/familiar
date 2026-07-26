@@ -929,11 +929,6 @@ void CanvasView::setProjectSettings(project_settings* ps)
     scene_->setProjectSettings(ps);
 }
 
-QByteArray CanvasView::fml_payload()
-{
-    return scene_->fml_payload();
-}
-
 void CanvasView::on_insert_images_finished(const QString& /*filename*/,
                                            const QStringList& errors)
 {
@@ -1038,11 +1033,6 @@ void CanvasView::on_items_loaded(int /*value*/)
     FLOG_DEBUG(Ch::View, "On items loaded: add queued items");
     insertImagesInsertedItems_ += scene_->add_queued_items();
 }
-
-void CanvasView::addImage(const QString& /*path*/, QPointF /*point*/) {}
-void CanvasView::addImage(QImage* /*img*/, QPointF /*point*/) {}
-void CanvasView::addImage(QByteArray /*ba*/, int /*w*/, int /*h*/,
-                           QRect /*br*/, qsizetype /*bpl*/, QImage::Format /*f*/) {}
 
 void CanvasView::cleanupWorkplace()
 {

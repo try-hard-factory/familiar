@@ -58,8 +58,8 @@ set(PROJECT_SOURCES
         log/ring_sink.cpp
         image_downloader.cpp
         image_downloader.h
-        fml_file_buffer.cpp
-        fml_file_buffer.h
+        fml_archive.cpp
+        fml_archive.h
         project_settings.cpp
         project_settings.h
         tabpane.cpp
@@ -160,6 +160,7 @@ if (WIN32)
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
+        miniz
         "${CMAKE_BINARY_DIR}\\include\\kColorPicker\\lib\\Release\\kColorPicker.lib"
     )
 elseif(APPLE)
@@ -169,6 +170,7 @@ else()
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
+        miniz
         ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
     )
 endif()

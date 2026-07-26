@@ -1,6 +1,5 @@
 #include "tabpane.h"
 #include "canvasview.h"
-#include "fml_file_buffer.h"
 #include "mainwindow.h"
 #include "project_settings.h"
 #include <QFileInfo>

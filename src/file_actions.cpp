@@ -1,9 +1,13 @@
 #include "file_actions.h"
-#include "fml_file_buffer.h"
+#include "canvasscene.h"
+#include "fileio.h"
+#include "fml_archive.h"
 #include "mainwindow.h"
 #include "tabpane.h"
+#include "widgets/dialogs.h"
 #include <canvasview.h>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QString>
 
 FileActions::FileActions(MainWindow& mw)
@@ -68,6 +72,47 @@ void FileActions::openFile()
     delete fileDialog;
 }
 
+void FileActions::loadFmlIntoCurrentTab(const QString& path)
+{
+    CanvasView* canvasView = mainwindow_.tabPane().currentWidget();
+    CanvasScene* scene = canvasView->scene();
+
+    auto* worker = new ThreadedIO(
+        [path, scene](ThreadedIO* w) { load_fml(path, scene, w); });
+
+    QObject::connect(worker,
+            &ThreadedIO::finished,
+            &mainwindow_,
+            [this, canvasView, scene](const QString& error,
+                                      const QStringList& itemErrors) {
+                scene->add_queued_items();
+                canvasView->setModified(false);
+
+                if (!error.isEmpty()) {
+                    QMessageBox::critical(
+                        &mainwindow_, QObject::tr("Could not open file"), error);
+                }
+                if (!itemErrors.isEmpty()) {
+                    QStringList lines;
+                    for (const QString& e : itemErrors) {
+                        lines.append(QStringLiteral("<li>%1</li>").arg(e));
+                    }
+                    QMessageBox::warning(
+                        &mainwindow_,
+                        QObject::tr("Problem loading project"),
+                        QObject::tr(
+                            "%1 item(s) could not be loaded.<ul>%2</ul>")
+                            .arg(itemErrors.size())
+                            .arg(lines.join(QString())));
+                }
+            });
+
+    QObject::connect(worker, &QThread::finished, worker, &QObject::deleteLater);
+
+    new ProgressDialog(QObject::tr("Opening project"), worker, 0, &mainwindow_);
+    worker->start();
+}
+
 void FileActions::processOpenFile(const QString& file)
 {
     if (mainwindow_.tabPane().currentWidget()->isUntitled()
@@ -80,8 +125,7 @@ void FileActions::processOpenFile(const QString& file)
         mainwindow_.tabPane().addNewTab(file);
     }
 
-    fml_file_buffer::open_file(mainwindow_.tabPane().currentWidget(), file);
-    mainwindow_.tabPane().currentWidget()->setModified(false);
+    loadFmlIntoCurrentTab(file);
 }
 
 int FileActions::saveFile(const QString& path)
@@ -91,11 +135,35 @@ int FileActions::saveFile(const QString& path)
         return saveFileAs();
     }
 
-    auto canvasWidget = mainwindow_.tabPane().currentWidget();
-    QByteArray payload = fml_file_buffer::create_payload(canvasWidget);
-    fml_file_buffer::save_to_file(path, payload);
+    CanvasView* canvasView = mainwindow_.tabPane().currentWidget();
 
-    canvasWidget->setModified(false);
+    // Synchronous (not backgrounded like loadFmlIntoCurrentTab()): several
+    // callers (TabPane::onTabClosed(), MainWindow::saveAllWindowSaveCB())
+    // close the tab or quit the app right after this returns, assuming the
+    // save has already completed - threading it would need those flows
+    // reworked to wait on ThreadedIO::finished first.
+    FmlResult result = FmlArchive::save(canvasView->scene(), path);
+
+    if (!result.error.isEmpty()) {
+        QMessageBox::critical(
+            &mainwindow_, QObject::tr("Could not save file"), result.error);
+        return QDialog::Rejected;
+    }
+
+    if (!result.itemErrors.isEmpty()) {
+        QStringList lines;
+        for (const QString& e : result.itemErrors) {
+            lines.append(QStringLiteral("<li>%1</li>").arg(e));
+        }
+        QMessageBox::warning(
+            &mainwindow_,
+            QObject::tr("Problem saving project"),
+            QObject::tr("%1 item(s) could not be saved.<ul>%2</ul>")
+                .arg(result.itemErrors.size())
+                .arg(lines.join(QString())));
+    }
+
+    canvasView->setModified(false);
 
     return QDialog::Accepted;
 }
@@ -135,8 +203,7 @@ int FileActions::saveFileAs()
                    != QFileInfo(selected).fileName()) {
             auto canvasView = mainwindow_.tabPane().currentWidget();
             mainwindow_.tabPane().addNewTab(selected);
-            fml_file_buffer::open_file(mainwindow_.tabPane().currentWidget(),
-                                       canvasView->path());
+            loadFmlIntoCurrentTab(canvasView->path());
         }
 
         mainwindow_.tabPane().setCurrentTabPath(selected);

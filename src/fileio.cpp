@@ -1,6 +1,7 @@
 #include "fileio.h"
 
 #include "canvasscene.h"
+#include "fml_archive.h"
 
 #include <QImageReader>
 
@@ -80,9 +81,13 @@ void load_images(const QStringList& filenames,
 void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
 {
     FLOG_DEBUG(Ch::IO, "Loading from file {} ...", filename);
-    Q_UNUSED(scene)
-    Q_UNUSED(worker)
-    // TODOLATER: archive/manifest-based read, once that format is designed.
+
+    FmlResult result = FmlArchive::load(filename, scene, worker);
+
+    if (worker) {
+        emit worker->finished(result.error, result.itemErrors);
+        worker->quit();
+    }
 }
 
 void save_fml(const QString& filename,
@@ -92,8 +97,16 @@ void save_fml(const QString& filename,
 {
     FLOG_DEBUG(Ch::IO, "Saving to file {} ...", filename);
     FLOG_DEBUG(Ch::IO, "Create new: {}", createNew);
-    Q_UNUSED(scene)
-    Q_UNUSED(worker)
-    // TODOLATER: archive/manifest-based write, once that format is designed.
+    // The zip format always rewrites the whole archive - there's no
+    // incremental-update concept for createNew=false to opt out of (see
+    // docs/fml_format_design.md §2/§8).
+    Q_UNUSED(createNew)
+
+    FmlResult result = FmlArchive::save(scene, filename, worker);
+
+    if (worker) {
+        emit worker->finished(result.error, result.itemErrors);
+        worker->quit();
+    }
     FLOG_DEBUG(Ch::IO, "End save");
 }

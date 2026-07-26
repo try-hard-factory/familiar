@@ -100,7 +100,6 @@ public:
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(const std::string& type);
     QList<QGraphicsItem*> items_for_save();
-    void clear_save_ids();
     void on_view_scale_change();
     QRectF itemsBoundingRect(bool selectionOnly = false,
                              QList<QGraphicsItem*> items
@@ -120,8 +119,8 @@ public:
     // Getter for active_mode_ (Python code just reads self.active_mode
     // directly; used e.g. by ItemMixin::on_selected_change()).
     ESceneMode active_mode() const;
-    // Stand-in for Python's hasattr(item, 'save_id') duck-typing check:
-    // whether an item is a real user-facing one (pixmap/text), based on
+    // Whether an item is a real user-facing one (pixmap/text) rather than
+    // a helper item (MultiSelectItem, RubberbandItem, ErrorItem), based on
     // IBaseItem::get_type()'s string tag rather than a numeric type().
     bool itemAddByUser(QGraphicsItem* item) const;
 
@@ -154,7 +153,6 @@ public:
     void pasteFromClipboard();
     void copyToClipboard();
     QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
-    QByteArray fml_payload();
     void setProjectSettings(project_settings* ps);
     void cleanupWorkplace();
     QString path();
