@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <QMetaType>
 
 #include "log/log.h"
@@ -49,6 +50,15 @@ int main(int argc, char* argv[])
     // TODOLATER:
     // app.setOrganizationName(constants.APPNAME)
     // app.setApplicationName(constants.APPNAME)
+
+    // Window/taskbar icon. Built from the raster PNGs (rather than the
+    // .svg also in graphics.qrc) since QIcon needs the Qt SVG icon-engine
+    // plugin at runtime to rasterize an SVG source, and that plugin isn't
+    // guaranteed to be deployed everywhere this app runs.
+    QIcon appIcon;
+    appIcon.addFile(QStringLiteral(":/img/app/familiar_256.png"));
+    appIcon.addFile(QStringLiteral(":/img/app/familiar_512.png"));
+    a.setWindowIcon(appIcon);
 
     familiar::log::init();
 

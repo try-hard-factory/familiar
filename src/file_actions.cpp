@@ -7,8 +7,32 @@
 #include "widgets/dialogs.h"
 #include <canvasview.h>
 #include <QFileDialog>
+#include <QFileIconProvider>
 #include <QMessageBox>
 #include <QString>
+
+namespace {
+
+// Shows the familiar mark for .fml files in the (non-native) open/save
+// dialogs below, since the platform has no icon association for the
+// extension registered (that's OS packaging, kept out of scope here -
+// see docs/fml_format_design.en.md).
+class FmlIconProvider : public QFileIconProvider
+{
+public:
+    QIcon icon(const QFileInfo& info) const override
+    {
+        if (info.suffix().compare(QStringLiteral("fml"), Qt::CaseInsensitive)
+            == 0) {
+            static const QIcon fmlIcon(
+                QStringLiteral(":/img/app/familiar_256.png"));
+            return fmlIcon;
+        }
+        return QFileIconProvider::icon(info);
+    }
+};
+
+} // namespace
 
 FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
@@ -44,6 +68,9 @@ void FileActions::openFile()
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
     fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
     fileDialog->setFileMode(QFileDialog::ExistingFiles);
+    // Static: setIconProvider() doesn't take ownership, must outlive fileDialog.
+    static FmlIconProvider iconProvider;
+    fileDialog->setIconProvider(&iconProvider);
 
     if (fileDialog->exec()) {
         if (fileDialog->selectedFiles().size() == 0) {
@@ -189,6 +216,9 @@ int FileActions::saveFileAs()
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
     fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
     fileDialog->setFileMode(QFileDialog::AnyFile);
+    // Static: setIconProvider() doesn't take ownership, must outlive fileDialog.
+    static FmlIconProvider iconProvider;
+    fileDialog->setIconProvider(&iconProvider);
     auto retdialog = fileDialog->exec();
 
     if (retdialog == QDialog::Accepted) {
