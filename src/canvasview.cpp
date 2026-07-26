@@ -11,11 +11,15 @@
 #include <QClipboard>
 #include <QContextMenuEvent>
 #include <QDesktopServices>
+#include <QDir>
+#include <QFile>
 #include <QFileDialog>
+#include <QImage>
 #include <QImageReader>
 #include <QKeyEvent>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPainter>
 #include <QUndoStack>
 #include <QUrl>
 #include <cmath>
@@ -511,12 +515,239 @@ void CanvasView::on_action_save_as()
 
 void CanvasView::on_action_export_scene()
 {
-    // TODOLATER: export scene to image file
+    // Raster export only (PNG/JPEG), via the already-written but
+    // previously unused SceneToPixmapExporterDialog.
+    // TODOLATER: SVG export. beeref has a separate exporter for it
+    // (beeref/fileio/export.py's SceneToSVGExporter) that hand-serializes
+    // each item to XML so text stays editable rather than rendered to
+    // paths - a distinct, more involved chunk of work, not ported here.
+    cancelActiveModes();
+
+    QRectF itemsRect = scene_->itemsBoundingRect();
+    if (itemsRect.isEmpty()) {
+        QMessageBox::information(&mainwindow_,
+                                 tr("Export Scene"),
+                                 tr("The scene is empty - nothing to export."));
+        return;
+    }
+
+    QFileDialog* fileDialog = new QFileDialog(this);
+    // See FileActions::openFile(): MainWindow's translucent/frameless
+    // stylesheet cascades into this otherwise-unstyled top-level dialog,
+    // painting it solid black instead.
+    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
+    fileDialog->setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setWindowTitle(tr("Export Scene to Image"));
+    fileDialog->setNameFilter(tr("PNG (*.png);;JPEG (*.jpg *.jpeg)"));
+    fileDialog->setDirectory(
+        path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
+    // Native file dialogs have hung on this Qt build in the past - see
+    // FileActions' dialogs for the same workaround.
+    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
+    fileDialog->setAcceptMode(QFileDialog::AcceptSave);
+    fileDialog->setFileMode(QFileDialog::AnyFile);
+
+    if (fileDialog->exec() != QDialog::Accepted
+        || fileDialog->selectedFiles().isEmpty()) {
+        delete fileDialog;
+        return;
+    }
+    QString filename = fileDialog->selectedFiles().first();
+    delete fileDialog;
+
+    if (QFileInfo(filename).suffix().isEmpty()) {
+        filename += QStringLiteral(".png");
+    }
+
+    // Selection outlines/handles would otherwise get rendered into the
+    // exported image.
+    scene_->deselect_all_items();
+
+    QSize contentSize(qRound(itemsRect.width()), qRound(itemsRect.height()));
+    qreal margin
+        = std::max(contentSize.width(), contentSize.height()) * 0.03;
+    int marginInt = qRound(margin);
+    QSize defaultSize
+        = contentSize.grownBy(QMargins(marginInt, marginInt, marginInt, marginInt));
+
+    SceneToPixmapExporterDialog sizeDialog(this, defaultSize);
+    if (sizeDialog.exec() != QDialog::Accepted) {
+        return;
+    }
+    QSize exportSize = sizeDialog.value();
+
+    qreal finalMargin = margin * exportSize.width() / defaultSize.width();
+    QImage image(exportSize, QImage::Format_RGB32);
+    image.fill(canvasColor_);
+    QPainter painter(&image);
+    QRectF targetRect(finalMargin,
+                      finalMargin,
+                      exportSize.width() - 2 * finalMargin,
+                      exportSize.height() - 2 * finalMargin);
+    scene_->render(&painter, targetRect, itemsRect);
+    painter.end();
+
+    if (!image.save(filename, nullptr, 90)) {
+        QMessageBox::critical(&mainwindow_,
+                              tr("Export failed"),
+                              tr("Could not write %1").arg(filename));
+    }
 }
 
 void CanvasView::on_action_export_images()
 {
-    // TODOLATER: export individual images to directory
+    cancelActiveModes();
+
+    QList<PixmapItem*> items;
+    for (QGraphicsItem* item : scene_->items_by_type("pixmap")) {
+        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
+            items.append(pixmapItem);
+        }
+    }
+    if (items.isEmpty()) {
+        QMessageBox::information(&mainwindow_,
+                                 tr("Export Images"),
+                                 tr("There are no images to export."));
+        return;
+    }
+
+    QFileDialog* fileDialog = new QFileDialog(this);
+    // See FileActions::openFile(): MainWindow's translucent/frameless
+    // stylesheet cascades into this otherwise-unstyled top-level dialog,
+    // painting it solid black instead.
+    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
+    fileDialog->setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setWindowTitle(tr("Export Images"));
+    fileDialog->setDirectory(
+        path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
+    // Native file dialogs have hung on this Qt build in the past - see
+    // FileActions' dialogs for the same workaround.
+    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
+    fileDialog->setFileMode(QFileDialog::Directory);
+    fileDialog->setOption(QFileDialog::ShowDirsOnly, true);
+
+    if (fileDialog->exec() != QDialog::Accepted
+        || fileDialog->selectedFiles().isEmpty()) {
+        delete fileDialog;
+        return;
+    }
+    QString directory = fileDialog->selectedFiles().first();
+    delete fileDialog;
+
+    imageExportState_ = std::make_unique<ImageExportState>();
+    imageExportState_->items = items;
+    imageExportState_->dirname = directory;
+
+    imageExportWorker_ = new ThreadedIO(
+        [this](ThreadedIO* w) { exportImagesWorker(w); });
+    connect(imageExportWorker_,
+            &ThreadedIO::userInputRequired,
+            this,
+            &CanvasView::on_export_images_file_exists);
+    connect(imageExportWorker_,
+            &ThreadedIO::finished,
+            this,
+            &CanvasView::on_export_images_finished);
+    // Deliberately not deleteLater-on-QThread::finished here (unlike
+    // loadFmlIntoCurrentTab's worker): QThread::finished() also fires on
+    // every pause-for-conflict-resolution, and the same worker gets
+    // start()ed again on resume (see on_export_images_file_exists()).
+    // Cleanup happens once, in on_export_images_finished().
+
+    new ProgressDialog(
+        tr("Exporting to %1").arg(directory), imageExportWorker_, 0, this);
+    imageExportWorker_->start();
+}
+
+void CanvasView::exportImagesWorker(ThreadedIO* worker)
+{
+    ImageExportState& state = *imageExportState_;
+    int total = state.items.size();
+
+    emit worker->beginProcessing(total);
+    emit worker->progress(state.startFrom);
+
+    for (int i = state.startFrom; i < total; ++i) {
+        if (worker->canceled) {
+            emit worker->finished(state.dirname, {});
+            return;
+        }
+
+        PixmapItem* item = state.items[i];
+        auto [bytes, imgformat] = item->pixmap_to_bytes();
+        QString filename = item->get_filename_for_export(imgformat);
+        QString path = QDir(state.dirname).filePath(filename);
+
+        if (QFile::exists(path)) {
+            if (state.handleExisting.isEmpty()) {
+                state.startFrom = i;
+                emit worker->userInputRequired(path);
+                return;
+            }
+            if (state.handleExisting == QStringLiteral("skip")) {
+                state.handleExisting.clear();
+                continue;
+            }
+            if (state.handleExisting == QStringLiteral("skip_all")) {
+                continue;
+            }
+            if (state.handleExisting == QStringLiteral("overwrite")) {
+                state.handleExisting.clear();
+            }
+            // "overwrite_all": falls through and keeps writing for the
+            // rest of the loop.
+        }
+
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly)
+            || file.write(bytes) != bytes.size()) {
+            emit worker->finished(state.dirname,
+                                  {tr("Could not write %1").arg(path)});
+            return;
+        }
+        file.close();
+
+        emit worker->progress(i);
+    }
+
+    emit worker->finished(state.dirname, {});
+}
+
+void CanvasView::on_export_images_file_exists(const QString& filename)
+{
+    ExportImagesFileExistsDialog dlg(this, filename);
+    if (dlg.exec() == QDialog::Accepted) {
+        imageExportState_->handleExisting = dlg.getAnswer();
+        new ProgressDialog(tr("Exporting to %1").arg(imageExportState_->dirname),
+                           imageExportWorker_,
+                           0,
+                           this);
+        imageExportWorker_->start();
+    } else {
+        imageExportWorker_->deleteLater();
+        imageExportWorker_ = nullptr;
+        imageExportState_.reset();
+    }
+}
+
+void CanvasView::on_export_images_finished(const QString& dirname,
+                                           const QStringList& errors)
+{
+    Q_UNUSED(dirname)
+    if (!errors.isEmpty()) {
+        QMessageBox::warning(
+            &mainwindow_,
+            tr("Problem writing file"),
+            tr("<p>Problem writing files</p><p>%1</p>")
+                .arg(errors.join(QStringLiteral("<br/>"))));
+    }
+    if (imageExportWorker_) {
+        imageExportWorker_->deleteLater();
+        imageExportWorker_ = nullptr;
+    }
+    imageExportState_.reset();
 }
 
 // ─── Edit actions ─────────────────────────────────────────────────────────────
