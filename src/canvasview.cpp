@@ -69,6 +69,22 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
 
 CanvasView::~CanvasView()
 {
+    // undoStack_.reset() below (via QUndoStack::clear() inside
+    // ~QUndoStack()) fires cleanChanged(), and scene_'s own destruction
+    // can fire changed()/selectionChanged() - both are still connected to
+    // slots on this half-destroyed CanvasView at this point (Qt only
+    // drops a connection once the receiving QObject's own destructor has
+    // fully run, not partway through it). cleanChanged() in particular
+    // reaches on_undo_clean_changed() -> setModified() ->
+    // project_settings::modified() -> TabPane::setCurrentTabTitle(),
+    // which touches the QTabWidget that's *also* mid-destruction right
+    // now: this CanvasView is being destroyed as part of that same
+    // QTabWidget's own teardown cascade (e.g. "close without saving"
+    // closing every tab). Same class of bug as CanvasScene::
+    // ~CanvasScene()'s disconnect() - fixed the same way.
+    undoStack_->disconnect(this);
+    scene_->disconnect(this);
+
     // undoStack_ must be destroyed before scene_: commands like
     // InsertItemsCommand hold item pointers and, in their own
     // destructor, check item->scene() to decide whether they still own
@@ -85,22 +101,35 @@ CanvasView::~CanvasView()
 void CanvasView::on_scene_changed()
 {
     const QRectF currentItemsRect = scene_->itemsBoundingRect();
-    canvasRect_ = currentItemsRect.isEmpty() ? QRectF()
-                                             : canvasRect_.united(currentItemsRect);
+    if (!currentItemsRect.isEmpty()) {
+        canvasRect_ = canvasRect_.united(currentItemsRect);
+    } else if (!sceneEverHadItems_) {
+        // Only wipe the drawn canvas frame for a tab that never had any
+        // content. Once it has, going back to zero items - deleting the
+        // last image, a Cut, whatever - keeps showing the frame: it's
+        // still the same (modified) project, just emptied out, not a
+        // fresh/untitled scene, so there's no reason to reset the view
+        // or bring back the welcome/recent-files overlay for it either.
+        canvasRect_ = QRectF();
+    }
 
     if (scene_->items().isEmpty()) {
-        // Stays set across every redundant on_scene_changed() firing
-        // while the scene remains empty (setTransform() below itself
-        // re-triggers scene_->changed(), so this can fire several times
-        // in a row for one Cut) - only cleared once real content is back
-        // (the else branch), not "used up" on the first call.
-        if (!suppressNextEmptySceneReset_) {
-            setTransform(QTransform());
+        if (!sceneEverHadItems_) {
+            // Stays set across every redundant on_scene_changed() firing
+            // while the scene remains empty (setTransform() below itself
+            // re-triggers scene_->changed(), so this can fire several
+            // times in a row for one Cut) - only cleared once real
+            // content is back (the else branch), not "used up" on the
+            // first call.
+            if (!suppressNextEmptySceneReset_) {
+                setTransform(QTransform());
+            }
+            welcomeOverlay_->setFocus();
+            clearFocus();
+            welcomeOverlay_->show();
         }
-        welcomeOverlay_->setFocus();
-        clearFocus();
-        welcomeOverlay_->show();
     } else {
+        sceneEverHadItems_ = true;
         suppressNextEmptySceneReset_ = false;
         setFocus();
         welcomeOverlay_->clearFocus();
@@ -242,7 +271,12 @@ double CanvasView::getZoomSize(std::function<double(double, double)> func) const
 
 void CanvasView::zoom(double delta, QPointF anchor)
 {
-    if (scene_->items().isEmpty())
+    // Blocked only for a scene that's never had content (where the
+    // welcome overlay is showing and eating wheel events anyway) - once
+    // it has (sceneEverHadItems_), the user can still be looking at a
+    // real, empty-for-now canvas and should be able to zoom/pan it, e.g.
+    // to reposition before pasting something back in.
+    if (scene_->items().isEmpty() && !sceneEverHadItems_)
         return;
 
     QPoint anchorPt(qRound(anchor.x()), qRound(anchor.y()));
@@ -252,13 +286,20 @@ void CanvasView::zoom(double delta, QPointF anchor)
         return;
 
     double factor = 1.0 + std::abs(delta / 1000.0);
+    // The min/max-size clamp below is measured against the items
+    // themselves (getZoomSize() -> scene_->itemsBoundingRect()), so it's
+    // meaningless with no items - an empty (but sceneEverHadItems_)
+    // canvas has nothing to clamp against and should just zoom freely.
+    bool hasItems = !scene_->items().isEmpty();
     if (delta > 0) {
-        if (getZoomSize([](double w, double h) { return std::max(w, h); }) < 10000000.0)
+        if (!hasItems
+            || getZoomSize([](double w, double h) { return std::max(w, h); }) < 10000000.0)
             doScale(factor, factor);
         else
             return;
     } else {
-        if (getZoomSize([](double w, double h) { return std::min(w, h); }) > 10.0)
+        if (!hasItems
+            || getZoomSize([](double w, double h) { return std::min(w, h); }) > 10.0)
             doScale(1.0 / factor, 1.0 / factor);
         else
             return;
@@ -270,7 +311,8 @@ void CanvasView::zoom(double delta, QPointF anchor)
 
 void CanvasView::pan(QPointF delta)
 {
-    if (scene_->items().isEmpty())
+    // See zoom() for why this only blocks a never-had-content scene.
+    if (scene_->items().isEmpty() && !sceneEverHadItems_)
         return;
     horizontalScrollBar()->setValue(qRound(horizontalScrollBar()->value() + delta.x()));
     verticalScrollBar()->setValue(qRound(verticalScrollBar()->value() + delta.y()));

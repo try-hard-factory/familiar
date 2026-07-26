@@ -189,25 +189,39 @@ private:
 
     // Set by on_action_cut() right before removing the cut items, so the
     // resulting (transient) empty-scene state doesn't reset the view's
-    // zoom in on_scene_changed() - only Cut sets this, since a Delete
-    // that's genuinely never followed by a paste should still reset to
-    // the default view like an ordinary empty scene. scene_->changed()
-    // is emitted asynchronously (Qt batches updates), so this can't be a
-    // simple before/after-push() bracket: it's consumed - cleared to
-    // false - the very next time on_scene_changed() runs, whatever the
-    // outcome, so it suppresses exactly one reaction and nothing beyond
-    // that even if paste (or nothing at all) follows much later.
+    // zoom in on_scene_changed(). Only matters pre-sceneEverHadItems_
+    // (see below) - once a scene has had content, going back to zero
+    // items never resets the view at all regardless of this flag.
+    // scene_->changed() is emitted asynchronously (Qt batches updates),
+    // so this can't be a simple before/after-push() bracket: it's
+    // consumed - cleared to false - the very next time on_scene_changed()
+    // runs, whatever the outcome, so it suppresses exactly one reaction
+    // and nothing beyond that even if paste (or nothing at all) follows
+    // much later.
     bool suppressNextEmptySceneReset_ = false;
+
+    // Latches true the first time this tab's scene has >=1 item, never
+    // reset back to false (no in-place "clear this tab back to blank"
+    // action exists - see CanvasScene::clear(), only called from its own
+    // constructor). Gates the empty-scene handling in on_scene_changed():
+    // a tab that's had content is still "the same project", just emptied
+    // out by deleting everything - unlike a genuinely fresh/untitled tab,
+    // it should keep its view/canvas frame as-is and not resurface the
+    // welcome/recent-files overlay.
+    bool sceneEverHadItems_ = false;
 
     // The visible "canvas" rect drawn in drawBackground(): grows to
     // include items as they're added/moved (united() only ever expands),
     // but never shrinks back on its own - matching how it used to look
     // when drawBackground read QGraphicsScene::sceneRect() (which has
-    // that exact "grows but never shrinks" behavior built in). The one
-    // difference from Qt's own version: this is explicitly reset to
-    // empty the moment the scene has zero items, instead of staying
-    // stuck at wherever the largest-ever item bounds were (which is what
-    // caused the stale box after Cut). Updated in on_scene_changed().
+    // that exact "grows but never shrinks" behavior built in). Reset to
+    // empty the moment the scene has zero items, but (see
+    // sceneEverHadItems_ above) only for a tab that never had content in
+    // the first place - deliberately does stay stuck at the largest-ever
+    // item bounds otherwise now, which is what a previous fix here
+    // avoided in general (see git history) but Max wants specifically
+    // for "this project's tab, now emptied out" (2026-07-26). Updated in
+    // on_scene_changed().
     QRectF canvasRect_;
 
     // Right-click: drag → move window, click → context menu
