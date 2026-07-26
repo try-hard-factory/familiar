@@ -113,6 +113,7 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
             [this, canvasView, scene](const QString& error,
                                       const QStringList& itemErrors) {
                 scene->add_queued_items();
+                canvasView->on_action_fit_scene();
                 canvasView->setModified(false);
 
                 if (!error.isEmpty()) {
