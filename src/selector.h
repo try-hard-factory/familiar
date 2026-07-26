@@ -60,13 +60,6 @@ public:
         = 0;
     virtual QPointF center() const = 0;
     virtual qreal flip() const = 0;
-    // Permanent per-item identity, generated once when the item is
-    // constructed (see BaseItemMixin::uid_) and never reassigned except
-    // when restoring it from a loaded .fml file (set_uid()). Used as the
-    // item's id in manifest.json and as its image filename in the archive
-    // - see docs/fml_format_design.md §5.1. Replaces the old save_id
-    // (an SQLite-rowid concept ported from beeref that doesn't apply to
-    // the zip-based format, where there's no incremental row to key off).
     virtual QUuid uid() const = 0;
     virtual void set_uid(const QUuid& value) = 0;
     // Type-specific fields for manifest.json's "data" object (crop, text,

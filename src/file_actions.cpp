@@ -6,6 +6,7 @@
 #include "tabpane.h"
 #include "widgets/dialogs.h"
 #include <canvasview.h>
+#include <core/settings.h>
 #include <QFileDialog>
 #include <QFileIconProvider>
 #include <QMessageBox>
@@ -77,22 +78,8 @@ void FileActions::openFile()
             return;
         }
 
-        QStringList selected = fileDialog->selectedFiles();
-        for (int i = 0; i < selected.size(); ++i) {
-            int count = mainwindow_.tabPane().count();
-            bool found = false;
-            for (int j = 0; j < count; ++j) {
-                QString currentPath = mainwindow_.tabPane().widgetAt(j)->path();
-                if (currentPath == selected.at(i)) {
-                    mainwindow_.tabPane().setCurrentIndex(j);
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                processOpenFile(selected.at(i));
-            }
+        for (const QString& file : fileDialog->selectedFiles()) {
+            processOpenFile(file);
         }
     }
 
@@ -143,6 +130,18 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
 
 void FileActions::processOpenFile(const QString& file)
 {
+    // Already open in some tab - switch to it instead of opening a
+    // second copy. Was previously only checked in openFile()'s dialog
+    // loop, so on_action_open_recent_file() (which calls this directly)
+    // skipped it entirely.
+    int count = mainwindow_.tabPane().count();
+    for (int j = 0; j < count; ++j) {
+        if (mainwindow_.tabPane().widgetAt(j)->path() == file) {
+            mainwindow_.tabPane().setCurrentIndex(j);
+            return;
+        }
+    }
+
     if (mainwindow_.tabPane().currentWidget()->isUntitled()
         && mainwindow_.tabPane().currentWidget()->isModified() == false) {
         mainwindow_.tabPane().setCurrentTabPath(file);
@@ -154,6 +153,9 @@ void FileActions::processOpenFile(const QString& file)
     }
 
     loadFmlIntoCurrentTab(file);
+
+    FamSettings().updateRecentFiles(file);
+    mainwindow_.update_menu_and_actions();
 }
 
 int FileActions::saveFile(const QString& path)
@@ -200,6 +202,11 @@ int FileActions::saveFile(const QString& path)
     // undo/redo).
     canvasView->undoStack()->setClean();
     canvasView->setModified(false);
+
+    // See processOpenFile()'s comment - saveFileAs() reaches this via
+    // its own call to saveFile(selected), so this covers both.
+    FamSettings().updateRecentFiles(path);
+    mainwindow_.update_menu_and_actions();
 
     return QDialog::Accepted;
 }

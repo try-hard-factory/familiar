@@ -1,14 +1,6 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 
-// Port of beeref/fileio/__init__.py.
-//
-// The SQLite-backed native file format (SQLiteIO) is intentionally NOT
-// ported: the project file format for familiar will be an archive (with a
-// manifest, etc.) instead of a database, and that format still needs to be
-// designed. load_fml/save_fml keep load_bee/save_bee's signatures and
-// logging for now, with the actual archive I/O left as TODOLATER.
-
 #include <QPointF>
 #include <QString>
 #include <QStringList>
@@ -20,14 +12,6 @@
 class CanvasScene;
 
 // Dedicated thread for loading and saving.
-//
-// Mirrors Python's beeref.fileio.ThreadedIO: a generic worker-thread
-// wrapper around an arbitrary function. Python achieves this with
-// *args/**kwargs and injects kwargs['worker'] = self; the C++ equivalent
-// is a std::function that receives the ThreadedIO instance itself, so the
-// worker function can report progress, emit completion, and check for
-// cancellation. Bind any additional arguments via a lambda capture at the
-// call site (see load_images below).
 class ThreadedIO : public QThread
 {
     Q_OBJECT
