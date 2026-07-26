@@ -100,6 +100,12 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
             [this, canvasView, scene](const QString& error,
                                       const QStringList& itemErrors) {
                 scene->add_queued_items();
+                // Before fit_scene(): seeds canvasRect_ from what
+                // FmlArchive::load() stashed on the scene, so fit_scene()
+                // has something to fall back to even if this project was
+                // saved with zero items (see CanvasScene::
+                // rememberedBoundingRect()).
+                canvasView->restoreCanvasRect(scene->rememberedBoundingRect());
                 canvasView->on_action_fit_scene();
                 canvasView->setModified(false);
 
@@ -172,7 +178,8 @@ int FileActions::saveFile(const QString& path)
     // close the tab or quit the app right after this returns, assuming the
     // save has already completed - threading it would need those flows
     // reworked to wait on ThreadedIO::finished first.
-    FmlResult result = FmlArchive::save(canvasView->scene(), path);
+    FmlResult result
+        = FmlArchive::save(canvasView->scene(), canvasView->canvasRect(), path);
 
     if (!result.error.isEmpty()) {
         QMessageBox::critical(

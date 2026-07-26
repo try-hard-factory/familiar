@@ -106,6 +106,19 @@ public:
                              = QList<QGraphicsItem*>()) const;
     QPointF get_selection_center();
 
+    // The scene's accumulated bounding rect, kept even once the scene is
+    // emptied out again (unlike itemsBoundingRect(), which reflects only
+    // the current items) - CanvasView::on_scene_changed() is the sole
+    // writer during normal editing; FmlArchive reads/writes it verbatim
+    // to/from manifest.json's "scene.boundingRect" so a saved project's
+    // "remembered" empty space survives a save/reload round-trip. Empty
+    // for a scene that's never had any content.
+    QRectF rememberedBoundingRect() const { return rememberedBoundingRect_; }
+    void setRememberedBoundingRect(const QRectF& rect)
+    {
+        rememberedBoundingRect_ = rect;
+    }
+
 public slots:
     void clear();
     void on_selection_change();
@@ -182,6 +195,8 @@ private:
 
     qreal parentViewScaleFactor_ = 1;
     project_settings* projectSettings_;
+
+    QRectF rememberedBoundingRect_;
 
     QPointF origin_;
     QRectF rubberBand_;

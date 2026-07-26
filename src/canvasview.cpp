@@ -127,6 +127,15 @@ void CanvasView::on_scene_changed()
             welcomeOverlay_->setFocus();
             clearFocus();
             welcomeOverlay_->show();
+        } else {
+            // An existing (sceneEverHadItems_) project that's currently
+            // empty - e.g. just loaded from a file saved with zero items
+            // (see CanvasView::restoreCanvasRect()), which never took the
+            // else branch below to hide this in the first place, since
+            // add_queued_items() added nothing. Keep it hidden either way.
+            setFocus();
+            welcomeOverlay_->clearFocus();
+            welcomeOverlay_->hide();
         }
     } else {
         sceneEverHadItems_ = true;
@@ -209,14 +218,22 @@ void CanvasView::recalcSceneRect()
     if (previousTransform_)
         return;
 
+    // Falls back to the remembered extent so the view's actual
+    // navigable/scrollable sceneRect() still covers it when there are no
+    // items - without this, fitInView(canvasRect_) in on_action_fit_scene()
+    // computes a transform aiming at that area, but QGraphicsView clamps
+    // scrolling back to whatever (tiny/default) sceneRect() Qt derives on
+    // its own from zero items, so nothing ever actually scrolls there and
+    // drawBackground() never gets asked to paint it.
     QRectF itemsRect = scene_->itemsBoundingRect();
-    if (itemsRect.isEmpty())
+    QRectF rect = itemsRect.isEmpty() ? canvasRect_ : itemsRect;
+    if (rect.isEmpty())
         return;
 
-    QPoint topleft = mapFromScene(itemsRect.topLeft());
+    QPoint topleft = mapFromScene(rect.topLeft());
     topleft = mapToScene(QPoint(topleft.x() - size().width(),
                                 topleft.y() - size().height())).toPoint();
-    QPoint bottomright = mapFromScene(itemsRect.bottomRight());
+    QPoint bottomright = mapFromScene(rect.bottomRight());
     bottomright = mapToScene(QPoint(bottomright.x() + size().width(),
                                     bottomright.y() + size().height())).toPoint();
     setSceneRect(QRectF(topleft, bottomright));
@@ -904,7 +921,13 @@ void CanvasView::on_action_lower_to_bottom()
 
 void CanvasView::on_action_fit_scene()
 {
-    fitRect(scene_->itemsBoundingRect());
+    // Falls back to the remembered (possibly item-less) extent so
+    // fitting still does something sensible right after loading a
+    // project that was saved with zero items - QGraphicsView::
+    // fitInView() silently no-ops on a null rect, so this is a no-op
+    // itself for a scene that's genuinely never had any content either.
+    QRectF rect = scene_->itemsBoundingRect();
+    fitRect(rect.isEmpty() ? canvasRect_ : rect);
 }
 
 void CanvasView::on_action_fit_selection()

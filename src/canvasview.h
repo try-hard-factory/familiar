@@ -69,6 +69,27 @@ public:
     void setModified(bool mod);
     bool isUntitled();
 
+    // The drawn canvas frame's extent - see canvasRect_ and
+    // CanvasScene::rememberedBoundingRect().
+    QRectF canvasRect() const { return canvasRect_; }
+    // Applied right after loading a project (see FileActions::
+    // loadFmlIntoCurrentTab()): seeds canvasRect_ from the manifest's
+    // stored value and marks this tab as an existing (not fresh/
+    // untitled) scene, regardless of whether it currently has any items.
+    void restoreCanvasRect(const QRectF& rect)
+    {
+        canvasRect_ = rect;
+        sceneEverHadItems_ = true;
+        // Reuses on_scene_changed() rather than duplicating its overlay-
+        // show/hide and focus logic here: with sceneEverHadItems_ already
+        // true and (typically) zero items at this point, it'll leave
+        // canvasRect_ as just set and make sure the welcome overlay is
+        // hidden - on_scene_changed() otherwise never runs for a load
+        // that added no items (add_queued_items() calling addItem()
+        // zero times never fires QGraphicsScene::changed()).
+        on_scene_changed();
+    }
+
 public slots:
     void on_scene_changed();
     void on_selection_changed();
