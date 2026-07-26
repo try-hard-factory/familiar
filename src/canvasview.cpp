@@ -640,7 +640,7 @@ void CanvasView::on_action_paste()
         bool wasEmpty = scene_->items().isEmpty();
         scene_->paste_from_internal_clipboard(mapToScene(pos));
         if (wasEmpty) {
-            // First items in this scene - not in beeref's own
+            // First items in this scene
             // paste_from_internal_clipboard, since it's single-scene and
             // can never hit this: there's nowhere to have copied from
             // otherwise. Our internal clipboard is shared across tabs, so
@@ -711,12 +711,6 @@ void CanvasView::on_action_fit_selection()
 
 QString CanvasView::getSupportedImageFormats() const
 {
-    // beeref's Python equivalent lists both "*.jpg" and "*.JPG" - dropped
-    // here since Qt's file dialog name-filter matching is already
-    // case-insensitive, so the uppercase copies match nothing extra and
-    // just roughly double the filter string's length. That length is
-    // what forced the whole dialog absurdly wide (the "Files of type"
-    // combo box shows it unelided) - see the 2026-07-25 conversation.
     QStringList formats;
     for (const QByteArray& f : QImageReader::supportedImageFormats()) {
         formats << QStringLiteral("*.%1").arg(QString::fromLatin1(f));
