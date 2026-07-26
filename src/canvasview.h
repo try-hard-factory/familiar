@@ -20,7 +20,9 @@ class project_settings;
 class CanvasScene;
 class QUndoStack;
 class IBaseItem;
+class PixmapItem;
 class SampleColorWidget;
+class ThreadedIO;
 
 struct PreviousTransform
 {
@@ -141,6 +143,12 @@ private slots:
     void on_insert_images_finished(const QString& filename,
                                    const QStringList& errors);
 
+    // on_action_export_images() callbacks - mirrors beeref's
+    // on_export_images_file_exists/on_export_finished (view.py).
+    void on_export_images_file_exists(const QString& filename);
+    void on_export_images_finished(const QString& dirname,
+                                   const QStringList& errors);
+
 protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -159,6 +167,10 @@ private:
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
     QString getSupportedImageFormats() const;
+    // The ThreadedIO worker body for on_action_export_images() - a
+    // member function (not a free function like load_images/load_fml)
+    // since it needs direct access to imageExportState_.
+    void exportImagesWorker(ThreadedIO* worker);
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;
@@ -217,6 +229,24 @@ private:
     bool insertImagesNewScene_ = false;
     QStringList insertImagesImmediateErrors_;
     QList<IBaseItem*> insertImagesInsertedItems_;
+
+    // State for the in-flight on_action_export_images() operation.
+    // Mirrors beeref's ImagesToDirectoryExporter (beeref/fileio/
+    // export.py): a resumable loop that pauses via
+    // ThreadedIO::userInputRequired when a target file already exists,
+    // and resumes (same worker, QThread::start() again) once the user
+    // picks a conflict policy in on_export_images_file_exists().
+    struct ImageExportState
+    {
+        QList<PixmapItem*> items;
+        QString dirname;
+        int startFrom = 0;
+        // Empty = ask on next conflict; "skip"/"skip_all"/"overwrite"/
+        // "overwrite_all" otherwise (see ExportImagesFileExistsDialog).
+        QString handleExisting;
+    };
+    std::unique_ptr<ImageExportState> imageExportState_;
+    ThreadedIO* imageExportWorker_ = nullptr;
 };
 
 #endif // CANVASVIEW_H
