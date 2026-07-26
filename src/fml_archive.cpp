@@ -62,6 +62,11 @@ struct Manifest
 {
     int formatVersion = kFormatVersion;
     QString appVersion;
+    // The scene's remembered bounding rect (CanvasScene::
+    // rememberedBoundingRect()) - empty if the scene never had content.
+    // Round-tripped so a project saved with zero items still shows its
+    // old "empty space" frame instead of looking brand-new on reload.
+    QRectF sceneBoundingRect;
     QList<ManifestItem> items;
 };
 
@@ -71,7 +76,16 @@ QByteArray write_manifest(const Manifest& manifest)
     root[QStringLiteral("format")] = QString::fromLatin1(kFormatMagic);
     root[QStringLiteral("formatVersion")] = manifest.formatVersion;
     root[QStringLiteral("appVersion")] = manifest.appVersion;
-    root[QStringLiteral("scene")] = QJsonObject{};
+
+    QJsonObject sceneObj;
+    if (!manifest.sceneBoundingRect.isEmpty()) {
+        sceneObj[QStringLiteral("boundingRect")] = QJsonArray{
+            manifest.sceneBoundingRect.x(),
+            manifest.sceneBoundingRect.y(),
+            manifest.sceneBoundingRect.width(),
+            manifest.sceneBoundingRect.height()};
+    }
+    root[QStringLiteral("scene")] = sceneObj;
 
     QJsonArray items;
     for (const ManifestItem& item : manifest.items) {
@@ -133,6 +147,17 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     Manifest manifest;
     manifest.formatVersion = formatVersion;
     manifest.appVersion = root.value(QStringLiteral("appVersion")).toString();
+
+    QJsonArray boundingRect = root.value(QStringLiteral("scene"))
+                                  .toObject()
+                                  .value(QStringLiteral("boundingRect"))
+                                  .toArray();
+    if (boundingRect.size() == 4) {
+        manifest.sceneBoundingRect = QRectF(boundingRect[0].toDouble(),
+                                            boundingRect[1].toDouble(),
+                                            boundingRect[2].toDouble(),
+                                            boundingRect[3].toDouble());
+    }
 
     QSet<QUuid> seenIds;
     const QJsonArray items = root.value(QStringLiteral("items")).toArray();
@@ -307,6 +332,7 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
 // ============================================================================
 
 FmlResult FmlArchive::save(CanvasScene* scene,
+                           const QRectF& canvasRect,
                            const QString& filename,
                            ThreadedIO* worker)
 {
@@ -324,6 +350,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
 #ifdef FAMILIAR_VERSION_STRING
     manifest.appVersion = QStringLiteral(FAMILIAR_VERSION_STRING);
 #endif
+    manifest.sceneBoundingRect = canvasRect;
 
     if (worker) {
         emit worker->beginProcessing(items.size());
@@ -471,6 +498,14 @@ FmlResult FmlArchive::load(const QString& filename,
         result.error = parseError;
         return result;
     }
+
+    // Written before `finished` is emitted below, so the GUI-thread
+    // caller (FileActions::loadFmlIntoCurrentTab(), reading this via
+    // CanvasView::restoreCanvasRect() once that signal arrives) always
+    // sees this value - Qt's queued cross-thread signal delivery
+    // provides the necessary happens-before ordering, so no extra
+    // locking is needed for this single write-before-emit.
+    scene->setRememberedBoundingRect(manifest->sceneBoundingRect);
 
     if (worker) {
         emit worker->beginProcessing(manifest->items.size());

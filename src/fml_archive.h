@@ -5,6 +5,7 @@
 // manifest.json + images/<uid>.<ext>. See docs/fml_format_design.md for
 // the full format spec and the rationale behind it.
 
+#include <QRectF>
 #include <QString>
 #include <QStringList>
 
@@ -28,11 +29,18 @@ class FmlArchive
 public:
     // Serializes every item in `scene` (see CanvasScene::items_for_save())
     // into a zip archive and atomically replaces `filename` with it.
+    // `canvasRect` is the view's remembered empty-space extent
+    // (CanvasView::canvasRect()) - passed in explicitly rather than
+    // stashed on CanvasScene, since CanvasView is the only thing that
+    // keeps it continuously up to date and nothing else should be
+    // writing to CanvasScene::rememberedBoundingRect() while a load might
+    // be using it as a one-shot transport slot (see load() below).
     // Synchronous; `worker`, if given, is only used to report progress
     // (beginProcessing/progress) and to check for cancellation - callers
     // that want this off the GUI thread wrap the call in a ThreadedIO
     // themselves (see save_fml() in fileio.cpp).
     static FmlResult save(CanvasScene* scene,
+                          const QRectF& canvasRect,
                           const QString& filename,
                           ThreadedIO* worker = nullptr);
 

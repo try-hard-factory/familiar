@@ -102,7 +102,15 @@ void save_fml(const QString& filename,
     // docs/fml_format_design.md §2/§8).
     Q_UNUSED(createNew)
 
-    FmlResult result = FmlArchive::save(scene, filename, worker);
+    // TODOLATER: no CanvasView here to read canvasRect() from (this
+    // wrapper isn't actually called anywhere yet - see
+    // FileActions::saveFile(), which calls FmlArchive::save() directly
+    // instead so it can pass the real one). scene->rememberedBoundingRect()
+    // is a reasonable stand-in once this does get wired up, but it's
+    // really meant as a one-shot value read right after a load, not an
+    // ongoing substitute for the view's own canvasRect().
+    FmlResult result
+        = FmlArchive::save(scene, scene->rememberedBoundingRect(), filename, worker);
 
     if (worker) {
         emit worker->finished(result.error, result.itemErrors);
