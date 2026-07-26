@@ -327,7 +327,7 @@ void MainWindow::on_action_show_menubar(bool checked)
 // Settings / Help
 void MainWindow::on_action_settings()
 {
-    // TODOLATER: open SettingsDialog
+    settingsWindow();
 }
 
 void MainWindow::on_action_keyboard_settings()
