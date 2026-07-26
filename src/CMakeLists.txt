@@ -197,7 +197,7 @@ endif ()
 # ######################################################################################################################
 # Installation instructions
 
-# include(GNUInstallDirs)
+include(GNUInstallDirs)
 # set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Flameshot)
 
 set_target_properties(familiar
@@ -212,6 +212,60 @@ install(TARGETS familiar
         EXPORT familiar-targets
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+# Desktop entry + .fml file association (see data/img/app/familiar.svg).
+# Registers the app and gives .fml files their own icon in the file
+# manager once installed - Exec= has a %f placeholder for
+# double-click-to-open, but CommandlineArgs never gets a caller for the
+# file path it already parses (src/core/settings.h), so that part isn't
+# functional yet.
+if (UNIX AND NOT APPLE)
+    set(FAMILIAR_APP_ID "org.tryhardfactory.Familiar")
+
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../data/desktopEntry/package/${FAMILIAR_APP_ID}.desktop
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/linux/${FAMILIAR_APP_ID}.xml
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/mime/packages)
+
+    # App icon, in the hicolor theme under the desktop entry's Icon= name.
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../data/img/app/familiar.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+            RENAME ${FAMILIAR_APP_ID}.svg)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../data/img/app/familiar_256.png
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
+            RENAME ${FAMILIAR_APP_ID}.png)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../data/img/app/familiar_512.png
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps
+            RENAME ${FAMILIAR_APP_ID}.png)
+
+    # .fml mimetype icon - same mark reused rather than a distinct document icon.
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../data/img/app/familiar.svg
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/mimetypes
+            RENAME ${FAMILIAR_APP_ID}.svg)
+    install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../data/img/app/familiar_256.png
+            DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/mimetypes
+            RENAME ${FAMILIAR_APP_ID}.png)
+endif ()
+
+# macOS bundle Info.plist + icon, including the .fml document type
+# (packaging/macos/Info.plist's CFBundleDocumentTypes). Wires up a file
+# that used to sit unused - CMAKE_MACOSX_BUNDLE otherwise makes CMake
+# generate its own minimal plist instead.
+if (APPLE)
+    set(FAMILIAR_ICNS "${CMAKE_CURRENT_SOURCE_DIR}/../packaging/macos/familiar.icns")
+    set_target_properties(familiar PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/macos/Info.plist
+        MACOSX_BUNDLE_ICON_FILE familiar)
+    if (EXISTS ${FAMILIAR_ICNS})
+        target_sources(familiar PRIVATE ${FAMILIAR_ICNS})
+        set_source_files_properties(${FAMILIAR_ICNS} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    else ()
+        message(WARNING "packaging/macos/familiar.icns not found - the app "
+                "bundle will use a generic icon until it's added (see "
+                "Info.plist's CFBundleIconFile / CFBundleTypeIconFile).")
+    endif ()
+endif ()
 
 # windeployqt
 if (WIN32)

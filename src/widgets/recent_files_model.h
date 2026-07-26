@@ -3,6 +3,7 @@
 #include <QAbstractListModel>
 #include <QFileInfo>
 #include <QFont>
+#include <QIcon>
 
 class RecentFilesModel : public QAbstractListModel
 {
@@ -33,6 +34,11 @@ public:
             QFont font;
             font.setUnderline(true);
             return font;
+        }
+
+        if (role == Qt::DecorationRole) {
+            static const QIcon icon(QStringLiteral(":/img/app/familiar_256.png"));
+            return icon;
         }
 
         return QVariant();

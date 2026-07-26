@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- familiar app icon: a black cat sitting under the moon - the
+       witch's familiar, the animal spirit that lends the app its name.
+       Eyes glow in the app's own teal accent color (see Colors::Active
+       ::Highlight in constants.h) to tie the mark to the actual UI. -->
+
+  <rect x="0" y="0" width="256" height="256" rx="48" fill="#4a5068"/>
+
+  <!-- moon, tucked into the top-left corner, large enough to graze the left ear -->
+  <circle cx="64" cy="64" r="54" fill="#f2ecd6" opacity="0.14"/>
+  <circle cx="64" cy="64" r="46" fill="#f2ecd6"/>
+
+  <!-- tail, curling from the haunches around toward the front -->
+  <path d="M184,206 C224,206 234,160 212,128 C204,116 190,118 190,132"
+        fill="none" stroke="#0d0d10" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- body -->
+  <path d="M106,132 C86,156 82,186 96,210 C118,220 156,220 178,210
+           C192,186 188,156 168,132 C168,132 137,146 106,132 Z"
+        fill="#0d0d10"/>
+
+  <!-- head + ears -->
+  <path d="M106,80 L96,36 L130,74 Z" fill="#0d0d10"/>
+  <path d="M142,74 L176,36 L166,80 Z" fill="#0d0d10"/>
+  <circle cx="136" cy="100" r="34" fill="#0d0d10"/>
+
+  <!-- whiskers -->
+  <g stroke="#efe9d8" stroke-width="2" stroke-linecap="round" opacity="0.55">
+    <line x1="104" y1="104" x2="74" y2="98"/>
+    <line x1="104" y1="110" x2="72" y2="110"/>
+    <line x1="104" y1="116" x2="74" y2="122"/>
+    <line x1="168" y1="104" x2="198" y2="98"/>
+    <line x1="168" y1="110" x2="200" y2="110"/>
+    <line x1="168" y1="116" x2="198" y2="122"/>
+  </g>
+
+  <!-- glowing eyes -->
+  <circle cx="122" cy="100" r="12" fill="#53a7a5" opacity="0.3"/>
+  <circle cx="150" cy="100" r="12" fill="#53a7a5" opacity="0.3"/>
+  <ellipse cx="122" cy="100" rx="6" ry="8" fill="#53a7a5"/>
+  <ellipse cx="150" cy="100" rx="6" ry="8" fill="#53a7a5"/>
+  <rect x="121" y="94" width="2" height="12" rx="1" fill="#0d0d10"/>
+  <rect x="149" y="94" width="2" height="12" rx="1" fill="#0d0d10"/>
+</svg>

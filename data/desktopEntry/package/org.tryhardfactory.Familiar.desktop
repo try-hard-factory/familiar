@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Familiar
+GenericName=Reference Board
+GenericName[ru]=Референс-борд
+Comment=Reference board for 2D/3D artists
+Comment[ru]=Референс-борд для 2D/3D художников
+Exec=familiar %f
+Icon=org.tryhardfactory.Familiar
+Terminal=false
+Type=Application
+Categories=Graphics;2DGraphics;
+MimeType=application/x-familiar-fml;
+StartupNotify=true

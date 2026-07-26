@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-familiar-fml">
+    <comment>Familiar reference board project</comment>
+    <comment xml:lang="ru">Проект референс-борда Familiar</comment>
+    <glob pattern="*.fml"/>
+    <icon name="org.tryhardfactory.Familiar"/>
+  </mime-type>
+</mime-info>

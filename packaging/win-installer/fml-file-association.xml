@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CPackWiXPatch>
+  <!--
+    Registers a ProgId + file association for .fml, so Explorer shows
+    familiar's icon for project files and "Open" launches familiar.exe.
+    Requires CommandlineArgs (src/core/settings.h) to actually consume
+    the passed file path to open it - that wiring doesn't exist yet
+    (see the install() comment in src/CMakeLists.txt), so double-click
+    will launch familiar with an argument it ignores until that's done.
+
+    CM_CP_bin.familiar.exe / CM_FP_bin.familiar.exe are CPack's
+    auto-generated Component/File ids for
+    install(TARGETS familiar RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}),
+    derived from the "bin/familiar.exe" relative install path
+    (CMAKE_INSTALL_BINDIR is "bin" via GNUInstallDirs).
+
+    UNVERIFIED: there is no Windows/WiX toolchain available to actually
+    build the installer and confirm these ids. If `cpack` fails with a
+    "fragment id not found"-style error, inspect the generated .wxs
+    under the WIX build tree for the real Component/File ids and update
+    this file to match.
+  -->
+  <CPackWiXFragment Id="CM_CP_bin.familiar.exe">
+    <ProgId Id="Familiar.fml" Description="Familiar reference board project"
+            Icon="CM_FP_bin.familiar.exe">
+      <Extension Id="fml">
+        <Verb Id="open" Command="Open" TargetFile="CM_FP_bin.familiar.exe"
+              Argument="&quot;%1&quot;" />
+      </Extension>
+    </ProgId>
+  </CPackWiXFragment>
+</CPackWiXPatch>

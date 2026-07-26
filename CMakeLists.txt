@@ -77,7 +77,7 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "For 2d and 3d artists.")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://tryhardfactory.org")
 set(CPACK_PACKAGE_CONTACT "max <mpano91@gmail.com>")
-set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/data/img/app/org.flameshot.Flameshot.svg") # TODO: Can any generator make
+set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/data/img/app/familiar_256.png") # TODO: Can any generator make
 # use of this?
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_SOURCE_DIR}/README.md") # TODO: Where is this used? Do we need a better
 # source?
@@ -104,7 +104,7 @@ if(WIN32)
 
     # WIX (Windows .msi installer)
     # 48x48 pixels
-    set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/data/img/app/flameshot.ico")
+    set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/data/img/app/familiar.ico")
     # Supported languages can be found at http://wixtoolset.org/documentation/manual/v3/wixui/wixui_localization.html
     # set(CPACK_WIX_CULTURES "ar-SA,bg-BG,ca-ES,hr-HR,cs-CZ,da-DK,nl-NL,en-US,et-EE,fi-FI,fr-FR,de-DE")
     set(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/packaging/win-installer/Bitmaps/CPACK_WIX_UI_BANNER.BMP")
@@ -113,6 +113,10 @@ if(WIN32)
     set(CPACK_WIX_PROPERTY_ARPURLINFOABOUT "${CPACK_PACKAGE_HOMEPAGE_URL}")
     set(CPACK_WIX_ROOT_FEATURE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
     set(CPACK_WIX_LIGHT_EXTRA_FLAGS "-dcl:high") # set high compression
+    # .fml file association - see the file for caveats (unverified, no
+    # Windows/WiX toolchain here to confirm the CPack-generated ids it
+    # targets).
+    set(CPACK_WIX_PATCH_FILE "${CMAKE_SOURCE_DIR}/packaging/win-installer/fml-file-association.xml")
 
     set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/packaging/win-installer/LICENSE/GPL-3.0.txt")
     set(CPACK_RESOURCE_FILE_README "${CMAKE_SOURCE_DIR}/README.md")
