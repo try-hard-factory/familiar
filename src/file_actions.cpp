@@ -191,6 +191,14 @@ int FileActions::saveFile(const QString& path)
                 .arg(lines.join(QString())));
     }
 
+    // Marks the undo stack's current position as the new "saved"
+    // baseline; CanvasView::on_undo_clean_changed() reacts to moving
+    // away from it by calling setModified(true). Without this, nothing
+    // ever un-marks the project as modified after a save (setModified(
+    // false) below is a redundant belt-and-suspenders default; the
+    // clean-index tracking is what actually stays correct across
+    // undo/redo).
+    canvasView->undoStack()->setClean();
     canvasView->setModified(false);
 
     return QDialog::Accepted;

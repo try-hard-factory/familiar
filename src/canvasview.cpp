@@ -127,9 +127,9 @@ void CanvasView::on_cursor_cleared()
         viewport()->unsetCursor();
 }
 
-void CanvasView::on_undo_clean_changed(bool /*clean*/)
+void CanvasView::on_undo_clean_changed(bool clean)
 {
-    // TODOLATER: update window title
+    setModified(!clean);
 }
 
 void CanvasView::settingsChangedSlot()

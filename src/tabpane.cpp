@@ -3,6 +3,7 @@
 #include "mainwindow.h"
 #include "project_settings.h"
 #include <QFileInfo>
+#include <QMessageBox>
 
      
 TabPane::TabPane(QWidget* parent, MainWindow& mw)
@@ -89,12 +90,22 @@ void TabPane::onTabClosed(int index)
 {
     CanvasView* canvasview = widgetAt(index);
     if (canvasview->isModified()) {
-        QMessageBox::StandardButton resBtn = QMessageBox::warning(
-            this,
-            "Warning!",
-            tr("You have unsaved documents!\n\nDo you want to save it?"),
-            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-            QMessageBox::No);
+        // Can't use the QMessageBox::warning(...) convenience overload
+        // here: it builds/execs/destroys the box internally, with no
+        // chance to apply the fix below before it's shown. See
+        // FileActions::openFile() for the same MainWindow-stylesheet-
+        // cascade issue on every other dialog in this app.
+        QMessageBox box(QMessageBox::Warning,
+                        "Warning!",
+                        tr("You have unsaved documents!\n\nDo you want to save it?"),
+                        QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                        this);
+        box.setDefaultButton(QMessageBox::No);
+        box.setAttribute(Qt::WA_TranslucentBackground, false);
+        box.setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
+        QMessageBox::StandardButton resBtn
+            = static_cast<QMessageBox::StandardButton>(box.exec());
 
         if (resBtn == QMessageBox::Yes) {
             if (mainwindow_.fileActions().saveFile() == QDialog::Accepted) {
