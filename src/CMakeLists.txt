@@ -60,6 +60,8 @@ set(PROJECT_SOURCES
         image_downloader.h
         fml_archive.cpp
         fml_archive.h
+        export.cpp
+        export.h
         project_settings.cpp
         project_settings.h
         tabpane.cpp

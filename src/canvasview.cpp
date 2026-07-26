@@ -1,6 +1,7 @@
 #include "canvasview.h"
 #include "canvasscene.h"
 #include "commands.h"
+#include "export.h"
 #include "fileio.h"
 #include "mainwindow.h"
 #include "moveitem.h"
@@ -515,16 +516,9 @@ void CanvasView::on_action_save_as()
 
 void CanvasView::on_action_export_scene()
 {
-    // Raster export only (PNG/JPEG), via the already-written but
-    // previously unused SceneToPixmapExporterDialog.
-    // TODOLATER: SVG export. beeref has a separate exporter for it
-    // (beeref/fileio/export.py's SceneToSVGExporter) that hand-serializes
-    // each item to XML so text stays editable rather than rendered to
-    // paths - a distinct, more involved chunk of work, not ported here.
     cancelActiveModes();
 
-    QRectF itemsRect = scene_->itemsBoundingRect();
-    if (itemsRect.isEmpty()) {
+    if (scene_->itemsBoundingRect().isEmpty()) {
         QMessageBox::information(&mainwindow_,
                                  tr("Export Scene"),
                                  tr("The scene is empty - nothing to export."));
@@ -539,7 +533,10 @@ void CanvasView::on_action_export_scene()
     fileDialog->setStyleSheet(
         "* { background-color: palette(window); color: palette(window-text); }");
     fileDialog->setWindowTitle(tr("Export Scene to Image"));
-    fileDialog->setNameFilter(tr("PNG (*.png);;JPEG (*.jpg *.jpeg)"));
+    fileDialog->setNameFilter(tr("Image Files (*.png *.jpg *.jpeg *.svg)"
+                                 ";;PNG (*.png)"
+                                 ";;JPEG (*.jpg *.jpeg)"
+                                 ";;SVG (*.svg)"));
     fileDialog->setDirectory(
         path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
     // Native file dialogs have hung on this Qt build in the past - see
@@ -560,38 +557,35 @@ void CanvasView::on_action_export_scene()
         filename += QStringLiteral(".png");
     }
 
-    // Selection outlines/handles would otherwise get rendered into the
-    // exported image.
-    scene_->deselect_all_items();
-
-    QSize contentSize(qRound(itemsRect.width()), qRound(itemsRect.height()));
-    qreal margin
-        = std::max(contentSize.width(), contentSize.height()) * 0.03;
-    int marginInt = qRound(margin);
-    QSize defaultSize
-        = contentSize.grownBy(QMargins(marginInt, marginInt, marginInt, marginInt));
-
-    SceneToPixmapExporterDialog sizeDialog(this, defaultSize);
-    if (sizeDialog.exec() != QDialog::Accepted) {
+    sceneExporter_ = createSceneExporter(QFileInfo(filename).suffix(), scene_);
+    if (!sceneExporter_->getUserInput(this)) {
+        sceneExporter_.reset();
         return;
     }
-    QSize exportSize = sizeDialog.value();
 
-    qreal finalMargin = margin * exportSize.width() / defaultSize.width();
-    QImage image(exportSize, QImage::Format_RGB32);
-    image.fill(canvasColor_);
-    QPainter painter(&image);
-    QRectF targetRect(finalMargin,
-                      finalMargin,
-                      exportSize.width() - 2 * finalMargin,
-                      exportSize.height() - 2 * finalMargin);
-    scene_->render(&painter, targetRect, itemsRect);
-    painter.end();
+    auto* worker = new ThreadedIO([this, filename](ThreadedIO* w) {
+        sceneExporter_->exportTo(filename, w);
+    });
+    connect(worker,
+            &ThreadedIO::finished,
+            this,
+            &CanvasView::on_export_scene_finished);
+    connect(worker, &QThread::finished, worker, &QObject::deleteLater);
 
-    if (!image.save(filename, nullptr, 90)) {
-        QMessageBox::critical(&mainwindow_,
-                              tr("Export failed"),
-                              tr("Could not write %1").arg(filename));
+    new ProgressDialog(tr("Exporting %1").arg(filename), worker, 0, this);
+    worker->start();
+}
+
+void CanvasView::on_export_scene_finished(const QString& filename,
+                                          const QStringList& errors)
+{
+    sceneExporter_.reset();
+    if (!errors.isEmpty()) {
+        QMessageBox::warning(
+            &mainwindow_,
+            tr("Problem writing file"),
+            tr("<p>Problem writing file %1</p><p>%2</p>")
+                .arg(filename, errors.join(QStringLiteral("<br/>"))));
     }
 }
 
@@ -599,13 +593,7 @@ void CanvasView::on_action_export_images()
 {
     cancelActiveModes();
 
-    QList<PixmapItem*> items;
-    for (QGraphicsItem* item : scene_->items_by_type("pixmap")) {
-        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
-            items.append(pixmapItem);
-        }
-    }
-    if (items.isEmpty()) {
+    if (scene_->items_by_type("pixmap").isEmpty()) {
         QMessageBox::information(&mainwindow_,
                                  tr("Export Images"),
                                  tr("There are no images to export."));
@@ -636,12 +624,10 @@ void CanvasView::on_action_export_images()
     QString directory = fileDialog->selectedFiles().first();
     delete fileDialog;
 
-    imageExportState_ = std::make_unique<ImageExportState>();
-    imageExportState_->items = items;
-    imageExportState_->dirname = directory;
+    imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(scene_, directory);
 
     imageExportWorker_ = new ThreadedIO(
-        [this](ThreadedIO* w) { exportImagesWorker(w); });
+        [this](ThreadedIO* w) { imagesExporter_->exportTo(w); });
     connect(imageExportWorker_,
             &ThreadedIO::userInputRequired,
             this,
@@ -661,66 +647,12 @@ void CanvasView::on_action_export_images()
     imageExportWorker_->start();
 }
 
-void CanvasView::exportImagesWorker(ThreadedIO* worker)
-{
-    ImageExportState& state = *imageExportState_;
-    int total = state.items.size();
-
-    emit worker->beginProcessing(total);
-    emit worker->progress(state.startFrom);
-
-    for (int i = state.startFrom; i < total; ++i) {
-        if (worker->canceled) {
-            emit worker->finished(state.dirname, {});
-            return;
-        }
-
-        PixmapItem* item = state.items[i];
-        auto [bytes, imgformat] = item->pixmap_to_bytes();
-        QString filename = item->get_filename_for_export(imgformat);
-        QString path = QDir(state.dirname).filePath(filename);
-
-        if (QFile::exists(path)) {
-            if (state.handleExisting.isEmpty()) {
-                state.startFrom = i;
-                emit worker->userInputRequired(path);
-                return;
-            }
-            if (state.handleExisting == QStringLiteral("skip")) {
-                state.handleExisting.clear();
-                continue;
-            }
-            if (state.handleExisting == QStringLiteral("skip_all")) {
-                continue;
-            }
-            if (state.handleExisting == QStringLiteral("overwrite")) {
-                state.handleExisting.clear();
-            }
-            // "overwrite_all": falls through and keeps writing for the
-            // rest of the loop.
-        }
-
-        QFile file(path);
-        if (!file.open(QIODevice::WriteOnly)
-            || file.write(bytes) != bytes.size()) {
-            emit worker->finished(state.dirname,
-                                  {tr("Could not write %1").arg(path)});
-            return;
-        }
-        file.close();
-
-        emit worker->progress(i);
-    }
-
-    emit worker->finished(state.dirname, {});
-}
-
 void CanvasView::on_export_images_file_exists(const QString& filename)
 {
     ExportImagesFileExistsDialog dlg(this, filename);
     if (dlg.exec() == QDialog::Accepted) {
-        imageExportState_->handleExisting = dlg.getAnswer();
-        new ProgressDialog(tr("Exporting to %1").arg(imageExportState_->dirname),
+        imagesExporter_->setHandleExisting(dlg.getAnswer());
+        new ProgressDialog(tr("Exporting to %1").arg(imagesExporter_->dirname()),
                            imageExportWorker_,
                            0,
                            this);
@@ -728,7 +660,7 @@ void CanvasView::on_export_images_file_exists(const QString& filename)
     } else {
         imageExportWorker_->deleteLater();
         imageExportWorker_ = nullptr;
-        imageExportState_.reset();
+        imagesExporter_.reset();
     }
 }
 
@@ -747,7 +679,7 @@ void CanvasView::on_export_images_finished(const QString& dirname,
         imageExportWorker_->deleteLater();
         imageExportWorker_ = nullptr;
     }
-    imageExportState_.reset();
+    imagesExporter_.reset();
 }
 
 // ─── Edit actions ─────────────────────────────────────────────────────────────
