@@ -9,6 +9,7 @@
 #include <QTabWidget>
 
 #include "core/settings.h"
+#include "widgets/dialogs.h"
 
 static constexpr char CHANGED_SYMBOL[] = "✎";
 
@@ -276,10 +277,12 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
 void SettingsDialog::onRestoreDefaults()
 {
-    const auto reply = QMessageBox::question(
+    const auto reply = showMessageBox(
+        QMessageBox::Question,
         this,
         QStringLiteral("Restore defaults?"),
-        QStringLiteral("Do you want to restore all settings to their default values?"));
+        QStringLiteral("Do you want to restore all settings to their default values?"),
+        QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes)
         FamSettings().restoreDefaults();

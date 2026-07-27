@@ -110,15 +110,18 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
                 canvasView->setModified(false);
 
                 if (!error.isEmpty()) {
-                    QMessageBox::critical(
-                        &mainwindow_, QObject::tr("Could not open file"), error);
+                    showMessageBox(QMessageBox::Critical,
+                                  &mainwindow_,
+                                  QObject::tr("Could not open file"),
+                                  error);
                 }
                 if (!itemErrors.isEmpty()) {
                     QStringList lines;
                     for (const QString& e : itemErrors) {
                         lines.append(QStringLiteral("<li>%1</li>").arg(e));
                     }
-                    QMessageBox::warning(
+                    showMessageBox(
+                        QMessageBox::Warning,
                         &mainwindow_,
                         QObject::tr("Problem loading project"),
                         QObject::tr(
@@ -182,8 +185,10 @@ int FileActions::saveFile(const QString& path)
         = FmlArchive::save(canvasView->scene(), canvasView->canvasRect(), path);
 
     if (!result.error.isEmpty()) {
-        QMessageBox::critical(
-            &mainwindow_, QObject::tr("Could not save file"), result.error);
+        showMessageBox(QMessageBox::Critical,
+                      &mainwindow_,
+                      QObject::tr("Could not save file"),
+                      result.error);
         return QDialog::Rejected;
     }
 
@@ -192,7 +197,8 @@ int FileActions::saveFile(const QString& path)
         for (const QString& e : result.itemErrors) {
             lines.append(QStringLiteral("<li>%1</li>").arg(e));
         }
-        QMessageBox::warning(
+        showMessageBox(
+            QMessageBox::Warning,
             &mainwindow_,
             QObject::tr("Problem saving project"),
             QObject::tr("%1 item(s) could not be saved.<ul>%2</ul>")
