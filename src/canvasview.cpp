@@ -522,7 +522,13 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
         : canvasRect_.marginsAdded(
               QMarginsF(kCanvasMargin, kCanvasMargin, kCanvasMargin, kCanvasMargin));
     painter->fillRect(paddedCanvasRect, scene_->backgroundBrush());
-    painter->setPen(QPen(borderColor_, 2));
+    // Cosmetic: keeps the border a constant width in screen pixels
+    // regardless of zoom, matching the selection outline's pen (see
+    // SelectableMixin::paint_selectable() in selector.h) instead of
+    // scaling up with the view like a plain scene-space pen would.
+    QPen borderPen(borderColor_, 2);
+    borderPen.setCosmetic(true);
+    painter->setPen(borderPen);
     painter->drawRect(paddedCanvasRect);
     painter->restore();
 }
@@ -1180,7 +1186,6 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
             scene_, insertImagesInsertedItems_, std::nullopt, true));
         scene_->arrange_default();
     }
-    undoStack_->endMacro();
 
     // Items were added one at a time as they loaded (see on_items_loaded()),
     // each triggering its own repaint at whatever raw/overlapping position
@@ -1205,7 +1210,6 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     insertImagesInsertedItems_.clear();
 
     scene_->deselect_all_items();
-    undoStack_->beginMacro(tr("Insert Images"));
 
     QStringList filenames;
     for (const QUrl& url : urls) {
