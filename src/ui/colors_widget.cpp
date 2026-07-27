@@ -6,6 +6,7 @@ using namespace familiar::log;
 #include <ui/extendedslider.h>
 #include <ui/presetsave_window.h>
 #include <utils/utils.h>
+#include "widgets/dialogs.h"
 #include <QButtonGroup>
 #include <QLabel>
 #include <QMessageBox>
@@ -48,11 +49,12 @@ ColorsWidget::~ColorsWidget()
 
 void ColorsWidget::resetCurrentPreset()
 {
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this,
-                                  tr("Confirm Reset"),
-                                  tr("Are you sure you want to reset the configuration?"),
-                                  QMessageBox::Yes | QMessageBox::No);
+    QMessageBox::StandardButton reply = showMessageBox(
+        QMessageBox::Question,
+        this,
+        tr("Confirm Reset"),
+        tr("Are you sure you want to reset the configuration?"),
+        QMessageBox::Yes | QMessageBox::No);
     if (reply == QMessageBox::Yes) {
         auto* settings = SettingsHandler::getInstance();
         settings->setDefaultCurrentPreset();

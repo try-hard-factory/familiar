@@ -348,9 +348,22 @@ void MainWindow::on_action_help()
 
 void MainWindow::on_action_about()
 {
-    QMessageBox::about(this, "About Familiar",
-        "<h2>Familiar</h2>"
-        "<p>Reference board application.</p>");
+    // Can't use the QMessageBox::about(...) convenience overload here: it
+    // builds/execs/destroys the box internally, with no chance to apply
+    // the fix below before it's shown. See FileActions::openFile() for
+    // the same MainWindow-stylesheet-cascade issue on every other dialog
+    // in this app.
+    QMessageBox box(QMessageBox::NoIcon,
+                    "About Familiar",
+                    "<h2>Familiar</h2>"
+                    "<p>Reference board application.</p>",
+                    QMessageBox::Ok,
+                    this);
+    box.setIconPixmap(windowIcon().pixmap(64, 64));
+    box.setAttribute(Qt::WA_TranslucentBackground, false);
+    box.setStyleSheet(
+        "* { background-color: palette(window); color: palette(window-text); }");
+    box.exec();
 }
 
 void MainWindow::on_action_debuglog()

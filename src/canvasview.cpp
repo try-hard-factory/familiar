@@ -578,9 +578,10 @@ void CanvasView::on_action_export_scene()
     cancelActiveModes();
 
     if (scene_->itemsBoundingRect().isEmpty()) {
-        QMessageBox::information(&mainwindow_,
-                                 tr("Export Scene"),
-                                 tr("The scene is empty - nothing to export."));
+        showMessageBox(QMessageBox::Information,
+                      &mainwindow_,
+                      tr("Export Scene"),
+                      tr("The scene is empty - nothing to export."));
         return;
     }
 
@@ -640,7 +641,8 @@ void CanvasView::on_export_scene_finished(const QString& filename,
 {
     sceneExporter_.reset();
     if (!errors.isEmpty()) {
-        QMessageBox::warning(
+        showMessageBox(
+            QMessageBox::Warning,
             &mainwindow_,
             tr("Problem writing file"),
             tr("<p>Problem writing file %1</p><p>%2</p>")
@@ -653,9 +655,10 @@ void CanvasView::on_action_export_images()
     cancelActiveModes();
 
     if (scene_->items_by_type("pixmap").isEmpty()) {
-        QMessageBox::information(&mainwindow_,
-                                 tr("Export Images"),
-                                 tr("There are no images to export."));
+        showMessageBox(QMessageBox::Information,
+                      &mainwindow_,
+                      tr("Export Images"),
+                      tr("There are no images to export."));
         return;
     }
 
@@ -728,7 +731,8 @@ void CanvasView::on_export_images_finished(const QString& dirname,
 {
     Q_UNUSED(dirname)
     if (!errors.isEmpty()) {
-        QMessageBox::warning(
+        showMessageBox(
+            QMessageBox::Warning,
             &mainwindow_,
             tr("Problem writing file"),
             tr("<p>Problem writing files</p><p>%1</p>")
@@ -1162,13 +1166,13 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
         QStringList names;
         for (const QString& fn : allErrors)
             names.append(QStringLiteral("<li>%1</li>").arg(fn));
-        QMessageBox::warning(
-            this,
-            tr("Problem loading images"),
-            tr("%1 image(s) could not be opened.<br/>"
-               "Unknown format or too big?<ul>%2</ul>")
-                .arg(allErrors.size())
-                .arg(names.join(QStringLiteral("\n"))));
+        showMessageBox(QMessageBox::Warning,
+                      this,
+                      tr("Problem loading images"),
+                      tr("%1 image(s) could not be opened.<br/>"
+                         "Unknown format or too big?<ul>%2</ul>")
+                          .arg(allErrors.size())
+                          .arg(names.join(QStringLiteral("\n"))));
     }
 
     if (!insertImagesInsertedItems_.isEmpty()) {

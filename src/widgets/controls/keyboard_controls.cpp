@@ -3,6 +3,7 @@
 #include "actions/actions.h"
 #include "core/controls.h"
 #include "core/settings.h"
+#include "widgets/dialogs.h"
 
 #include <QHeaderView>
 #include <QMessageBox>
@@ -59,7 +60,8 @@ void KeyboardShortcutsEditor::onEditingFinished()
             if (txt.endsWith(QLatin1String("...")))
                 txt.chop(3);
 
-            const auto reply = QMessageBox::question(
+            const auto reply = showMessageBox(
+                QMessageBox::Question,
                 this,
                 tr("Shortcut Conflict"),
                 tr("This shortcut is already assigned to \"%1\". "

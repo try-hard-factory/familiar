@@ -1,6 +1,7 @@
 #include "controls_common.h"
 
 #include "core/controls.h"
+#include "widgets/dialogs.h"
 
 #include <QCheckBox>
 #include <QDialogButtonBox>
@@ -106,7 +107,8 @@ void MouseControlsEditorBase::onSave()
 
     if (conflictingRow_ >= 0) {
         const QString conflictText = conflictingActionText(conflictingRow_);
-        const auto reply = QMessageBox::question(
+        const auto reply = showMessageBox(
+            QMessageBox::Question,
             this,
             tr("Controls Conflict"),
             tr("Do you want to remove the conflicting controls from \"%1\"?")
