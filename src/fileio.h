@@ -1,10 +1,12 @@
 #ifndef FILEIO_H
 #define FILEIO_H
 
+#include <QList>
 #include <QPointF>
 #include <QString>
 #include <QStringList>
 #include <QThread>
+#include <QUrl>
 
 #include <atomic>
 #include <functional>
@@ -48,13 +50,17 @@ private:
 // worker function (see ThreadedIO above); reports progress/completion
 // through `worker`'s signals and can be interrupted via `worker->canceled`.
 //
-// Only reads files and queues the decoded QImage via
-// CanvasScene::add_item_later() (mutex-protected, safe to call from any
-// thread) — it never touches the QGraphicsScene itself. The caller is
-// expected to drain the queue with CanvasScene::add_queued_items() on the
-// GUI thread, e.g. from a slot connected to ThreadedIO::progress/finished
-// (see CanvasView::do_insert_images).
-void load_images(const QStringList& filenames,
+// Each url is either a local file (QUrl::isLocalFile()), an embedded
+// "data:" URI (decoded in-place, no network), or an http(s) URL
+// (downloaded synchronously via QNetworkAccessManager + a nested
+// QEventLoop - this runs on ThreadedIO's background thread, which has no
+// event loop of its own to deliver QNetworkReply's signals otherwise).
+// Queues the decoded QImage via CanvasScene::add_item_later()
+// (mutex-protected, safe to call from any thread) — it never touches the
+// QGraphicsScene itself. The caller is expected to drain the queue with
+// CanvasScene::add_queued_items() on the GUI thread, e.g. from a slot
+// connected to ThreadedIO::progress/finished (see CanvasView::do_insert_images).
+void load_images(const QList<QUrl>& urls,
                   const QPointF& pos,
                   CanvasScene* scene,
                   ThreadedIO* worker);

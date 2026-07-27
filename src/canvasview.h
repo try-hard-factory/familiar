@@ -260,7 +260,6 @@ private:
     // insert-images operation runs at a time (matches Python storing
     // these on self.worker/instance state directly).
     bool insertImagesNewScene_ = false;
-    QStringList insertImagesImmediateErrors_;
     QList<IBaseItem*> insertImagesInsertedItems_;
 
     // State for the in-flight on_action_export_scene() operation - kept
