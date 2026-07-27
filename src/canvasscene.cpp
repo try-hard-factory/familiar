@@ -18,7 +18,6 @@ using namespace familiar::log;
 #include "project_settings.h"
 #include "selector.h"
 #include <core/settings.h>
-#include <regex>
 
 #include "commands.h"
 #include <QUndoStack>
@@ -85,8 +84,6 @@ CanvasScene::CanvasScene(MainWindow& mw,
             this,
             &CanvasScene::settingsChangedSlot);
     settingsChangedSlot();
-
-    imgdownloader_ = new ImageDownloader(*this);
 
     connect(QApplication::clipboard(),
             &QClipboard::dataChanged,
@@ -1138,23 +1135,6 @@ void CanvasScene::setModified(bool mod)
 bool CanvasScene::isUntitled()
 {
     return projectSettings_->isDefaultProjectName();
-}
-
-
-void CanvasScene::handleHtmlFromClipboard(const QString& html)
-{
-    // TODOLATER:
-    std::regex r("<img[^>]*src=['|\"](.*?)['|\"].*?>");
-    std::smatch results;
-    auto str = html.toStdString();
-    std::sregex_iterator it(std::begin(str), std::end(str), r);
-    std::sregex_iterator end;
-
-    if (it != end) {
-        imgdownloader_->download(QString::fromStdString((*it)[1].str()), {0, 0});
-    } else {
-        FLOG_WARN(Ch::Scene, "CANNOT DISPLAY DATA.");
-    }
 }
 
 void CanvasScene::settingsChangedSlot()

@@ -56,8 +56,6 @@ set(PROJECT_SOURCES
         log/qt_bridge.cpp
         log/ring_sink.h
         log/ring_sink.cpp
-        image_downloader.cpp
-        image_downloader.h
         fml_archive.cpp
         fml_archive.h
         export.cpp

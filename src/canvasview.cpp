@@ -21,6 +21,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPainter>
+#include <QRegularExpression>
 #include <QUndoStack>
 #include <QUrl>
 #include <cmath>
@@ -533,6 +534,29 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     painter->restore();
 }
 
+namespace {
+
+// Some browsers only put rendered HTML on the clipboard/drag data for a
+// copied image (no text/uri-list, no raw image/* data) - pull the first
+// <img> src out of it as a last resort before falling back to pasting
+// the literal HTML source as plain text.
+QString extract_first_img_src(const QString& html)
+{
+    static const QRegularExpression re(
+        QStringLiteral("<img[^>]*\\ssrc=[\"']([^\"']*)[\"']"),
+        QRegularExpression::CaseInsensitiveOption);
+    QRegularExpressionMatch match = re.match(html);
+    return match.hasMatch() ? match.captured(1) : QString();
+}
+
+bool is_google_imgres_page(const QUrl& url)
+{
+    return url.host().endsWith(QStringLiteral("google.com"))
+        && url.path().contains(QStringLiteral("imgres"));
+}
+
+} // namespace
+
 void CanvasView::dropEvent(QDropEvent* event)
 {
     QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
@@ -550,10 +574,36 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
         FLOG_DEBUG(Ch::View,
                    "Found dropped urls: {}",
                    debugString(mimedata->urls()));
+
+        QList<QUrl> urls = mimedata->urls();
+        // Google Images drags sometimes give the "imgres?...&imgurl=..."
+        // search result page as the dropped URL, whose actual imgurl
+        // target can be slow/throttled on some hosts (observed - a real
+        // site taking 15s+ to serve one image, while the browser itself
+        // shows it instantly). The browser's own rendered thumbnail is
+        // right there in text/html's <img src> - prefer that, the same
+        // fast preview PureRef ends up using, over re-fetching the
+        // original from scratch.
+        if (mimedata->hasHtml()) {
+            QString htmlSrc = extract_first_img_src(mimedata->html());
+            if (!htmlSrc.isEmpty()) {
+                QUrl htmlUrl(htmlSrc);
+                for (QUrl& url : urls) {
+                    if (is_google_imgres_page(url)) {
+                        FLOG_DEBUG(Ch::View,
+                                  "Preferring rendered thumbnail over Google "
+                                  "imgres redirect: {}",
+                                  htmlUrl);
+                        url = htmlUrl;
+                    }
+                }
+            }
+        }
+
         if (scene_->items().isEmpty()) {
             // TODOLATER:
         }
-        this->do_insert_images(mimedata->urls(), pos);
+        this->do_insert_images(urls, pos);
     } else if (mimedata->hasImage()) {
         QImage img = qvariant_cast<QImage>(mimedata->imageData());
         if (!img.isNull()) {
@@ -904,6 +954,20 @@ void CanvasView::on_action_paste()
         return;
     }
 
+    // Last resort before falling through to plain text: some browsers
+    // (e.g. copying an image from certain pages) only put rendered HTML
+    // on the clipboard, with neither a text/uri-list nor raw image/*
+    // data - pull the <img> src out and load it the same way as a
+    // dropped URL (handles a plain http(s) link, an embedded data: URI,
+    // or a Google Images redirect - see fileio.cpp's load_images()).
+    if (clipboard->mimeData()->hasHtml()) {
+        QString src = extract_first_img_src(clipboard->mimeData()->html());
+        if (!src.isEmpty()) {
+            do_insert_images(QList<QUrl>{QUrl(src)}, pos);
+            return;
+        }
+    }
+
     QString text = clipboard->text();
     if (!text.isEmpty()) {
         auto* item = new TextItem(text);
@@ -1167,17 +1231,16 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     FLOG_DEBUG(Ch::View, "Insert images finished");
     insertImagesInsertedItems_ += scene_->add_queued_items();
 
-    QStringList allErrors = insertImagesImmediateErrors_ + errors;
-    if (!allErrors.isEmpty()) {
+    if (!errors.isEmpty()) {
         QStringList names;
-        for (const QString& fn : allErrors)
+        for (const QString& fn : errors)
             names.append(QStringLiteral("<li>%1</li>").arg(fn));
         showMessageBox(QMessageBox::Warning,
                       this,
                       tr("Problem loading images"),
                       tr("%1 image(s) could not be opened.<br/>"
                          "Unknown format or too big?<ul>%2</ul>")
-                          .arg(allErrors.size())
+                          .arg(errors.size())
                           .arg(names.join(QStringLiteral("\n"))));
     }
 
@@ -1206,25 +1269,33 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     QPointF scenePos = mapToScene(insertPos);
 
     insertImagesNewScene_ = scene_->items().isEmpty();
-    insertImagesImmediateErrors_.clear();
     insertImagesInsertedItems_.clear();
 
     scene_->deselect_all_items();
 
-    QStringList filenames;
+    // Drop mime data's text/uri-list sometimes has extra entries that
+    // aren't real image sources at all: a trailing blank line becomes a
+    // spurious empty QUrl, and some browsers (seen from Google Images)
+    // add a second, schemeless entry that's really just descriptive
+    // alt-text (e.g. "Image of ..."), not a link. Neither is something
+    // to try loading, and definitely not worth reporting as a failed
+    // image - skip both silently.
+    QList<QUrl> validUrls;
     for (const QUrl& url : urls) {
-        if (!url.isLocalFile()) {
-            // TODOLATER: remote URLs via ImageDownloader
-            FLOG_DEBUG(Ch::View, "Remote URL not yet supported: {}", url);
-            insertImagesImmediateErrors_.append(url.toString());
+        if (url.isEmpty() || !url.isValid()) {
+            FLOG_DEBUG(Ch::View, "Skipping invalid/empty dropped URL");
             continue;
         }
-        filenames.append(url.toLocalFile());
+        if (!url.isLocalFile() && url.scheme().isEmpty()) {
+            FLOG_DEBUG(Ch::View, "Skipping non-URI dropped entry: {}", url);
+            continue;
+        }
+        validUrls.append(url);
     }
 
     CanvasScene* scene = scene_;
-    auto* worker = new ThreadedIO([filenames, scenePos, scene](ThreadedIO* w) {
-        load_images(filenames, scenePos, scene, w);
+    auto* worker = new ThreadedIO([validUrls, scenePos, scene](ThreadedIO* w) {
+        load_images(validUrls, scenePos, scene, w);
     });
 
     connect(worker, &ThreadedIO::progress, this, &CanvasView::on_items_loaded);

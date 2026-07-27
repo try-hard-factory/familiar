@@ -2,7 +2,6 @@
 #define CANVASSCENE_H
 
 #include "core/settings.h"
-#include "image_downloader.h"
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
@@ -186,12 +185,9 @@ private:
     qint16 objectsCount() const;
 
     void handleImageFromClipboard(const QImage& image);
-    void handleHtmlFromClipboard(const QString& html);
 
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
-
-    ImageDownloader* imgdownloader_ = nullptr; //image loader need c++threads!!!
 
     qreal parentViewScaleFactor_ = 1;
     project_settings* projectSettings_;

@@ -77,6 +77,12 @@ public:
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
     {
         FLOG_DEBUG(familiar::log::Ch::UI, "Initialized progress bar");
+        // See FileActions::openFile(): MainWindow's translucent/frameless
+        // stylesheet cascades into this otherwise-unstyled top-level
+        // dialog, painting it solid black.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
         setMinimumDuration(0);
         setWindowModality(Qt::WindowModal);
         setAutoReset(false);
