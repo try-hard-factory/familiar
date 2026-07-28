@@ -4,6 +4,7 @@
 #include <QIcon>
 #include <QMetaType>
 
+#include "core/settings.h"
 #include "log/log.h"
 using namespace familiar::log;
 
@@ -51,6 +52,10 @@ int main(int argc, char* argv[])
     // app.setOrganizationName(constants.APPNAME)
     // app.setApplicationName(constants.APPNAME)
 
+    // Must run before anything below reads a CommandlineArgs getter (log
+    // level, filename to open, ...) - see CommandlineArgs::process().
+    CommandlineArgs::instance().process(a);
+
     // Window/taskbar icon. Built from the raster PNGs (rather than the
     // .svg also in graphics.qrc) since QIcon needs the Qt SVG icon-engine
     // plugin at runtime to rasterize an SVG source, and that plugin isn't
@@ -60,7 +65,10 @@ int main(int argc, char* argv[])
     appIcon.addFile(QStringLiteral(":/img/app/familiar_512.png"));
     a.setWindowIcon(appIcon);
 
-    familiar::log::init();
+    Options logOptions;
+    logOptions.consoleLevel = levelFromName(CommandlineArgs::instance().loglevel());
+    familiar::log::init(logOptions);
+
 
 #ifdef NDEBUG
     FLOG_DEBUG(Ch::Core, "NDEBUG defined");
@@ -70,6 +78,12 @@ int main(int argc, char* argv[])
 
     MainWindow w;
     w.show();
+
+    const QString startupFile = CommandlineArgs::instance().filename();
+    if (!startupFile.isEmpty()) {
+        w.fileActions().processOpenFile(startupFile);
+    }
+
     const int result = a.exec();
 
     familiar::log::shutdown();
