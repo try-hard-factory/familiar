@@ -79,11 +79,11 @@ QByteArray write_manifest(const Manifest& manifest)
 
     QJsonObject sceneObj;
     if (!manifest.sceneBoundingRect.isEmpty()) {
-        sceneObj[QStringLiteral("boundingRect")] = QJsonArray{
-            manifest.sceneBoundingRect.x(),
-            manifest.sceneBoundingRect.y(),
-            manifest.sceneBoundingRect.width(),
-            manifest.sceneBoundingRect.height()};
+        sceneObj[QStringLiteral("boundingRect")]
+            = QJsonArray{manifest.sceneBoundingRect.x(),
+                         manifest.sceneBoundingRect.y(),
+                         manifest.sceneBoundingRect.width(),
+                         manifest.sceneBoundingRect.height()};
     }
     root[QStringLiteral("scene")] = sceneObj;
 
@@ -165,12 +165,11 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
         QJsonObject obj = v.toObject();
         ManifestItem item;
 
-        QUuid id = QUuid::fromString(
-            obj.value(QStringLiteral("id")).toString());
+        QUuid id = QUuid::fromString(obj.value(QStringLiteral("id")).toString());
         if (id.isNull() || seenIds.contains(id)) {
             FLOG_WARN(Ch::IO,
-                     "manifest.json item has a missing or duplicate id; "
-                     "generating a new one");
+                      "manifest.json item has a missing or duplicate id; "
+                      "generating a new one");
             id = QUuid::createUuid();
         }
         seenIds.insert(id);
@@ -305,9 +304,9 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
         // replaying the original save_to_file() code, which was never
         // actually exercised (see the comment above).
         QImage image(reinterpret_cast<const uchar*>(raw.constData()),
-                    w,
-                    h,
-                    QImage::Format(format));
+                     w,
+                     h,
+                     QImage::Format(format));
         image = image.copy(); // detach before `raw` goes out of scope
 
         QVariantMap itemData;
@@ -428,7 +427,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     QSaveFile file(filename);
     if (!file.open(QIODevice::WriteOnly)) {
         result.error = QStringLiteral("Could not open %1 for writing: %2")
-                            .arg(filename, file.errorString());
+                           .arg(filename, file.errorString());
         mz_free(buf);
         return result;
     }
@@ -437,7 +436,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
 
     if (!file.commit()) {
         result.error = QStringLiteral("Could not save %1: %2")
-                            .arg(filename, file.errorString());
+                           .arg(filename, file.errorString());
         return result;
     }
 
@@ -453,7 +452,7 @@ FmlResult FmlArchive::load(const QString& filename,
     QFile file(filename);
     if (!file.open(QIODevice::ReadOnly)) {
         result.error = QStringLiteral("Could not open %1: %2")
-                            .arg(filename, file.errorString());
+                           .arg(filename, file.errorString());
         return result;
     }
 
@@ -474,18 +473,19 @@ FmlResult FmlArchive::load(const QString& filename,
     int manifestIndex
         = mz_zip_reader_locate_file(zip.get(), "manifest.json", nullptr, 0);
     if (manifestIndex < 0) {
-        result.error
-            = QStringLiteral("%1 has no manifest.json").arg(filename);
+        result.error = QStringLiteral("%1 has no manifest.json").arg(filename);
         return result;
     }
 
     size_t manifestSize = 0;
-    void* manifestBuf = mz_zip_reader_extract_to_heap(
-        zip.get(), static_cast<mz_uint>(manifestIndex), &manifestSize, 0);
+    void* manifestBuf = mz_zip_reader_extract_to_heap(zip.get(),
+                                                      static_cast<mz_uint>(
+                                                          manifestIndex),
+                                                      &manifestSize,
+                                                      0);
     if (!manifestBuf) {
-        result.error
-            = QStringLiteral("Could not read manifest.json from %1")
-                  .arg(filename);
+        result.error = QStringLiteral("Could not read manifest.json from %1")
+                           .arg(filename);
         return result;
     }
     QByteArray manifestJson(static_cast<const char*>(manifestBuf),
@@ -531,23 +531,28 @@ FmlResult FmlArchive::load(const QString& filename,
 
         if (mi.type == QStringLiteral("pixmap")) {
             QByteArray imagePath = mi.image.toUtf8();
-            int imageIndex = mz_zip_reader_locate_file(
-                zip.get(), imagePath.constData(), nullptr, 0);
+            int imageIndex = mz_zip_reader_locate_file(zip.get(),
+                                                       imagePath.constData(),
+                                                       nullptr,
+                                                       0);
 
             bool ok = false;
             if (imageIndex >= 0) {
                 size_t imgSize = 0;
-                void* imgBuf = mz_zip_reader_extract_to_heap(
-                    zip.get(), static_cast<mz_uint>(imageIndex), &imgSize, 0);
+                void* imgBuf
+                    = mz_zip_reader_extract_to_heap(zip.get(),
+                                                    static_cast<mz_uint>(
+                                                        imageIndex),
+                                                    &imgSize,
+                                                    0);
                 if (imgBuf) {
                     QImage image;
-                    ok = image.loadFromData(
-                        static_cast<const uchar*>(imgBuf),
-                        static_cast<int>(imgSize));
+                    ok = image.loadFromData(static_cast<const uchar*>(imgBuf),
+                                            static_cast<int>(imgSize));
                     if (ok) {
                         itemData[QStringLiteral("image")] = image;
-                        itemData[QStringLiteral("filename")]
-                            = mi.data.value(QStringLiteral("filename"));
+                        itemData[QStringLiteral("filename")] = mi.data.value(
+                            QStringLiteral("filename"));
                     }
                     mz_free(imgBuf);
                 }

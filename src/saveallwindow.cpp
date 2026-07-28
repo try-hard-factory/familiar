@@ -102,5 +102,8 @@ void SaveAllWindow::onSaveClicked()
 void SaveAllWindow::onSaveBoxToggled()
 {
     SaveCheckBox* chbox = (SaveCheckBox*) sender();
-    FLOG_DEBUG(Ch::UI, "TOGGLED: {}, state: {}", chbox->id(), chbox->isChecked());
+    FLOG_DEBUG(Ch::UI,
+               "TOGGLED: {}, state: {}",
+               chbox->id(),
+               chbox->isChecked());
 }

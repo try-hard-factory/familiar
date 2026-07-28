@@ -138,7 +138,9 @@ bool Color::check(const QVariant& val)
     QString str = val.toString();
     // Disable #RGB, #RRRGGGBBB and #RRRRGGGGBBBB formats that QColor supports
     return QColor::isValidColor(str)
-           && (str[0] != '#' || (str.length() != 4 && str.length() != 10 && str.length() != 13));
+           && (str[0] != '#'
+               || (str.length() != 4 && str.length() != 10
+                   && str.length() != 13));
 }
 
 QVariant Color::process(const QVariant& val)
@@ -187,9 +189,7 @@ using CCollection = QMap<int, QColor>;
 
 ColorList::ColorList(QMap<int, QColor> def)
     : m_def(def)
-{
-
-}
+{}
 
 bool ColorList::check(const QVariant& val)
 {
@@ -224,9 +224,7 @@ using OCollection = QMap<int, int>;
 
 OpacityList::OpacityList(QMap<int, int> def)
     : m_def(def)
-{
-
-}
+{}
 
 bool OpacityList::check(const QVariant& val)
 {

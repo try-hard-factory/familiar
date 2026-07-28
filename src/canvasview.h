@@ -246,7 +246,7 @@ private:
     QRectF canvasRect_;
 
     // Right-click: drag → move window, click → context menu
-    bool rightPressed_  = false;
+    bool rightPressed_ = false;
     bool rightDragging_ = false;
     QPoint rightPressPos_;
     QPoint rightWndPos_;

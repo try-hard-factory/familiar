@@ -1,8 +1,8 @@
 #ifndef COLORSWIDGET_H
 #define COLORSWIDGET_H
 
-#include <QWidget>
 #include <kColorPicker/KColorPicker.h>
+#include <QWidget>
 
 class QHBoxLayout;
 class QVBoxLayout;

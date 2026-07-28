@@ -18,7 +18,8 @@ MouseWheelModifiersEditor::MouseWheelModifiersEditor(QWidget* parent,
 
     if (currentAction_) {
         oldModifiers_ = currentAction_->getModifiers();
-        setWindowTitle(tr("MouseWheel Controls for: %1").arg(currentAction_->text()));
+        setWindowTitle(
+            tr("MouseWheel Controls for: %1").arg(currentAction_->text()));
     }
 
     initModifiersInput();
@@ -66,12 +67,13 @@ MouseWheelDelegate::MouseWheelDelegate(QObject* parent)
 {}
 
 QWidget* MouseWheelDelegate::createEditor(QWidget* parent,
-                                           const QStyleOptionViewItem& /*option*/,
-                                           const QModelIndex& index) const
+                                          const QStyleOptionViewItem& /*option*/,
+                                          const QModelIndex& index) const
 {
     QWidget* wrapper = new QWidget(parent);
 
-    MouseWheelModifiersEditor* editor = new MouseWheelModifiersEditor(wrapper, index);
+    MouseWheelModifiersEditor* editor = new MouseWheelModifiersEditor(wrapper,
+                                                                      index);
 
     auto* proxy = qobject_cast<MouseWheelProxy*>(
         const_cast<QAbstractItemModel*>(index.model()));
@@ -87,13 +89,14 @@ QWidget* MouseWheelDelegate::createEditor(QWidget* parent,
     //                                       editor->conflictingRow());
     //                  });
 
-    wrapper->setProperty("editor", QVariant::fromValue(static_cast<QObject*>(editor)));
+    wrapper->setProperty("editor",
+                         QVariant::fromValue(static_cast<QObject*>(editor)));
     return wrapper;
 }
 
 void MouseWheelDelegate::setModelData(QWidget* /*editor*/,
-                                       QAbstractItemModel* /*model*/,
-                                       const QModelIndex& /*index*/) const
+                                      QAbstractItemModel* /*model*/,
+                                      const QModelIndex& /*index*/) const
 {
     // The saved signal already called setDataEx on the proxy.
 }
@@ -101,9 +104,11 @@ void MouseWheelDelegate::setModelData(QWidget* /*editor*/,
 // ─── MouseWheelModel ──────────────────────────────────────────────────────────
 
 MouseWheelModel::MouseWheelModel(QObject* parent)
-    : MouseControlsModelBase(
-          {COL_ACTION, COL_CHANGED, COL_MODIFIERS, COL_INVERTED},
-          parent)
+    : MouseControlsModelBase({COL_ACTION,
+                              COL_CHANGED,
+                              COL_MODIFIERS,
+                              COL_INVERTED},
+                             parent)
 {}
 
 int MouseWheelModel::actionCount() const
@@ -143,7 +148,8 @@ bool MouseWheelModel::actionInvertible(int row) const
 
 void MouseWheelModel::setDataOnAction(int row, const QVariant& value)
 {
-    KeyboardSettings::mousewheelActions()[row].setModifiers(value.toStringList());
+    KeyboardSettings::mousewheelActions()[row].setModifiers(
+        value.toStringList());
 }
 
 void MouseWheelModel::setActionInverted(int row, bool inverted)
@@ -176,8 +182,10 @@ MouseWheelProxy::MouseWheelProxy(QObject* parent)
     setFilterKeyColumn(0);
 }
 
-bool MouseWheelProxy::setDataEx(const QModelIndex& proxyIndex, const QVariant& value,
-                                 int role, int removeFromOtherRow)
+bool MouseWheelProxy::setDataEx(const QModelIndex& proxyIndex,
+                                const QVariant& value,
+                                int role,
+                                int removeFromOtherRow)
 {
     auto* src = qobject_cast<MouseWheelModel*>(sourceModel());
     if (!src)
@@ -204,8 +212,10 @@ MouseWheelView::MouseWheelView(QWidget* parent)
     horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
 
-    connect(&SettingsEvents::instance(), &SettingsEvents::restoreKeyboardDefaults,
-            this, &MouseWheelView::onRestoreDefaults);
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::restoreKeyboardDefaults,
+            this,
+            &MouseWheelView::onRestoreDefaults);
 }
 
 void MouseWheelView::onRestoreDefaults()

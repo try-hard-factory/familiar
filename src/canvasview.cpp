@@ -8,6 +8,7 @@
 #include "project_settings.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
+#include <cmath>
 #include <QApplication>
 #include <QClipboard>
 #include <QContextMenuEvent>
@@ -24,7 +25,6 @@
 #include <QRegularExpression>
 #include <QUndoStack>
 #include <QUrl>
-#include <cmath>
 
 #include <core/settingshandler.h>
 
@@ -44,7 +44,10 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setRenderHint(QPainter::Antialiasing, true);
 
     undoStack_->setUndoLimit(100);
-    connect(undoStack_.get(), &QUndoStack::cleanChanged,   this, &CanvasView::on_undo_clean_changed);
+    connect(undoStack_.get(),
+            &QUndoStack::cleanChanged,
+            this,
+            &CanvasView::on_undo_clean_changed);
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -53,14 +56,25 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setMouseTracking(true);
 
     scene_ = new CanvasScene(mw, zCounter_, undoStack_.get());
-    connect(scene_, &CanvasScene::changed,          this, &CanvasView::on_scene_changed);
-    connect(scene_, &CanvasScene::selectionChanged, this, &CanvasView::on_selection_changed);
-    connect(scene_, &CanvasScene::cursor_changed,   this, &CanvasView::on_cursor_changed);
-    connect(scene_, &CanvasScene::cursor_cleared,   this, &CanvasView::on_cursor_cleared);
+    connect(scene_, &CanvasScene::changed, this, &CanvasView::on_scene_changed);
+    connect(scene_,
+            &CanvasScene::selectionChanged,
+            this,
+            &CanvasView::on_selection_changed);
+    connect(scene_,
+            &CanvasScene::cursor_changed,
+            this,
+            &CanvasView::on_cursor_changed);
+    connect(scene_,
+            &CanvasScene::cursor_cleared,
+            this,
+            &CanvasView::on_cursor_cleared);
     setScene(scene_);
 
-    connect(SettingsHandler::getInstance(), &SettingsHandler::settingsChanged,
-            this, &CanvasView::settingsChangedSlot);
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            &CanvasView::settingsChangedSlot);
     settingsChangedSlot();
 
     init_main_controls(&mw);
@@ -181,7 +195,7 @@ void CanvasView::settingsChangedSlot()
     auto* settings = SettingsHandler::getInstance();
     auto colorPreset = settings->getCurrentColorPreset();
     canvasColor_ = colorPreset[EPresetsColorIdx::kCanvasColor];
-    borderColor_  = colorPreset[EPresetsColorIdx::kBorderColor];
+    borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
     currentOpacity_ = settings->getCurrentOpacity();
 }
 
@@ -233,17 +247,18 @@ void CanvasView::recalcSceneRect()
 
     QPoint topleft = mapFromScene(rect.topLeft());
     topleft = mapToScene(QPoint(topleft.x() - size().width(),
-                                topleft.y() - size().height())).toPoint();
+                                topleft.y() - size().height()))
+                  .toPoint();
     QPoint bottomright = mapFromScene(rect.bottomRight());
     bottomright = mapToScene(QPoint(bottomright.x() + size().width(),
-                                    bottomright.y() + size().height())).toPoint();
+                                    bottomright.y() + size().height()))
+                      .toPoint();
     setSceneRect(QRectF(topleft, bottomright));
 }
 
 void CanvasView::resetPreviousTransform(QGraphicsItem* toggleItem)
 {
-    if (previousTransform_ && previousTransform_->toggleItem != toggleItem)
-    {
+    if (previousTransform_ && previousTransform_->toggleItem != toggleItem) {
         // TODOLATER: std::optional ???
         previousTransform_.reset();
     }
@@ -310,14 +325,16 @@ void CanvasView::zoom(double delta, QPointF anchor)
     // canvas has nothing to clamp against and should just zoom freely.
     bool hasItems = !scene_->items().isEmpty();
     if (delta > 0) {
-        if (!hasItems
-            || getZoomSize([](double w, double h) { return std::max(w, h); }) < 10000000.0)
+        if (!hasItems || getZoomSize([](double w, double h) {
+                             return std::max(w, h);
+                         }) < 10000000.0)
             doScale(factor, factor);
         else
             return;
     } else {
-        if (!hasItems
-            || getZoomSize([](double w, double h) { return std::min(w, h); }) > 10.0)
+        if (!hasItems || getZoomSize([](double w, double h) {
+                             return std::min(w, h);
+                         }) > 10.0)
             doScale(1.0 / factor, 1.0 / factor);
         else
             return;
@@ -332,8 +349,10 @@ void CanvasView::pan(QPointF delta)
     // See zoom() for why this only blocks a never-had-content scene.
     if (scene_->items().isEmpty() && !sceneEverHadItems_)
         return;
-    horizontalScrollBar()->setValue(qRound(horizontalScrollBar()->value() + delta.x()));
-    verticalScrollBar()->setValue(qRound(verticalScrollBar()->value() + delta.y()));
+    horizontalScrollBar()->setValue(
+        qRound(horizontalScrollBar()->value() + delta.x()));
+    verticalScrollBar()->setValue(
+        qRound(verticalScrollBar()->value() + delta.y()));
 }
 
 // ─── Event handlers ───────────────────────────────────────────────────────────
@@ -373,9 +392,9 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
                 QApplication::clipboard()->setText(name);
                 scene_->internal_clipboard.clear();
                 FLOG_DEBUG(Ch::View, "Copied color to clipboard: {}", name);
-                new FamNotification(
-                    this,
-                    QString("Copied color to clipboard: %1").arg(name));
+                new FamNotification(this,
+                                    QString("Copied color to clipboard: %1")
+                                        .arg(name));
             } else {
                 FLOG_DEBUG(Ch::View, "No color found");
             }
@@ -388,9 +407,9 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     auto match = KeyboardSettings().mouseActionForEvent(event);
     if (match) {
         if (match->group == QLatin1String("zoom")) {
-            activeMode_    = ModeZoom;
-            eventStart_    = event->position();
-            eventAnchor_   = event->position();
+            activeMode_ = ModeZoom;
+            eventStart_ = event->position();
+            eventAnchor_ = event->position();
             eventInverted_ = match->inverted;
             event->accept();
             return;
@@ -431,9 +450,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
     }
 
     if (activeMode_ == ModeSampleColor) {
-        sampleColorWidget_->update(
-            event->position(),
-            scene_->sample_color_at(mapToScene(event->pos())));
+        sampleColorWidget_->update(event->position(),
+                                   scene_->sample_color_at(
+                                       mapToScene(event->pos())));
         event->accept();
         return;
     }
@@ -519,9 +538,12 @@ void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
     // when the scene genuinely has zero items.
     static constexpr qreal kCanvasMargin = 10;
     const QRectF paddedCanvasRect = canvasRect_.isEmpty()
-        ? canvasRect_
-        : canvasRect_.marginsAdded(
-              QMarginsF(kCanvasMargin, kCanvasMargin, kCanvasMargin, kCanvasMargin));
+                                        ? canvasRect_
+                                        : canvasRect_.marginsAdded(
+                                              QMarginsF(kCanvasMargin,
+                                                        kCanvasMargin,
+                                                        kCanvasMargin,
+                                                        kCanvasMargin));
     painter->fillRect(paddedCanvasRect, scene_->backgroundBrush());
     // Cosmetic: keeps the border a constant width in screen pixels
     // regardless of zoom, matching the selection outline's pen (see
@@ -542,9 +564,9 @@ namespace {
 // the literal HTML source as plain text.
 QString extract_first_img_src(const QString& html)
 {
-    static const QRegularExpression re(
-        QStringLiteral("<img[^>]*\\ssrc=[\"']([^\"']*)[\"']"),
-        QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression
+        re(QStringLiteral("<img[^>]*\\ssrc=[\"']([^\"']*)[\"']"),
+           QRegularExpression::CaseInsensitiveOption);
     QRegularExpressionMatch match = re.match(html);
     return match.hasMatch() ? match.captured(1) : QString();
 }
@@ -596,9 +618,9 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
             if (!htmlSrc.isEmpty()) {
                 QUrl htmlUrl(htmlSrc);
                 FLOG_DEBUG(Ch::View,
-                          "Preferring rendered thumbnail over dropped page "
-                          "URL: {}",
-                          htmlUrl);
+                           "Preferring rendered thumbnail over dropped page "
+                           "URL: {}",
+                           htmlUrl);
                 urls[nonLocalIdx.first()] = htmlUrl;
             }
         }
@@ -638,9 +660,9 @@ void CanvasView::on_action_export_scene()
 
     if (scene_->itemsBoundingRect().isEmpty()) {
         showMessageBox(QMessageBox::Information,
-                      &mainwindow_,
-                      tr("Export Scene"),
-                      tr("The scene is empty - nothing to export."));
+                       &mainwindow_,
+                       tr("Export Scene"),
+                       tr("The scene is empty - nothing to export."));
         return;
     }
 
@@ -649,8 +671,8 @@ void CanvasView::on_action_export_scene()
     // stylesheet cascades into this otherwise-unstyled top-level dialog,
     // painting it solid black instead.
     fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    fileDialog->setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
+                              "palette(window-text); }");
     fileDialog->setWindowTitle(tr("Export Scene to Image"));
     fileDialog->setNameFilter(tr("Image Files (*.png *.jpg *.jpeg *.svg)"
                                  ";;PNG (*.png)"
@@ -700,12 +722,11 @@ void CanvasView::on_export_scene_finished(const QString& filename,
 {
     sceneExporter_.reset();
     if (!errors.isEmpty()) {
-        showMessageBox(
-            QMessageBox::Warning,
-            &mainwindow_,
-            tr("Problem writing file"),
-            tr("<p>Problem writing file %1</p><p>%2</p>")
-                .arg(filename, errors.join(QStringLiteral("<br/>"))));
+        showMessageBox(QMessageBox::Warning,
+                       &mainwindow_,
+                       tr("Problem writing file"),
+                       tr("<p>Problem writing file %1</p><p>%2</p>")
+                           .arg(filename, errors.join(QStringLiteral("<br/>"))));
     }
 }
 
@@ -715,9 +736,9 @@ void CanvasView::on_action_export_images()
 
     if (scene_->items_by_type("pixmap").isEmpty()) {
         showMessageBox(QMessageBox::Information,
-                      &mainwindow_,
-                      tr("Export Images"),
-                      tr("There are no images to export."));
+                       &mainwindow_,
+                       tr("Export Images"),
+                       tr("There are no images to export."));
         return;
     }
 
@@ -726,8 +747,8 @@ void CanvasView::on_action_export_images()
     // stylesheet cascades into this otherwise-unstyled top-level dialog,
     // painting it solid black instead.
     fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    fileDialog->setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
+                              "palette(window-text); }");
     fileDialog->setWindowTitle(tr("Export Images"));
     fileDialog->setDirectory(
         path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
@@ -745,7 +766,8 @@ void CanvasView::on_action_export_images()
     QString directory = fileDialog->selectedFiles().first();
     delete fileDialog;
 
-    imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(scene_, directory);
+    imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(scene_,
+                                                                  directory);
 
     imageExportWorker_ = new ThreadedIO(
         [this](ThreadedIO* w) { imagesExporter_->exportTo(w); });
@@ -763,8 +785,10 @@ void CanvasView::on_action_export_images()
     // start()ed again on resume (see on_export_images_file_exists()).
     // Cleanup happens once, in on_export_images_finished().
 
-    new ProgressDialog(
-        tr("Exporting to %1").arg(directory), imageExportWorker_, 0, this);
+    new ProgressDialog(tr("Exporting to %1").arg(directory),
+                       imageExportWorker_,
+                       0,
+                       this);
     imageExportWorker_->start();
 }
 
@@ -790,12 +814,11 @@ void CanvasView::on_export_images_finished(const QString& dirname,
 {
     Q_UNUSED(dirname)
     if (!errors.isEmpty()) {
-        showMessageBox(
-            QMessageBox::Warning,
-            &mainwindow_,
-            tr("Problem writing file"),
-            tr("<p>Problem writing files</p><p>%1</p>")
-                .arg(errors.join(QStringLiteral("<br/>"))));
+        showMessageBox(QMessageBox::Warning,
+                       &mainwindow_,
+                       tr("Problem writing file"),
+                       tr("<p>Problem writing files</p><p>%1</p>")
+                           .arg(errors.join(QStringLiteral("<br/>"))));
     }
     if (imageExportWorker_) {
         imageExportWorker_->deleteLater();
@@ -860,7 +883,8 @@ void CanvasView::on_action_delete_items()
     // stays armed until the scene is non-empty again (on_scene_changed()),
     // however that happens, so this covers undo just as well as paste.
     suppressNextEmptySceneReset_ = true;
-    undoStack_->push(new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
+    undoStack_->push(
+        new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
 }
 
 void CanvasView::on_action_cut()
@@ -868,7 +892,8 @@ void CanvasView::on_action_cut()
     on_action_copy();
     suppressNextEmptySceneReset_ = true;
     resetPreviousTransform();
-    undoStack_->push(new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
+    undoStack_->push(
+        new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
 }
 
 void CanvasView::on_action_copy()
@@ -916,8 +941,8 @@ void CanvasView::on_action_paste()
     QPoint pos = mapFromGlobal(cursor().pos());
 
     // See if we need to look up the internal clipboard:
-    QByteArray marker
-        = clipboard->mimeData()->data(QStringLiteral("familiar/items"));
+    QByteArray marker = clipboard->mimeData()->data(
+        QStringLiteral("familiar/items"));
     FLOG_DEBUG(Ch::View, "Custom data in clipboard: {}", debugString(marker));
     if (!marker.isEmpty() && !scene_->internal_clipboard.isEmpty()) {
         // Checking that the internal clipboard exists since the user
@@ -946,8 +971,9 @@ void CanvasView::on_action_paste()
     if (!img.isNull()) {
         bool wasEmpty = scene_->items().isEmpty();
         auto* item = new PixmapItem(img);
-        undoStack_->push(new InsertItemsCommand(
-            scene_, QList<IBaseItem*>{item}, mapToScene(pos)));
+        undoStack_->push(new InsertItemsCommand(scene_,
+                                                QList<IBaseItem*>{item},
+                                                mapToScene(pos)));
         if (wasEmpty) {
             // This is the first image in the scene
             on_action_fit_scene();
@@ -982,8 +1008,9 @@ void CanvasView::on_action_paste()
     if (!text.isEmpty()) {
         auto* item = new TextItem(text);
         item->setScale(1.0 / get_scale());
-        undoStack_->push(new InsertItemsCommand(
-            scene_, QList<IBaseItem*>{item}, mapToScene(pos)));
+        undoStack_->push(new InsertItemsCommand(scene_,
+                                                QList<IBaseItem*>{item},
+                                                mapToScene(pos)));
         return;
     }
 
@@ -1044,8 +1071,8 @@ void CanvasView::on_action_insert_images()
     // inherit "background: transparent" and paint solid black, with an
     // empty competing stylesheet not being enough to cancel it out.
     fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    fileDialog->setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
+                              "palette(window-text); }");
     fileDialog->setWindowTitle(tr("Select one or more images to open"));
     fileDialog->setNameFilter(tr("Images (%1)").arg(formats));
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
@@ -1132,8 +1159,8 @@ void CanvasView::on_action_reset_transforms()
     for (QGraphicsItem* item : scene_->selectedItems(true)) {
         items.append(dynamic_cast<IBaseItem*>(item));
     }
-    undoStack_->push(new ResetTransformsCommand(items,
-                                                scene_->get_selection_center()));
+    undoStack_->push(
+        new ResetTransformsCommand(items, scene_->get_selection_center()));
 }
 
 // ─── Normalize actions ────────────────────────────────────────────────────────
@@ -1224,8 +1251,10 @@ void CanvasView::on_action_sample_color()
     }
 
     QPoint pos = mapFromGlobal(cursor().pos());
-    sampleColorWidget_ = new SampleColorWidget(
-        this, pos, scene_->sample_color_at(mapToScene(pos)));
+    sampleColorWidget_ = new SampleColorWidget(this,
+                                               pos,
+                                               scene_->sample_color_at(
+                                                   mapToScene(pos)));
 }
 
 // ─── Project helpers (existing interface) ────────────────────────────────────
@@ -1246,17 +1275,19 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
         for (const QString& fn : errors)
             names.append(QStringLiteral("<li>%1</li>").arg(fn));
         showMessageBox(QMessageBox::Warning,
-                      this,
-                      tr("Problem loading images"),
-                      tr("%1 image(s) could not be opened.<br/>"
-                         "Unknown format or too big?<ul>%2</ul>")
-                          .arg(errors.size())
-                          .arg(names.join(QStringLiteral("\n"))));
+                       this,
+                       tr("Problem loading images"),
+                       tr("%1 image(s) could not be opened.<br/>"
+                          "Unknown format or too big?<ul>%2</ul>")
+                           .arg(errors.size())
+                           .arg(names.join(QStringLiteral("\n"))));
     }
 
     if (!insertImagesInsertedItems_.isEmpty()) {
-        undoStack_->push(new InsertItemsCommand(
-            scene_, insertImagesInsertedItems_, std::nullopt, true));
+        undoStack_->push(new InsertItemsCommand(scene_,
+                                                insertImagesInsertedItems_,
+                                                std::nullopt,
+                                                true));
         scene_->arrange_default();
     }
 
@@ -1273,7 +1304,8 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     }
 }
 
-void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint> pos)
+void CanvasView::do_insert_images(const QList<QUrl>& urls,
+                                  std::optional<QPoint> pos)
 {
     QPoint insertPos = pos.value_or(getViewCenter().toPoint());
     QPointF scenePos = mapToScene(insertPos);
@@ -1309,7 +1341,9 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     });
 
     connect(worker, &ThreadedIO::progress, this, &CanvasView::on_items_loaded);
-    connect(worker, &ThreadedIO::finished, this,
+    connect(worker,
+            &ThreadedIO::finished,
+            this,
             &CanvasView::on_insert_images_finished);
 
     // QThread's own finished() (not ThreadedIO's same-named result signal)
@@ -1318,8 +1352,8 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls, std::optional<QPoint>
     // connect(worker, &QThread::finished, worker, &QObject::deleteLater);
     connect(worker, &QThread::finished, this, [worker]() {
         const QString threadId = worker->objectName().isEmpty()
-                                      ? QStringLiteral("unnamed")
-                                      : worker->objectName();
+                                     ? QStringLiteral("unnamed")
+                                     : worker->objectName();
         FLOG_DEBUG(Ch::View,
                    "Thread finished. Scheduling deleteLater for Thread ID: {}",
                    threadId);
@@ -1350,10 +1384,31 @@ void CanvasView::cleanupWorkplace()
     scene_->cleanupWorkplace();
 }
 
-QString CanvasView::path()          { return scene_->path(); }
-void CanvasView::setPath(const QString& path) { scene_->setPath(path); }
-QString CanvasView::projectName()   { return scene_->projectName(); }
-void CanvasView::setProjectName(const QString& pn) { scene_->setProjectName(pn); }
-bool CanvasView::isModified()       { return scene_->isModified(); }
-void CanvasView::setModified(bool mod) { scene_->setModified(mod); }
-bool CanvasView::isUntitled()       { return scene_->isUntitled(); }
+QString CanvasView::path()
+{
+    return scene_->path();
+}
+void CanvasView::setPath(const QString& path)
+{
+    scene_->setPath(path);
+}
+QString CanvasView::projectName()
+{
+    return scene_->projectName();
+}
+void CanvasView::setProjectName(const QString& pn)
+{
+    scene_->setProjectName(pn);
+}
+bool CanvasView::isModified()
+{
+    return scene_->isModified();
+}
+void CanvasView::setModified(bool mod)
+{
+    scene_->setModified(mod);
+}
+bool CanvasView::isUntitled()
+{
+    return scene_->isUntitled();
+}

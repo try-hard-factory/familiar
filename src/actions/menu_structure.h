@@ -3,18 +3,16 @@
 #include <QList>
 #include <QString>
 
-struct MenuNode {
+struct MenuNode
+{
     enum class Type { Action, Separator, Submenu, Dynamic };
 
     Type type;
-    QString label;             // for Submenu
-    QString id;                // for Action, Dynamic
-    QList<MenuNode> children;  // for Submenu
+    QString label;            // for Submenu
+    QString id;               // for Action, Dynamic
+    QList<MenuNode> children; // for Submenu
 
-    static MenuNode sep()
-    {
-        return {Type::Separator, {}, {}, {}};
-    }
+    static MenuNode sep() { return {Type::Separator, {}, {}, {}}; }
     static MenuNode action(const QString& id)
     {
         return {Type::Action, {}, id, {}};

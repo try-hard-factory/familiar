@@ -1000,8 +1000,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             item = textItem;
         } else {
             FLOG_WARN(Ch::Scene, "Encountered item of unknown type: {}", typ);
-            item = new ErrorItem(
-                QString("Item of unknown type: %1").arg(typ));
+            item = new ErrorItem(QString("Item of unknown type: %1").arg(typ));
         }
 
         if (item) {
@@ -1097,10 +1096,7 @@ void CanvasScene::setProjectSettings(project_settings* ps)
     projectSettings_ = ps;
 }
 
-void CanvasScene::cleanupWorkplace()
-{
-
-}
+void CanvasScene::cleanupWorkplace() {}
 
 QString CanvasScene::path()
 {

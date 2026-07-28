@@ -19,7 +19,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
-                           | Qt::MSWindowsFixedSizeDialogHint);
+                   | Qt::MSWindowsFixedSizeDialogHint);
     setWindowModality(Qt::ApplicationModal);
     // We wrap QTabWidget in a QWidget because of a Qt bug
     auto* layout = new QVBoxLayout(this);
@@ -66,7 +66,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     shortcutsLayout->addWidget(shortcuts_);
     tabWidget_->addTab(shortcutsTab_, tr("Shortcuts"));
 
-    connect(this, &SettingsWindow::updateChildren, prefConfig_, &PreferencesConf::updateComponents);
+    connect(this,
+            &SettingsWindow::updateChildren,
+            prefConfig_,
+            &PreferencesConf::updateComponents);
 }
 
 void SettingsWindow::keyPressEvent(QKeyEvent* e)

@@ -7,23 +7,27 @@
 // TODO:
 // ─── MouseConfigBase ──────────────────────────────────────────────────────────
 
-MouseConfigBase::MouseConfigBase(const QString& id, const QString& group,
+MouseConfigBase::MouseConfigBase(const QString& id,
+                                 const QString& group,
                                  const QString& text,
                                  const QStringList& defaultModifiers,
                                  bool invertible)
-    : id_(id), group_(group), text_(text)
-    , defaultModifiers_(defaultModifiers), invertible_(invertible)
+    : id_(id)
+    , group_(group)
+    , text_(text)
+    , defaultModifiers_(defaultModifiers)
+    , invertible_(invertible)
 {}
 
 const QList<QPair<QString, Qt::KeyboardModifier>>& MouseConfigBase::modifierMap()
 {
     static const QList<QPair<QString, Qt::KeyboardModifier>> map = {
         {"No Modifier", Qt::NoModifier},
-        {"Shift",       Qt::ShiftModifier},
-        {"Ctrl",        Qt::ControlModifier},
-        {"Alt",         Qt::AltModifier},
-        {"Meta",        Qt::MetaModifier},
-        {"Keypad",      Qt::KeypadModifier},
+        {"Shift", Qt::ShiftModifier},
+        {"Ctrl", Qt::ControlModifier},
+        {"Alt", Qt::AltModifier},
+        {"Meta", Qt::MetaModifier},
+        {"Keypad", Qt::KeypadModifier},
     };
     return map;
 }
@@ -32,8 +36,8 @@ const QList<QPair<QString, Qt::MouseButton>>& MouseConfigBase::buttonMap()
 {
     static const QList<QPair<QString, Qt::MouseButton>> map = {
         {"Not Configured", Qt::NoButton},
-        {"Left",           Qt::LeftButton},
-        {"Middle",         Qt::MiddleButton},
+        {"Left", Qt::LeftButton},
+        {"Middle", Qt::MiddleButton},
     };
     return map;
 }
@@ -55,32 +59,40 @@ Qt::KeyboardModifiers MouseConfigBase::modifiersToQt(const QStringList& modifier
 
 QStringList MouseConfigBase::getModifiers() const
 {
-    return KeyboardSettings().getList(
-        settingsGroup(), id_ + QStringLiteral("_modifiers"), defaultModifiers_);
+    return KeyboardSettings().getList(settingsGroup(),
+                                      id_ + QStringLiteral("_modifiers"),
+                                      defaultModifiers_);
 }
 
 void MouseConfigBase::setModifiers(const QStringList& values) const
 {
-    KeyboardSettings().setList(
-        settingsGroup(), id_ + QStringLiteral("_modifiers"), values, defaultModifiers_);
+    KeyboardSettings().setList(settingsGroup(),
+                               id_ + QStringLiteral("_modifiers"),
+                               values,
+                               defaultModifiers_);
 }
 
 bool MouseConfigBase::getInverted() const
 {
     return KeyboardSettings()
-        .getScalar(settingsGroup(), id_ + QStringLiteral("_inverted"), defaultInverted_)
+        .getScalar(settingsGroup(),
+                   id_ + QStringLiteral("_inverted"),
+                   defaultInverted_)
         .toBool();
 }
 
 void MouseConfigBase::setInverted(bool value) const
 {
-    KeyboardSettings().setScalar(
-        settingsGroup(), id_ + QStringLiteral("_inverted"), value, defaultInverted_);
+    KeyboardSettings().setScalar(settingsGroup(),
+                                 id_ + QStringLiteral("_inverted"),
+                                 value,
+                                 defaultInverted_);
 }
 
 // ─── MouseWheelConfig ─────────────────────────────────────────────────────────
 
-MouseWheelConfig::MouseWheelConfig(const QString& id, const QString& group,
+MouseWheelConfig::MouseWheelConfig(const QString& id,
+                                   const QString& group,
                                    const QString& text,
                                    const QStringList& defaultModifiers,
                                    bool invertible)
@@ -96,7 +108,8 @@ bool MouseWheelConfig::controlsChanged() const
 {
     const QStringList cur = getModifiers();
     return QSet<QString>(cur.begin(), cur.end())
-               != QSet<QString>(defaultModifiers_.begin(), defaultModifiers_.end())
+               != QSet<QString>(defaultModifiers_.begin(),
+                                defaultModifiers_.end())
            || getInverted() != defaultInverted_;
 }
 
@@ -116,7 +129,8 @@ bool MouseWheelConfig::conflictsWith(const MouseWheelConfig& other) const
     if (!isConfigured() || !other.isConfigured())
         return false;
     const QStringList a = getModifiers(), b = other.getModifiers();
-    return QSet<QString>(a.begin(), a.end()) == QSet<QString>(b.begin(), b.end());
+    return QSet<QString>(a.begin(), a.end())
+           == QSet<QString>(b.begin(), b.end());
 }
 
 bool MouseWheelConfig::matchesEvent(const QWheelEvent* event) const
@@ -128,9 +142,12 @@ bool MouseWheelConfig::matchesEvent(const QWheelEvent* event) const
 
 // ─── MouseConfig ──────────────────────────────────────────────────────────────
 
-MouseConfig::MouseConfig(const QString& id, const QString& group, const QString& text,
+MouseConfig::MouseConfig(const QString& id,
+                         const QString& group,
+                         const QString& text,
                          const QString& defaultButton,
-                         const QStringList& defaultModifiers, bool invertible)
+                         const QStringList& defaultModifiers,
+                         bool invertible)
     : MouseConfigBase(id, group, text, defaultModifiers, invertible)
     , defaultButton_(defaultButton)
 {}
@@ -143,14 +160,18 @@ const char* MouseConfig::settingsGroup() const
 QString MouseConfig::getButton() const
 {
     return KeyboardSettings()
-        .getScalar(settingsGroup(), id_ + QStringLiteral("_button"), defaultButton_)
+        .getScalar(settingsGroup(),
+                   id_ + QStringLiteral("_button"),
+                   defaultButton_)
         .toString();
 }
 
 void MouseConfig::setButton(const QString& value) const
 {
-    KeyboardSettings().setScalar(
-        settingsGroup(), id_ + QStringLiteral("_button"), value, defaultButton_);
+    KeyboardSettings().setScalar(settingsGroup(),
+                                 id_ + QStringLiteral("_button"),
+                                 value,
+                                 defaultButton_);
 }
 
 bool MouseConfig::controlsChanged() const
@@ -158,7 +179,8 @@ bool MouseConfig::controlsChanged() const
     const QStringList cur = getModifiers();
     return getButton() != defaultButton_
            || QSet<QString>(cur.begin(), cur.end())
-                  != QSet<QString>(defaultModifiers_.begin(), defaultModifiers_.end())
+                  != QSet<QString>(defaultModifiers_.begin(),
+                                   defaultModifiers_.end())
            || getInverted() != defaultInverted_;
 }
 
@@ -180,7 +202,8 @@ bool MouseConfig::conflictsWith(const MouseConfig& other) const
         return false;
     const QStringList a = getModifiers(), b = other.getModifiers();
     return getButton() == other.getButton()
-           && QSet<QString>(a.begin(), a.end()) == QSet<QString>(b.begin(), b.end());
+           && QSet<QString>(a.begin(), a.end())
+                  == QSet<QString>(b.begin(), b.end());
 }
 
 bool MouseConfig::matchesEvent(const QMouseEvent* event) const
@@ -191,7 +214,10 @@ bool MouseConfig::matchesEvent(const QMouseEvent* event) const
     Qt::MouseButton btn = Qt::NoButton;
     const QString bname = getButton();
     for (const auto& [key, flag] : bmap) {
-        if (key == bname) { btn = flag; break; }
+        if (key == bname) {
+            btn = flag;
+            break;
+        }
     }
     return modifiersToQt(getModifiers()) == event->modifiers()
            && btn == event->button();
@@ -200,26 +226,37 @@ bool MouseConfig::matchesEvent(const QMouseEvent* event) const
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
 
 KeyboardSettings::KeyboardSettings()
-    : QSettings(QFileInfo(FamSettings().fileName()).dir().filePath(
-                    QStringLiteral("KeyboardSettings.ini")),
+    : QSettings(QFileInfo(FamSettings().fileName())
+                    .dir()
+                    .filePath(QStringLiteral("KeyboardSettings.ini")),
                 QSettings::IniFormat)
 {}
 
 const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
 {
     static const QList<MouseWheelConfig> list = {
-        {"zoom1",          "zoom",           "Zoom",
-         {"No Modifier"},                                   true},
-        {"zoom2",          "zoom",           "Zoom (alternative)",
-         {},                                                true},
-        {"pan_horizontal1","pan_horizontal", "Pan horizontally",
-         {"Shift"},                                         true},
-        {"pan_horizontal2","pan_horizontal", "Pan horizontally (alternative)",
-         {},                                                true},
-        {"pan_vertical1",  "pan_vertical",   "Pan vertically",
-         {"Shift", "Ctrl"},                                 true},
-        {"pan_vertical2",  "pan_vertical",   "Pan vertically (alternative)",
-         {},                                                true},
+        {"zoom1", "zoom", "Zoom", {"No Modifier"}, true},
+        {"zoom2", "zoom", "Zoom (alternative)", {}, true},
+        {"pan_horizontal1",
+         "pan_horizontal",
+         "Pan horizontally",
+         {"Shift"},
+         true},
+        {"pan_horizontal2",
+         "pan_horizontal",
+         "Pan horizontally (alternative)",
+         {},
+         true},
+        {"pan_vertical1",
+         "pan_vertical",
+         "Pan vertically",
+         {"Shift", "Ctrl"},
+         true},
+        {"pan_vertical2",
+         "pan_vertical",
+         "Pan vertically (alternative)",
+         {},
+         true},
     };
     return list;
 }
@@ -227,31 +264,37 @@ const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
 const QList<MouseConfig>& KeyboardSettings::mouseActions()
 {
     static const QList<MouseConfig> list = {
-        {"zoom1",       "zoom",        "Zoom",
-         "Middle",      {"Ctrl"},            true},
-        {"zoom2",       "zoom",        "Zoom (alternative)",
-         "Not Configured", {},               true},
-        {"pan1",        "pan",         "Pan",
-         "Middle",      {"No Modifier"},     false},
-        {"pan2",        "pan",         "Pan (alternative)",
-         "Left",        {"Alt"},             false},
-        {"movewindow1", "movewindow",  "Move Window",
-         "Left",        {"Ctrl", "Alt"},     false},
-        {"movewindow2", "movewindow",  "Move Window (alternative)",
-         "Not Configured", {},               false},
+        {"zoom1", "zoom", "Zoom", "Middle", {"Ctrl"}, true},
+        {"zoom2", "zoom", "Zoom (alternative)", "Not Configured", {}, true},
+        {"pan1", "pan", "Pan", "Middle", {"No Modifier"}, false},
+        {"pan2", "pan", "Pan (alternative)", "Left", {"Alt"}, false},
+        {"movewindow1",
+         "movewindow",
+         "Move Window",
+         "Left",
+         {"Ctrl", "Alt"},
+         false},
+        {"movewindow2",
+         "movewindow",
+         "Move Window (alternative)",
+         "Not Configured",
+         {},
+         false},
     };
     return list;
 }
 
-void KeyboardSettings::setShortcuts(const QString& group, const QString& key,
+void KeyboardSettings::setShortcuts(const QString& group,
+                                    const QString& key,
                                     const QStringList& values)
 {
     setValue(group + QLatin1Char('/') + key, values.join(QStringLiteral(", ")));
 }
 
 // TODOLATER: ?? this fn doesn't exist in python
-QStringList KeyboardSettings::get_shortcuts(const QString& group, const QString& key,
-                                           const QStringList& defaultValues)
+QStringList KeyboardSettings::get_shortcuts(const QString& group,
+                                            const QString& key,
+                                            const QStringList& defaultValues)
 {
     const QVariant v = value(group + QLatin1Char('/') + key);
     if (v.isValid()) {
@@ -267,7 +310,8 @@ QStringList KeyboardSettings::get_shortcuts(const QString& group, const QString&
     return defaultValues;
 }
 
-void KeyboardSettings::setList(const QString& group, const QString& key,
+void KeyboardSettings::setList(const QString& group,
+                               const QString& key,
                                const QStringList& values,
                                const QStringList& defaultValues)
 {
@@ -278,7 +322,8 @@ void KeyboardSettings::setList(const QString& group, const QString& key,
         setValue(full, values.join(QStringLiteral(", ")));
 }
 
-QStringList KeyboardSettings::getList(const QString& group, const QString& key,
+QStringList KeyboardSettings::getList(const QString& group,
+                                      const QString& key,
                                       const QStringList& defaultValues) const
 {
     const QVariant v = value(group + QLatin1Char('/') + key);
@@ -292,8 +337,10 @@ QStringList KeyboardSettings::getList(const QString& group, const QString& key,
     return out;
 }
 
-void KeyboardSettings::setScalar(const QString& group, const QString& key,
-                                  const QVariant& value, const QVariant& defaultValue)
+void KeyboardSettings::setScalar(const QString& group,
+                                 const QString& key,
+                                 const QVariant& value,
+                                 const QVariant& defaultValue)
 {
     const QString full = group + QLatin1Char('/') + key;
     if (value == defaultValue)
@@ -302,8 +349,9 @@ void KeyboardSettings::setScalar(const QString& group, const QString& key,
         QSettings::setValue(full, value);
 }
 
-QVariant KeyboardSettings::getScalar(const QString& group, const QString& key,
-                                      const QVariant& defaultValue) const
+QVariant KeyboardSettings::getScalar(const QString& group,
+                                     const QString& key,
+                                     const QVariant& defaultValue) const
 {
     const QVariant v = value(group + QLatin1Char('/') + key);
     return v.isValid() ? v : defaultValue;

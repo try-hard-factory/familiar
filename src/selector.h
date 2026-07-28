@@ -8,6 +8,7 @@
 #include <utils/utils.h>
 
 #include "log/log.h"
+#include <memory>
 #include <QBrush>
 #include <QCursor>
 #include <QGraphicsRectItem>
@@ -18,7 +19,6 @@
 #include <QUuid>
 #include <QVariantMap>
 #include <qnamespace.h>
-#include <memory>
 
 class IBaseItem : public std::enable_shared_from_this<IBaseItem>
 {
@@ -55,8 +55,7 @@ public:
         = 0;
     virtual void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0))
         = 0;
-    virtual void set_rotation(qreal value,
-                             const QPointF& anchor = QPointF(0, 0))
+    virtual void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0))
         = 0;
     virtual QPointF center() const = 0;
     virtual qreal flip() const = 0;
@@ -114,7 +113,8 @@ public:
             scene->max_z = qMax(scene->max_z, value);
             scene->min_z = qMin(scene->min_z, value);
         } else {
-            FLOG_DEBUG(familiar::log::Ch::Items, "BaseItemMixin::setZValue Scene not found");
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "BaseItemMixin::setZValue Scene not found");
         }
     }
 
@@ -124,11 +124,13 @@ public:
         if (scene) {
             set_z_value(scene->max_z + scene->Z_STEP);
         } else {
-            FLOG_DEBUG(familiar::log::Ch::Items, "BaseItemMixin::bring_to_front Scene not found");
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "BaseItemMixin::bring_to_front Scene not found");
         }
     }
 
-    void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value,
+                      const QPointF& anchor = QPointF(0, 0)) override
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
         QPointF prev = this->mapToScene(anchor);
@@ -145,7 +147,7 @@ public:
     }
 
     void do_flip(bool vertical = false,
-                const QPointF& anchor = QPointF(0, 0)) override
+                 const QPointF& anchor = QPointF(0, 0)) override
     {
         QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
@@ -165,7 +167,10 @@ public:
 
     qreal height() const { return bounding_rect_unselected().height(); }
 
-    QPointF center() const override { return bounding_rect_unselected().center(); }
+    QPointF center() const override
+    {
+        return bounding_rect_unselected().center();
+    }
 
     QPointF center_scene_coords() const { return this->mapToScene(center()); }
 
@@ -184,26 +189,34 @@ public:
 
     qreal scale_orig_factor() const override
     {
-        Q_ASSERT_X(false, "BaseItemMixin::scale_orig_factor", "Should not be called");
+        Q_ASSERT_X(false,
+                   "BaseItemMixin::scale_orig_factor",
+                   "Should not be called");
         return 1;
     }
 
     void set_scale_orig_factor(qreal value) override
     {
         Q_UNUSED(value)
-        Q_ASSERT_X(false, "BaseItemMixin::set_scale_orig_factor", "Should not be called");
+        Q_ASSERT_X(false,
+                   "BaseItemMixin::set_scale_orig_factor",
+                   "Should not be called");
     }
 
     qreal rotate_orig_degrees() const override
     {
-        Q_ASSERT_X(false, "BaseItemMixin::rotate_orig_degrees", "Should not be called");
+        Q_ASSERT_X(false,
+                   "BaseItemMixin::rotate_orig_degrees",
+                   "Should not be called");
         return 0;
     }
 
     void set_rotate_orig_degrees(qreal value) override
     {
         Q_UNUSED(value)
-        Q_ASSERT_X(false, "BaseItemMixin::set_rotate_orig_degrees", "Should not be called");
+        Q_ASSERT_X(false,
+                   "BaseItemMixin::set_rotate_orig_degrees",
+                   "Should not be called");
     }
 
     // RubberbandItem is the only BaseItemMixin-direct user and never sets
@@ -428,9 +441,15 @@ public:
     bool is_action_active() const override { return active_mode_ != kNone; }
 
     qreal scale_orig_factor() const override { return scaleOrigFactor_; }
-    void set_scale_orig_factor(qreal value) override { scaleOrigFactor_ = value; }
+    void set_scale_orig_factor(qreal value) override
+    {
+        scaleOrigFactor_ = value;
+    }
     qreal rotate_orig_degrees() const override { return rotateOrigDegrees_; }
-    void set_rotate_orig_degrees(qreal value) override { rotateOrigDegrees_ = value; }
+    void set_rotate_orig_degrees(qreal value) override
+    {
+        rotateOrigDegrees_ = value;
+    }
 
     QPainterPath get_scale_bounds(const QPointF& corner, int margin = 0) const
     {
@@ -803,7 +822,7 @@ protected:
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* baseItem = dynamic_cast<IBaseItem*>(item);
                 baseItem->set_scale(baseItem->scale_orig_factor() * factor,
-                                   item->mapFromScene(eventAnchor_));
+                                    item->mapFromScene(eventAnchor_));
             }
             event->accept();
             return;
@@ -818,8 +837,8 @@ protected:
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* baseItem = dynamic_cast<IBaseItem*>(item);
                 baseItem->set_rotation(baseItem->rotate_orig_degrees()
-                                          + delta * baseItem->flip(),
-                                      item->mapFromScene(eventAnchor_));
+                                           + delta * baseItem->flip(),
+                                       item->mapFromScene(eventAnchor_));
             }
             event->accept();
             return;
@@ -1016,7 +1035,8 @@ protected:
             return;
         }
 
-        SelectableMixin<MultiSelectItem, QGraphicsRectItem>::mousePressEvent(event);
+        SelectableMixin<MultiSelectItem, QGraphicsRectItem>::mousePressEvent(
+            event);
     }
 
 public:
@@ -1084,7 +1104,9 @@ public:
     void fit(const QPointF& point1, const QPointF& point2)
     {
         this->setRect(get_rect_from_points(point1, point2));
-        FLOG_DEBUG(familiar::log::Ch::Items, "Updated rubberband {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Updated rubberband {}",
+                   toString());
     }
 
     IBaseItem* create_copy() override

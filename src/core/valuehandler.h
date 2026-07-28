@@ -146,8 +146,9 @@ public:
     QVariant fallback() override;
     QVariant representation(const QVariant& val) override;
     QString expected() override;
+
 private:
-    QMap<int, QColor> m_def;    
+    QMap<int, QColor> m_def;
 };
 
 class OpacityList : public ValueHandler
@@ -159,8 +160,9 @@ public:
     QVariant fallback() override;
     QVariant representation(const QVariant& val) override;
     QString expected() override;
+
 private:
-    QMap<int, int> m_def;    
+    QMap<int, int> m_def;
 };
 
 #endif // VALUEHANDLER_H

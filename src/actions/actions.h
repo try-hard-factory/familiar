@@ -8,7 +8,8 @@
 
 class QAction;
 
-struct Action {
+struct Action
+{
     static constexpr const char* SETTINGS_GROUP = "Actions";
 
     QString id;
@@ -16,21 +17,24 @@ struct Action {
     QString callback;      // slot name on the host widget
     QStringList shortcuts; // default shortcuts
     bool checkable = false;
-    bool checked = false;  // initial checked state
-    QString group;         // action group name; empty = no group
-    QString settingsKey;   // Settings key for persisting checkable state
+    bool checked = false; // initial checked state
+    QString group;        // action group name; empty = no group
+    QString settingsKey;  // Settings key for persisting checkable state
     bool enabled = true;
-    QString menuId;        // builder id for dynamic submenus
+    QString menuId; // builder id for dynamic submenus
     QAction* qaction = nullptr;
 
     // Convenience factory — improves readability at the call site.
-    static Action make(
-        const QString& id, const QString& text,
-        const QString& callback = {},
-        const QStringList& shortcuts = {},
-        bool checkable = false, bool checked = false,
-        const QString& group = {}, const QString& settingsKey = {},
-        bool enabled = true, const QString& menuId = {});
+    static Action make(const QString& id,
+                       const QString& text,
+                       const QString& callback = {},
+                       const QStringList& shortcuts = {},
+                       bool checkable = false,
+                       bool checked = false,
+                       const QString& group = {},
+                       const QString& settingsKey = {},
+                       bool enabled = true,
+                       const QString& menuId = {});
 
     QStringList get_shortcuts() const;
     void setShortcuts(const QStringList& values);
@@ -43,13 +47,13 @@ struct Action {
 class ActionRegistry
 {
 public:
-    void add(Action action);              // upsert
+    void add(Action action); // upsert
     Action& operator[](const QString& id);
-    Action* find(const QString& id);      // nullptr if missing
+    Action* find(const QString& id); // nullptr if missing
     void remove(const QString& id);
     bool contains(const QString& id) const;
-    QList<Action*> all();                 // in insertion order
-    QStringList keys() const;             // in insertion order
+    QList<Action*> all();     // in insertion order
+    QStringList keys() const; // in insertion order
 
 private:
     QList<QString> order_;

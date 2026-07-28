@@ -66,7 +66,8 @@ int main(int argc, char* argv[])
     a.setWindowIcon(appIcon);
 
     Options logOptions;
-    logOptions.consoleLevel = levelFromName(CommandlineArgs::instance().loglevel());
+    logOptions.consoleLevel = levelFromName(
+        CommandlineArgs::instance().loglevel());
     familiar::log::init(logOptions);
 
 

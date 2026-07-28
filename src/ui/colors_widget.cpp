@@ -3,10 +3,10 @@
 
 #include "log/log.h"
 using namespace familiar::log;
+#include "widgets/dialogs.h"
 #include <ui/extendedslider.h>
 #include <ui/presetsave_window.h>
 #include <utils/utils.h>
-#include "widgets/dialogs.h"
 #include <QButtonGroup>
 #include <QLabel>
 #include <QMessageBox>
@@ -59,7 +59,7 @@ void ColorsWidget::resetCurrentPreset()
         auto* settings = SettingsHandler::getInstance();
         settings->setDefaultCurrentPreset();
         //_updateComponents(true);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     }
 }
 
@@ -83,32 +83,32 @@ void ColorsWidget::presetsInit()
     QPushButton* dark_btn = new QPushButton("Dark");
     connect(dark_btn, &QPushButton::clicked, this, [this]() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kDarkPreset);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* light_btn = new QPushButton("Light");
     connect(light_btn, &QPushButton::clicked, this, [this]() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kLightPreset);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom1_btn = new QPushButton("Custom 1");
     connect(custom1_btn, &QPushButton::clicked, this, [this]() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom1);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom2_btn = new QPushButton("Custom 2");
     connect(custom2_btn, &QPushButton::clicked, this, [this]() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom2);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom3_btn = new QPushButton("Custom 3");
     connect(custom3_btn, &QPushButton::clicked, this, [this]() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom3);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom4_btn = new QPushButton("Custom 4");
     connect(custom4_btn, &QPushButton::clicked, this, [this]() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom4);
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
 
     connect(SettingsHandler::getInstance(),
@@ -142,12 +142,15 @@ void ColorsWidget::colorInit()
     auto* background_color_lbl = new QLabel(tr("Background color: "));
     background_color_lbl->setAlignment(Qt::AlignRight);
     background_cp = new KColorPicker(true);
-    connect(background_cp, &KColorPicker::colorChanged, [background_cp = background_cp, settings]() {
-        auto preset = settings->getCurrentColorPreset();
-        preset[EPresetsColorIdx::kBackgroundColor] = background_cp->color();
-        settings->setCurrentColorPreset(preset);
-        emit SettingsHandler::getInstance()->settingsChanged();
-    });
+    connect(background_cp,
+            &KColorPicker::colorChanged,
+            [background_cp = background_cp, settings]() {
+                auto preset = settings->getCurrentColorPreset();
+                preset[EPresetsColorIdx::kBackgroundColor]
+                    = background_cp->color();
+                settings->setCurrentColorPreset(preset);
+                emit SettingsHandler::getInstance() -> settingsChanged();
+            });
     background_cp->setColor(current_preset[EPresetsColorIdx::kBackgroundColor]);
     background_layout->addWidget(background_color_lbl);
     background_layout->addWidget(background_cp);
@@ -156,12 +159,14 @@ void ColorsWidget::colorInit()
     canvas_layout->setAlignment(Qt::AlignRight);
     auto* canvas_color_lbl = new QLabel(tr("Canvas color: "));
     canvas_cp = new KColorPicker(true);
-    connect(canvas_cp, &KColorPicker::colorChanged, [canvas_cp = canvas_cp, settings]() {
-        auto preset = settings->getCurrentColorPreset();
-        preset[EPresetsColorIdx::kCanvasColor] = canvas_cp->color();
-        settings->setCurrentColorPreset(preset);
-        emit SettingsHandler::getInstance()->settingsChanged();
-    });
+    connect(canvas_cp,
+            &KColorPicker::colorChanged,
+            [canvas_cp = canvas_cp, settings]() {
+                auto preset = settings->getCurrentColorPreset();
+                preset[EPresetsColorIdx::kCanvasColor] = canvas_cp->color();
+                settings->setCurrentColorPreset(preset);
+                emit SettingsHandler::getInstance() -> settingsChanged();
+            });
     canvas_cp->setColor(current_preset[EPresetsColorIdx::kCanvasColor]);
     canvas_layout->addWidget(canvas_color_lbl);
     canvas_layout->addWidget(canvas_cp);
@@ -170,12 +175,14 @@ void ColorsWidget::colorInit()
     border_layout->setAlignment(Qt::AlignRight);
     auto* border_color_lbl = new QLabel(tr("Border color: "));
     border_cp = new KColorPicker(true);
-    connect(border_cp, &KColorPicker::colorChanged, [border_cp = border_cp, settings]() {
-        auto preset = settings->getCurrentColorPreset();
-        preset[EPresetsColorIdx::kBorderColor] = border_cp->color();
-        settings->setCurrentColorPreset(preset);
-        emit SettingsHandler::getInstance()->settingsChanged();
-    });
+    connect(border_cp,
+            &KColorPicker::colorChanged,
+            [border_cp = border_cp, settings]() {
+                auto preset = settings->getCurrentColorPreset();
+                preset[EPresetsColorIdx::kBorderColor] = border_cp->color();
+                settings->setCurrentColorPreset(preset);
+                emit SettingsHandler::getInstance() -> settingsChanged();
+            });
     border_cp->setColor(current_preset[EPresetsColorIdx::kBorderColor]);
     border_layout->addWidget(border_color_lbl);
     border_layout->addWidget(border_cp);
@@ -184,12 +191,14 @@ void ColorsWidget::colorInit()
     text_layout->setAlignment(Qt::AlignRight);
     auto* text_color_lbl = new QLabel(tr("Text color: "));
     text_cp = new KColorPicker(true);
-    connect(text_cp, &KColorPicker::colorChanged, [text_cp = text_cp, settings]() {
-        auto preset = settings->getCurrentColorPreset();
-        preset[EPresetsColorIdx::kTextColor] = text_cp->color();
-        settings->setCurrentColorPreset(preset);
-        emit SettingsHandler::getInstance()->settingsChanged();
-    });
+    connect(text_cp,
+            &KColorPicker::colorChanged,
+            [text_cp = text_cp, settings]() {
+                auto preset = settings->getCurrentColorPreset();
+                preset[EPresetsColorIdx::kTextColor] = text_cp->color();
+                settings->setCurrentColorPreset(preset);
+                emit SettingsHandler::getInstance() -> settingsChanged();
+            });
     text_cp->setColor(current_preset[EPresetsColorIdx::kTextColor]);
     text_layout->addWidget(text_color_lbl);
     text_layout->addWidget(text_cp);
@@ -198,12 +207,15 @@ void ColorsWidget::colorInit()
     selection_layout->setAlignment(Qt::AlignRight);
     auto* selection_color_lbl = new QLabel(tr("Selection color: "));
     selection_cp = new KColorPicker(true);
-    connect(selection_cp, &KColorPicker::colorChanged, [selection_cp = selection_cp, settings]() {
-        auto preset = settings->getCurrentColorPreset();
-        preset[EPresetsColorIdx::kSelectionColor] = selection_cp->color();
-        settings->setCurrentColorPreset(preset);
-        emit SettingsHandler::getInstance()->settingsChanged();
-    });
+    connect(selection_cp,
+            &KColorPicker::colorChanged,
+            [selection_cp = selection_cp, settings]() {
+                auto preset = settings->getCurrentColorPreset();
+                preset[EPresetsColorIdx::kSelectionColor]
+                    = selection_cp->color();
+                settings->setCurrentColorPreset(preset);
+                emit SettingsHandler::getInstance() -> settingsChanged();
+            });
     selection_cp->setColor(current_preset[EPresetsColorIdx::kSelectionColor]);
     selection_layout->addWidget(selection_color_lbl);
     selection_layout->addWidget(selection_cp);
@@ -234,9 +246,10 @@ void ColorsWidget::sliderInit()
         FLOG_DEBUG(Ch::UI,
                    "Master opacity from settings = {}",
                    debugString(SettingsHandler::getInstance()->masterOpacity()));
-        SettingsHandler::getInstance()->setCurrentOpacity(opacitySlider_->mappedValue(0, 255));
+        SettingsHandler::getInstance()->setCurrentOpacity(
+            opacitySlider_->mappedValue(0, 255));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
-        emit SettingsHandler::getInstance()->settingsChanged();
+        emit SettingsHandler::getInstance() -> settingsChanged();
     });
 }
 
@@ -245,10 +258,16 @@ void ColorsWidget::saveResetBtnsInit()
 {
     //presets_layout->setAlignment(Qt::AlignLeft);
     QPushButton* save_to_preset_btn = new QPushButton("Save to preset");
-    connect(save_to_preset_btn, &QPushButton::clicked, this, &ColorsWidget::showPresetSaveWindow);
+    connect(save_to_preset_btn,
+            &QPushButton::clicked,
+            this,
+            &ColorsWidget::showPresetSaveWindow);
 
     QPushButton* reset_to_default_btn = new QPushButton("Reset to default");
-    connect(reset_to_default_btn, &QPushButton::clicked, this, &ColorsWidget::resetCurrentPreset);
+    connect(reset_to_default_btn,
+            &QPushButton::clicked,
+            this,
+            &ColorsWidget::resetCurrentPreset);
 
     bottom_layout_->addWidget(save_to_preset_btn);
     bottom_layout_->addWidget(reset_to_default_btn);
@@ -274,5 +293,5 @@ void ColorsWidget::updateComponents()
     selection_cp->setColor(current_preset[EPresetsColorIdx::kSelectionColor]);
     opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
 
-    emit SettingsHandler::getInstance()->settingsChanged();
+    emit SettingsHandler::getInstance() -> settingsChanged();
 }

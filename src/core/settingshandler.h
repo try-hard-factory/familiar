@@ -69,12 +69,12 @@ public:
     using OL = QMap<int, int>;
     SETTINGS_GETTER_SETTER(masterOpacity, setMasterOpacity, OL)
     using CL = QMap<int, QColor>;
-    SETTINGS_GETTER_SETTER(darkColorPreset, setDarkColorPreset, CL )
-    SETTINGS_GETTER_SETTER(lightColorPreset, setLightColorPreset, CL )
-    SETTINGS_GETTER_SETTER(customPreset1, setCustomPreset1, CL )
-    SETTINGS_GETTER_SETTER(customPreset2, setCustomPreset2, CL )
-    SETTINGS_GETTER_SETTER(customPreset3, setCustomPreset3, CL )
-    SETTINGS_GETTER_SETTER(customPreset4, setCustomPreset4, CL )
+    SETTINGS_GETTER_SETTER(darkColorPreset, setDarkColorPreset, CL)
+    SETTINGS_GETTER_SETTER(lightColorPreset, setLightColorPreset, CL)
+    SETTINGS_GETTER_SETTER(customPreset1, setCustomPreset1, CL)
+    SETTINGS_GETTER_SETTER(customPreset2, setCustomPreset2, CL)
+    SETTINGS_GETTER_SETTER(customPreset3, setCustomPreset3, CL)
+    SETTINGS_GETTER_SETTER(customPreset4, setCustomPreset4, CL)
 
     void setDefaultCurrentPreset();
 

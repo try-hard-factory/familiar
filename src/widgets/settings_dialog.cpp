@@ -26,8 +26,10 @@ SettingsGroupBase::SettingsGroupBase(const QString& title,
     setLayout(vbox_);
     updateTitle();
 
-    connect(&SettingsEvents::instance(), &SettingsEvents::restoreDefaults,
-            this, &SettingsGroupBase::onRestoreDefaults);
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::restoreDefaults,
+            this,
+            &SettingsGroupBase::onRestoreDefaults);
 
     if (!helptext.isEmpty()) {
         auto* label = new QLabel(helptext, this);
@@ -155,9 +157,12 @@ SingleCheckboxGroupWidget::SingleCheckboxGroupWidget(const QString& title,
     vbox_->addStretch(100);
     ignoreValueChanged_ = false;
 
-    connect(input_, &QCheckBox::checkStateChanged, this, [this](Qt::CheckState state) {
-        onValueChanged(QVariant::fromValue(state));
-    });
+    connect(input_,
+            &QCheckBox::checkStateChanged,
+            this,
+            [this](Qt::CheckState state) {
+                onValueChanged(QVariant::fromValue(state));
+            });
 }
 
 void SingleCheckboxGroupWidget::setValue(const QVariant& value)
@@ -173,37 +178,47 @@ QVariant SingleCheckboxGroupWidget::convertValueFromQt(const QVariant& value)
 // ─── Concrete setting widgets ─────────────────────────────────────────────────
 
 ArrangeDefaultWidget::ArrangeDefaultWidget(QWidget* parent)
-    : RadioGroupWidget(
-          QStringLiteral("Default Arrange Method:"),
-          QStringLiteral("How images are arranged when inserted in batch"),
-          QStringLiteral("Items/arrange_default"),
-          {
-              {QStringLiteral("optimal"),    QStringLiteral("Optimal"),
-               QStringLiteral("Arrange Optimal")},
-              {QStringLiteral("horizontal"), QStringLiteral("Horizontal (by filename)"),
-               QStringLiteral("Arrange Horizontal (by filename)")},
-              {QStringLiteral("vertical"),   QStringLiteral("Vertical (by filename)"),
-               QStringLiteral("Arrange Vertical (by filename)")},
-              {QStringLiteral("square"),     QStringLiteral("Square (by filename)"),
-               QStringLiteral("Arrange Square (by filename)")},
-          },
-          parent)
+    : RadioGroupWidget(QStringLiteral("Default Arrange Method:"),
+                       QStringLiteral(
+                           "How images are arranged when inserted in batch"),
+                       QStringLiteral("Items/arrange_default"),
+                       {
+                           {QStringLiteral("optimal"),
+                            QStringLiteral("Optimal"),
+                            QStringLiteral("Arrange Optimal")},
+                           {QStringLiteral("horizontal"),
+                            QStringLiteral("Horizontal (by filename)"),
+                            QStringLiteral("Arrange Horizontal (by filename)")},
+                           {QStringLiteral("vertical"),
+                            QStringLiteral("Vertical (by filename)"),
+                            QStringLiteral("Arrange Vertical (by filename)")},
+                           {QStringLiteral("square"),
+                            QStringLiteral("Square (by filename)"),
+                            QStringLiteral("Arrange Square (by filename)")},
+                       },
+                       parent)
 {}
 
 ImageStorageFormatWidget::ImageStorageFormatWidget(QWidget* parent)
     : RadioGroupWidget(
           QStringLiteral("Image Storage Format:"),
-          QStringLiteral("How images are stored inside bee files."
-                         " Changes will only take effect on newly saved images."),
+          QStringLiteral(
+              "How images are stored inside bee files."
+              " Changes will only take effect on newly saved images."),
           QStringLiteral("Items/image_storage_format"),
           {
-              {QStringLiteral("best"), QStringLiteral("Best Guess"),
-               QStringLiteral("Small images and images with alpha channel are stored as png,"
+              {QStringLiteral("best"),
+               QStringLiteral("Best Guess"),
+               QStringLiteral("Small images and images with alpha channel are "
+                              "stored as png,"
                               " everything else as jpg")},
-              {QStringLiteral("png"),  QStringLiteral("Always PNG"),
+              {QStringLiteral("png"),
+               QStringLiteral("Always PNG"),
                QStringLiteral("Lossless, but large bee file")},
-              {QStringLiteral("jpg"),  QStringLiteral("Always JPG"),
-               QStringLiteral("Small bee file, but lossy and no transparency support")},
+              {QStringLiteral("jpg"),
+               QStringLiteral("Always JPG"),
+               QStringLiteral(
+                   "Small bee file, but lossy and no transparency support")},
           },
           parent)
 {}
@@ -213,27 +228,32 @@ ArrangeGapWidget::ArrangeGapWidget(QWidget* parent)
           QStringLiteral("Arrange Gap:"),
           QStringLiteral("The gap between images when using arrange actions."),
           QStringLiteral("Items/arrange_gap"),
-          0, 200,
+          0,
+          200,
           parent)
 {}
 
 AllocationLimitWidget::AllocationLimitWidget(QWidget* parent)
     : IntegerGroupWidget(
           QStringLiteral("Maximum Image Size:"),
-          QStringLiteral("The maximum image size that can be loaded (in megabytes)."
-                         " Set to 0 for no limitation."),
+          QStringLiteral(
+              "The maximum image size that can be loaded (in megabytes)."
+              " Set to 0 for no limitation."),
           QStringLiteral("Items/image_allocation_limit"),
-          0, 10000,
+          0,
+          10000,
           parent)
 {}
 
 ConfirmCloseUnsavedWidget::ConfirmCloseUnsavedWidget(QWidget* parent)
-    : SingleCheckboxGroupWidget(
-          QStringLiteral("Confirm when closing an unsaved file:"),
-          QStringLiteral("When about to close an unsaved file, should the app ask for confirmation?"),
-          QStringLiteral("Save/confirm_close_unsaved"),
-          QStringLiteral("Confirm when closing"),
-          parent)
+    : SingleCheckboxGroupWidget(QStringLiteral(
+                                    "Confirm when closing an unsaved file:"),
+                                QStringLiteral(
+                                    "When about to close an unsaved file, "
+                                    "should the app ask for confirmation?"),
+                                QStringLiteral("Save/confirm_close_unsaved"),
+                                QStringLiteral("Confirm when closing"),
+                                parent)
 {}
 
 // ─── SettingsDialog ───────────────────────────────────────────────────────────
@@ -255,9 +275,9 @@ SettingsDialog::SettingsDialog(QWidget* parent)
     auto* items = new QWidget;
     auto* itemsLayout = new QGridLayout(items);
     itemsLayout->addWidget(new ImageStorageFormatWidget, 0, 0);
-    itemsLayout->addWidget(new AllocationLimitWidget,    0, 1);
-    itemsLayout->addWidget(new ArrangeGapWidget,         1, 0);
-    itemsLayout->addWidget(new ArrangeDefaultWidget,     1, 1);
+    itemsLayout->addWidget(new AllocationLimitWidget, 0, 1);
+    itemsLayout->addWidget(new ArrangeGapWidget, 1, 0);
+    itemsLayout->addWidget(new ArrangeDefaultWidget, 1, 1);
     tabs->addTab(items, QStringLiteral("&Images && Items"));
 
     auto* layout = new QVBoxLayout(this);
@@ -269,7 +289,10 @@ SettingsDialog::SettingsDialog(QWidget* parent)
 
     auto* resetBtn = new QPushButton(QStringLiteral("&Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
-    connect(resetBtn, &QPushButton::clicked, this, &SettingsDialog::onRestoreDefaults);
+    connect(resetBtn,
+            &QPushButton::clicked,
+            this,
+            &SettingsDialog::onRestoreDefaults);
     buttons->addButton(resetBtn, QDialogButtonBox::ActionRole);
 
     layout->addWidget(buttons);
@@ -281,7 +304,8 @@ void SettingsDialog::onRestoreDefaults()
         QMessageBox::Question,
         this,
         QStringLiteral("Restore defaults?"),
-        QStringLiteral("Do you want to restore all settings to their default values?"),
+        QStringLiteral(
+            "Do you want to restore all settings to their default values?"),
         QMessageBox::Yes | QMessageBox::No);
 
     if (reply == QMessageBox::Yes)

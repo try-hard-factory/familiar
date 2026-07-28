@@ -3,10 +3,10 @@
 #include <QCheckBox>
 #include <QDialog>
 #include <QGroupBox>
+#include <QMap>
 #include <QRadioButton>
 #include <QSpinBox>
 #include <QVBoxLayout>
-#include <QMap>
 
 // ─── SettingsGroupBase ────────────────────────────────────────────────────────
 
@@ -36,7 +36,8 @@ private slots:
 
 // ─── RadioGroupWidget ─────────────────────────────────────────────────────────
 
-struct RadioOption {
+struct RadioOption
+{
     QString value;
     QString label;
     QString tooltip;

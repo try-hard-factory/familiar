@@ -2,8 +2,8 @@
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QFileInfo>
 #include <QDir>
+#include <QFileInfo>
 #include <QImageReader>
 // TODO:
 // ─── CommandlineArgs ──────────────────────────────────────────────────────────
@@ -16,33 +16,40 @@ CommandlineArgs& CommandlineArgs::instance()
 
 static void addOptions(QCommandLineParser& parser)
 {
-    parser.addPositionalArgument(
-        QStringLiteral("filename"),
-        QCoreApplication::tr("Familiar project file to open"),
-        QStringLiteral("[filename]"));
+    parser.addPositionalArgument(QStringLiteral("filename"),
+                                 QCoreApplication::tr(
+                                     "Familiar project file to open"),
+                                 QStringLiteral("[filename]"));
 
-    parser.addOption({QStringList{QStringLiteral("f"), QStringLiteral("file")},
-                      QCoreApplication::tr("Familiar project file to open "
-                                          "(overrides the positional filename argument)"),
-                      QStringLiteral("path")});
+    parser.addOption(
+        {QStringList{QStringLiteral("f"), QStringLiteral("file")},
+         QCoreApplication::tr("Familiar project file to open "
+                              "(overrides the positional filename argument)"),
+         QStringLiteral("path")});
 
-    parser.addOption({QStringLiteral("settings-dir"),
-                      QCoreApplication::tr("Settings directory to use instead of default location"),
-                      QStringLiteral("dir")});
+    parser.addOption(
+        {QStringLiteral("settings-dir"),
+         QCoreApplication::tr(
+             "Settings directory to use instead of default location"),
+         QStringLiteral("dir")});
 
-    parser.addOption({QStringList{QStringLiteral("l"), QStringLiteral("loglevel")},
-                      QCoreApplication::tr("Log level for console output"),
-                      QStringLiteral("level"),
-                      QStringLiteral("INFO")});
+    parser.addOption(
+        {QStringList{QStringLiteral("l"), QStringLiteral("loglevel")},
+         QCoreApplication::tr("Log level for console output"),
+         QStringLiteral("level"),
+         QStringLiteral("INFO")});
 
-    parser.addOption({QStringLiteral("debug-boundingrects"),
-                      QCoreApplication::tr("Draw item's bounding rects for debugging")});
+    parser.addOption(
+        {QStringLiteral("debug-boundingrects"),
+         QCoreApplication::tr("Draw item's bounding rects for debugging")});
 
-    parser.addOption({QStringLiteral("debug-shapes"),
-                      QCoreApplication::tr("Draw item's mouse event shapes for debugging")});
+    parser.addOption(
+        {QStringLiteral("debug-shapes"),
+         QCoreApplication::tr("Draw item's mouse event shapes for debugging")});
 
     parser.addOption({QStringLiteral("debug-handles"),
-                      QCoreApplication::tr("Draw item's transform handle areas for debugging")});
+                      QCoreApplication::tr(
+                          "Draw item's transform handle areas for debugging")});
 }
 
 void CommandlineArgs::process(const QCoreApplication& app)
@@ -59,18 +66,18 @@ void CommandlineArgs::process(const QCoreApplication& app)
     if (parser.isSet(QStringLiteral("file")))
         filename_ = parser.value(QStringLiteral("file"));
 
-    settingsDir_        = parser.value(QStringLiteral("settings-dir"));
-    loglevel_           = parser.value(QStringLiteral("loglevel"));
+    settingsDir_ = parser.value(QStringLiteral("settings-dir"));
+    loglevel_ = parser.value(QStringLiteral("loglevel"));
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
-    debugShapes_        = parser.isSet(QStringLiteral("debug-shapes"));
-    debugHandles_       = parser.isSet(QStringLiteral("debug-handles"));
+    debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
+    debugHandles_ = parser.isSet(QStringLiteral("debug-handles"));
 }
 
 void CommandlineArgs::parse(const QStringList& args)
 {
     QCommandLineParser parser;
     addOptions(parser);
-    parser.parse(args);  // does not exit on unknown options
+    parser.parse(args); // does not exit on unknown options
 
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty())
@@ -83,8 +90,8 @@ void CommandlineArgs::parse(const QStringList& args)
     if (parser.isSet(QStringLiteral("loglevel")))
         loglevel_ = parser.value(QStringLiteral("loglevel"));
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
-    debugShapes_        = parser.isSet(QStringLiteral("debug-shapes"));
-    debugHandles_       = parser.isSet(QStringLiteral("debug-handles"));
+    debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
+    debugHandles_ = parser.isSet(QStringLiteral("debug-handles"));
 }
 
 // ─── SettingsEvents ───────────────────────────────────────────────────────────
@@ -100,62 +107,55 @@ SettingsEvents& SettingsEvents::instance()
 const QMap<QString, FieldConfig>& FamSettings::fields()
 {
     static const QMap<QString, FieldConfig> map = {
-        {
-            "Save/confirm_close_unsaved",
-            {
-                /*default*/ true,
-                /*cast*/    [](const QVariant& v) -> QVariant { return v.toBool(); },
-            }
-        },
-        {
-            "Items/image_storage_format",
-            {
-                /*default*/  QString("best"),
-                /*cast*/     {},
-                /*validate*/ [](const QVariant& v) {
-                    const QString s = v.toString();
-                    return s == QLatin1String("png")
-                        || s == QLatin1String("jpg")
+        {"Save/confirm_close_unsaved",
+         {
+             /*default*/ true,
+             /*cast*/ [](const QVariant& v) -> QVariant { return v.toBool(); },
+         }},
+        {"Items/image_storage_format",
+         {
+             /*default*/ QString("best"),
+             /*cast*/ {},
+             /*validate*/
+             [](const QVariant& v) {
+                 const QString s = v.toString();
+                 return s == QLatin1String("png") || s == QLatin1String("jpg")
                         || s == QLatin1String("best");
-                },
-            }
-        },
-        {
-            "Items/arrange_gap",
-            {
-                /*default*/  0,
-                /*cast*/     [](const QVariant& v) -> QVariant { return v.toInt(); },
-                /*validate*/ [](const QVariant& v) {
-                    const int n = v.toInt();
-                    return n >= 0 && n <= 200;
-                },
-            }
-        },
-        {
-            "Items/arrange_default",
-            {
-                /*default*/  QString("optimal"),
-                /*cast*/     {},
-                /*validate*/ [](const QVariant& v) {
-                    const QString s = v.toString();
-                    return s == QLatin1String("optimal")
+             },
+         }},
+        {"Items/arrange_gap",
+         {
+             /*default*/ 0,
+             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*validate*/
+             [](const QVariant& v) {
+                 const int n = v.toInt();
+                 return n >= 0 && n <= 200;
+             },
+         }},
+        {"Items/arrange_default",
+         {
+             /*default*/ QString("optimal"),
+             /*cast*/ {},
+             /*validate*/
+             [](const QVariant& v) {
+                 const QString s = v.toString();
+                 return s == QLatin1String("optimal")
                         || s == QLatin1String("horizontal")
                         || s == QLatin1String("vertical")
                         || s == QLatin1String("square");
-                },
-            }
-        },
-        {
-            "Items/image_allocation_limit",
-            {
-                /*default*/          256,
-                /*cast*/             [](const QVariant& v) -> QVariant { return v.toInt(); },
-                /*validate*/         [](const QVariant& v) { return v.toInt() >= 0; },
-                /*postSaveCallback*/ [](const QVariant& v) {
-                    QImageReader::setAllocationLimit(v.toInt());
-                },
-            }
-        },
+             },
+         }},
+        {"Items/image_allocation_limit",
+         {
+             /*default*/ 256,
+             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*validate*/ [](const QVariant& v) { return v.toInt() >= 0; },
+             /*postSaveCallback*/
+             [](const QVariant& v) {
+                 QImageReader::setAllocationLimit(v.toInt());
+             },
+         }},
     };
     return map;
 }
@@ -225,7 +225,9 @@ void FamSettings::onStartup()
     if (!envAlloc.isEmpty()) {
         QImageReader::setAllocationLimit(envAlloc.toInt());
     } else {
-        const int alloc = valueOrDefault(QStringLiteral("Items/image_allocation_limit")).toInt();
+        const int alloc = valueOrDefault(
+                              QStringLiteral("Items/image_allocation_limit"))
+                              .toInt();
         QImageReader::setAllocationLimit(alloc);
     }
 }
@@ -276,10 +278,12 @@ QStringList FamSettings::getRecentFiles(bool existingOnly) const
     s->endArray();
 
     if (existingOnly) {
-        values.erase(
-            std::remove_if(values.begin(), values.end(),
-                           [](const QString& f) { return !QFileInfo::exists(f); }),
-            values.end());
+        values.erase(std::remove_if(values.begin(),
+                                    values.end(),
+                                    [](const QString& f) {
+                                        return !QFileInfo::exists(f);
+                                    }),
+                     values.end());
     }
     return values;
 }
@@ -288,6 +292,7 @@ QStringList FamSettings::getRecentFiles(bool existingOnly) const
 
 QString logfileName()
 {
-    return QFileInfo(FamSettings().fileName()).dir().filePath(
-        qApp->applicationName() + QStringLiteral(".log"));
+    return QFileInfo(FamSettings().fileName())
+        .dir()
+        .filePath(qApp->applicationName() + QStringLiteral(".log"));
 }

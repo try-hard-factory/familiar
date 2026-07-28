@@ -14,8 +14,8 @@
 #include "tabpane.h"
 #include <core/settingshandler.h>
 #include <map>
-#include <QUndoStack>
 #include <ui/settings_window.h>
+#include <QUndoStack>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -46,7 +46,10 @@ MainWindow::MainWindow(QWidget* parent)
     // build_menu_and_actions() below).
     tabpane_ = new TabPane(this, *this);
     build_menu_and_actions();
-    connect(tabpane_, &TabPane::currentTabChanged, this, &MainWindow::onCurrentTabChanged);
+    connect(tabpane_,
+            &TabPane::currentTabChanged,
+            this,
+            &MainWindow::onCurrentTabChanged);
     // The first tab's own currentChanged(0) already fired inside
     // TabPane's constructor, before the connect() above existed - sync
     // manually here so the initial action enabled-state is correct.
@@ -76,8 +79,10 @@ MainWindow::MainWindow(QWidget* parent)
 
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
-    tabpane_->setStyleSheet("QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background:  transparent; }");
+    tabpane_->setStyleSheet(
+        "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane "
+        "{ border: "
+        "1px solid lightgray; top:-1px; background:  transparent; }");
 
     //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
     setCentralWidget(tabpane_);
@@ -87,7 +92,8 @@ MainWindow::MainWindow(QWidget* parent)
         Qt::Window
         | Qt::FramelessWindowHint); //|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
-    setStyleSheet("background: transparent; background-color: transparent;");// + rgbaBackGroundStr_);
+    setStyleSheet(
+        "background: transparent; background-color: transparent;"); // + rgbaBackGroundStr_);
     // Qt::WindowFlags flags = Qt::Window | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint;
     // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
     // setWindowFlags(flags);
@@ -185,9 +191,12 @@ void MainWindow::settingsChangedSlot()
                              .arg(backGroundColor_.blue())
                              .arg(currentOpacity_);
 
-    tabpane_->setStyleSheet("QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane { border: "
-                            "1px solid lightgray; top:-1px; background:  transparent; }");
-    setStyleSheet("background: transparent; background-color: transparent; ");// + rgbaBackGroundStr_);
+    tabpane_->setStyleSheet(
+        "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane "
+        "{ border: "
+        "1px solid lightgray; top:-1px; background:  transparent; }");
+    setStyleSheet(
+        "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
 }
 
 
@@ -361,8 +370,8 @@ void MainWindow::on_action_about()
                     this);
     box.setIconPixmap(windowIcon().pixmap(64, 64));
     box.setAttribute(Qt::WA_TranslucentBackground, false);
-    box.setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    box.setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
     box.exec();
 }
 
@@ -380,164 +389,201 @@ void MainWindow::on_action_debuglog()
 // File
 void MainWindow::on_action_save()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_save();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_save();
 }
 void MainWindow::on_action_save_as()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_save_as();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_save_as();
 }
 void MainWindow::on_action_export_scene()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_export_scene();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_export_scene();
 }
 void MainWindow::on_action_export_images()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_export_images();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_export_images();
 }
 
 // Edit
 void MainWindow::on_action_undo()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_undo();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_undo();
 }
 void MainWindow::on_action_redo()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_redo();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_redo();
 }
 void MainWindow::on_action_select_all()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_select_all();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_select_all();
 }
 void MainWindow::on_action_deselect_all()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_deselect_all();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_deselect_all();
 }
 void MainWindow::on_action_cut()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_cut();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_cut();
 }
 void MainWindow::on_action_copy()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_copy();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_copy();
 }
 void MainWindow::on_action_paste()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_paste();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_paste();
 }
 void MainWindow::on_action_delete_items()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_delete_items();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_delete_items();
 }
 void MainWindow::on_action_raise_to_top()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_raise_to_top();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_raise_to_top();
 }
 void MainWindow::on_action_lower_to_bottom()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_lower_to_bottom();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_lower_to_bottom();
 }
 
 // View
 void MainWindow::on_action_fit_scene()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_fit_scene();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_fit_scene();
 }
 void MainWindow::on_action_fit_selection()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_fit_selection();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_fit_selection();
 }
 // Insert
 void MainWindow::on_action_insert_images()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_insert_images();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_insert_images();
 }
 void MainWindow::on_action_insert_text()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_insert_text();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_insert_text();
 }
 
 // Transform
 void MainWindow::on_action_crop()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_crop();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_crop();
 }
 void MainWindow::on_action_flip_horizontally()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_flip_horizontally();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_flip_horizontally();
 }
 void MainWindow::on_action_flip_vertically()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_flip_vertically();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_flip_vertically();
 }
 void MainWindow::on_action_reset_scale()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_reset_scale();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_reset_scale();
 }
 void MainWindow::on_action_reset_rotation()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_reset_rotation();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_reset_rotation();
 }
 void MainWindow::on_action_reset_flip()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_reset_flip();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_reset_flip();
 }
 void MainWindow::on_action_reset_crop()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_reset_crop();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_reset_crop();
 }
 void MainWindow::on_action_reset_transforms()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_reset_transforms();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_reset_transforms();
 }
 
 // Normalize
 void MainWindow::on_action_normalize_height()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_normalize_height();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_normalize_height();
 }
 void MainWindow::on_action_normalize_width()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_normalize_width();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_normalize_width();
 }
 void MainWindow::on_action_normalize_size()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_normalize_size();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_normalize_size();
 }
 
 // Arrange
 void MainWindow::on_action_arrange_optimal()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_arrange_optimal();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_arrange_optimal();
 }
 void MainWindow::on_action_arrange_horizontal()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_arrange_horizontal();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_arrange_horizontal();
 }
 void MainWindow::on_action_arrange_vertical()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_arrange_vertical();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_arrange_vertical();
 }
 void MainWindow::on_action_arrange_square()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_arrange_square();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_arrange_square();
 }
 
 // Images
 void MainWindow::on_action_change_opacity()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_change_opacity();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_change_opacity();
 }
 void MainWindow::on_action_grayscale()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_grayscale();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_grayscale();
 }
 void MainWindow::on_action_show_color_gamut()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_show_color_gamut();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_show_color_gamut();
 }
 void MainWindow::on_action_sample_color()
 {
-    if (auto* cv = tabpane_->currentWidget()) cv->on_action_sample_color();
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_sample_color();
 }
 
 // ─── Tab-switch action resync ─────────────────────────────────────────────────
@@ -568,20 +614,31 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
     hookedScene_ = cv->scene();
     hookedUndoStack_ = cv->undoStack();
 
-    connect(hookedScene_, &CanvasScene::changed,
-            this, &MainWindow::on_active_scene_changed);
-    connect(hookedScene_, &CanvasScene::selectionChanged,
-            this, &MainWindow::on_active_selection_changed);
-    connect(hookedUndoStack_, &QUndoStack::canUndoChanged,
-            this, &MainWindow::on_active_can_undo_changed);
-    connect(hookedUndoStack_, &QUndoStack::canRedoChanged,
-            this, &MainWindow::on_active_can_redo_changed);
+    connect(hookedScene_,
+            &CanvasScene::changed,
+            this,
+            &MainWindow::on_active_scene_changed);
+    connect(hookedScene_,
+            &CanvasScene::selectionChanged,
+            this,
+            &MainWindow::on_active_selection_changed);
+    connect(hookedUndoStack_,
+            &QUndoStack::canUndoChanged,
+            this,
+            &MainWindow::on_active_can_undo_changed);
+    connect(hookedUndoStack_,
+            &QUndoStack::canRedoChanged,
+            this,
+            &MainWindow::on_active_can_redo_changed);
 
     // Push current values immediately: the four signals above are
     // edge-triggered and don't replay the current state on connect.
-    actiongroup_set_enabled("active_when_items_in_scene", !cv->scene()->items().isEmpty());
-    actiongroup_set_enabled("active_when_selection", cv->scene()->has_selection());
-    actiongroup_set_enabled("active_when_single_image", cv->scene()->has_single_image_selection());
+    actiongroup_set_enabled("active_when_items_in_scene",
+                            !cv->scene()->items().isEmpty());
+    actiongroup_set_enabled("active_when_selection",
+                            cv->scene()->has_selection());
+    actiongroup_set_enabled("active_when_single_image",
+                            cv->scene()->has_single_image_selection());
     actiongroup_set_enabled("active_when_can_undo", cv->undoStack()->canUndo());
     actiongroup_set_enabled("active_when_can_redo", cv->undoStack()->canRedo());
 }
@@ -593,13 +650,16 @@ void MainWindow::onCurrentTabChanged(int index)
 
 void MainWindow::on_active_scene_changed()
 {
-    actiongroup_set_enabled("active_when_items_in_scene", !hookedScene_->items().isEmpty());
+    actiongroup_set_enabled("active_when_items_in_scene",
+                            !hookedScene_->items().isEmpty());
 }
 
 void MainWindow::on_active_selection_changed()
 {
-    actiongroup_set_enabled("active_when_selection", hookedScene_->has_selection());
-    actiongroup_set_enabled("active_when_single_image", hookedScene_->has_single_image_selection());
+    actiongroup_set_enabled("active_when_selection",
+                            hookedScene_->has_selection());
+    actiongroup_set_enabled("active_when_single_image",
+                            hookedScene_->has_single_image_selection());
 }
 
 void MainWindow::on_active_can_undo_changed(bool canUndo)
@@ -624,7 +684,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
-    qreal opacity = (qreal)currentOpacity_/255;
+    qreal opacity = (qreal) currentOpacity_ / 255;
     painter.setOpacity(opacity);
     painter.fillRect(
         event->rect(),

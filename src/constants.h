@@ -13,7 +13,7 @@ constexpr const char* WEBSITE = "???";
 constexpr const char* COPYRIGHT = "Copyright © 2024 max";
 
 constexpr const char* CHANGED_SYMBOL = "✎";
-}  // namespace AppConstants
+} // namespace AppConstants
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ inline const QColor WindowText{200, 200, 200};
 inline const QColor ButtonText{200, 200, 200};
 inline const QColor Highlight{83, 167, 165};
 inline const QColor Link{90, 181, 179};
-}  // namespace Active
+} // namespace Active
 
 namespace Disabled {
 inline const QColor Base{40, 40, 40};
@@ -38,14 +38,14 @@ inline const QColor Window{40, 40, 40, 50};
 inline const QColor WindowText{120, 120, 120};
 inline const QColor Light{0, 0, 0, 0};
 inline const QColor Text{140, 140, 140};
-}  // namespace Disabled
+} // namespace Disabled
 
 namespace Scene {
 inline const QColor Selection{116, 234, 231};
 inline const QColor Canvas{60, 60, 60};
 inline const QColor Text{200, 200, 200};
-}  // namespace Scene
+} // namespace Scene
 
-}  // namespace Colors
+} // namespace Colors
 
-#endif  // CONSTANTS_H
+#endif // CONSTANTS_H

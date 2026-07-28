@@ -5,9 +5,10 @@
 #include <QFileInfo>
 #include <QMessageBox>
 
-     
+
 TabPane::TabPane(QWidget* parent, MainWindow& mw)
-    : QWidget(parent), mainwindow_(mw)
+    : QWidget(parent)
+    , mainwindow_(mw)
 {
     layout_ = new QVBoxLayout; // try some other layout
     layout_->setContentsMargins(0, 0, 0, 0);
@@ -21,10 +22,13 @@ TabPane::TabPane(QWidget* parent, MainWindow& mw)
     layout_->addWidget(tabs_);
 
     addNewUntitledTab();
-    
+
     // // setStyleSheet("background: transparent; background-color: rgba(0, 0, 0, 128);");
     connect(tabs_, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
-    connect(tabs_, &QTabWidget::currentChanged, this, &TabPane::currentTabChanged);
+    connect(tabs_,
+            &QTabWidget::currentChanged,
+            this,
+            &TabPane::currentTabChanged);
 }
 
 TabPane::~TabPane()
@@ -95,15 +99,16 @@ void TabPane::onTabClosed(int index)
         // chance to apply the fix below before it's shown. See
         // FileActions::openFile() for the same MainWindow-stylesheet-
         // cascade issue on every other dialog in this app.
-        QMessageBox box(QMessageBox::Warning,
-                        "Warning!",
-                        tr("You have unsaved documents!\n\nDo you want to save it?"),
-                        QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-                        this);
+        QMessageBox
+            box(QMessageBox::Warning,
+                "Warning!",
+                tr("You have unsaved documents!\n\nDo you want to save it?"),
+                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                this);
         box.setDefaultButton(QMessageBox::No);
         box.setAttribute(Qt::WA_TranslucentBackground, false);
-        box.setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        box.setStyleSheet("* { background-color: palette(window); color: "
+                          "palette(window-text); }");
         QMessageBox::StandardButton resBtn
             = static_cast<QMessageBox::StandardButton>(box.exec());
 

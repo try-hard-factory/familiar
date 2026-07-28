@@ -25,7 +25,9 @@ public:
     void show();
     void disable_mouse_events();
     void enable_mouse_events();
-    void do_insert_images(const QList<QUrl>&, std::optional<QPoint> = std::nullopt) {}
+    void do_insert_images(const QList<QUrl>&,
+                          std::optional<QPoint> = std::nullopt)
+    {}
 
 public slots:
     void on_context_menu(const QPoint& point);
@@ -43,9 +45,9 @@ private:
         <p>Right-click for more options.</p>
     )";
 
-    MainWindow*      mainWindow_;
-    QWidget*         filesWidget_;
+    MainWindow* mainWindow_;
+    QWidget* filesWidget_;
     RecentFilesView* filesView_;
-    QLabel*          label_;
-    QHBoxLayout*     layout_;
+    QLabel* label_;
+    QHBoxLayout* layout_;
 };

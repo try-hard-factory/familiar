@@ -15,15 +15,12 @@
 using namespace familiar::log;
 
 #define OPTION(KEY, TYPE) \
-    { \
-        QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE) \
-    }
+    {QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE)}
 
 #define SHORTCUT(NAME, DEFAULT_VALUE) \
-    { \
-        QStringLiteral(NAME), QSharedPointer<KeySequence>( \
-                                  new KeySequence(QKeySequence(QLatin1String(DEFAULT_VALUE)))) \
-    }
+    {QStringLiteral(NAME), \
+     QSharedPointer<KeySequence>( \
+         new KeySequence(QKeySequence(QLatin1String(DEFAULT_VALUE))))}
 
 static QMap<int, int> opacityListDef = {
     {kDarkPreset, 255},
@@ -40,44 +37,51 @@ static QMap<int, QColor> darkColorPresetDef
        {kBorderColor, QColor({13, 13, 13})},       // kBorderColor
        {kTextColor, QColor({122, 122, 122})},      // kTextColor
        {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
-static QMap<int, QColor> lightColorPresetDef = {{kBackgroundColor, QColor({224, 224, 224})},
-                                                {kCanvasColor, QColor({234, 234, 234})},
-                                                {kBorderColor, QColor({200, 200, 200})},
-                                                {kTextColor, QColor({111, 111, 111})},
-                                                {kSelectionColor, QColor({255, 0, 0})}};
-static QMap<int, QColor> customPreset1Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                             {kCanvasColor, QColor({42, 42, 42})},
-                                             {kBorderColor, QColor({13, 13, 13})},
-                                             {kTextColor, QColor({122, 122, 122})},
-                                             {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset2Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                             {kCanvasColor, QColor({42, 42, 42})},
-                                             {kBorderColor, QColor({13, 13, 13})},
-                                             {kTextColor, QColor({122, 122, 122})},
-                                             {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset3Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                             {kCanvasColor, QColor({42, 42, 42})},
-                                             {kBorderColor, QColor({13, 13, 13})},
-                                             {kTextColor, QColor({122, 122, 122})},
-                                             {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset4Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                             {kCanvasColor, QColor({42, 42, 42})},
-                                             {kBorderColor, QColor({13, 13, 13})},
-                                             {kTextColor, QColor({122, 122, 122})},
-                                             {kSelectionColor, QColor({22, 142, 153})}};
+static QMap<int, QColor> lightColorPresetDef
+    = {{kBackgroundColor, QColor({224, 224, 224})},
+       {kCanvasColor, QColor({234, 234, 234})},
+       {kBorderColor, QColor({200, 200, 200})},
+       {kTextColor, QColor({111, 111, 111})},
+       {kSelectionColor, QColor({255, 0, 0})}};
+static QMap<int, QColor> customPreset1Def
+    = {{kBackgroundColor, QColor({32, 32, 32})},
+       {kCanvasColor, QColor({42, 42, 42})},
+       {kBorderColor, QColor({13, 13, 13})},
+       {kTextColor, QColor({122, 122, 122})},
+       {kSelectionColor, QColor({22, 142, 153})}};
+static QMap<int, QColor> customPreset2Def
+    = {{kBackgroundColor, QColor({32, 32, 32})},
+       {kCanvasColor, QColor({42, 42, 42})},
+       {kBorderColor, QColor({13, 13, 13})},
+       {kTextColor, QColor({122, 122, 122})},
+       {kSelectionColor, QColor({22, 142, 153})}};
+static QMap<int, QColor> customPreset3Def
+    = {{kBackgroundColor, QColor({32, 32, 32})},
+       {kCanvasColor, QColor({42, 42, 42})},
+       {kBorderColor, QColor({13, 13, 13})},
+       {kTextColor, QColor({122, 122, 122})},
+       {kSelectionColor, QColor({22, 142, 153})}};
+static QMap<int, QColor> customPreset4Def
+    = {{kBackgroundColor, QColor({32, 32, 32})},
+       {kCanvasColor, QColor({42, 42, 42})},
+       {kBorderColor, QColor({13, 13, 13})},
+       {kTextColor, QColor({122, 122, 122})},
+       {kSelectionColor, QColor({22, 142, 153})}};
 
-static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions = {
-    //         KEY                            TYPE                 DEFAULT_VALUE
-    OPTION("option0", Bool(true)),
-    OPTION("option1", Bool(true)),
-    OPTION("currentPreset", BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
-    OPTION("masterOpacity", OpacityList(opacityListDef)),
-    OPTION("darkColorPreset", ColorList(darkColorPresetDef)),
-    OPTION("lightColorPreset", ColorList(lightColorPresetDef)),
-    OPTION("customPreset1", ColorList(customPreset1Def)),
-    OPTION("customPreset2", ColorList(customPreset2Def)),
-    OPTION("customPreset3", ColorList(customPreset3Def)),
-    OPTION("customPreset4", ColorList(customPreset4Def)),
+static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions
+    = {
+        //         KEY                            TYPE                 DEFAULT_VALUE
+        OPTION("option0", Bool(true)),
+        OPTION("option1", Bool(true)),
+        OPTION("currentPreset",
+               BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
+        OPTION("masterOpacity", OpacityList(opacityListDef)),
+        OPTION("darkColorPreset", ColorList(darkColorPresetDef)),
+        OPTION("lightColorPreset", ColorList(lightColorPresetDef)),
+        OPTION("customPreset1", ColorList(customPreset1Def)),
+        OPTION("customPreset2", ColorList(customPreset2Def)),
+        OPTION("customPreset3", ColorList(customPreset3Def)),
+        OPTION("customPreset4", ColorList(customPreset4Def)),
 
 };
 
@@ -106,7 +110,7 @@ SettingsHandler::SettingsHandler()
         QObject::connect(settingsWatcher_.data(),
                          &QFileSystemWatcher::fileChanged,
                          [](const QString& fileName) {
-                             emit getInstance()->fileChanged();
+                             emit getInstance() -> fileChanged();
 
                              if (QFile(fileName).exists()) {
                                  settingsWatcher_->addPath(fileName);
@@ -172,7 +176,8 @@ void SettingsHandler::setDefaultCurrentPreset()
 }
 
 
-bool SettingsHandler::setShortcut(const QString& actionName, const QString& shortcut)
+bool SettingsHandler::setShortcut(const QString& actionName,
+                                  const QString& shortcut)
 {
     FLOG_DEBUG(Ch::Settings, "{}", shortcut);
 
@@ -201,7 +206,8 @@ bool SettingsHandler::setShortcut(const QString& actionName, const QString& shor
             if (actionName == otherAction) {
                 continue;
             }
-            QString existingShortcut = KeySequence().value(settings_.value(otherAction)).toString();
+            QString existingShortcut
+                = KeySequence().value(settings_.value(otherAction)).toString();
             if (newShortcut == existingShortcut) {
                 error = true;
                 goto done;
@@ -211,7 +217,7 @@ bool SettingsHandler::setShortcut(const QString& actionName, const QString& shor
     }
 done:
     settings_.endGroup();
-    emit getInstance()->shortCutChanged(actionName);
+    emit getInstance() -> shortCutChanged(actionName);
     return !error;
 }
 
@@ -407,7 +413,8 @@ void SettingsHandler::setCurrentOpacity(int opacity)
 
 bool SettingsHandler::checkForErrors() const
 {
-    return checkUnrecognizedSettings() & checkShortcutConflicts() & checkSemantics();
+    return checkUnrecognizedSettings() & checkShortcutConflicts()
+           & checkSemantics();
 }
 
 
@@ -457,8 +464,8 @@ bool SettingsHandler::checkShortcutConflicts() const
             // - or one of the settings is not found in m_settings, i.e.
             //   user wants to use flameshot's default shortcut for the action
             // - or the shortcuts for both actions are different
-            if (!(value1.isEmpty() || !settings_.contains(*key1) || !settings_.contains(*key2)
-                  || value1 != value2)) {
+            if (!(value1.isEmpty() || !settings_.contains(*key1)
+                  || !settings_.contains(*key2) || value1 != value2)) {
                 ok = false;
                 break;
             }
@@ -476,7 +483,8 @@ bool SettingsHandler::checkSemantics(QList<QString>* offenders) const
     for (const QString& key : allKeys) {
         // Test if the key is recognized
         if (!recognizedGeneralOptions().contains(key)
-            && (!isShortcut(key) || !recognizedShortcutNames().contains(baseName(key)))) {
+            && (!isShortcut(key)
+                || !recognizedShortcutNames().contains(baseName(key)))) {
             continue;
         }
         QVariant val = settings_.value(key);
@@ -520,7 +528,8 @@ bool SettingsHandler::hasError() const
 
 QString SettingsHandler::errorMessage() const
 {
-    return tr("The configuration contains an error. Open configuration to resolve.");
+    return tr(
+        "The configuration contains an error. Open configuration to resolve.");
 }
 
 
@@ -541,8 +550,9 @@ void SettingsHandler::ensureFileWatched() const
 
 void SettingsHandler::assertKeyRecognized(const QString& key) const
 {
-    bool recognized = isShortcut(key) ? recognizedShortcutNames().contains(baseName(key))
-                                      : ::recognizedGeneralOptions.contains(key);
+    bool recognized = isShortcut(key)
+                          ? recognizedShortcutNames().contains(baseName(key))
+                          : ::recognizedGeneralOptions.contains(key);
     if (!recognized) {
         setErrorState(true);
     }
@@ -562,12 +572,14 @@ QString SettingsHandler::baseName(QString key) const
 }
 
 
-QSharedPointer<ValueHandler> SettingsHandler::valueHandler(const QString& key) const
+QSharedPointer<ValueHandler> SettingsHandler::valueHandler(
+    const QString& key) const
 {
     QSharedPointer<ValueHandler> handler;
     if (isShortcut(key)) {
         handler = recognizedShortcuts.value(baseName(key),
-                                            QSharedPointer<KeySequence>(new KeySequence()));
+                                            QSharedPointer<KeySequence>(
+                                                new KeySequence()));
     } else { // General group
         handler = ::recognizedGeneralOptions.value(key);
     }
@@ -584,12 +596,13 @@ void SettingsHandler::setErrorState(bool error) const
         QString msg = errorMessage();
         FLOG_WARN(Ch::Settings, "{}", msg);
         //        AbstractLogger::error() << msg;
-        emit getInstance()->error();
+        emit getInstance() -> error();
     } else if (hadError && !hasError_) {
-        auto msg = tr("You have successfully resolved the configuration error.");
+        auto msg = tr(
+            "You have successfully resolved the configuration error.");
         FLOG_INFO(Ch::Settings, "{}", msg);
         //        AbstractLogger::info() << msg;
-        emit getInstance()->errorResolved();
+        emit getInstance() -> errorResolved();
     }
 }
 

@@ -60,8 +60,8 @@ inline QMessageBox::StandardButton showMessageBox(
         box.setDefaultButton(defaultButton);
     }
     box.setAttribute(Qt::WA_TranslucentBackground, false);
-    box.setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    box.setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
     return static_cast<QMessageBox::StandardButton>(box.exec());
 }
 
@@ -71,9 +71,9 @@ class ProgressDialog : public QProgressDialog
 
 public:
     explicit ProgressDialog(const QString& label,
-                               ThreadedIO* worker,
-                               int maximum = 0,
-                               QWidget* parent = nullptr)
+                            ThreadedIO* worker,
+                            int maximum = 0,
+                            QWidget* parent = nullptr)
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
     {
         FLOG_DEBUG(familiar::log::Ch::UI, "Initialized progress bar");
@@ -81,8 +81,8 @@ public:
         // stylesheet cascades into this otherwise-unstyled top-level
         // dialog, painting it solid black.
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
         setMinimumDuration(0);
         setWindowModality(Qt::WindowModal);
         setAutoReset(false);
@@ -103,7 +103,10 @@ public:
                 &ThreadedIO::userInputRequired,
                 this,
                 [this](const QString&) { on_finished(QString(), {}); });
-        connect(this, &ProgressDialog::canceled, worker, &ThreadedIO::onCanceled);
+        connect(this,
+                &ProgressDialog::canceled,
+                worker,
+                &ThreadedIO::onCanceled);
     }
 
 private slots:
@@ -145,8 +148,8 @@ public:
         // stylesheet cascades into this otherwise-unstyled top-level
         // dialog, painting it solid black.
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
         setWindowTitle(qApp->applicationName() + " Help");
         QString docDir = QCoreApplication::applicationDirPath()
                          + "/documentation";
@@ -169,7 +172,8 @@ public:
         setLayout(layout);
         layout->addWidget(tabs);
 
-        QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
+        QDialogButtonBox* buttons = new QDialogButtonBox(
+            QDialogButtonBox::Close);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         layout->addWidget(buttons);
 
@@ -193,8 +197,8 @@ public:
         // stylesheet cascades into this otherwise-unstyled top-level
         // dialog, painting it solid black.
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
         setWindowTitle(qApp->applicationName() + " Debug Log");
         QString logPath = logfileName();
         QFile file(logPath);
@@ -267,8 +271,8 @@ public:
         // stylesheet cascades into this otherwise-unstyled top-level
         // dialog, painting it solid black.
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
         setWindowTitle("Export Scene to Image");
         setWindowModality(Qt::WindowModal);
         QGridLayout* layout = new QGridLayout();
@@ -278,14 +282,20 @@ public:
         widthInput = new QSpinBox();
         widthInput->setRange(MIN_SIZE, MAX_SIZE);
         widthInput->setValue(defaultSize.width());
-        connect(widthInput, &QSpinBox::valueChanged, this, &SceneToPixmapExporterDialog::onWidthChanged);
+        connect(widthInput,
+                &QSpinBox::valueChanged,
+                this,
+                &SceneToPixmapExporterDialog::onWidthChanged);
         layout->addWidget(widthInput, 0, 1);
 
         layout->addWidget(new QLabel("Height:"), 1, 0);
         heightInput = new QSpinBox();
         heightInput->setRange(MIN_SIZE, MAX_SIZE);
         heightInput->setValue(defaultSize.height());
-        connect(heightInput, &QSpinBox::valueChanged, this, &SceneToPixmapExporterDialog::onHeightChanged);
+        connect(heightInput,
+                &QSpinBox::valueChanged,
+                this,
+                &SceneToPixmapExporterDialog::onHeightChanged);
         layout->addWidget(heightInput, 1, 1);
 
         QDialogButtonBox* buttons = new QDialogButtonBox(
@@ -305,7 +315,9 @@ private slots:
     {
         if (!ignoreChange) {
             ignoreChange = true;
-            QSize scaled = defaultSize.scaled(width, MAX_SIZE, Qt::KeepAspectRatio);
+            QSize scaled = defaultSize.scaled(width,
+                                              MAX_SIZE,
+                                              Qt::KeepAspectRatio);
             heightInput->setValue(scaled.height());
             ignoreChange = false;
         }
@@ -315,7 +327,9 @@ private slots:
     {
         if (!ignoreChange) {
             ignoreChange = true;
-            QSize scaled = defaultSize.scaled(MAX_SIZE, height, Qt::KeepAspectRatio);
+            QSize scaled = defaultSize.scaled(MAX_SIZE,
+                                              height,
+                                              Qt::KeepAspectRatio);
             widthInput->setValue(scaled.width());
             ignoreChange = false;
         }
@@ -349,8 +363,8 @@ public:
         // no selector) cascades into any child top-level widget without
         // its own stylesheet, painting it solid black instead.
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
 
         // Not owned/deleted anywhere by the caller (it's a "new
         // ChangeOpacityDialog(...)" fire-and-forget, WindowModal rather
@@ -371,14 +385,23 @@ public:
 
         input = new QSlider(Qt::Horizontal);
         input->setRange(0, 100);
-        connect(input, &QSlider::valueChanged, this, &ChangeOpacityDialog::onValueChanged);
+        connect(input,
+                &QSlider::valueChanged,
+                this,
+                &ChangeOpacityDialog::onValueChanged);
         input->setValue(value);
         layout->addWidget(input);
 
         QDialogButtonBox* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-        connect(buttons, &QDialogButtonBox::accepted, this, &ChangeOpacityDialog::accept);
-        connect(buttons, &QDialogButtonBox::rejected, this, &ChangeOpacityDialog::reject);
+        connect(buttons,
+                &QDialogButtonBox::accepted,
+                this,
+                &ChangeOpacityDialog::accept);
+        connect(buttons,
+                &QDialogButtonBox::rejected,
+                this,
+                &ChangeOpacityDialog::reject);
         layout->addWidget(buttons);
 
         show();
@@ -441,9 +464,11 @@ public:
         setLayout(layout);
 
         QColor color = QApplication::palette().color(QPalette::Window);
-        setStyleSheet(
-            QString("background-color: rgba(%1, %2, %3, 0.9); padding: 0.7em; border-radius: 5px;")
-                .arg(color.red()).arg(color.green()).arg(color.blue()));
+        setStyleSheet(QString("background-color: rgba(%1, %2, %3, 0.9); "
+                              "padding: 0.7em; border-radius: 5px;")
+                          .arg(color.red())
+                          .arg(color.green())
+                          .arg(color.blue()));
 
         show();
         int x = (parent->width() - width()) / 2;
@@ -462,7 +487,9 @@ class SampleColorWidget : public QWidget
     static constexpr int SIZE = 50;
 
 public:
-    SampleColorWidget(QWidget* parent, const QPointF& pos, const QColor& color = QColor())
+    SampleColorWidget(QWidget* parent,
+                      const QPointF& pos,
+                      const QColor& color = QColor())
         : QWidget(parent)
         , m_color(color)
     {
@@ -510,20 +537,21 @@ public:
         // stylesheet cascades into this otherwise-unstyled top-level
         // dialog, painting it solid black.
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
         setWindowTitle("File exists");
 
         QVBoxLayout* layout = new QVBoxLayout();
         setLayout(layout);
 
-        layout->addWidget(new QLabel(QString("File already exists:\n%1").arg(filename)));
+        layout->addWidget(
+            new QLabel(QString("File already exists:\n%1").arg(filename)));
 
         const QList<QPair<QString, QString>> choices = {
-            {"skip",         "Skip this file"},
-            {"skip_all",     "Skip all existing files"},
-            {"overwrite",    "Overwrite this file"},
-            {"overwrite_all","Overwrite all existing files"},
+            {"skip", "Skip this file"},
+            {"skip_all", "Skip all existing files"},
+            {"overwrite", "Overwrite this file"},
+            {"overwrite_all", "Overwrite all existing files"},
         };
 
         for (const auto& [value, label] : choices) {
@@ -542,7 +570,8 @@ public:
 
     QString getAnswer() const
     {
-        for (auto it = radioButtons.constBegin(); it != radioButtons.constEnd(); ++it) {
+        for (auto it = radioButtons.constBegin(); it != radioButtons.constEnd();
+             ++it) {
             if (it.value()->isChecked())
                 return it.key();
         }

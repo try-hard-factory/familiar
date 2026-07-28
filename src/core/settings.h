@@ -1,11 +1,11 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
 
+#include <functional>
 #include <QObject>
 #include <QSettings>
 #include <QStringList>
 #include <QVariant>
-#include <functional>
 
 class QCoreApplication;
 
@@ -60,7 +60,8 @@ private:
 
 // ─── FamSettings ─────────────────────────────────────────────────────────────
 
-struct FieldConfig {
+struct FieldConfig
+{
     QVariant defaultValue;
     // Optional type cast applied before validation.
     std::function<QVariant(const QVariant&)> cast;

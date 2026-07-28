@@ -32,8 +32,10 @@ KeyboardShortcutsEditor::KeyboardShortcutsEditor(QWidget* parent,
 
     setClearButtonEnabled(true);
     setMaximumSequenceLength(1);
-    connect(this, &QKeySequenceEdit::editingFinished,
-            this, &KeyboardShortcutsEditor::onEditingFinished);
+    connect(this,
+            &QKeySequenceEdit::editingFinished,
+            this,
+            &KeyboardShortcutsEditor::onEditingFinished);
 }
 
 void KeyboardShortcutsEditor::onEditingFinished()
@@ -65,7 +67,8 @@ void KeyboardShortcutsEditor::onEditingFinished()
                 this,
                 tr("Shortcut Conflict"),
                 tr("This shortcut is already assigned to \"%1\". "
-                   "Do you want to remove it from there?").arg(txt),
+                   "Do you want to remove it from there?")
+                    .arg(txt),
                 QMessageBox::Yes | QMessageBox::No);
 
             if (reply == QMessageBox::Yes) {
@@ -84,16 +87,17 @@ KeyboardShortcutsDelegate::KeyboardShortcutsDelegate(QObject* parent)
     : QStyledItemDelegate(parent)
 {}
 
-QWidget* KeyboardShortcutsDelegate::createEditor(QWidget* parent,
-                                                  const QStyleOptionViewItem& /*option*/,
-                                                  const QModelIndex& index) const
+QWidget* KeyboardShortcutsDelegate::createEditor(
+    QWidget* parent,
+    const QStyleOptionViewItem& /*option*/,
+    const QModelIndex& index) const
 {
     return new KeyboardShortcutsEditor(parent, index);
 }
 
 void KeyboardShortcutsDelegate::setModelData(QWidget* editor,
-                                              QAbstractItemModel* model,
-                                              const QModelIndex& index) const
+                                             QAbstractItemModel* model,
+                                             const QModelIndex& index) const
 {
     auto* kbEditor = qobject_cast<KeyboardShortcutsEditor*>(editor);
     if (!kbEditor)
@@ -103,7 +107,9 @@ void KeyboardShortcutsDelegate::setModelData(QWidget* editor,
     if (!proxy)
         return;
 
-    proxy->setDataEx(index, kbEditor->keySequence(), Qt::EditRole,
+    proxy->setDataEx(index,
+                     kbEditor->keySequence(),
+                     Qt::EditRole,
                      kbEditor->conflictingRow());
 }
 
@@ -127,8 +133,9 @@ int KeyboardShortcutsModel::columnCount(const QModelIndex& parent) const
     return HEADER.size();
 }
 
-QVariant KeyboardShortcutsModel::headerData(int section, Qt::Orientation orientation,
-                                             int role) const
+QVariant KeyboardShortcutsModel::headerData(int section,
+                                            Qt::Orientation orientation,
+                                            int role) const
 {
     if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
         return {};
@@ -186,16 +193,18 @@ Qt::ItemFlags KeyboardShortcutsModel::flags(const QModelIndex& index) const
     return base | Qt::ItemIsEditable;
 }
 
-bool KeyboardShortcutsModel::setData(const QModelIndex& index, const QVariant& value,
-                                      int role)
+bool KeyboardShortcutsModel::setData(const QModelIndex& index,
+                                     const QVariant& value,
+                                     int role)
 {
     const QKeySequence keySeq = value.value<QKeySequence>();
     return setDataEx(index, keySeq, role, -1);
 }
 
 bool KeyboardShortcutsModel::setDataEx(const QModelIndex& index,
-                                        const QKeySequence& keySeq,
-                                        int role, int removeFromOtherRow)
+                                       const QKeySequence& keySeq,
+                                       int role,
+                                       int removeFromOtherRow)
 {
     if (!index.isValid() || role != Qt::EditRole)
         return false;
@@ -263,8 +272,9 @@ KeyboardShortcutsProxy::KeyboardShortcutsProxy(QObject* parent)
 }
 
 bool KeyboardShortcutsProxy::setDataEx(const QModelIndex& proxyIndex,
-                                        const QKeySequence& keySeq,
-                                        int role, int removeFromOtherRow)
+                                       const QKeySequence& keySeq,
+                                       int role,
+                                       int removeFromOtherRow)
 {
     auto* src = qobject_cast<KeyboardShortcutsModel*>(sourceModel());
     if (!src)
@@ -300,8 +310,10 @@ KeyboardShortcutsView::KeyboardShortcutsView(QWidget* parent)
     horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
 
-    connect(&SettingsEvents::instance(), &SettingsEvents::restoreKeyboardDefaults,
-            this, &KeyboardShortcutsView::onRestoreDefaults);
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::restoreKeyboardDefaults,
+            this,
+            &KeyboardShortcutsView::onRestoreDefaults);
 }
 
 void KeyboardShortcutsView::onRestoreDefaults()

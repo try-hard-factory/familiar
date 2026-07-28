@@ -1,7 +1,7 @@
 #include "moveitem.h"
 #include "debug_macros.h"
-#include <QPen>
 #include <core/settingshandler.h>
+#include <QPen>
 
 #include "Vec2d.h"
 

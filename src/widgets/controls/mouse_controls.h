@@ -51,9 +51,11 @@ class MouseDelegate : public QStyledItemDelegate
 public:
     explicit MouseDelegate(QObject* parent = nullptr);
 
-    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+    QWidget* createEditor(QWidget* parent,
+                          const QStyleOptionViewItem& option,
                           const QModelIndex& index) const override;
-    void setModelData(QWidget* editor, QAbstractItemModel* model,
+    void setModelData(QWidget* editor,
+                      QAbstractItemModel* model,
                       const QModelIndex& index) const override;
 };
 
@@ -92,8 +94,10 @@ class MouseProxy : public QSortFilterProxyModel
 public:
     explicit MouseProxy(QObject* parent = nullptr);
 
-    bool setDataEx(const QModelIndex& proxyIndex, const QVariant& value,
-                   int role, int removeFromOtherRow);
+    bool setDataEx(const QModelIndex& proxyIndex,
+                   const QVariant& value,
+                   int role,
+                   int removeFromOtherRow);
 };
 
 // ─── MouseView ────────────────────────────────────────────────────────────────

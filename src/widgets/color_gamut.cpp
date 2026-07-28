@@ -55,8 +55,10 @@ GamutWidget::GamutWidget(QWidget* parent, PixmapItem* item)
     : QWidget(parent)
     , m_worker(new GamutPainterThread(this, item))
 {
-    connect(m_worker, &GamutPainterThread::imageReady,
-            this, &GamutWidget::onImageReady);
+    connect(m_worker,
+            &GamutPainterThread::imageReady,
+            this,
+            &GamutWidget::onImageReady);
     m_worker->setThreshold(threshold());
     m_worker->start();
 }
@@ -107,8 +109,8 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     // stylesheet cascades into this otherwise-unstyled top-level dialog,
     // painting it solid black.
     setAttribute(Qt::WA_TranslucentBackground, false);
-    setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    setStyleSheet("* { background-color: palette(window); color: "
+                  "palette(window-text); }");
     setWindowTitle("Color Gamut");
 
     QVBoxLayout* controlsLayout = new QVBoxLayout();
@@ -118,8 +120,10 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     m_thresholdInput->setRange(0, 500);
     m_thresholdInput->setValue(20);
     m_thresholdInput->setTracking(false);
-    connect(m_thresholdInput, &QSlider::valueChanged,
-            this, &GamutDialog::onValueChanged);
+    connect(m_thresholdInput,
+            &QSlider::valueChanged,
+            this,
+            &GamutDialog::onValueChanged);
     controlsLayout->addWidget(m_thresholdInput, 0, Qt::AlignHCenter);
 
     QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close);

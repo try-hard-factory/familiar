@@ -1,6 +1,7 @@
 #ifndef CONTROLS_H
 #define CONTROLS_H
 
+#include <optional>
 #include <QList>
 #include <QMap>
 #include <QSettings>
@@ -8,7 +9,6 @@
 #include <QStringList>
 #include <QVariant>
 #include <Qt>
-#include <optional>
 
 class QWheelEvent;
 class QMouseEvent;
@@ -49,8 +49,11 @@ public:
     void setInverted(bool value) const;
 
 protected:
-    MouseConfigBase(const QString& id, const QString& group, const QString& text,
-                    const QStringList& defaultModifiers, bool invertible);
+    MouseConfigBase(const QString& id,
+                    const QString& group,
+                    const QString& text,
+                    const QStringList& defaultModifiers,
+                    bool invertible);
 
     QString id_;
     QString group_;
@@ -65,12 +68,15 @@ protected:
 class MouseWheelConfig : public MouseConfigBase
 {
 public:
-    MouseWheelConfig(const QString& id, const QString& group, const QString& text,
-                     const QStringList& defaultModifiers, bool invertible);
+    MouseWheelConfig(const QString& id,
+                     const QString& group,
+                     const QString& text,
+                     const QStringList& defaultModifiers,
+                     bool invertible);
 
-    const QString& id()    const override { return id_; }
+    const QString& id() const override { return id_; }
     const QString& group() const override { return group_; }
-    const QString& text()  const override { return text_; }
+    const QString& text() const override { return text_; }
     const char* settingsGroup() const override;
 
     bool controlsChanged() const override;
@@ -85,13 +91,16 @@ public:
 class MouseConfig : public MouseConfigBase
 {
 public:
-    MouseConfig(const QString& id, const QString& group, const QString& text,
-                const QString& defaultButton, const QStringList& defaultModifiers,
+    MouseConfig(const QString& id,
+                const QString& group,
+                const QString& text,
+                const QString& defaultButton,
+                const QStringList& defaultModifiers,
                 bool invertible);
 
-    const QString& id()    const override { return id_; }
+    const QString& id() const override { return id_; }
     const QString& group() const override { return group_; }
-    const QString& text()  const override { return text_; }
+    const QString& text() const override { return text_; }
     const char* settingsGroup() const override;
 
     QString getButton() const;
@@ -110,7 +119,8 @@ private:
 
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
 
-struct ControlMatch {
+struct ControlMatch
+{
     QString group;
     bool inverted = false;
 };
@@ -125,29 +135,39 @@ public:
 
     // ── Shortcut API (used by Action) ─────────────────────────────────────────
     // Saves even if equal to default (saveUnknownShortcuts flag controls this).
-    void setShortcuts(const QString& group, const QString& key,
+    void setShortcuts(const QString& group,
+                      const QString& key,
                       const QStringList& values);
-    QStringList get_shortcuts(const QString& group, const QString& key,
+    QStringList get_shortcuts(const QString& group,
+                              const QString& key,
                               const QStringList& defaultValues = {});
 
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────
     // Removes key when values == defaultValues (stores only non-default data).
-    void setList(const QString& group, const QString& key,
-                 const QStringList& values, const QStringList& defaultValues = {});
-    QStringList getList(const QString& group, const QString& key,
+    void setList(const QString& group,
+                 const QString& key,
+                 const QStringList& values,
+                 const QStringList& defaultValues = {});
+    QStringList getList(const QString& group,
+                        const QString& key,
                         const QStringList& defaultValues = {}) const;
 
     // ── Generic scalar API (used by mouse/wheel configs) ──────────────────────
-    void setScalar(const QString& group, const QString& key,
-                   const QVariant& value, const QVariant& defaultValue = {});
-    QVariant getScalar(const QString& group, const QString& key,
+    void setScalar(const QString& group,
+                   const QString& key,
+                   const QVariant& value,
+                   const QVariant& defaultValue = {});
+    QVariant getScalar(const QString& group,
+                       const QString& key,
                        const QVariant& defaultValue = {}) const;
 
     // Removes all stored controls and emits SettingsEvents::restoreKeyboardDefaults.
     void restoreDefaults();
 
-    std::optional<ControlMatch> mousewheelActionForEvent(const QWheelEvent* event) const;
-    std::optional<ControlMatch> mouseActionForEvent(const QMouseEvent* event) const;
+    std::optional<ControlMatch> mousewheelActionForEvent(
+        const QWheelEvent* event) const;
+    std::optional<ControlMatch> mouseActionForEvent(
+        const QMouseEvent* event) const;
 
     bool saveUnknownShortcuts = true;
 };

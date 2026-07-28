@@ -40,9 +40,13 @@ void MouseControlsEditorBase::initModifiersInput()
 
 void MouseControlsEditorBase::initButtonRow()
 {
-    QDialogButtonBox* buttons = new QDialogButtonBox(
-        QDialogButtonBox::Cancel | QDialogButtonBox::Ok, this);
-    connect(buttons, &QDialogButtonBox::accepted, this, &MouseControlsEditorBase::onSave);
+    QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Cancel
+                                                         | QDialogButtonBox::Ok,
+                                                     this);
+    connect(buttons,
+            &QDialogButtonBox::accepted,
+            this,
+            &MouseControlsEditorBase::onSave);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     mainLayout_->addWidget(buttons);
 }
@@ -57,7 +61,8 @@ void MouseControlsEditorBase::setModifiersNoModifier()
     }
 }
 
-void MouseControlsEditorBase::onModifiersChanged(const QString& modifier, int value)
+void MouseControlsEditorBase::onModifiersChanged(const QString& modifier,
+                                                 int value)
 {
     if (ignoreOnChanged_)
         return;
@@ -130,7 +135,8 @@ void MouseControlsEditorBase::onSave()
 
 // ─── MouseControlsModelBase ───────────────────────────────────────────────────
 
-MouseControlsModelBase::MouseControlsModelBase(QList<int> columns, QObject* parent)
+MouseControlsModelBase::MouseControlsModelBase(QList<int> columns,
+                                               QObject* parent)
     : QAbstractTableModel(parent)
     , columns_(std::move(columns))
 {}
@@ -149,8 +155,9 @@ int MouseControlsModelBase::columnCount(const QModelIndex& parent) const
     return columns_.size();
 }
 
-QVariant MouseControlsModelBase::headerData(int section, Qt::Orientation orientation,
-                                             int role) const
+QVariant MouseControlsModelBase::headerData(int section,
+                                            Qt::Orientation orientation,
+                                            int role) const
 {
     if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
         return {};
@@ -158,11 +165,11 @@ QVariant MouseControlsModelBase::headerData(int section, Qt::Orientation orienta
         return {};
 
     static const QMap<int, QString> headers = {
-        {COL_ACTION,    QStringLiteral("Action")},
-        {COL_CHANGED,   QStringLiteral("✎")},
-        {COL_BUTTON,    QStringLiteral("Button")},
+        {COL_ACTION, QStringLiteral("Action")},
+        {COL_CHANGED, QStringLiteral("✎")},
+        {COL_BUTTON, QStringLiteral("Button")},
         {COL_MODIFIERS, QStringLiteral("Modifiers")},
-        {COL_INVERTED,  QStringLiteral("Inverted")},
+        {COL_INVERTED, QStringLiteral("Inverted")},
     };
     return headers.value(columns_[section]);
 }
@@ -226,10 +233,12 @@ QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
         case COL_BUTTON:
             return tr("Default: %1").arg(actionDefaultButton(row));
         case COL_MODIFIERS:
-            return tr("Default: %1").arg(actionDefaultModifiers(row).join(QStringLiteral(" + ")));
+            return tr("Default: %1")
+                .arg(actionDefaultModifiers(row).join(QStringLiteral(" + ")));
         case COL_INVERTED:
             if (actionInvertible(row))
-                return tr("Default: %1").arg(actionDefaultInverted(row) ? tr("Yes") : tr("No"));
+                return tr("Default: %1")
+                    .arg(actionDefaultInverted(row) ? tr("Yes") : tr("No"));
             return {};
         default:
             return {};
@@ -237,21 +246,25 @@ QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
     }
 
     if (role == Qt::CheckStateRole) {
-        if (col == COL_INVERTED && actionConfigured(row) && actionInvertible(row))
+        if (col == COL_INVERTED && actionConfigured(row)
+            && actionInvertible(row))
             return actionInverted(row) ? Qt::Checked : Qt::Unchecked;
     }
 
     return {};
 }
 
-bool MouseControlsModelBase::setData(const QModelIndex& index, const QVariant& value,
-                                      int role)
+bool MouseControlsModelBase::setData(const QModelIndex& index,
+                                     const QVariant& value,
+                                     int role)
 {
     return setDataEx(index, value, role, -1);
 }
 
-bool MouseControlsModelBase::setDataEx(const QModelIndex& index, const QVariant& value,
-                                        int role, int removeFromOtherRow)
+bool MouseControlsModelBase::setDataEx(const QModelIndex& index,
+                                       const QVariant& value,
+                                       int role,
+                                       int removeFromOtherRow)
 {
     if (!index.isValid())
         return false;
@@ -272,7 +285,8 @@ bool MouseControlsModelBase::setDataEx(const QModelIndex& index, const QVariant&
         if (removeFromOtherRow >= 0) {
             removeActionControls(removeFromOtherRow);
             const QModelIndex topLeft = this->index(removeFromOtherRow, 0);
-            const QModelIndex bottomRight = this->index(removeFromOtherRow, columnCount() - 1);
+            const QModelIndex bottomRight = this->index(removeFromOtherRow,
+                                                        columnCount() - 1);
             emit dataChanged(topLeft, bottomRight);
         }
     }

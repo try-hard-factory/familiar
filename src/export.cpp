@@ -10,8 +10,8 @@
 #include <QDir>
 #include <QFile>
 #include <QFont>
-#include <QMargins>
 #include <QMap>
+#include <QMargins>
 #include <QPainter>
 #include <QXmlStreamWriter>
 
@@ -151,7 +151,8 @@ QString SceneToSVGExporter::textStyles(TextItem* item) const
     styles << QStringLiteral("white-space:pre")
            << QStringLiteral("font-size:%1pt").arg(fontsize)
            << QStringLiteral("font-family:%1").arg(families)
-           << QStringLiteral("font-weight:%1").arg(static_cast<int>(font.weight()))
+           << QStringLiteral("font-weight:%1")
+                  .arg(static_cast<int>(font.weight()))
            << QStringLiteral("font-stretch:%1").arg(font.stretch())
            << QStringLiteral("font-style:%1").arg(styleNames.value(font.style()));
     return styles.join(QStringLiteral(";"));
@@ -166,7 +167,8 @@ QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
     xml.writeStartDocument();
     xml.writeStartElement(QStringLiteral("svg"));
     xml.writeAttribute(QStringLiteral("width"), QString::number(size_.width()));
-    xml.writeAttribute(QStringLiteral("height"), QString::number(size_.height()));
+    xml.writeAttribute(QStringLiteral("height"),
+                       QString::number(size_.height()));
     xml.writeAttribute(QStringLiteral("xmlns"),
                        QStringLiteral("http://www.w3.org/2000/svg"));
     xml.writeAttribute(QStringLiteral("xmlns:xlink"),
@@ -201,11 +203,12 @@ QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
             QString b64 = QString::fromLatin1(bytes.toBase64());
 
             xml.writeStartElement(QStringLiteral("image"));
-            xml.writeAttribute(
-                QStringLiteral("xlink:href"),
-                QStringLiteral("data:image/%1;base64,%2").arg(imgformat, b64));
+            xml.writeAttribute(QStringLiteral("xlink:href"),
+                               QStringLiteral("data:image/%1;base64,%2")
+                                   .arg(imgformat, b64));
             xml.writeAttribute(QStringLiteral("width"), QString::number(width));
-            xml.writeAttribute(QStringLiteral("height"), QString::number(height));
+            xml.writeAttribute(QStringLiteral("height"),
+                               QString::number(height));
             xml.writeAttribute(QStringLiteral("image-rendering"),
                                pixmapItem->scale() > 2
                                    ? QStringLiteral("crisp-edges")
@@ -282,7 +285,7 @@ void SceneToSVGExporter::exportTo(const QString& filename, ThreadedIO* worker)
 // ============================================================================
 
 std::unique_ptr<SceneExporterBase> createSceneExporter(const QString& extension,
-                                                        CanvasScene* scene)
+                                                       CanvasScene* scene)
 {
     if (extension.compare(QStringLiteral("svg"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<SceneToSVGExporter>(scene);
@@ -345,7 +348,9 @@ void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
         QFile file(path);
         if (!file.open(QIODevice::WriteOnly)
             || file.write(bytes) != bytes.size()) {
-            emitFinished(worker, dirname_, {QStringLiteral("Could not write %1").arg(path)});
+            emitFinished(worker,
+                         dirname_,
+                         {QStringLiteral("Could not write %1").arg(path)});
             return;
         }
         file.close();

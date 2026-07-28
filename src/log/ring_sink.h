@@ -24,18 +24,19 @@ class RingSink final : public QObject, public quill::Sink
 public:
     explicit RingSink(size_t capacity, QObject* parent = nullptr);
 
-    void write_log(quill::MacroMetadata const* logMetadata,
-                   uint64_t logTimestamp,
-                   std::string_view threadId,
-                   std::string_view threadName,
-                   std::string const& processId,
-                   std::string_view loggerName,
-                   quill::LogLevel logLevel,
-                   std::string_view logLevelDescription,
-                   std::string_view logLevelShortCode,
-                   std::vector<std::pair<std::string, std::string>> const* namedArgs,
-                   std::string_view logMessage,
-                   std::string_view logStatement) override;
+    void write_log(
+        quill::MacroMetadata const* logMetadata,
+        uint64_t logTimestamp,
+        std::string_view threadId,
+        std::string_view threadName,
+        std::string const& processId,
+        std::string_view loggerName,
+        quill::LogLevel logLevel,
+        std::string_view logLevelDescription,
+        std::string_view logLevelShortCode,
+        std::vector<std::pair<std::string, std::string>> const* namedArgs,
+        std::string_view logMessage,
+        std::string_view logStatement) override;
 
     void flush_sink() noexcept override;
     void run_periodic_tasks() noexcept override {}

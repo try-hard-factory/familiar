@@ -16,7 +16,8 @@ class MouseWheelModifiersEditor : public MouseControlsEditorBase
     Q_OBJECT
 
 public:
-    explicit MouseWheelModifiersEditor(QWidget* parent, const QModelIndex& index);
+    explicit MouseWheelModifiersEditor(QWidget* parent,
+                                       const QModelIndex& index);
 
 protected:
     int findConflictingRow() const override;
@@ -39,9 +40,11 @@ class MouseWheelDelegate : public QStyledItemDelegate
 public:
     explicit MouseWheelDelegate(QObject* parent = nullptr);
 
-    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+    QWidget* createEditor(QWidget* parent,
+                          const QStyleOptionViewItem& option,
                           const QModelIndex& index) const override;
-    void setModelData(QWidget* editor, QAbstractItemModel* model,
+    void setModelData(QWidget* editor,
+                      QAbstractItemModel* model,
                       const QModelIndex& index) const override;
 };
 
@@ -78,8 +81,10 @@ class MouseWheelProxy : public QSortFilterProxyModel
 public:
     explicit MouseWheelProxy(QObject* parent = nullptr);
 
-    bool setDataEx(const QModelIndex& proxyIndex, const QVariant& value,
-                   int role, int removeFromOtherRow);
+    bool setDataEx(const QModelIndex& proxyIndex,
+                   const QVariant& value,
+                   int role,
+                   int removeFromOtherRow);
 };
 
 // ─── MouseWheelView ───────────────────────────────────────────────────────────

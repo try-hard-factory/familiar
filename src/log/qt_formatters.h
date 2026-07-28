@@ -30,8 +30,7 @@ struct fmtquill::formatter<QString>
 
 template<>
 struct quill::Codec<QString> : quill::DeferredFormatCodec<QString>
-{
-};
+{};
 
 template<>
 struct fmtquill::formatter<QPointF>
@@ -46,8 +45,7 @@ struct fmtquill::formatter<QPointF>
 
 template<>
 struct quill::Codec<QPointF> : quill::DeferredFormatCodec<QPointF>
-{
-};
+{};
 
 template<>
 struct fmtquill::formatter<QRectF>
@@ -57,18 +55,17 @@ struct fmtquill::formatter<QRectF>
     auto format(const QRectF& value, format_context& ctx) const
     {
         return fmtquill::format_to(ctx.out(),
-                                    "({}, {}, {}x{})",
-                                    value.x(),
-                                    value.y(),
-                                    value.width(),
-                                    value.height());
+                                   "({}, {}, {}x{})",
+                                   value.x(),
+                                   value.y(),
+                                   value.width(),
+                                   value.height());
     }
 };
 
 template<>
 struct quill::Codec<QRectF> : quill::DeferredFormatCodec<QRectF>
-{
-};
+{};
 
 template<>
 struct fmtquill::formatter<QSizeF>
@@ -77,14 +74,16 @@ struct fmtquill::formatter<QSizeF>
 
     auto format(const QSizeF& value, format_context& ctx) const
     {
-        return fmtquill::format_to(ctx.out(), "{}x{}", value.width(), value.height());
+        return fmtquill::format_to(ctx.out(),
+                                   "{}x{}",
+                                   value.width(),
+                                   value.height());
     }
 };
 
 template<>
 struct quill::Codec<QSizeF> : quill::DeferredFormatCodec<QSizeF>
-{
-};
+{};
 
 template<>
 struct fmtquill::formatter<QColor>
@@ -93,14 +92,15 @@ struct fmtquill::formatter<QColor>
 
     auto format(const QColor& value, format_context& ctx) const
     {
-        return fmtquill::format_to(ctx.out(), "{}", value.name(QColor::HexArgb).toStdString());
+        return fmtquill::format_to(ctx.out(),
+                                   "{}",
+                                   value.name(QColor::HexArgb).toStdString());
     }
 };
 
 template<>
 struct quill::Codec<QColor> : quill::DeferredFormatCodec<QColor>
-{
-};
+{};
 
 template<>
 struct fmtquill::formatter<QUrl>
@@ -109,14 +109,15 @@ struct fmtquill::formatter<QUrl>
 
     auto format(const QUrl& value, format_context& ctx) const
     {
-        return fmtquill::format_to(ctx.out(), "{}", value.toString().toStdString());
+        return fmtquill::format_to(ctx.out(),
+                                   "{}",
+                                   value.toString().toStdString());
     }
 };
 
 template<>
 struct quill::Codec<QUrl> : quill::DeferredFormatCodec<QUrl>
-{
-};
+{};
 
 template<>
 struct fmtquill::formatter<QTransform>
@@ -126,20 +127,19 @@ struct fmtquill::formatter<QTransform>
     auto format(const QTransform& value, format_context& ctx) const
     {
         return fmtquill::format_to(ctx.out(),
-                                    "[{} {} {}; {} {} {}; {} {} {}]",
-                                    value.m11(),
-                                    value.m12(),
-                                    value.m13(),
-                                    value.m21(),
-                                    value.m22(),
-                                    value.m23(),
-                                    value.m31(),
-                                    value.m32(),
-                                    value.m33());
+                                   "[{} {} {}; {} {} {}; {} {} {}]",
+                                   value.m11(),
+                                   value.m12(),
+                                   value.m13(),
+                                   value.m21(),
+                                   value.m22(),
+                                   value.m23(),
+                                   value.m31(),
+                                   value.m32(),
+                                   value.m33());
     }
 };
 
 template<>
 struct quill::Codec<QTransform> : quill::DeferredFormatCodec<QTransform>
-{
-};
+{};

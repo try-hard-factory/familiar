@@ -1,13 +1,13 @@
 #pragma once
 
-#include <QUndoCommand>
-#include <QPointF>
-#include <QList>
-#include <QGraphicsItem>
-#include <QRectF>
-#include <QString>
 #include <memory>
 #include <optional>
+#include <QGraphicsItem>
+#include <QList>
+#include <QPointF>
+#include <QRectF>
+#include <QString>
+#include <QUndoCommand>
 
 class CanvasScene;
 class IBaseItem;
@@ -186,7 +186,8 @@ class ResetRotationCommand : public QUndoCommand
 {
 public:
     // See ResetScaleCommand::ResetScaleCommand() for why anchor is needed.
-    ResetRotationCommand(const QList<QGraphicsItem*>& items, const QPointF& anchor);
+    ResetRotationCommand(const QList<QGraphicsItem*>& items,
+                         const QPointF& anchor);
 
     void redo() override;
     void undo() override;
@@ -242,7 +243,8 @@ public:
     // bounding-box center) so a multi-item selection resets as one
     // cohesive group instead of each item scaling/rotating/flipping in
     // place around its own center.
-    ResetTransformsCommand(const QList<IBaseItem*>& items, const QPointF& anchor);
+    ResetTransformsCommand(const QList<IBaseItem*>& items,
+                           const QPointF& anchor);
 
     void redo() override;
     void undo() override;
@@ -326,7 +328,9 @@ private:
 class ChangeTextCommand : public QUndoCommand
 {
 public:
-    ChangeTextCommand(TextItem* item, const QString& newText, const QString& oldText);
+    ChangeTextCommand(TextItem* item,
+                      const QString& newText,
+                      const QString& oldText);
 
     void redo() override;
     void undo() override;

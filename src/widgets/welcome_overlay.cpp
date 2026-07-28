@@ -1,10 +1,10 @@
 #include "welcome_overlay.h"
+#include "canvasview.h"
+#include "log/log.h"
 #include "mainwindow.h"
 #include <core/settings.h>
 #include <QLabel>
 #include <QVBoxLayout>
-#include "canvasview.h"
-#include "log/log.h"
 using namespace familiar::log;
 
 WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)

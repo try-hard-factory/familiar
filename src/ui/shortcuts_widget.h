@@ -12,7 +12,6 @@
 #include <QWidget>
 
 
-
 class QTableWidget;
 class QVBoxLayout;
 

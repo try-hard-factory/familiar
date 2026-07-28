@@ -33,7 +33,7 @@ public:
     {
         if (event->button() == Qt::RightButton) {
             movewinStart_ = QCursor::pos();
-            isMoving_= true;
+            isMoving_ = true;
             event->accept();
             return true;
         }
@@ -46,12 +46,13 @@ public:
         if (event->buttons() & Qt::RightButton) {
             rightMoveFlag_ = true;
             if (isMoving_) {
-                QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(event->position());
+                QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(
+                    event->position());
                 QPointF delta = pos - movewinStart_;
                 movewinStart_ = pos;
                 if (mainWindow_) {
                     mainWindow_->move(mainWindow_->x() + int(delta.x()),
-                                    mainWindow_->y() + int(delta.y()));
+                                      mainWindow_->y() + int(delta.y()));
                 }
             }
             event->accept();
@@ -65,7 +66,8 @@ public:
     {
         if (event->button() == Qt::RightButton) {
             if (!rightMoveFlag_) {
-                static_cast<Mixin*>(this)->on_context_menu(event->position().toPoint());
+                static_cast<Mixin*>(this)->on_context_menu(
+                    event->position().toPoint());
             } else {
                 rightMoveFlag_ = false;
             }
@@ -127,7 +129,8 @@ protected:
 
     void dropEvent(QDropEvent* event) override
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "MainControlMixin Handling file drop:");
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                   "MainControlMixin Handling file drop:");
     }
 
 private:

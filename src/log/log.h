@@ -83,7 +83,11 @@ void installQtMessageBridge();
 class ScopeTimer
 {
 public:
-    ScopeTimer(Ch channel, const char* label, const char* file, int line, const char* function);
+    ScopeTimer(Ch channel,
+               const char* label,
+               const char* file,
+               int line,
+               const char* function);
     ~ScopeTimer();
 
     ScopeTimer(const ScopeTimer&) = delete;
@@ -127,7 +131,9 @@ private:
 // Debug-level log, rate-limited to once every n occurrences - for hot paths
 // like mouseMoveEvent/paintEvent.
 #define FLOG_EVERY_N(channel, n, ...) \
-    QUILL_LOG_DEBUG_LIMIT_EVERY_N(n, ::familiar::log::channelLogger(channel), __VA_ARGS__)
+    QUILL_LOG_DEBUG_LIMIT_EVERY_N(n, \
+                                  ::familiar::log::channelLogger(channel), \
+                                  __VA_ARGS__)
 
 // Debug-level log that fires only the first time this call site is reached.
 #define FLOG_ONCE(channel, ...) \

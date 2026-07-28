@@ -37,7 +37,8 @@ public:
         }
 
         if (role == Qt::DecorationRole) {
-            static const QIcon icon(QStringLiteral(":/img/app/familiar_256.png"));
+            static const QIcon icon(
+                QStringLiteral(":/img/app/familiar_256.png"));
             return icon;
         }
 

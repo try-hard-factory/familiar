@@ -11,8 +11,8 @@
 #include <QVariantMap>
 
 #include <memory>
-#include <queue>
 #include <string>
+#include <queue>
 
 class MainWindow;
 class project_settings;
@@ -28,8 +28,7 @@ class CanvasScene : public QGraphicsScene
 {
     Q_OBJECT
 public:
-    enum ESceneMode
-    {
+    enum ESceneMode {
         kNone = 0,
         kMoveMode = 1,
         kRubberbandMode = 2,

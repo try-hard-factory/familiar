@@ -62,8 +62,8 @@ void FileActions::openFile()
     // MainWindow's "background: transparent" rule regardless, since an
     // empty child stylesheet doesn't cancel an inherited one. Define an
     // explicit competing rule here instead.
-    fileDialog->setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
+                              "palette(window-text); }");
     fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
     fileDialog->setDirectory(QDir::homePath());
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
@@ -94,42 +94,42 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
     auto* worker = new ThreadedIO(
         [path, scene](ThreadedIO* w) { load_fml(path, scene, w); });
 
-    QObject::connect(worker,
-            &ThreadedIO::finished,
-            &mainwindow_,
-            [this, canvasView, scene](const QString& error,
-                                      const QStringList& itemErrors) {
-                scene->add_queued_items();
-                // Before fit_scene(): seeds canvasRect_ from what
-                // FmlArchive::load() stashed on the scene, so fit_scene()
-                // has something to fall back to even if this project was
-                // saved with zero items (see CanvasScene::
-                // rememberedBoundingRect()).
-                canvasView->restoreCanvasRect(scene->rememberedBoundingRect());
-                canvasView->on_action_fit_scene();
-                canvasView->setModified(false);
+    QObject::connect(
+        worker,
+        &ThreadedIO::finished,
+        &mainwindow_,
+        [this, canvasView, scene](const QString& error,
+                                  const QStringList& itemErrors) {
+            scene->add_queued_items();
+            // Before fit_scene(): seeds canvasRect_ from what
+            // FmlArchive::load() stashed on the scene, so fit_scene()
+            // has something to fall back to even if this project was
+            // saved with zero items (see CanvasScene::
+            // rememberedBoundingRect()).
+            canvasView->restoreCanvasRect(scene->rememberedBoundingRect());
+            canvasView->on_action_fit_scene();
+            canvasView->setModified(false);
 
-                if (!error.isEmpty()) {
-                    showMessageBox(QMessageBox::Critical,
-                                  &mainwindow_,
-                                  QObject::tr("Could not open file"),
-                                  error);
+            if (!error.isEmpty()) {
+                showMessageBox(QMessageBox::Critical,
+                               &mainwindow_,
+                               QObject::tr("Could not open file"),
+                               error);
+            }
+            if (!itemErrors.isEmpty()) {
+                QStringList lines;
+                for (const QString& e : itemErrors) {
+                    lines.append(QStringLiteral("<li>%1</li>").arg(e));
                 }
-                if (!itemErrors.isEmpty()) {
-                    QStringList lines;
-                    for (const QString& e : itemErrors) {
-                        lines.append(QStringLiteral("<li>%1</li>").arg(e));
-                    }
-                    showMessageBox(
-                        QMessageBox::Warning,
-                        &mainwindow_,
-                        QObject::tr("Problem loading project"),
-                        QObject::tr(
-                            "%1 item(s) could not be loaded.<ul>%2</ul>")
-                            .arg(itemErrors.size())
-                            .arg(lines.join(QString())));
-                }
-            });
+                showMessageBox(QMessageBox::Warning,
+                               &mainwindow_,
+                               QObject::tr("Problem loading project"),
+                               QObject::tr(
+                                   "%1 item(s) could not be loaded.<ul>%2</ul>")
+                                   .arg(itemErrors.size())
+                                   .arg(lines.join(QString())));
+            }
+        });
 
     QObject::connect(worker, &QThread::finished, worker, &QObject::deleteLater);
 
@@ -181,14 +181,15 @@ int FileActions::saveFile(const QString& path)
     // close the tab or quit the app right after this returns, assuming the
     // save has already completed - threading it would need those flows
     // reworked to wait on ThreadedIO::finished first.
-    FmlResult result
-        = FmlArchive::save(canvasView->scene(), canvasView->canvasRect(), path);
+    FmlResult result = FmlArchive::save(canvasView->scene(),
+                                        canvasView->canvasRect(),
+                                        path);
 
     if (!result.error.isEmpty()) {
         showMessageBox(QMessageBox::Critical,
-                      &mainwindow_,
-                      QObject::tr("Could not save file"),
-                      result.error);
+                       &mainwindow_,
+                       QObject::tr("Could not save file"),
+                       result.error);
         return QDialog::Rejected;
     }
 
@@ -197,13 +198,12 @@ int FileActions::saveFile(const QString& path)
         for (const QString& e : result.itemErrors) {
             lines.append(QStringLiteral("<li>%1</li>").arg(e));
         }
-        showMessageBox(
-            QMessageBox::Warning,
-            &mainwindow_,
-            QObject::tr("Problem saving project"),
-            QObject::tr("%1 item(s) could not be saved.<ul>%2</ul>")
-                .arg(result.itemErrors.size())
-                .arg(lines.join(QString())));
+        showMessageBox(QMessageBox::Warning,
+                       &mainwindow_,
+                       QObject::tr("Problem saving project"),
+                       QObject::tr("%1 item(s) could not be saved.<ul>%2</ul>")
+                           .arg(result.itemErrors.size())
+                           .arg(lines.join(QString())));
     }
 
     // Marks the undo stack's current position as the new "saved"
@@ -238,8 +238,8 @@ int FileActions::saveFileAs()
     // MainWindow's "background: transparent" rule regardless, since an
     // empty child stylesheet doesn't cancel an inherited one. Define an
     // explicit competing rule here instead.
-    fileDialog->setStyleSheet(
-        "* { background-color: palette(window); color: palette(window-text); }");
+    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
+                              "palette(window-text); }");
     fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
     fileDialog->setDirectory(QDir::homePath());
     fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);

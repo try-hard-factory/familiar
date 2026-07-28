@@ -5,12 +5,13 @@
 
 #include <QHeaderView>
 #include <QLabel>
-#include <QVariantMap>
 #include <QVBoxLayout>
+#include <QVariantMap>
 
 // ─── MouseControlsEditor ─────────────────────────────────────────────────────
 
-MouseControlsEditor::MouseControlsEditor(QWidget* parent, const QModelIndex& index)
+MouseControlsEditor::MouseControlsEditor(QWidget* parent,
+                                         const QModelIndex& index)
     : MouseControlsEditorBase(parent)
 {
     const auto& list = KeyboardSettings::mouseActions();
@@ -18,7 +19,7 @@ MouseControlsEditor::MouseControlsEditor(QWidget* parent, const QModelIndex& ind
         currentAction_ = &list[index.row()];
 
     if (currentAction_) {
-        oldButton_    = currentAction_->getButton();
+        oldButton_ = currentAction_->getButton();
         oldModifiers_ = currentAction_->getModifiers();
         setWindowTitle(tr("Mouse Controls for: %1").arg(currentAction_->text()));
     }
@@ -41,8 +42,10 @@ MouseControlsEditor::MouseControlsEditor(QWidget* parent, const QModelIndex& ind
     if (currentAction_)
         setModifiers(oldModifiers_);
 
-    connect(buttonInput_, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MouseControlsEditor::onButtonChanged);
+    connect(buttonInput_,
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this,
+            &MouseControlsEditor::onButtonChanged);
 
     // Initialize modifier enabled state.
     onButtonChanged();
@@ -104,8 +107,12 @@ int MouseControlsEditor::findConflictingRow() const
     if (!currentAction_)
         return -1;
 
-    MouseConfig temp(QString{}, QString{}, QString{},
-                     getButton(), getModifiers(), false);
+    MouseConfig temp(QString{},
+                     QString{},
+                     QString{},
+                     getButton(),
+                     getModifiers(),
+                     false);
     const auto& list = KeyboardSettings::mouseActions();
     for (int i = 0; i < list.size(); ++i) {
         if (list[i] == *currentAction_)
@@ -137,8 +144,8 @@ MouseDelegate::MouseDelegate(QObject* parent)
 {}
 
 QWidget* MouseDelegate::createEditor(QWidget* parent,
-                                      const QStyleOptionViewItem& /*option*/,
-                                      const QModelIndex& index) const
+                                     const QStyleOptionViewItem& /*option*/,
+                                     const QModelIndex& index) const
 {
     QWidget* wrapper = new QWidget(parent);
 
@@ -147,25 +154,30 @@ QWidget* MouseDelegate::createEditor(QWidget* parent,
     auto* proxy = qobject_cast<MouseProxy*>(
         const_cast<QAbstractItemModel*>(index.model()));
 
-    QObject::connect(editor, &MouseControlsEditor::saved,
+    QObject::connect(editor,
+                     &MouseControlsEditor::saved,
                      [editor, proxy, index]() {
                          if (!proxy)
                              return;
                          QVariantMap data;
                          data[QStringLiteral("button")] = editor->getButton();
-                         data[QStringLiteral("modifiers")] =
-                             QVariant::fromValue(editor->getModifiers());
-                         proxy->setDataEx(index, data, Qt::EditRole,
+                         data[QStringLiteral("modifiers")]
+                             = QVariant::fromValue(editor->getModifiers());
+                         proxy->setDataEx(index,
+                                          data,
+                                          Qt::EditRole,
                                           editor->conflictingRow());
                      });
 
     // Store the editor pointer on the wrapper so setModelData can retrieve it.
-    wrapper->setProperty("editor", QVariant::fromValue(static_cast<QObject*>(editor)));
+    wrapper->setProperty("editor",
+                         QVariant::fromValue(static_cast<QObject*>(editor)));
     return wrapper;
 }
 
-void MouseDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
-                                  const QModelIndex& index) const
+void MouseDelegate::setModelData(QWidget* editor,
+                                 QAbstractItemModel* model,
+                                 const QModelIndex& index) const
 {
     QObject* editorObj = editor->property("editor").value<QObject*>();
     auto* mouseEditor = qobject_cast<MouseControlsEditor*>(editorObj);
@@ -180,9 +192,12 @@ void MouseDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
 // ─── MouseModel ───────────────────────────────────────────────────────────────
 
 MouseModel::MouseModel(QObject* parent)
-    : MouseControlsModelBase(
-          {COL_ACTION, COL_CHANGED, COL_BUTTON, COL_MODIFIERS, COL_INVERTED},
-          parent)
+    : MouseControlsModelBase({COL_ACTION,
+                              COL_CHANGED,
+                              COL_BUTTON,
+                              COL_MODIFIERS,
+                              COL_INVERTED},
+                             parent)
 {}
 
 int MouseModel::actionCount() const
@@ -268,8 +283,10 @@ MouseProxy::MouseProxy(QObject* parent)
     setFilterKeyColumn(0);
 }
 
-bool MouseProxy::setDataEx(const QModelIndex& proxyIndex, const QVariant& value,
-                            int role, int removeFromOtherRow)
+bool MouseProxy::setDataEx(const QModelIndex& proxyIndex,
+                           const QVariant& value,
+                           int role,
+                           int removeFromOtherRow)
 {
     auto* src = qobject_cast<MouseModel*>(sourceModel());
     if (!src)
@@ -296,8 +313,10 @@ MouseView::MouseView(QWidget* parent)
     horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
 
-    connect(&SettingsEvents::instance(), &SettingsEvents::restoreKeyboardDefaults,
-            this, &MouseView::onRestoreDefaults);
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::restoreKeyboardDefaults,
+            this,
+            &MouseView::onRestoreDefaults);
 }
 
 void MouseView::onRestoreDefaults()

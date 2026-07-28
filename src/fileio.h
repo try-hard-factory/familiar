@@ -61,9 +61,9 @@ private:
 // CanvasScene::add_queued_items() on the GUI thread, e.g. from a slot
 // connected to ThreadedIO::progress/finished (see CanvasView::do_insert_images).
 void load_images(const QList<QUrl>& urls,
-                  const QPointF& pos,
-                  CanvasScene* scene,
-                  ThreadedIO* worker);
+                 const QPointF& pos,
+                 CanvasScene* scene,
+                 ThreadedIO* worker);
 
 // Load familiar's native project file.
 //

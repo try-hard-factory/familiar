@@ -57,28 +57,34 @@ class MouseControlsModelBase : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    static constexpr int COL_ACTION    = 1;
-    static constexpr int COL_CHANGED   = 2;
-    static constexpr int COL_BUTTON    = 3;
+    static constexpr int COL_ACTION = 1;
+    static constexpr int COL_CHANGED = 2;
+    static constexpr int COL_BUTTON = 3;
     static constexpr int COL_MODIFIERS = 4;
-    static constexpr int COL_INVERTED  = 5;
+    static constexpr int COL_INVERTED = 5;
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
-    QVariant headerData(int section, Qt::Orientation orientation,
+    QVariant headerData(int section,
+                        Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const override;
-    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    QVariant data(const QModelIndex& index,
+                  int role = Qt::DisplayRole) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
-    bool setData(const QModelIndex& index, const QVariant& value,
+    bool setData(const QModelIndex& index,
+                 const QVariant& value,
                  int role = Qt::EditRole) override;
 
     // Extended setData that also removes controls from another row.
     // Pass removeFromOtherRow = -1 to skip the removal step.
-    bool setDataEx(const QModelIndex& index, const QVariant& value,
-                   int role, int removeFromOtherRow);
+    bool setDataEx(const QModelIndex& index,
+                   const QVariant& value,
+                   int role,
+                   int removeFromOtherRow);
 
 protected:
-    explicit MouseControlsModelBase(QList<int> columns, QObject* parent = nullptr);
+    explicit MouseControlsModelBase(QList<int> columns,
+                                    QObject* parent = nullptr);
 
     virtual int actionCount() const = 0;
     virtual QString actionText(int row) const = 0;

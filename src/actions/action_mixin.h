@@ -183,12 +183,15 @@ private:
                 _init_action_checkable(action, qaction);
             } else if (!action->callback.isEmpty()) {
                 const QByteArray cb = action->callback.toUtf8();
-                QObject::connect(
-                    qaction, &QAction::triggered, static_cast<T*>(this), [this, cb]() {
-                        QMetaObject::invokeMethod(static_cast<T*>(this),
-                                                  cb.constData(),
-                                                  Qt::DirectConnection);
-                    });
+                QObject::connect(qaction,
+                                 &QAction::triggered,
+                                 static_cast<T*>(this),
+                                 [this, cb]() {
+                                     QMetaObject::invokeMethod(
+                                         static_cast<T*>(this),
+                                         cb.constData(),
+                                         Qt::DirectConnection);
+                                 });
             }
 
             static_cast<T*>(this)->addAction(qaction);

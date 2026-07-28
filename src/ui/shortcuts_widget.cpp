@@ -14,8 +14,8 @@
 #include <QVBoxLayout>
 
 #include <core/qguiappcurrentscreen.h>
-#include <ui/setshortcut_widget.h>
 #include <core/settingshandler.h>
+#include <ui/setshortcut_widget.h>
 
 #include "log/log.h"
 using namespace familiar::log;

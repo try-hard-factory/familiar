@@ -14,8 +14,8 @@ class SettingsWindow : public QWidget
     Q_OBJECT
 public:
     explicit SettingsWindow(MainWindow* wm, QWidget* parent = nullptr);
-private:
 
+private:
 signals:
     void updateChildren();
 

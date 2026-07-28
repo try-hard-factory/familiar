@@ -54,9 +54,10 @@ QImage decode_data_url(const QUrl& url)
     QByteArray decoded = QByteArray::fromPercentEncoding(
         payload.mid(commaIdx + 1).toLatin1());
 
-    QByteArray bytes = header.contains(QStringLiteral("base64"), Qt::CaseInsensitive)
-        ? QByteArray::fromBase64(decoded)
-        : decoded;
+    QByteArray bytes = header.contains(QStringLiteral("base64"),
+                                       Qt::CaseInsensitive)
+                           ? QByteArray::fromBase64(decoded)
+                           : decoded;
 
     QImage img;
     img.loadFromData(bytes);
@@ -85,11 +86,11 @@ QImage download_image(QNetworkAccessManager& manager,
     // requests with no recognizable browser User-Agent (observed: fast
     // headers, then the transfer stalls) - claim to be an ordinary
     // browser, the same way e.g. PureRef's own downloader does.
-    request.setHeader(
-        QNetworkRequest::UserAgentHeader,
-        QStringLiteral(
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"));
+    request
+        .setHeader(QNetworkRequest::UserAgentHeader,
+                   QStringLiteral(
+                       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"));
     QNetworkReply* reply = manager.get(request);
     QEventLoop loop;
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
@@ -100,18 +101,23 @@ QImage download_image(QNetworkAccessManager& manager,
     timeoutTimer.start(kDownloadTimeoutMs);
 
     QTimer cancelPollTimer;
-    QObject::connect(&cancelPollTimer, &QTimer::timeout, &loop, [&loop, worker]() {
-        if (worker->canceled) {
-            loop.quit();
-        }
-    });
+    QObject::connect(&cancelPollTimer,
+                     &QTimer::timeout,
+                     &loop,
+                     [&loop, worker]() {
+                         if (worker->canceled) {
+                             loop.quit();
+                         }
+                     });
     cancelPollTimer.start(kCancelPollMs);
 
     loop.exec();
 
     QImage img;
     if (!reply->isFinished()) {
-        FLOG_DEBUG(Ch::IO, "Download aborted (timed out or canceled): {}", url.toString());
+        FLOG_DEBUG(Ch::IO,
+                   "Download aborted (timed out or canceled): {}",
+                   url.toString());
         reply->abort();
     } else if (reply->error() == QNetworkReply::NoError) {
         img.loadFromData(reply->readAll());
@@ -165,15 +171,20 @@ void load_images(const QList<QUrl>& urls,
             QImageReader reader(label);
             reader.setAutoTransform(true); // apply EXIF rotation
             img = reader.read();
-        } else if (rawUrl.scheme().compare(QStringLiteral("data"), Qt::CaseInsensitive) == 0) {
+        } else if (rawUrl.scheme().compare(QStringLiteral("data"),
+                                           Qt::CaseInsensitive)
+                   == 0) {
             label = rawUrl.toString();
             FLOG_DEBUG(Ch::IO, "Decoding embedded data: image");
             img = decode_data_url(rawUrl);
         } else {
             QUrl url = unwrap_known_redirect(rawUrl);
             label = url.toString();
-            if (url.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive) == 0
-                || url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0) {
+            if (url.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive)
+                    == 0
+                || url.scheme().compare(QStringLiteral("https"),
+                                        Qt::CaseInsensitive)
+                       == 0) {
                 FLOG_DEBUG(Ch::IO, "Downloading image from {}", label);
                 if (!netManager) {
                     netManager = new QNetworkAccessManager();
@@ -235,9 +246,9 @@ void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
 }
 
 void save_fml(const QString& filename,
-             CanvasScene* scene,
-             bool createNew,
-             ThreadedIO* worker)
+              CanvasScene* scene,
+              bool createNew,
+              ThreadedIO* worker)
 {
     FLOG_DEBUG(Ch::IO, "Saving to file {} ...", filename);
     FLOG_DEBUG(Ch::IO, "Create new: {}", createNew);
@@ -253,8 +264,10 @@ void save_fml(const QString& filename,
     // is a reasonable stand-in once this does get wired up, but it's
     // really meant as a one-shot value read right after a load, not an
     // ongoing substitute for the view's own canvasRect().
-    FmlResult result
-        = FmlArchive::save(scene, scene->rememberedBoundingRect(), filename, worker);
+    FmlResult result = FmlArchive::save(scene,
+                                        scene->rememberedBoundingRect(),
+                                        filename,
+                                        worker);
 
     if (worker) {
         emit worker->finished(result.error, result.itemErrors);

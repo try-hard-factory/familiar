@@ -116,8 +116,7 @@ MoveItemsByCommand::MoveItemsByCommand(const QList<QGraphicsItem*>& items,
     , items_(items)
     , delta_(delta)
     , ignoreFirstRedo_(ignoreFirstRedo)
-{
-}
+{}
 
 void MoveItemsByCommand::redo()
 {
@@ -149,8 +148,7 @@ ScaleItemsByCommand::ScaleItemsByCommand(const QList<QGraphicsItem*>& items,
     , factor_(factor)
     , anchor_(anchor)
     , ignoreFirstRedo_(ignoreFirstRedo)
-{
-}
+{}
 
 void ScaleItemsByCommand::redo()
 {
@@ -161,7 +159,7 @@ void ScaleItemsByCommand::redo()
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_scale(item->scale() * factor_,
-                           item->mapFromScene(anchor_));
+                            item->mapFromScene(anchor_));
     }
 }
 
@@ -170,7 +168,7 @@ void ScaleItemsByCommand::undo()
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_scale(item->scale() / factor_,
-                           item->mapFromScene(anchor_));
+                            item->mapFromScene(anchor_));
     }
 }
 
@@ -186,8 +184,7 @@ RotateItemsByCommand::RotateItemsByCommand(const QList<QGraphicsItem*>& items,
     , delta_(delta)
     , anchor_(anchor)
     , ignoreFirstRedo_(ignoreFirstRedo)
-{
-}
+{}
 
 void RotateItemsByCommand::redo()
 {
@@ -198,7 +195,7 @@ void RotateItemsByCommand::redo()
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_rotation(item->rotation() + delta_ * baseItem->flip(),
-                              item->mapFromScene(anchor_));
+                               item->mapFromScene(anchor_));
     }
 }
 
@@ -207,7 +204,7 @@ void RotateItemsByCommand::undo()
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_rotation(item->rotation() - delta_ * baseItem->flip(),
-                              item->mapFromScene(anchor_));
+                               item->mapFromScene(anchor_));
     }
 }
 
@@ -219,8 +216,7 @@ NormalizeItemsCommand::NormalizeItemsCommand(const QList<QGraphicsItem*>& items,
     : QUndoCommand(QObject::tr("Normalize items"))
     , items_(items)
     , scaleFactors_(scaleFactors)
-{
-}
+{}
 
 void NormalizeItemsCommand::redo()
 {
@@ -229,7 +225,8 @@ void NormalizeItemsCommand::redo()
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         oldScaleFactors_.append(item->scale());
-        baseItem->set_scale(item->scale() * scaleFactors_[i], baseItem->center());
+        baseItem->set_scale(item->scale() * scaleFactors_[i],
+                            baseItem->center());
     }
 }
 
@@ -252,8 +249,7 @@ FlipItemsCommand::FlipItemsCommand(const QList<QGraphicsItem*>& items,
     , items_(items)
     , anchor_(anchor)
     , vertical_(vertical)
-{
-}
+{}
 
 void FlipItemsCommand::redo()
 {
@@ -277,8 +273,7 @@ ResetScaleCommand::ResetScaleCommand(const QList<QGraphicsItem*>& items,
     : QUndoCommand(QObject::tr("Reset Scale"))
     , items_(items)
     , anchor_(anchor)
-{
-}
+{}
 
 void ResetScaleCommand::redo()
 {
@@ -307,8 +302,7 @@ ResetRotationCommand::ResetRotationCommand(const QList<QGraphicsItem*>& items,
     : QUndoCommand(QObject::tr("Reset Rotation"))
     , items_(items)
     , anchor_(anchor)
-{
-}
+{}
 
 void ResetRotationCommand::redo()
 {
@@ -337,8 +331,7 @@ ResetFlipCommand::ResetFlipCommand(const QList<QGraphicsItem*>& items,
     : QUndoCommand(QObject::tr("Reset Flip"))
     , items_(items)
     , anchor_(anchor)
-{
-}
+{}
 
 void ResetFlipCommand::redo()
 {
@@ -373,7 +366,7 @@ ResetCropCommand::ResetCropCommand(const QList<IBaseItem*>& items)
     // Filter only croppable items
     for (auto* item : items) {
         if (item->is_image()) {
-            items_.append((PixmapItem*)item);
+            items_.append((PixmapItem*) item);
         }
     }
 }
@@ -402,8 +395,7 @@ ResetTransformsCommand::ResetTransformsCommand(const QList<IBaseItem*>& items,
     : QUndoCommand(QObject::tr("Reset All Transformations"))
     , items_(items)
     , anchor_(anchor)
-{
-}
+{}
 
 void ResetTransformsCommand::redo()
 {
@@ -469,8 +461,7 @@ ArrangeItemsCommand::ArrangeItemsCommand(CanvasScene* scene,
     , scene_(scene)
     , items_(items)
     , positions_(positions)
-{
-}
+{}
 
 void ArrangeItemsCommand::redo()
 {
@@ -501,8 +492,7 @@ CropItemCommand::CropItemCommand(PixmapItem* item, const QRectF& crop)
     : QUndoCommand(QObject::tr("Crop item"))
     , item_(item)
     , crop_(crop)
-{
-}
+{}
 
 void CropItemCommand::redo()
 {
@@ -559,8 +549,7 @@ ChangeTextCommand::ChangeTextCommand(TextItem* item,
     , item_(item)
     , newText_(newText)
     , oldText_(oldText)
-{
-}
+{}
 
 void ChangeTextCommand::redo()
 {
@@ -578,8 +567,7 @@ void ChangeTextCommand::undo()
 ToggleGrayscaleCommand::ToggleGrayscaleCommand(const QList<PixmapItem*>& items)
     : QUndoCommand(QObject::tr("Toggle Grayscale"))
     , items_(items)
-{
-}
+{}
 
 void ToggleGrayscaleCommand::redo()
 {

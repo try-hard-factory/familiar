@@ -150,7 +150,10 @@ public:
     QRectF crop() { return crop_; }
     void set_crop(const QRectF& crop)
     {
-        FLOG_DEBUG(familiar::log::Ch::Items, "Setting crop for {} to {}", toString(), crop);
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Setting crop for {} to {}",
+                   toString(),
+                   crop);
         this->prepareGeometryChange();
         this->crop_ = crop;
         this->update();
@@ -159,7 +162,10 @@ public:
     bool grayscale() const { return grayscale_; }
     void setGrayscale(bool value)
     {
-        FLOG_DEBUG(familiar::log::Ch::Items, "Setting grayscale for {} to {}", toString(), value);
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Setting grayscale for {} to {}",
+                   toString(),
+                   value);
         grayscale_ = value;
         if (value) {
             QImage img(pixmap().size(), QImage::Format_Grayscale8);
@@ -243,7 +249,10 @@ public:
             }
         }
 
-        FLOG_DEBUG(familiar::log::Ch::Items, "Found format {} for {}", formt, toString());
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Found format {} for {}",
+                   formt,
+                   toString());
         return formt;
     }
 
@@ -303,14 +312,18 @@ public:
     const ColorGamut& color_gamut() const
     {
         if (!colorGamut_) {
-            FLOG_DEBUG(familiar::log::Ch::Items, "Calculating color gamut for {}", toString());
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "Calculating color gamut for {}",
+                       toString());
             ColorGamut gamut;
             QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
             int step = std::max(1,
                                 static_cast<int>(
                                     std::max(img.width(), img.height()) / 1000));
-            FLOG_DEBUG(familiar::log::Ch::Items, "Considering every {}. row/column", step);
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "Considering every {}. row/column",
+                       step);
 
             for (int i = 0; i < img.width(); i += step) {
                 for (int j = 0; j < img.height(); j += step) {
@@ -325,7 +338,9 @@ public:
                 }
             }
 
-            FLOG_DEBUG(familiar::log::Ch::Items, "Got {} color gamut values", gamut.size());
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "Got {} color gamut values",
+                       gamut.size());
             colorGamut_ = gamut;
         }
         return *colorGamut_;
@@ -550,7 +565,9 @@ public:
 
     void enter_crop_mode() override
     {
-        FLOG_DEBUG(familiar::log::Ch::Items, "Entering crop mode on {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Entering crop mode on {}",
+                   toString());
         this->prepareGeometryChange();
         crop_mode = true;
         crop_temp = crop();
@@ -739,7 +756,8 @@ public:
     bool edit_mode = false;
     QString old_text;
 
-    TextItem(const QString& text = QString(), QGraphicsTextItem* parent = nullptr)
+    TextItem(const QString& text = QString(),
+             QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
@@ -810,7 +828,9 @@ public:
 
     void enter_edit_mode()
     {
-        FLOG_DEBUG(familiar::log::Ch::Items, "Entering edit mode on {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Entering edit mode on {}",
+                   toString());
         edit_mode = true;
         old_text = this->toPlainText();
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
@@ -820,7 +840,9 @@ public:
 
     void exit_edit_mode(bool commit = true)
     {
-        FLOG_DEBUG(familiar::log::Ch::Items, "Exiting edit mode on {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Exiting edit mode on {}",
+                   toString());
         edit_mode = false;
         // Reset selection:
         this->setTextCursor(QTextCursor(document()));
@@ -873,8 +895,6 @@ protected:
         }
         QGraphicsTextItem::keyPressEvent(event);
     }
-
-
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.

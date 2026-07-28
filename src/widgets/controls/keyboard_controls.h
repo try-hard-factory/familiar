@@ -43,9 +43,11 @@ class KeyboardShortcutsDelegate : public QStyledItemDelegate
 public:
     explicit KeyboardShortcutsDelegate(QObject* parent = nullptr);
 
-    QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option,
+    QWidget* createEditor(QWidget* parent,
+                          const QStyleOptionViewItem& option,
                           const QModelIndex& index) const override;
-    void setModelData(QWidget* editor, QAbstractItemModel* model,
+    void setModelData(QWidget* editor,
+                      QAbstractItemModel* model,
                       const QModelIndex& index) const override;
 };
 
@@ -67,16 +69,21 @@ public:
 
     int rowCount(const QModelIndex& parent = {}) const override;
     int columnCount(const QModelIndex& parent = {}) const override;
-    QVariant headerData(int section, Qt::Orientation orientation,
+    QVariant headerData(int section,
+                        Qt::Orientation orientation,
                         int role = Qt::DisplayRole) const override;
-    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    QVariant data(const QModelIndex& index,
+                  int role = Qt::DisplayRole) const override;
     Qt::ItemFlags flags(const QModelIndex& index) const override;
-    bool setData(const QModelIndex& index, const QVariant& value,
+    bool setData(const QModelIndex& index,
+                 const QVariant& value,
                  int role = Qt::EditRole) override;
 
     // Extended version with explicit remove-from-other-row parameter.
-    bool setDataEx(const QModelIndex& index, const QKeySequence& keySeq,
-                   int role, int removeFromOtherRow);
+    bool setDataEx(const QModelIndex& index,
+                   const QKeySequence& keySeq,
+                   int role,
+                   int removeFromOtherRow);
 };
 
 // ─── KeyboardShortcutsProxy ───────────────────────────────────────────────────
@@ -89,8 +96,10 @@ public:
     explicit KeyboardShortcutsProxy(QObject* parent = nullptr);
 
     // Forwarding method that passes removeFromOtherRow through to the source model.
-    bool setDataEx(const QModelIndex& proxyIndex, const QKeySequence& keySeq,
-                   int role, int removeFromOtherRow);
+    bool setDataEx(const QModelIndex& proxyIndex,
+                   const QKeySequence& keySeq,
+                   int role,
+                   int removeFromOtherRow);
 };
 
 // ─── KeyboardShortcutsView ────────────────────────────────────────────────────
