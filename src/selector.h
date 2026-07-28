@@ -255,6 +255,7 @@ class SelectableMixin : public BaseItemMixin<T>
 {
     qreal selectLineWidth_{2};
     qreal selectHandleSize_{9};
+    qreal selectEdgeHandleSize_{6};
     qreal selectResizeSize_{20};
     qreal selectRotateSize_{10};
     qreal selectFreeCenter_{20};
@@ -272,17 +273,22 @@ class SelectableMixin : public BaseItemMixin<T>
     QVector<QRectF> flipBounds;
 
 public:
-    struct FlipBounds
+    // Was FlipBounds/flip_v - these edge zones used to trigger a flip on
+    // click; they now trigger the same uniform kScaleMode drag as the
+    // corner handles (see mousePressEvent()), just anchored on the
+    // opposite edge instead of the opposite corner. `vertical` still
+    // marks whether this is a top/bottom edge (true) or left/right
+    // (false) - used to pick the resize cursor in hoverMoveEvent().
+    struct EdgeBounds
     {
         QRectF rect;
-        bool flip_v;
+        bool vertical;
     };
 
     enum EItemMode {
         kNone = 0,
         kScaleMode = 1,
         kRotateMode = 2,
-        kFlipMpde = 3,
     };
 
     EItemMode active_mode_{kNone};
@@ -368,7 +374,7 @@ public:
                 draw_debug_shape(painter, get_scale_bounds(corner), 0, 0, 255);
                 draw_debug_shape(painter, get_rotate_bounds(corner), 0, 255, 255);
             }
-            for (const auto& edge : get_flip_bounds()) {
+            for (const auto& edge : get_edge_bounds()) {
                 draw_debug_shape(painter, edge.rect, 255, 255, 0);
             }
             draw_debug_shape(painter, select_handle_free_center(), 255, 0, 255);
@@ -428,6 +434,16 @@ public:
             painter->setPen(pen);
             for (const QPointF& corner : corners()) {
                 painter->drawPoint(corner);
+            }
+
+            // Smaller edge-midpoint handles - dragging these scales the
+            // same way as the corners (see mousePressEvent()), just
+            // anchored on the opposite edge instead of the opposite
+            // corner.
+            pen.setWidth(selectEdgeHandleSize_);
+            painter->setPen(pen);
+            for (const auto& edge : get_edge_bounds()) {
+                painter->drawPoint(edge.rect.center());
             }
         }
 
@@ -504,55 +520,55 @@ public:
     }
 
 
-    // The interactactable shape of the flip handles.
+    // The interactable shape of the edge (non-corner) scale handles.
     // These stretch around the edge of the item filling the areas
-    // between the scale handles, e.g. for the bottom right corner:
+    // between the corner scale handles, e.g. for the bottom right corner:
 
-    //    │F│
+    //    │E│
     //  ──┼─┼─┐
-    //  FF│S│R│
+    //  EE│S│R│
     //  ──┼─┘ │
     //    │R R│
     //    └───┘
 
-    std::vector<FlipBounds> get_flip_bounds()
+    std::vector<EdgeBounds> get_edge_bounds()
     {
         qreal outer_margin = select_resize_size() / 2;
         qreal inner_margin = select_resize_size() / 2;
         QPointF origin = this->bounding_rect_unselected().topLeft();
 
-        std::vector<FlipBounds> flipBounds;
-        flipBounds.reserve(4);
+        std::vector<EdgeBounds> edgeBounds;
+        edgeBounds.reserve(4);
 
         // Top
-        flipBounds.push_back({QRectF(origin.x() + inner_margin,
+        edgeBounds.push_back({QRectF(origin.x() + inner_margin,
                                      origin.y() - outer_margin,
                                      this->width() - 2 * inner_margin,
                                      outer_margin + inner_margin),
                               true});
 
         // Bottom
-        flipBounds.push_back({QRectF(origin.x() + inner_margin,
+        edgeBounds.push_back({QRectF(origin.x() + inner_margin,
                                      origin.y() + this->height() - inner_margin,
                                      this->width() - 2 * inner_margin,
                                      outer_margin + inner_margin),
                               true});
 
         // Left
-        flipBounds.push_back({QRectF(origin.x() - outer_margin,
+        edgeBounds.push_back({QRectF(origin.x() - outer_margin,
                                      origin.y() + inner_margin,
                                      outer_margin + inner_margin,
                                      this->height() - 2 * inner_margin),
                               false});
 
         // Right
-        flipBounds.push_back({QRectF(origin.x() + this->width() - inner_margin,
+        edgeBounds.push_back({QRectF(origin.x() + this->width() - inner_margin,
                                      origin.y() + inner_margin,
                                      outer_margin + inner_margin,
                                      this->height() - 2 * inner_margin),
                               false});
 
-        return flipBounds;
+        return edgeBounds;
     }
 
     QRectF boundingRect() const override
@@ -628,10 +644,9 @@ protected:
             }
         }
 
-        for (const auto& edge : get_flip_bounds()) {
-            if (isInFlipHandle(edge.rect, pos)) {
-                // TODOLATER: custom flip icons
-                if (get_edge_flips_v(edge)) {
+        for (const auto& edge : get_edge_bounds()) {
+            if (isInEdgeHandle(edge.rect, pos)) {
+                if (is_edge_vertical(edge)) {
                     this->set_cursor(QCursor(Qt::SizeVerCursor));
                 } else {
                     this->set_cursor(QCursor(Qt::SizeHorCursor));
@@ -710,21 +725,26 @@ protected:
                     return;
                 }
 
-                //Check if we are in one of the flip edges:
-                for (const auto& edge : get_flip_bounds()) {
-                    if (edge.rect.contains(event->pos())) {
-                        active_mode_ = kFlipMpde;
-                        event->accept();
-                        //undo stack logic
-                        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-                        // TODOLATER: interface
-                        scene->undo_stack_->push(
-                            new FlipItemsCommand(static_cast<Mixin*>(this)
-                                                     ->selection_action_items(),
-                                                 this->center_scene_coords(),
-                                                 this->get_edge_flips_v(edge)));
-                        return;
+            }
+
+            //Check if we are in one of the edge's scale areas - same
+            //kScaleMode drag as a corner, just anchored on the opposite
+            //edge (get_scale_anchor() mirrors any local point around the
+            //item's center, corner or edge midpoint alike).
+            for (const auto& edge : get_edge_bounds()) {
+                if (isInEdgeHandle(edge.rect, event->pos())) {
+                    active_mode_ = kScaleMode;
+                    eventDirection_ = get_direction_from_center(
+                        event->scenePos());
+                    eventAnchor_ = this->mapToScene(
+                        get_scale_anchor(edge.rect.center()));
+                    for (auto& item :
+                         static_cast<Mixin*>(this)->selection_action_items()) {
+                        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+                        baseItem->set_scale_orig_factor(item->scale());
                     }
+                    event->accept();
+                    return;
                 }
             }
         }
@@ -817,13 +837,17 @@ protected:
         }
     }
 
-    bool get_edge_flips_v(const FlipBounds& edge) const
+    // Whether dragging this edge visually affects the item's vertical
+    // (height) extent, accounting for rotation - e.g. at 90°, the "top"
+    // edge (vertical=true) now points sideways and behaves like a
+    // left/right edge instead. Used to pick the resize cursor.
+    bool is_edge_vertical(const EdgeBounds& edge) const
     {
         if (((this->rotation() > 45) && (this->rotation() < 135))
             || ((this->rotation() > 225) && (this->rotation() < 315))) {
-            return !edge.flip_v;
+            return !edge.vertical;
         } else {
-            return edge.flip_v;
+            return edge.vertical;
         }
     }
 
@@ -861,10 +885,6 @@ protected:
                                            + delta * baseItem->flip(),
                                        item->mapFromScene(eventAnchor_));
             }
-            event->accept();
-            return;
-        } else if (active_mode_ == kFlipMpde) {
-            // Already flipped on mouse press, accept event to prevent item move
             event->accept();
             return;
         }
@@ -906,15 +926,6 @@ protected:
             event->accept();
             resetActions();
             return;
-        } else if (active_mode_ == kFlipMpde) {
-            for (const auto& edge : get_flip_bounds()) {
-                if (isInFlipHandle(edge.rect, event->pos())) {
-                    // Already flipped on mouse press, accept event to prevent item move
-                    event->accept();
-                    resetActions();
-                    return;
-                }
-            }
         }
 
         resetActions();
@@ -961,7 +972,7 @@ public:
         QPainterPath rect = get_rotate_bounds(corner);
         return rect.contains(pos);
     }
-    bool isInFlipHandle(const QRectF& rect, const QPointF& pos) const
+    bool isInEdgeHandle(const QRectF& rect, const QPointF& pos) const
     {
         return rect.contains(pos);
     }
