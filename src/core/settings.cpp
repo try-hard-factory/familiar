@@ -18,8 +18,13 @@ static void addOptions(QCommandLineParser& parser)
 {
     parser.addPositionalArgument(
         QStringLiteral("filename"),
-        QCoreApplication::tr("Bee file to open"),
+        QCoreApplication::tr("Familiar project file to open"),
         QStringLiteral("[filename]"));
+
+    parser.addOption({QStringList{QStringLiteral("f"), QStringLiteral("file")},
+                      QCoreApplication::tr("Familiar project file to open "
+                                          "(overrides the positional filename argument)"),
+                      QStringLiteral("path")});
 
     parser.addOption({QStringLiteral("settings-dir"),
                       QCoreApplication::tr("Settings directory to use instead of default location"),
@@ -51,6 +56,8 @@ void CommandlineArgs::process(const QCoreApplication& app)
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty())
         filename_ = positional.first();
+    if (parser.isSet(QStringLiteral("file")))
+        filename_ = parser.value(QStringLiteral("file"));
 
     settingsDir_        = parser.value(QStringLiteral("settings-dir"));
     loglevel_           = parser.value(QStringLiteral("loglevel"));
@@ -68,6 +75,8 @@ void CommandlineArgs::parse(const QStringList& args)
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty())
         filename_ = positional.first();
+    if (parser.isSet(QStringLiteral("file")))
+        filename_ = parser.value(QStringLiteral("file"));
 
     if (parser.isSet(QStringLiteral("settings-dir")))
         settingsDir_ = parser.value(QStringLiteral("settings-dir"));
@@ -153,9 +162,12 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
 
 QSettings::Format FamSettings::initPathAndReturnFormat()
 {
-    const QString dir = CommandlineArgs::instance().settingsDir();
-    if (!dir.isEmpty())
-        QSettings::setPath(QSettings::IniFormat, QSettings::UserScope, dir);
+    // TODOLATER: --settings-dir is a stub for now - settings storage is
+    // getting rewritten wholesale (a single JSON file the user points at
+    // directly, not a directory QSettings writes an .ini into), so there's
+    // no point wiring this QSettings-specific path override up properly
+    // only to tear it out again. The option still parses (see addOptions()
+    // below), it just doesn't do anything yet.
     return QSettings::IniFormat;
 }
 

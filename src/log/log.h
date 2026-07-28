@@ -33,6 +33,11 @@ struct Options
     size_t ringCapacity = 2000;
 };
 
+// Parses a case-insensitive level name (TRACE/DEBUG/INFO/WARNING or WARN/
+// ERROR/CRITICAL or FATAL) - for the --loglevel command-line option;
+// unrecognized input falls back to `fallback`.
+Level levelFromName(const QString& name, Level fallback = Level::Info);
+
 // First line of main(), before MainWindow is constructed.
 void init(const Options& options = Options{});
 

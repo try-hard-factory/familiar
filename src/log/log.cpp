@@ -87,6 +87,30 @@ void logSessionHeader(const QString& filePath)
 
 } // namespace
 
+Level levelFromName(const QString& name, Level fallback)
+{
+    const QString upper = name.trimmed().toUpper();
+    if (upper == QStringLiteral("TRACE")) {
+        return Level::Trace;
+    }
+    if (upper == QStringLiteral("DEBUG")) {
+        return Level::Debug;
+    }
+    if (upper == QStringLiteral("INFO")) {
+        return Level::Info;
+    }
+    if (upper == QStringLiteral("WARNING") || upper == QStringLiteral("WARN")) {
+        return Level::Warning;
+    }
+    if (upper == QStringLiteral("ERROR")) {
+        return Level::Error;
+    }
+    if (upper == QStringLiteral("CRITICAL") || upper == QStringLiteral("FATAL")) {
+        return Level::Critical;
+    }
+    return fallback;
+}
+
 namespace detail {
 
 quill::LogLevel toQuillLevel(Level level)
