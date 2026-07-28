@@ -385,11 +385,32 @@ public:
             return;
         }
 
+        // PureRef-style "peek": the multi-select bounding box fades out
+        // while this window isn't active and the cursor isn't hovering
+        // it either, so it doesn't stay visible while the user's
+        // working in another window - see CanvasView::
+        // updateSelectionVisibility(). Individual items' own selection
+        // outlines are unaffected (see fades_with_window_focus()).
+        qreal outlineOpacity = 1.0;
+        if (static_cast<Mixin*>(this)->fades_with_window_focus()
+            && this->scene()) {
+            QList<QGraphicsView*> views = this->scene()->views();
+            if (!views.isEmpty()) {
+                if (CanvasView* view = dynamic_cast<CanvasView*>(views.at(0))) {
+                    outlineOpacity = view->selectionOutlineOpacity();
+                }
+            }
+        }
+        if (outlineOpacity <= 0.0) {
+            return;
+        }
+
         painter->save();
 
         auto colorPreset
             = SettingsHandler::getInstance()->getCurrentColorPreset();
         QColor selectColor = colorPreset[EPresetsColorIdx::kSelectionColor];
+        selectColor.setAlphaF(selectColor.alphaF() * outlineOpacity);
 
         QPen pen(selectColor);
         pen.setWidth(selectLineWidth_);
@@ -974,6 +995,12 @@ public:
 
     virtual bool has_selection_outline() const { return true; }
     virtual bool has_selection_handles() const { return true; }
+
+    // Only the multi-select bounding box (this item) fades with window
+    // activation/hover - see CanvasView::updateSelectionVisibility() and
+    // ItemMixin::fades_with_window_focus() (moveitem.h) for individual
+    // items, which don't.
+    virtual bool fades_with_window_focus() const { return true; }
 
     virtual QVector<QGraphicsItem*> selection_action_items()
     {
