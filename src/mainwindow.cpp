@@ -681,6 +681,21 @@ void MainWindow::closeEvent(QCloseEvent* event)
     }
 }
 
+void MainWindow::changeEvent(QEvent* event)
+{
+    QMainWindow::changeEvent(event);
+    // QEvent::ActivationChange is only delivered to the actual top-level
+    // window, not to arbitrary descendants like CanvasView - push the
+    // recompute down to every tab (not just the current one) so a tab
+    // switched to later already has the right state, not just whichever
+    // was visible when the window (de)activated.
+    if (event->type() == QEvent::ActivationChange) {
+        for (int i = 0; i < tabpane_->count(); ++i) {
+            tabpane_->widgetAt(i)->updateSelectionVisibility();
+        }
+    }
+}
+
 void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);

@@ -25,6 +25,7 @@ class SampleColorWidget;
 class ThreadedIO;
 class SceneExporterBase;
 class ImagesToDirectoryExporter;
+class QVariantAnimation;
 
 struct PreviousTransform
 {
@@ -54,6 +55,26 @@ public:
 
     qreal get_scale() const { return transform().m11(); }
     QPointF getViewCenter() const;
+
+    // 1.0 while this window is active or the cursor is hovering this
+    // view (PureRef-style "peek" - see updateSelectionVisibility()),
+    // fading to 0.0 otherwise. SelectableMixin::paint_selectable()
+    // (selector.h) multiplies the multi-select bounding box's alpha by
+    // this so it doesn't stay visible while the user's working in
+    // another window, but still glances back on hover. Individual
+    // items' own selection outlines are unaffected - see
+    // MultiSelectItem::fades_with_window_focus() in selector.h.
+    qreal selectionOutlineOpacity() const { return selectionOutlineOpacity_; }
+
+    // Recomputes whether selection chrome should be visible right now
+    // (this window active, or the cursor hovering this view) and either
+    // snaps selectionOutlineOpacity_ back to 1.0 or starts the fade-out
+    // animation toward 0.0. Called from enterEvent()/leaveEvent() here,
+    // and from MainWindow::changeEvent() (ActivationChange isn't
+    // delivered to child widgets like this one, only to the actual
+    // top-level window).
+    void updateSelectionVisibility();
+
     void resetPreviousTransform(QGraphicsItem* toggleItem = nullptr);
     void fitRect(const QRectF& rect, QGraphicsItem* toggleItem = nullptr);
 
@@ -182,6 +203,8 @@ protected:
     void keyPressEvent(QKeyEvent* event) override;
     void drawBackground(QPainter* painter, const QRectF& rect) override;
     void dropEvent(QDropEvent* event) override;
+    void enterEvent(QEnterEvent* event) override;
+    void leaveEvent(QEvent* event) override;
 
 private:
     void recalcSceneRect();
@@ -190,6 +213,10 @@ private:
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
     QString getSupportedImageFormats() const;
+
+    qreal selectionOutlineOpacity_ = 1.0;
+    bool selectionOutlineHover_ = false;
+    QVariantAnimation* selectionFadeAnim_ = nullptr;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;

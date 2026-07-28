@@ -25,6 +25,7 @@
 #include <QRegularExpression>
 #include <QUndoStack>
 #include <QUrl>
+#include <QVariantAnimation>
 
 #include <core/settingshandler.h>
 
@@ -80,6 +81,22 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     init_main_controls(&mw);
     setContextMenuPolicy(Qt::DefaultContextMenu);
     viewport()->setMouseTracking(true);
+
+    // See selectionOutlineOpacity(): fades selection chrome out after
+    // this window loses activation and the cursor isn't hovering it
+    // either. Values chosen to feel like a quick "peek" fade, not a
+    // proper design pass - revisit if it feels off.
+    selectionFadeAnim_ = new QVariantAnimation(this);
+    selectionFadeAnim_->setStartValue(1.0);
+    selectionFadeAnim_->setEndValue(0.0);
+    selectionFadeAnim_->setDuration(600);
+    connect(selectionFadeAnim_,
+            &QVariantAnimation::valueChanged,
+            this,
+            [this](const QVariant& value) {
+                selectionOutlineOpacity_ = value.toReal();
+                viewport()->update();
+            });
 }
 
 CanvasView::~CanvasView()
@@ -578,6 +595,34 @@ void CanvasView::dropEvent(QDropEvent* event)
     QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
     handleDrop(event->mimeData(), pos);
     event->acceptProposedAction();
+}
+
+void CanvasView::enterEvent(QEnterEvent* event)
+{
+    QGraphicsView::enterEvent(event);
+    selectionOutlineHover_ = true;
+    updateSelectionVisibility();
+}
+
+void CanvasView::leaveEvent(QEvent* event)
+{
+    QGraphicsView::leaveEvent(event);
+    selectionOutlineHover_ = false;
+    updateSelectionVisibility();
+}
+
+void CanvasView::updateSelectionVisibility()
+{
+    const bool visible = isActiveWindow() || selectionOutlineHover_;
+
+    if (visible) {
+        selectionFadeAnim_->stop();
+        selectionOutlineOpacity_ = 1.0;
+        viewport()->update();
+    } else if (selectionFadeAnim_->state() != QAbstractAnimation::Running) {
+        selectionFadeAnim_->setStartValue(selectionOutlineOpacity_);
+        selectionFadeAnim_->start();
+    }
 }
 
 void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)

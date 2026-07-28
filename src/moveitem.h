@@ -43,6 +43,12 @@ public:
 
     virtual bool has_selection_outline() const { return this->isSelected(); }
 
+    // See MultiSelectItem::fades_with_window_focus() (selector.h): an
+    // individual item's own selection outline always stays fully
+    // visible, regardless of window activation/hover - only the
+    // multi-select bounding box participates in that fade.
+    virtual bool fades_with_window_focus() const { return false; }
+
     virtual bool has_selection_handles() const
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
