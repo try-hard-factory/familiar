@@ -549,12 +549,6 @@ QString extract_first_img_src(const QString& html)
     return match.hasMatch() ? match.captured(1) : QString();
 }
 
-bool is_google_imgres_page(const QUrl& url)
-{
-    return url.host().endsWith(QStringLiteral("google.com"))
-        && url.path().contains(QStringLiteral("imgres"));
-}
-
 } // namespace
 
 void CanvasView::dropEvent(QDropEvent* event)
@@ -576,27 +570,36 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
                    debugString(mimedata->urls()));
 
         QList<QUrl> urls = mimedata->urls();
-        // Google Images drags sometimes give the "imgres?...&imgurl=..."
-        // search result page as the dropped URL, whose actual imgurl
-        // target can be slow/throttled on some hosts (observed - a real
-        // site taking 15s+ to serve one image, while the browser itself
-        // shows it instantly). The browser's own rendered thumbnail is
-        // right there in text/html's <img src> - prefer that, the same
-        // fast preview PureRef ends up using, over re-fetching the
-        // original from scratch.
-        if (mimedata->hasHtml()) {
+        // Some sites' drag data doesn't give a direct image link at all -
+        // Google Images gives its own search-result page ("imgres?...");
+        // kp.ru (and presumably others) gives the containing article
+        // page. Either way the actual target can be slow/wrong to fetch
+        // (observed: a real site taking 15s+ to serve one image, or an
+        // HTML page instead of image bytes), while the browser's own
+        // rendered thumbnail is right there in text/html's <img src> -
+        // prefer that, the same fast preview PureRef ends up using.
+        // Only for a single-image drag: with several URLs dropped at
+        // once there's no way to tell which one (if any) this one <img>
+        // match corresponds to.
+        QList<int> nonLocalIdx;
+        for (int i = 0; i < urls.size(); ++i) {
+            // Matches do_insert_images()'s own filter below: a second
+            // uri-list entry with no scheme at all (e.g. Google's/kp.ru's
+            // alt-text-as-a-"URL" quirk) isn't a real candidate either.
+            if (!urls[i].isEmpty() && urls[i].isValid()
+                && !urls[i].isLocalFile() && !urls[i].scheme().isEmpty()) {
+                nonLocalIdx.append(i);
+            }
+        }
+        if (nonLocalIdx.size() == 1 && mimedata->hasHtml()) {
             QString htmlSrc = extract_first_img_src(mimedata->html());
             if (!htmlSrc.isEmpty()) {
                 QUrl htmlUrl(htmlSrc);
-                for (QUrl& url : urls) {
-                    if (is_google_imgres_page(url)) {
-                        FLOG_DEBUG(Ch::View,
-                                  "Preferring rendered thumbnail over Google "
-                                  "imgres redirect: {}",
-                                  htmlUrl);
-                        url = htmlUrl;
-                    }
-                }
+                FLOG_DEBUG(Ch::View,
+                          "Preferring rendered thumbnail over dropped page "
+                          "URL: {}",
+                          htmlUrl);
+                urls[nonLocalIdx.first()] = htmlUrl;
             }
         }
 
@@ -932,15 +935,13 @@ void CanvasView::on_action_paste()
         return;
     }
 
-    // A file copied in a file manager (e.g. Nautilus) puts a list of
-    // file:// URLs on the clipboard rather than actual image data - load
-    // it the same way as drag-and-dropped/inserted images, instead of
-    // falling through to pasting the raw path as text below.
-    if (clipboard->mimeData()->hasUrls()) {
-        do_insert_images(clipboard->mimeData()->urls(), pos);
-        return;
-    }
-
+    // Raw pixel data, when present, is unambiguous ground truth - prefer
+    // it over any URL representation, which can point to something we
+    // can't actually fetch (e.g. web apps like Telegram Web/Discord Web
+    // copy images as a browser-internal "blob:" URL, resolvable only
+    // inside that page's own JS context, alongside the real image bytes
+    // under image/* - grabbing that directly sidesteps the unusable URL
+    // entirely rather than trying and failing to "download" it).
     QImage img = clipboard->image();
     if (!img.isNull()) {
         bool wasEmpty = scene_->items().isEmpty();
@@ -951,6 +952,15 @@ void CanvasView::on_action_paste()
             // This is the first image in the scene
             on_action_fit_scene();
         }
+        return;
+    }
+
+    // A file copied in a file manager (e.g. Nautilus) puts a list of
+    // file:// URLs on the clipboard rather than actual image data - load
+    // it the same way as drag-and-dropped/inserted images, instead of
+    // falling through to pasting the raw path as text below.
+    if (clipboard->mimeData()->hasUrls()) {
+        do_insert_images(clipboard->mimeData()->urls(), pos);
         return;
     }
 
