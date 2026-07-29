@@ -77,18 +77,19 @@ QWidget* MouseWheelDelegate::createEditor(QWidget* parent,
 
     auto* proxy = qobject_cast<MouseWheelProxy*>(
         const_cast<QAbstractItemModel*>(index.model()));
-    Q_UNUSED(proxy) // only used by the commented-out connect() below
 
-    // TODO:
-    // QObject::connect(editor, &MouseWheelModifiersEditor::saved,
-    //                  [editor, proxy, index]() {
-    //                      if (!proxy)
-    //                          return;
-    //                      const QVariant data =
-    //                          QVariant::fromValue(editor->getModifiers());
-    //                      proxy->setDataEx(index, data, Qt::EditRole,
-    //                                       editor->conflictingRow());
-    //                  });
+    QObject::connect(editor,
+                     &MouseWheelModifiersEditor::saved,
+                     [editor, proxy, index]() {
+                         if (!proxy)
+                             return;
+                         const QVariant data
+                             = QVariant::fromValue(editor->getModifiers());
+                         proxy->setDataEx(index,
+                                          data,
+                                          Qt::EditRole,
+                                          editor->conflictingRow());
+                     });
 
     wrapper->setProperty("editor",
                          QVariant::fromValue(static_cast<QObject*>(editor)));

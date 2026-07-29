@@ -2,7 +2,6 @@
 #define MOVEITEM_H
 
 #include "commands.h"
-#include "core/settings.h"
 #include "core/settingshandler.h"
 #include "selector.h"
 #include <algorithm>
@@ -117,7 +116,6 @@ public:
     bool grayscale_ = false;
     QPixmap grayscalePixmap_{};
     mutable std::optional<ColorGamut> colorGamut_{};
-    FamSettings* settings{nullptr};
 
     bool is_editable_ = false;
     QRectF crop_{};
@@ -136,7 +134,6 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
         crop_mode = false;
         init_selectable();
-        settings = FamSettings::getInstance();
     }
 
     bool is_image() const override { return is_image_; }
@@ -241,10 +238,7 @@ public:
     // Determines the format for storing this image.
     QString get_imgformat(const QImage& img) const
     {
-        QString formt = settings
-                            ->valueOrDefault(
-                                QStringLiteral("Items/image_storage_format"))
-                            .toString();
+        QString formt = SettingsHandler::getInstance()->imageStorageFormat();
 
         if (formt == QLatin1String("best")) {
             if (img.hasAlphaChannel()

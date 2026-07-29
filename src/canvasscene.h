@@ -1,7 +1,6 @@
 #ifndef CANVASSCENE_H
 #define CANVASSCENE_H
 
-#include "core/settings.h"
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
@@ -22,7 +21,6 @@ class RubberbandItem;
 class MultiSelectItem;
 class QUndoStack;
 class IBaseItem;
-class FamSettings;
 
 class CanvasScene : public QGraphicsScene
 {
@@ -197,7 +195,6 @@ private:
     QRectF rubberBand_;
     QPointF lastClickedPoint_{0, 0};
     QColor selectionColor_;
-    FamSettings* settings{nullptr};
 
     // Keeps every currently-attached item alive (shared with whichever
     // undo commands also reference it) for as long as it's actually in

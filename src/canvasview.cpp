@@ -376,7 +376,7 @@ void CanvasView::pan(QPointF delta)
 
 void CanvasView::wheelEvent(QWheelEvent* event)
 {
-    auto match = KeyboardSettings().mousewheelActionForEvent(event);
+    auto match = SettingsHandler::getInstance()->mousewheelActionForEvent(event);
     if (!match)
         return;
 
@@ -421,7 +421,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    auto match = KeyboardSettings().mouseActionForEvent(event);
+    auto match = SettingsHandler::getInstance()->mouseActionForEvent(event);
     if (match) {
         if (match->group == QLatin1String("zoom")) {
             activeMode_ = ModeZoom;

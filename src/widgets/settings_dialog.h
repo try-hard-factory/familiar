@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QCheckBox>
-#include <QDialog>
 #include <QGroupBox>
 #include <QMap>
 #include <QRadioButton>
@@ -130,16 +129,4 @@ class ConfirmCloseUnsavedWidget : public SingleCheckboxGroupWidget
 {
 public:
     explicit ConfirmCloseUnsavedWidget(QWidget* parent = nullptr);
-};
-
-// ─── SettingsDialog ───────────────────────────────────────────────────────────
-
-class SettingsDialog : public QDialog
-{
-    Q_OBJECT
-public:
-    explicit SettingsDialog(QWidget* parent = nullptr);
-
-private slots:
-    void onRestoreDefaults();
 };
