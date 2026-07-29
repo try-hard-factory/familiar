@@ -9,7 +9,6 @@
 
 #include "actions.h"
 #include "menu_structure.h"
-#include <core/settings.h>
 #include <core/settingshandler.h>
 
 // TODO:
@@ -143,11 +142,12 @@ private:
         qaction->setChecked(defaultChecked);
 
         if (!settingsKey.isEmpty()) {
-            const bool val
-                = FamSettings().value(settingsKey, defaultChecked).toBool();
+            const bool val = SettingsHandler::getInstance()
+                                 ->actionState(settingsKey, defaultChecked)
+                                 .toBool();
             qaction->setChecked(val);
             QObject::connect(qaction, &QAction::toggled, [settingsKey](bool v) {
-                FamSettings().setValue(settingsKey, v);
+                SettingsHandler::getInstance()->setActionState(settingsKey, v);
             });
         }
 
@@ -264,7 +264,7 @@ private:
         if (!recentFilesSubmenu_)
             return;
 
-        const QStringList files = FamSettings().getRecentFiles(
+        const QStringList files = SettingsHandler::getInstance()->getRecentFiles(
             /*existingOnly=*/true);
 
         for (int i = 0; i < 10; ++i) {

@@ -253,7 +253,6 @@ private slots:
     void quit();
     void openFile();
     void saveFileAs();
-    void notifyShortcut(const QString& t);
 
 private slots:
     // Resync the shared action enabled-state to whichever tab is now

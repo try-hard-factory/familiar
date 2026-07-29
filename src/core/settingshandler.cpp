@@ -9,6 +9,7 @@
 #include <QStandardPaths>
 #include <QVector>
 
+#include <core/settings.h>
 #include <core/valuehandler.h>
 
 #include "log/log.h"
@@ -176,71 +177,6 @@ void SettingsHandler::setDefaultCurrentPreset()
 }
 
 
-bool SettingsHandler::setShortcut(const QString& actionName,
-                                  const QString& shortcut)
-{
-    FLOG_DEBUG(Ch::Settings, "{}", shortcut);
-
-    static QVector<QKeySequence> reservedShortcuts = {
-        Qt::Key_Backspace,
-        Qt::Key_Escape,
-    };
-
-    if (hasError()) {
-        return false;
-    }
-
-    bool error = false;
-
-    settings_.beginGroup(SETTINGS_GROUP_SHORTCUTS);
-    if (shortcut.isEmpty()) {
-        setValue(actionName, "");
-    } else if (reservedShortcuts.contains(QKeySequence(shortcut))) {
-        // do not allow to set reserved shortcuts
-        error = true;
-    } else {
-        error = false;
-        // Make no difference for Return and Enter keys
-        QString newShortcut = KeySequence().value(shortcut).toString();
-        for (auto& otherAction : settings_.allKeys()) {
-            if (actionName == otherAction) {
-                continue;
-            }
-            QString existingShortcut
-                = KeySequence().value(settings_.value(otherAction)).toString();
-            if (newShortcut == existingShortcut) {
-                error = true;
-                goto done;
-            }
-        }
-        settings_.setValue(actionName, KeySequence().value(shortcut));
-    }
-done:
-    settings_.endGroup();
-    emit getInstance() -> shortCutChanged(actionName);
-    return !error;
-}
-
-
-QString SettingsHandler::shortcut(const QString& actionName)
-{
-    QString setting = SETTINGS_GROUP_SHORTCUTS "/" + actionName;
-    QString shortcut = value(setting).toString();
-    if (!settings_.contains(setting)) {
-        // The action uses a shortcut that is a flameshot default
-        // (not set explicitly by user)
-        settings_.beginGroup(SETTINGS_GROUP_SHORTCUTS);
-        for (auto& otherAction : settings_.allKeys()) {
-            if (settings_.value(otherAction) == shortcut) {
-                // We found an explicit shortcut - it will take precedence
-                settings_.endGroup();
-                return {};
-            }
-        }
-        settings_.endGroup();
-    }
-    return shortcut;
-}
 
 
 void SettingsHandler::setValue(const QString& key, const QVariant& value)
@@ -613,6 +549,82 @@ void SettingsHandler::setErrorState(bool error) const
         //        AbstractLogger::info() << msg;
         emit getInstance() -> errorResolved();
     }
+}
+
+
+// ─── Facade: FamSettings-backed ────────────────────────────────────────────────
+
+void SettingsHandler::updateRecentFiles(const QString& filename)
+{
+    FamSettings().updateRecentFiles(filename);
+}
+
+QStringList SettingsHandler::getRecentFiles(bool existingOnly) const
+{
+    return FamSettings().getRecentFiles(existingOnly);
+}
+
+QString SettingsHandler::settingsFileName() const
+{
+    return FamSettings().fileName();
+}
+
+QVariant SettingsHandler::actionState(const QString& key,
+                                      const QVariant& defaultValue) const
+{
+    return FamSettings().value(key, defaultValue);
+}
+
+void SettingsHandler::setActionState(const QString& key, const QVariant& value)
+{
+    FamSettings().setValue(key, value);
+}
+
+qreal SettingsHandler::arrangeGap() const
+{
+    return FamSettings().valueOrDefault(QStringLiteral("Items/arrange_gap")).toReal();
+}
+
+QString SettingsHandler::arrangeDefault() const
+{
+    return FamSettings()
+        .valueOrDefault(QStringLiteral("Items/arrange_default"))
+        .toString();
+}
+
+QString SettingsHandler::imageStorageFormat() const
+{
+    return FamSettings()
+        .valueOrDefault(QStringLiteral("Items/image_storage_format"))
+        .toString();
+}
+
+// ─── Facade: KeyboardSettings-backed ───────────────────────────────────────────
+
+std::optional<ControlMatch> SettingsHandler::mousewheelActionForEvent(
+    const QWheelEvent* event) const
+{
+    return KeyboardSettings().mousewheelActionForEvent(event);
+}
+
+std::optional<ControlMatch> SettingsHandler::mouseActionForEvent(
+    const QMouseEvent* event) const
+{
+    return KeyboardSettings().mouseActionForEvent(event);
+}
+
+QStringList SettingsHandler::getShortcuts(const QString& group,
+                                          const QString& key,
+                                          const QStringList& defaults) const
+{
+    return KeyboardSettings().get_shortcuts(group, key, defaults);
+}
+
+void SettingsHandler::setShortcuts(const QString& group,
+                                   const QString& key,
+                                   const QStringList& values)
+{
+    KeyboardSettings().setShortcuts(group, key, values);
 }
 
 
