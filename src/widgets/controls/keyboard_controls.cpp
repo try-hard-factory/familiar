@@ -49,8 +49,10 @@ void KeyboardShortcutsEditor::onEditingFinished()
     conflictingRow_ = -1;
     lastCalledWith_ = shortcut;
 
-    if (shortcut.isEmpty())
+    if (shortcut.isEmpty()) {
+        emit done();
         return;
+    }
 
     auto all = getActions().all();
     for (int i = 0; i < all.size(); ++i) {
@@ -76,9 +78,11 @@ void KeyboardShortcutsEditor::onEditingFinished()
             } else {
                 setKeySequence(QKeySequence(oldValue_));
             }
+            emit done();
             return;
         }
     }
+    emit done();
 }
 
 // ─── KeyboardShortcutsDelegate ────────────────────────────────────────────────
@@ -92,7 +96,22 @@ QWidget* KeyboardShortcutsDelegate::createEditor(
     const QStyleOptionViewItem& /*option*/,
     const QModelIndex& index) const
 {
-    return new KeyboardShortcutsEditor(parent, index);
+    auto* editor = new KeyboardShortcutsEditor(parent, index);
+    // Deliberately not connected to the raw editingFinished() - that
+    // signal can re-fire reentrantly while onEditingFinished()'s own
+    // conflict messagebox is still open (QTBUG-40; see the comment
+    // there), and committing+closing the editor mid-call would destroy
+    // it while that call is still running on it (use-after-free/crash).
+    // done() is only ever emitted once conflict resolution has actually
+    // settled, so it's safe to commit+close from.
+    connect(editor, &KeyboardShortcutsEditor::done, this, [this, editor]() {
+        // createEditor() is const (Qt's own base signature), but
+        // commitData()/closeEditor() aren't - the standard workaround.
+        auto* self = const_cast<KeyboardShortcutsDelegate*>(this);
+        emit self->commitData(editor);
+        emit self->closeEditor(editor);
+    });
+    return editor;
 }
 
 void KeyboardShortcutsDelegate::setModelData(QWidget* editor,
@@ -234,11 +253,12 @@ bool KeyboardShortcutsModel::setDataEx(const QModelIndex& index,
     // Deduplicate while preserving order.
     QStringList unique;
     QSet<QString> seen;
-    // TODO:
-    // for (const auto& s : shortcuts) {
-    //     if (seen.insert(s).second)
-    //         unique.append(s);
-    // }
+    for (const auto& s : shortcuts) {
+        if (!seen.contains(s)) {
+            seen.insert(s);
+            unique.append(s);
+        }
+    }
 
     action->setShortcuts(unique);
 
