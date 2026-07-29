@@ -2,7 +2,7 @@
 #include "canvasview.h"
 #include "log/log.h"
 #include "mainwindow.h"
-#include <core/settings.h>
+#include <core/settingshandler.h>
 #include <QLabel>
 #include <QVBoxLayout>
 using namespace familiar::log;
@@ -38,7 +38,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
 
 void WelcomeOverlay::show()
 {
-    QStringList files = FamSettings().getRecentFiles(true);
+    QStringList files = SettingsHandler::getInstance()->getRecentFiles(true);
     filesView_->update_files(files);
     if (!files.isEmpty() && layout_->indexOf(filesWidget_) < 0) {
         layout_->insertWidget(0, filesWidget_);

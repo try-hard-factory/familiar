@@ -55,11 +55,6 @@ MainWindow::MainWindow(QWidget* parent)
     setMouseTracking(true);
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::shortCutChanged,
-            this,
-            &MainWindow::notifyShortcut);
-
     auto colorPreset = settings_.getCurrentColorPreset();
     backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
     currentOpacity_ = settings_.getCurrentOpacity();
@@ -159,15 +154,6 @@ void MainWindow::openFile()
 void MainWindow::saveFileAs()
 {
     fileactions_->saveFileAs();
-}
-
-void MainWindow::notifyShortcut(const QString& actionName)
-{
-    auto settings = SettingsHandler::getInstance();
-    FLOG_WARN(Ch::UI,
-              "notifyShortcut. actionName: {}, shortcut: {}",
-              actionName,
-              settings->shortcut(actionName));
 }
 
 void MainWindow::settingsChangedSlot()
@@ -336,7 +322,8 @@ void MainWindow::on_action_keyboard_settings()
 
 void MainWindow::on_action_open_settings_dir()
 {
-    QString dir = QFileInfo(FamSettings().fileName()).absolutePath();
+    QString dir = QFileInfo(SettingsHandler::getInstance()->settingsFileName())
+                      .absolutePath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 

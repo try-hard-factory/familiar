@@ -17,13 +17,12 @@ using namespace familiar::log;
 
 #include "project_settings.h"
 #include "selector.h"
-#include <core/settings.h>
+#include <core/settingshandler.h>
 
 #include "commands.h"
 #include <QUndoStack>
 #include <qassert.h>
 
-#include "core/settings.h"
 #include <algorithm>
 #include <cmath>
 
@@ -69,7 +68,6 @@ CanvasScene::CanvasScene(MainWindow& mw,
     , mainwindow_(mw)
     , zCounter_(zc)
 {
-    settings = FamSettings::getInstance();
     connect(this,
             &CanvasScene::selectionChanged,
             this,
@@ -329,9 +327,7 @@ void CanvasScene::normalize_size()
 
 void CanvasScene::arrange_default()
 {
-    const QString mode
-        = settings->valueOrDefault(QStringLiteral("Items/arrange_default"))
-              .toString();
+    const QString mode = SettingsHandler::getInstance()->arrangeDefault();
     if (mode == QLatin1String("horizontal"))
         arrange(false);
     else if (mode == QLatin1String("vertical"))
@@ -453,9 +449,7 @@ void CanvasScene::arrange(bool vertical)
     if (items.size() < 2)
         return;
 
-    qreal gap = FamSettings()
-                    .valueOrDefault(QStringLiteral("Items/arrange_gap"))
-                    .toReal();
+    qreal gap = SettingsHandler::getInstance()->arrangeGap();
     QPointF center = get_selection_center();
     QList<QPointF> positions;
 
@@ -528,9 +522,7 @@ void CanvasScene::arrange_optimal()
     if (items.size() < 2)
         return;
 
-    qreal gap = FamSettings()
-                    .valueOrDefault(QStringLiteral("Items/arrange_gap"))
-                    .toReal();
+    qreal gap = SettingsHandler::getInstance()->arrangeGap();
 
     // Получаем размеры элементов
     QList<RectPacker::Size> sizes;
@@ -579,9 +571,7 @@ void CanvasScene::arrange_square()
     cancel_active_modes();
     qreal maxWidth = 0;
     qreal maxHeight = 0;
-    qreal gap = FamSettings()
-                    .valueOrDefault(QStringLiteral("Items/arrange_gap"))
-                    .toReal();
+    qreal gap = SettingsHandler::getInstance()->arrangeGap();
     QList<QGraphicsItem*> items = sort_by_filename(selectedItems(true));
 
     if (items.size() < 2)

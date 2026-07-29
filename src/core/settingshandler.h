@@ -1,11 +1,18 @@
 #ifndef SETTINGSHANDLER_H
 #define SETTINGSHANDLER_H
 
+#include "core/controls.h"
+
+#include <optional>
+
 #include <QObject>
 #include <QSettings>
 #include <QStringList>
 #include <QVariant>
 #include <QVector>
+
+class QWheelEvent;
+class QMouseEvent;
 
 #define SETTINGS_GROUP_GENERAL "General"
 #define SETTINGS_GROUP_SHORTCUTS "Shortcuts"
@@ -78,8 +85,6 @@ public:
 
     void setDefaultCurrentPreset();
 
-    bool setShortcut(const QString& actionName, const QString& shortcut);
-    QString shortcut(const QString& actionName);
     void setValue(const QString& key, const QVariant& value);
     QVariant value(const QString& key) const;
     void remove(const QString& key);
@@ -104,6 +109,38 @@ public:
     bool hasError() const;
     QString errorMessage() const;
 
+    // FACADE: SettingsHandler is the only settings class code outside
+    // the settings subsystem itself (core/, widgets/controls/,
+    // widgets/settings_dialog.*) should call. These delegate to
+    // FamSettings/KeyboardSettings (core/settings.h, core/controls.h),
+    // which stay the internal storage - not reimplemented here.
+
+    // FamSettings-backed
+    void updateRecentFiles(const QString& filename);
+    QStringList getRecentFiles(bool existingOnly = false) const;
+    QString settingsFileName() const;
+    // Generic per-action persisted checkbox state (Action::settingsKey,
+    // see actions/action_mixin.h) - not one of FamSettings::fields()'
+    // named keys, so no dedicated accessor makes sense.
+    QVariant actionState(const QString& key, const QVariant& defaultValue) const;
+    void setActionState(const QString& key, const QVariant& value);
+    qreal arrangeGap() const;
+    QString arrangeDefault() const;
+    QString imageStorageFormat() const;
+
+    // KeyboardSettings-backed (also the underlying store for mouse/wheel
+    // control matching, despite the class name)
+    std::optional<ControlMatch> mousewheelActionForEvent(
+        const QWheelEvent* event) const;
+    std::optional<ControlMatch> mouseActionForEvent(
+        const QMouseEvent* event) const;
+    QStringList getShortcuts(const QString& group,
+                            const QString& key,
+                            const QStringList& defaults = {}) const;
+    void setShortcuts(const QString& group,
+                      const QString& key,
+                      const QStringList& values);
+
 
 signals:
     void settingsChanged() const;
@@ -111,7 +148,6 @@ signals:
     void fileChanged();
     void error();
     void errorResolved();
-    void shortCutChanged(const QString& t);
 
 private:
     void ensureFileWatched() const;

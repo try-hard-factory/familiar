@@ -1,5 +1,5 @@
 #include "actions.h"
-#include <core/controls.h>
+#include <core/settingshandler.h>
 #include <QAction>
 
 // ─── Action methods ───────────────────────────────────────────────────────────
@@ -30,16 +30,14 @@ Action Action::make(const QString& id,
 
 QStringList Action::get_shortcuts() const
 {
-    return KeyboardSettings().get_shortcuts(QString::fromLatin1(SETTINGS_GROUP),
-                                            id,
-                                            shortcuts);
+    return SettingsHandler::getInstance()->getShortcuts(
+        QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
 }
 
 void Action::setShortcuts(const QStringList& values)
 {
-    KeyboardSettings().setShortcuts(QString::fromLatin1(SETTINGS_GROUP),
-                                    id,
-                                    values);
+    SettingsHandler::getInstance()->setShortcuts(
+        QString::fromLatin1(SETTINGS_GROUP), id, values);
     if (qaction) {
         QList<QKeySequence> seqs;
         for (const QString& s : values)

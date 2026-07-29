@@ -1,15 +1,8 @@
 #include "settings_dialog.h"
-#include <QApplication>
 #include <QCheckBox>
-#include <QDialogButtonBox>
-#include <QGridLayout>
 #include <QLabel>
-#include <QMessageBox>
-#include <QPushButton>
-#include <QTabWidget>
 
 #include "core/settings.h"
-#include "widgets/dialogs.h"
 
 static constexpr char CHANGED_SYMBOL[] = "✎";
 
@@ -255,59 +248,3 @@ ConfirmCloseUnsavedWidget::ConfirmCloseUnsavedWidget(QWidget* parent)
                                 QStringLiteral("Confirm when closing"),
                                 parent)
 {}
-
-// ─── SettingsDialog ───────────────────────────────────────────────────────────
-
-SettingsDialog::SettingsDialog(QWidget* parent)
-    : QDialog(parent)
-{
-    setWindowTitle(qApp->applicationName() + QStringLiteral(" Settings"));
-
-    auto* tabs = new QTabWidget(this);
-
-    // Miscellaneous tab
-    auto* misc = new QWidget;
-    auto* miscLayout = new QGridLayout(misc);
-    miscLayout->addWidget(new ConfirmCloseUnsavedWidget, 0, 0);
-    tabs->addTab(misc, QStringLiteral("&Miscellaneous"));
-
-    // Images & Items tab
-    auto* items = new QWidget;
-    auto* itemsLayout = new QGridLayout(items);
-    itemsLayout->addWidget(new ImageStorageFormatWidget, 0, 0);
-    itemsLayout->addWidget(new AllocationLimitWidget, 0, 1);
-    itemsLayout->addWidget(new ArrangeGapWidget, 1, 0);
-    itemsLayout->addWidget(new ArrangeDefaultWidget, 1, 1);
-    tabs->addTab(items, QStringLiteral("&Images && Items"));
-
-    auto* layout = new QVBoxLayout(this);
-    setLayout(layout);
-    layout->addWidget(tabs);
-
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-
-    auto* resetBtn = new QPushButton(QStringLiteral("&Restore Defaults"), this);
-    resetBtn->setAutoDefault(false);
-    connect(resetBtn,
-            &QPushButton::clicked,
-            this,
-            &SettingsDialog::onRestoreDefaults);
-    buttons->addButton(resetBtn, QDialogButtonBox::ActionRole);
-
-    layout->addWidget(buttons);
-}
-
-void SettingsDialog::onRestoreDefaults()
-{
-    const auto reply = showMessageBox(
-        QMessageBox::Question,
-        this,
-        QStringLiteral("Restore defaults?"),
-        QStringLiteral(
-            "Do you want to restore all settings to their default values?"),
-        QMessageBox::Yes | QMessageBox::No);
-
-    if (reply == QMessageBox::Yes)
-        FamSettings().restoreDefaults();
-}

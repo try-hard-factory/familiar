@@ -19,6 +19,12 @@ public:
     explicit MouseWheelModifiersEditor(QWidget* parent,
                                        const QModelIndex& index);
 
+    // Re-publicize: base declares it protected, but MouseWheelDelegate
+    // (an external class) needs to read the edited modifiers back out
+    // once the dialog is saved - same as MouseControlsEditor does for
+    // the mouse-button editor.
+    using MouseControlsEditorBase::getModifiers;
+
 protected:
     int findConflictingRow() const override;
     QString conflictingActionText(int row) const override;

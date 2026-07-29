@@ -74,16 +74,12 @@ set(PROJECT_SOURCES
         ui/settings_window.h
         ui/presetsave_window.cpp
         ui/presetsave_window.h
-        ui/shortcuts_widget.cpp
-        ui/shortcuts_widget.h
         actions/actions.cpp
         actions/actions.h
         actions/menu_structure.cpp
         actions/menu_structure.h
         core/qguiappcurrentscreen.cpp
         core/qguiappcurrentscreen.h
-        ui/setshortcut_widget.cpp
-        ui/setshortcut_widget.h
         core/controls.cpp
         core/controls.h
         core/settings.cpp
@@ -92,8 +88,6 @@ set(PROJECT_SOURCES
         core/settingshandler.h
         core/valuehandler.cpp
         core/valuehandler.h
-        ui/preferencesconf.h
-        ui/preferencesconf.cpp
         ui/colors_widget.h
         ui/colors_widget.cpp
         ui/extendedslider.cpp
