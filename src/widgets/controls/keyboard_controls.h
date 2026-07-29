@@ -22,6 +22,15 @@ public:
 
     int conflictingRow() const { return conflictingRow_; }
 
+signals:
+    // Emitted exactly once per genuine user edit, after conflict
+    // resolution (if any) has fully settled - unlike the raw
+    // editingFinished() this is based on (see the QTBUG-40 comment in
+    // onEditingFinished()), this never re-fires reentrantly while a
+    // conflict messagebox is still open, so it's safe for the delegate
+    // to commit+close the editor from.
+    void done();
+
 private slots:
     void onEditingFinished();
 
