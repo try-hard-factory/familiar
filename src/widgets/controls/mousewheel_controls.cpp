@@ -77,6 +77,7 @@ QWidget* MouseWheelDelegate::createEditor(QWidget* parent,
 
     auto* proxy = qobject_cast<MouseWheelProxy*>(
         const_cast<QAbstractItemModel*>(index.model()));
+    Q_UNUSED(proxy) // only used by the commented-out connect() below
 
     // TODO:
     // QObject::connect(editor, &MouseWheelModifiersEditor::saved,

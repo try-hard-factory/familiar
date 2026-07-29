@@ -270,7 +270,10 @@ int FileActions::saveFileAs()
         mainwindow_.tabPane().setCurrentTabProjectName(
             QFileInfo(selected).fileName());
 
-        QFile(selected).open(QFile::ReadWrite);
+        // Pre-touch the file into existence: saveFile(path) bails into
+        // saveFileAs() again if the path doesn't exist yet, which would
+        // recurse right back here for a genuinely new file.
+        (void) QFile(selected).open(QFile::ReadWrite);
         saveFile(selected);
         retval = QDialog::Accepted;
     }

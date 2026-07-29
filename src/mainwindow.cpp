@@ -20,14 +20,6 @@
 #include "log/log.h"
 using namespace familiar::log;
 
-static QHash<QString, EShortcutButtons> recognizedShortcutsActions = {
-    {"TYPE_NEW", k_TYPE_NEW},
-    {"TYPE_OPEN", k_TYPE_OPEN},
-    {"TYPE_SAVE", k_TYPE_SAVE},
-    {"TYPE_QUIT", k_TYPE_QUIT},
-};
-
-
 MainWindow::MainWindow(QWidget* parent)
     // ActionsMixin<T>'s constructor only forwards `parent` (no extra
     // QMainWindow flags argument); the custom flags this used to pass
@@ -176,8 +168,6 @@ void MainWindow::notifyShortcut(const QString& actionName)
               "notifyShortcut. actionName: {}, shortcut: {}",
               actionName,
               settings->shortcut(actionName));
-    auto idx = recognizedShortcutsActions[actionName];
-    auto keyseq = QKeySequence(SettingsHandler().shortcut(actionName));
 }
 
 void MainWindow::settingsChangedSlot()

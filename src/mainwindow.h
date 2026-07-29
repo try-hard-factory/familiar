@@ -29,14 +29,6 @@ class QFileDialog;
 class SaveAllWindow;
 class QShortcut;
 
-enum EShortcutButtons {
-    k_TYPE_NEW = 0,
-    k_TYPE_OPEN = 1,
-    k_TYPE_SAVE = 2,
-    k_TYPE_QUIT = 3,
-    k_ALL = 4
-};
-
 constexpr QPoint kInvalidPoint(-1, -1);
 
 class MainWindow : public ActionsMixin<QMainWindow>

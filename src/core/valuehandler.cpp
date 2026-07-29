@@ -137,7 +137,7 @@ bool Color::check(const QVariant& val)
 {
     QString str = val.toString();
     // Disable #RGB, #RRRGGGBBB and #RRRRGGGGBBBB formats that QColor supports
-    return QColor::isValidColor(str)
+    return QColor::isValidColorName(str)
            && (str[0] != '#'
                || (str.length() != 4 && str.length() != 10
                    && str.length() != 13));
