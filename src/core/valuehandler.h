@@ -36,6 +36,12 @@ class QVariant;
 class ValueHandler
 {
 public:
+    // Derived instances (Bool, ColorList, ...) are stored/deleted through
+    // QSharedPointer<ValueHandler> - without a virtual destructor here,
+    // that delete only ran ~ValueHandler(), never the derived one, so
+    // e.g. ColorList/OpacityList's QMap members were never destructed.
+    virtual ~ValueHandler() = default;
+
     /**
      * @brief Check the value semantically.
      * @param val The value that was read from the config file

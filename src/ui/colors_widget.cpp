@@ -81,32 +81,32 @@ void ColorsWidget::presetsInit()
     auto* presets_layout = new QVBoxLayout();
     presets_layout->setAlignment(Qt::AlignLeft);
     QPushButton* dark_btn = new QPushButton("Dark");
-    connect(dark_btn, &QPushButton::clicked, this, [this]() {
+    connect(dark_btn, &QPushButton::clicked, this, []() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kDarkPreset);
         emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* light_btn = new QPushButton("Light");
-    connect(light_btn, &QPushButton::clicked, this, [this]() {
+    connect(light_btn, &QPushButton::clicked, this, []() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kLightPreset);
         emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom1_btn = new QPushButton("Custom 1");
-    connect(custom1_btn, &QPushButton::clicked, this, [this]() {
+    connect(custom1_btn, &QPushButton::clicked, this, []() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom1);
         emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom2_btn = new QPushButton("Custom 2");
-    connect(custom2_btn, &QPushButton::clicked, this, [this]() {
+    connect(custom2_btn, &QPushButton::clicked, this, []() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom2);
         emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom3_btn = new QPushButton("Custom 3");
-    connect(custom3_btn, &QPushButton::clicked, this, [this]() {
+    connect(custom3_btn, &QPushButton::clicked, this, []() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom3);
         emit SettingsHandler::getInstance() -> presetsChanged();
     });
     QPushButton* custom4_btn = new QPushButton("Custom 4");
-    connect(custom4_btn, &QPushButton::clicked, this, [this]() {
+    connect(custom4_btn, &QPushButton::clicked, this, []() {
         SettingsHandler::getInstance()->setCurrentPreset(EPresets::kCustom4);
         emit SettingsHandler::getInstance() -> presetsChanged();
     });

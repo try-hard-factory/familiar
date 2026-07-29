@@ -1151,7 +1151,7 @@ qint16 CanvasScene::objectsCount() const
     const int targetObjectType = 3;
     return std::count_if(items().begin(),
                          items().end(),
-                         [targetObjectType](const QGraphicsItem* item) {
+                         [](const QGraphicsItem* item) {
                              return item->type() == targetObjectType;
                          });
 }

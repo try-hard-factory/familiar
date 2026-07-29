@@ -26,13 +26,18 @@ void MouseControlsEditorBase::initModifiersInput()
     QGroupBox* box = new QGroupBox(tr("Modifiers"), this);
     QVBoxLayout* layout = new QVBoxLayout(box);
 
-    for (const auto& [name, flag] : MouseConfigBase::modifierMap()) {
+    for (const auto& pair : MouseConfigBase::modifierMap()) {
+        // Named copy, not a structured binding, so it can be captured by
+        // the lambda below without relying on a compiler-specific
+        // extension for capturing structured bindings.
+        const QString name = pair.first;
         QCheckBox* cb = new QCheckBox(name, box);
         checkboxes_[name] = cb;
         layout->addWidget(cb);
-        connect(cb, &QCheckBox::stateChanged, this, [this, name](int value) {
-            onModifiersChanged(name, value);
-        });
+        connect(cb, &QCheckBox::checkStateChanged, this,
+                [this, name](Qt::CheckState state) {
+                    onModifiersChanged(name, static_cast<int>(state));
+                });
     }
 
     mainLayout_->addWidget(box);

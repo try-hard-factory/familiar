@@ -488,7 +488,7 @@ public:
         rotateOrigDegrees_ = value;
     }
 
-    QPainterPath get_scale_bounds(const QPointF& corner, int margin = 0) const
+    QPainterPath get_scale_bounds(const QPointF& corner, qreal margin = 0) const
     {
         QPainterPath path;
         qreal size = select_resize_size();

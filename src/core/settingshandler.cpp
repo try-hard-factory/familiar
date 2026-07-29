@@ -413,8 +413,15 @@ void SettingsHandler::setCurrentOpacity(int opacity)
 
 bool SettingsHandler::checkForErrors() const
 {
-    return checkUnrecognizedSettings() & checkShortcutConflicts()
-           & checkSemantics();
+    // Bitwise & (not &&) was deliberate here: all three checks log/
+    // collect their own offenders as a side effect and must all run,
+    // even if an earlier one already failed - spelled out as separate
+    // statements instead, so this reads as intentional rather than a
+    // stray bitwise-vs-logical typo.
+    const bool unrecognizedOk = checkUnrecognizedSettings();
+    const bool shortcutsOk = checkShortcutConflicts();
+    const bool semanticsOk = checkSemantics();
+    return unrecognizedOk && shortcutsOk && semanticsOk;
 }
 
 
@@ -537,7 +544,9 @@ void SettingsHandler::ensureFileWatched() const
 {
     QFile file(settings_.fileName());
     if (!file.exists()) {
-        file.open(QFileDevice::WriteOnly);
+        // Pre-touch the file into existence so there's something on
+        // disk for settingsWatcher_ to watch below.
+        (void) file.open(QFileDevice::WriteOnly);
         file.close();
     }
     if (settingsWatcher_ != nullptr && settingsWatcher_->files().isEmpty()

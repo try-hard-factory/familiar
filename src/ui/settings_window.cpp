@@ -43,11 +43,6 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             &MainWindow::settingsChangedSlot);
 
 
-    QColor background = this->palette().window().color();
-    //    bool isDark = ColorUtils::colorIsDark(background);
-    //    QString modifier =
-    //      isDark ? PathInfo::whiteIconPath() : PathInfo::blackIconPath();
-
     // general
     auto* prefConfigLayout = new QVBoxLayout(prefConfigTab_);
     prefConfigTab_->setLayout(prefConfigLayout);
