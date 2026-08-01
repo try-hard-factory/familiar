@@ -51,7 +51,7 @@ void TabPane::addNewTab(const QString& path)
     int count = tabs_->count();
 
     CanvasView* canvasView = new CanvasView(mainwindow_);
-    project_settings* ps = new project_settings(this);
+    project_settings* ps = new project_settings(this, canvasView);
 
     ps->path(path);
     ps->projectName(QFileInfo(path).fileName());
@@ -72,7 +72,7 @@ void TabPane::addNewUntitledTab()
     int count = tabs_->count();
 
     CanvasView* canvasWidget = new CanvasView(mainwindow_);
-    project_settings* ps = new project_settings(this);
+    project_settings* ps = new project_settings(this, canvasWidget);
     canvasWidget->setProjectSettings(ps);
     canvasWidget->show();
 
@@ -137,6 +137,14 @@ void TabPane::onTabClosed(int index)
 void TabPane::setCurrentTabTitle(const QString& title)
 {
     tabs_->setTabText(tabs_->currentIndex(), title);
+}
+
+void TabPane::setTabTitle(CanvasView* view, const QString& title)
+{
+    const int idx = tabs_->indexOf(view);
+    if (idx >= 0) {
+        tabs_->setTabText(idx, title);
+    }
 }
 
 QString TabPane::getCurrentTabTitle()

@@ -4,11 +4,12 @@
 #include <QString>
 
 class TabPane;
+class CanvasView;
 
 class project_settings
 {
 public:
-    explicit project_settings(TabPane* tp);
+    explicit project_settings(TabPane* tp, CanvasView* view);
 
     void title(const QString& t);
     const QString& title() const noexcept { return title_; }
@@ -29,6 +30,7 @@ public:
 
 private:
     TabPane* tp_;
+    CanvasView* view_;
     QString projectName_ = "untitled";
     QString title_ = "untitled";
     QString path_ = "untitled";
