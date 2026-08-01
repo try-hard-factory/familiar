@@ -121,6 +121,13 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
                    | Qt::MSWindowsFixedSizeDialogHint);
+    // This window is deliberately NOT widget-parented to MainWindow (that
+    // would cascade its "* { background: transparent }" stylesheet in),
+    // so the WM doesn't know it belongs above it - with Always On Top
+    // enabled the main window would cover this modal window, leaving the
+    // whole app looking frozen. Inherit the hint explicitly instead.
+    if (wm && wm->windowFlags().testFlag(Qt::WindowStaysOnTopHint))
+        setWindowFlag(Qt::WindowStaysOnTopHint, true);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Configuration"));
     resize(760, 480);

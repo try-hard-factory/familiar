@@ -37,6 +37,12 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
                    | Qt::MSWindowsFixedSizeDialogHint);
+    // Same as NewSettingsWindow: not widget-parented to MainWindow (its
+    // transparent stylesheet would cascade in), so with Always On Top
+    // enabled the main window would cover this modal window - inherit
+    // the hint explicitly.
+    if (wm && wm->windowFlags().testFlag(Qt::WindowStaysOnTopHint))
+        setWindowFlag(Qt::WindowStaysOnTopHint, true);
     setWindowModality(Qt::ApplicationModal);
     // We wrap QTabWidget in a QWidget because of a Qt bug
     auto* layout = new QVBoxLayout(this);

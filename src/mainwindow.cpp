@@ -32,6 +32,15 @@ MainWindow::MainWindow(QWidget* parent)
     : ActionsMixin<QMainWindow>(parent)
     , fileactions_(new FileActions(*this))
 {
+    // FIRST, before anything below can possibly create the native window
+    // (e.g. fireInitialCheckableCallbacks_() inside
+    // build_menu_and_actions() invokes window-management action slots):
+    // an X11 window's ARGB visual is fixed at creation time, so if the
+    // window is ever created before WA_TranslucentBackground is set,
+    // transparency is silently dead for the whole session.
+    setAttribute(Qt::WA_TranslucentBackground);
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+
     // tabpane_ is built here (constructor body), not via the
     // member-initializer list: building it constructs the first
     // CanvasView. Constructing it too early, before this class's own
@@ -71,10 +80,10 @@ MainWindow::MainWindow(QWidget* parent)
     // duplicate it here.
     setCentralWidget(tabpane_);
 
-    setAttribute(Qt::WA_TranslucentBackground);
-    setWindowFlags(
-        Qt::Window
-        | Qt::FramelessWindowHint); //|Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
+    // WA_TranslucentBackground + frameless flags are set at the very top
+    // of this constructor (see comment there) - don't re-apply here:
+    // setWindowFlags() with identical flags is a no-op, but keeping a
+    // second copy invites the two call sites drifting apart.
 
     setStyleSheet(
         "background: transparent; background-color: transparent;"); // + rgbaBackGroundStr_);
@@ -188,9 +197,13 @@ void MainWindow::settingsChangedSlot()
     // same 2px border in a transparent color rather than no border at
     // all, so the box model stays identical and tabs don't resize when
     // the selection changes.
-    const QColor& selectionColor = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& selectionColor
+        = colorPreset[EPresetsColorIdx::kSelectionColor];
     auto rgb = [](const QColor& c) {
-        return QString("rgb(%1, %2, %3)").arg(c.red()).arg(c.green()).arg(c.blue());
+        return QString("rgb(%1, %2, %3)")
+            .arg(c.red())
+            .arg(c.green())
+            .arg(c.blue());
     };
     tabpane_->setStyleSheet(
         QString("QTabBar::tab { background: %1; color: %2; "
@@ -312,6 +325,15 @@ void MainWindow::on_action_quit()
 // View
 void MainWindow::on_action_fullscreen(bool checked)
 {
+    // fireInitialCheckableCallbacks_() (action_mixin.h) invokes this at
+    // startup, inside the constructor - showNormal()/showFullScreen()
+    // would map the native window before WA_TranslucentBackground and
+    // the frameless flags are set (they come later in the ctor), and an
+    // X11 window keeps the non-ARGB visual it was created with forever:
+    // transparency silently dies for the whole session. Only act on real
+    // user toggles of an already-shown window.
+    if (!isVisible())
+        return;
     if (checked)
         showFullScreen();
     else
@@ -320,6 +342,12 @@ void MainWindow::on_action_fullscreen(bool checked)
 
 void MainWindow::on_action_always_on_top(bool checked)
 {
+    // Same startup-callback guard as on_action_fullscreen() above - the
+    // unconditional destroy()/create()/show() below used to run inside
+    // the constructor (before the translucency attributes were set) and
+    // permanently broke WA_TranslucentBackground for the session.
+    if (windowFlags().testFlag(Qt::WindowStaysOnTopHint) == checked)
+        return;
     setWindowFlag(Qt::WindowStaysOnTopHint, checked);
     // destroy()+create(), not hide()+show(): the window manager (X11's
     // WindowStaysOnTopHint maps to _NET_WM_STATE_ABOVE) can ignore a flag
