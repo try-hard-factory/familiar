@@ -4,7 +4,6 @@
 #include <optional>
 #include <QList>
 #include <QMap>
-#include <QSettings>
 #include <QString>
 #include <QStringList>
 #include <QVariant>
@@ -186,10 +185,15 @@ struct ControlMatch
     bool inverted = false;
 };
 
-class KeyboardSettings : public QSettings
+// Thin value-typed facade over the "Actions"/"Mouse"/"MouseWheel" groups
+// of the single JSON document owned by SettingsHandler
+// (core/settingshandler.h) - same role as FamSettings (core/settings.h)
+// for its own groups. Constructed fresh at each call site, holds no
+// state of its own.
+class KeyboardSettings
 {
 public:
-    KeyboardSettings();
+    KeyboardSettings() = default;
 
     static const QList<MouseWheelConfig>& mousewheelActions();
     static const QList<MouseConfig>& mouseActions();

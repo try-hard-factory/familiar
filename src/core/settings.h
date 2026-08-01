@@ -2,8 +2,8 @@
 #define SETTINGS_H
 
 #include <functional>
+#include <QMap>
 #include <QObject>
-#include <QSettings>
 #include <QStringList>
 #include <QVariant>
 
@@ -23,7 +23,10 @@ public:
     void parse(const QStringList& args);
 
     QString filename() const { return filename_; }
-    QString settingsDir() const { return settingsDir_; }
+    // JSON settings file to read/write instead of the default location
+    // (QStandardPaths::AppConfigLocation + "settings.json") - see
+    // SettingsHandler::SettingsHandler() (core/settingshandler.cpp).
+    QString settingsFile() const { return settingsFile_; }
     QString loglevel() const { return loglevel_; }
     bool debugBoundingRects() const { return debugBoundingRects_; }
     bool debugShapes() const { return debugShapes_; }
@@ -33,7 +36,7 @@ private:
     CommandlineArgs() = default;
 
     QString filename_;
-    QString settingsDir_;
+    QString settingsFile_;
     QString loglevel_ = QStringLiteral("INFO");
     bool debugBoundingRects_ = false;
     bool debugShapes_ = false;
@@ -71,11 +74,15 @@ struct FieldConfig
     std::function<void(const QVariant&)> postSaveCallback;
 };
 
-class FamSettings : public QSettings
+// Thin value-typed facade, constructed fresh at each call site
+// (`FamSettings settings; settings.valueOrDefault(key)`) same as before -
+// holds no state of its own. Actual storage is the single JSON document
+// owned by SettingsHandler (core/settingshandler.h); every key here still
+// looks like "Group/subkey" (e.g. "Save/confirm_close_unsaved") and gets
+// split on the first '/' into a JSON group + subkey underneath.
+class FamSettings
 {
 public:
-    FamSettings();
-    static FamSettings* getInstance();
     static const QMap<QString, FieldConfig>& fields();
 
     // Returns stored value with cast + validation applied; falls back to default.
@@ -90,17 +97,22 @@ public:
     // Apply startup-time settings (e.g. image allocation limit).
     void onStartup();
 
-    // Shadowing QSettings::setValue to fire postSaveCallback when defined.
+    // Fires postSaveCallback when defined for `key`.
     void setValue(const QString& key, const QVariant& value);
 
-    // Shadowing QSettings::remove to fire postSaveCallback when defined.
+    // Raw read for keys that aren't in fields() (e.g. Action::settingsKey's
+    // ad-hoc checkbox state, written via setValue() above) - same
+    // "Group/subkey" splitting as valueOrDefault(), just without the
+    // fields()-driven cast/validate/default.
+    QVariant value(const QString& key, const QVariant& defaultValue) const;
+
+    // Fires postSaveCallback when defined for `key`.
     void remove(const QString& key);
 
     void updateRecentFiles(const QString& filename);
     QStringList getRecentFiles(bool existingOnly = false) const;
 
-private:
-    static QSettings::Format initPathAndReturnFormat();
+    QString fileName() const;
 };
 
 QString logfileName();

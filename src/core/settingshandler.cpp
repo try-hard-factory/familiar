@@ -1,13 +1,16 @@
 #include "settingshandler.h"
+#include <cmath>
+#include <limits>
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
-#include <QFileSystemWatcher>
-#include <QKeySequence>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QMap>
 #include <QSharedPointer>
 #include <QStandardPaths>
-#include <QVector>
 
 #include <core/settings.h>
 #include <core/valuehandler.h>
@@ -17,11 +20,6 @@ using namespace familiar::log;
 
 #define OPTION(KEY, TYPE) \
     {QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE)}
-
-#define SHORTCUT(NAME, DEFAULT_VALUE) \
-    {QStringLiteral(NAME), \
-     QSharedPointer<KeySequence>( \
-         new KeySequence(QKeySequence(QLatin1String(DEFAULT_VALUE))))}
 
 static QMap<int, int> opacityListDef = {
     {kDarkPreset, 255},
@@ -86,50 +84,35 @@ static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOption
 
 };
 
-static QMap<QString, QSharedPointer<KeySequence>> recognizedShortcuts = {
-    //           NAME                           DEFAULT_SHORTCUT
-    SHORTCUT("TYPE_NEW", "Ctrl+N"),
-    SHORTCUT("TYPE_OPEN", "Ctrl+O"),
-    SHORTCUT("TYPE_SAVE", "Ctrl+S"),
-    SHORTCUT("TYPE_QUIT", "Ctrl+Q"),
+namespace {
 
-};
+// QJsonValue::toVariant() doesn't guarantee int over double for whole
+// numbers, but ValueHandler::check() implementations (e.g. BoundedInt)
+// go through QVariant::toString().toInt() - safest to pin whole numbers
+// down to a real int right at the JSON/QVariant boundary, once, here.
+QVariant jsonToVariant(const QJsonValue& v)
+{
+    if (v.isDouble()) {
+        const double d = v.toDouble();
+        if (d == std::trunc(d)
+            && std::abs(d) <= static_cast<double>(std::numeric_limits<int>::max()))
+            return static_cast<int>(d);
+        return d;
+    }
+    return v.toVariant();
+}
 
+} // namespace
 
 SettingsHandler::SettingsHandler()
-    : settings_(QSettings::IniFormat,
-                QSettings::UserScope,
-                qApp->organizationName(),
-                qApp->applicationName())
 {
-    //settings_.clear();
-    static bool firstInitialization = true;
-    if (firstInitialization) {
-        // check for error every time the file changes
-        settingsWatcher_.reset(new QFileSystemWatcher());
-        ensureFileWatched();
-        QObject::connect(settingsWatcher_.data(),
-                         &QFileSystemWatcher::fileChanged,
-                         [](const QString& fileName) {
-                             emit getInstance() -> fileChanged();
-
-                             if (QFile(fileName).exists()) {
-                                 settingsWatcher_->addPath(fileName);
-                             }
-                             if (skipNextErrorCheck_) {
-                                 skipNextErrorCheck_ = false;
-                                 return;
-                             }
-                             getInstance()->checkAndHandleError();
-                             if (!QFile(fileName).exists()) {
-                                 // File watcher stops watching a deleted file.
-                                 // Next time the config is accessed, force it
-                                 // to check for errors (and watch again).
-                                 errorCheckPending_ = true;
-                             }
-                         });
+    settingsFilePath_ = CommandlineArgs::instance().settingsFile();
+    if (settingsFilePath_.isEmpty()) {
+        const QString dir = QStandardPaths::writableLocation(
+            QStandardPaths::AppConfigLocation);
+        settingsFilePath_ = QDir(dir).filePath(QStringLiteral("settings.json"));
     }
-    firstInitialization = false;
+    loadDocument();
 }
 
 
@@ -139,158 +122,178 @@ SettingsHandler* SettingsHandler::getInstance()
     return &config;
 }
 
+void SettingsHandler::loadDocument()
+{
+    QFile file(settingsFilePath_);
+    if (!file.open(QIODevice::ReadOnly)) {
+        document_ = QJsonObject();
+        return;
+    }
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    document_ = doc.isObject() ? doc.object() : QJsonObject();
+}
+
+bool SettingsHandler::saveDocument() const
+{
+    QDir().mkpath(QFileInfo(settingsFilePath_).absolutePath());
+    QFile file(settingsFilePath_);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        FLOG_WARN(Ch::Settings, "Could not write settings file {}",
+                  settingsFilePath_.toStdString());
+        return false;
+    }
+    file.write(QJsonDocument(document_).toJson(QJsonDocument::Indented));
+    return true;
+}
+
+QString SettingsHandler::settingsFilePath() const
+{
+    return settingsFilePath_;
+}
+
+QJsonValue SettingsHandler::jsonValue(const QString& group, const QString& key) const
+{
+    return document_.value(group).toObject().value(key);
+}
+
+void SettingsHandler::setJsonValue(const QString& group, const QString& key,
+                                   const QJsonValue& value)
+{
+    QJsonObject groupObj = document_.value(group).toObject();
+    groupObj.insert(key, value);
+    document_.insert(group, groupObj);
+    saveDocument();
+}
+
+void SettingsHandler::removeJsonValue(const QString& group, const QString& key)
+{
+    QJsonObject groupObj = document_.value(group).toObject();
+    groupObj.remove(key);
+    document_.insert(group, groupObj);
+    saveDocument();
+}
+
+void SettingsHandler::removeJsonGroup(const QString& group)
+{
+    document_.remove(group);
+    saveDocument();
+}
+
+QStringList SettingsHandler::recentFilesRaw() const
+{
+    QStringList out;
+    for (const QJsonValue& v : document_.value(QStringLiteral("RecentFiles")).toArray())
+        out.append(v.toString());
+    return out;
+}
+
+void SettingsHandler::setRecentFilesRaw(const QStringList& files)
+{
+    QJsonArray arr;
+    for (const QString& f : files)
+        arr.append(f);
+    document_.insert(QStringLiteral("RecentFiles"), arr);
+    saveDocument();
+}
+
+bool SettingsHandler::exportSettingsTo(const QString& path) const
+{
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        return false;
+    file.write(QJsonDocument(document_).toJson(QJsonDocument::Indented));
+    return true;
+}
+
+bool SettingsHandler::importSettingsFrom(const QString& path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (!doc.isObject())
+        return false;
+    document_ = doc.object();
+    return saveDocument();
+}
+
 void SettingsHandler::setDefaultCurrentPreset()
 {
     auto current_preset = currentPreset();
     switch (current_preset) {
-    case EPresets::kDarkPreset: {
-        settings_.remove("darkColorPreset");
+    case EPresets::kDarkPreset:
+        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("darkColorPreset"));
         break;
-    }
-    case EPresets::kLightPreset: {
-        settings_.remove("lightColorPreset");
+    case EPresets::kLightPreset:
+        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("lightColorPreset"));
         break;
-    }
-    case EPresets::kCustom1: {
-        settings_.remove("customPreset1");
+    case EPresets::kCustom1:
+        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset1"));
         break;
-    }
-    case EPresets::kCustom2: {
-        settings_.remove("customPreset2");
+    case EPresets::kCustom2:
+        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset2"));
         break;
-    }
-    case EPresets::kCustom3: {
-        settings_.remove("customPreset3");
+    case EPresets::kCustom3:
+        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset3"));
         break;
-    }
-    case EPresets::kCustom4: {
-        settings_.remove("customPreset4");
+    case EPresets::kCustom4:
+        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset4"));
         break;
-    }
     default:
         break;
     };
 
     setCurrentOpacity(255);
-
-    settings_.sync();
 }
-
-
 
 
 void SettingsHandler::setValue(const QString& key, const QVariant& value)
 {
     FLOG_DEBUG(Ch::Settings, "Setting {} to {}", key, debugString(value));
-    assertKeyRecognized(key);
-    if (!hasError()) {
-        // don't let the file watcher initiate another error check
-        skipNextErrorCheck_ = true;
-        auto val = valueHandler(key)->representation(value);
-        settings_.setValue(key, val);
-    }
+    auto val = valueHandler(key)->representation(value);
+    setJsonValue(QStringLiteral("Colors"), key, QJsonValue::fromVariant(val));
 }
 
 
 QVariant SettingsHandler::value(const QString& key) const
 {
-    assertKeyRecognized(key);
-
-    auto val = settings_.value(key);
-
-    auto handler = valueHandler(key);
-
-    // Check the value for semantic errors
-    if (val.isValid() && !handler->check(val)) {
-        setErrorState(true);
-    }
-    if (hasError_) {
-        FLOG_DEBUG(Ch::Settings, "ERROR: {} = {}", key, debugString(val));
-        return handler->fallback();
-    }
-
-    return handler->value(val);
+    const QJsonValue raw = jsonValue(QStringLiteral("Colors"), key);
+    const QVariant val = raw.isUndefined() ? QVariant() : jsonToVariant(raw);
+    return valueHandler(key)->value(val);
 }
 
 
 void SettingsHandler::remove(const QString& key)
 {
-    settings_.remove(key);
+    removeJsonValue(QStringLiteral("Colors"), key);
 }
 
 
 void SettingsHandler::resetValue(const QString& key)
 {
-    settings_.setValue(key, valueHandler(key)->fallback());
-}
-
-QSet<QString>& SettingsHandler::recognizedGeneralOptions()
-{
-    auto keys = ::recognizedGeneralOptions.keys();
-    static QSet<QString> options = QSet<QString>(keys.begin(), keys.end());
-
-    return options;
-}
-
-QSet<QString>& SettingsHandler::recognizedShortcutNames()
-{
-    auto keys = recognizedShortcuts.keys();
-    static QSet<QString> names = QSet<QString>(keys.begin(), keys.end());
-
-    return names;
-}
-
-
-QSet<QString> SettingsHandler::keysFromGroup(const QString& group) const
-{
-    QSet<QString> keys;
-    for (const QString& key : settings_.allKeys()) {
-        if (group == SETTINGS_GROUP_GENERAL && !key.contains('/')) {
-            keys.insert(key);
-        } else if (key.startsWith(group + "/")) {
-            keys.insert(baseName(key));
-        }
-    }
-    return keys;
+    setJsonValue(QStringLiteral("Colors"), key,
+                QJsonValue::fromVariant(valueHandler(key)->fallback()));
 }
 
 SettingsHandler::CL SettingsHandler::getCurrentColorPreset()
 {
     auto current_preset = currentPreset();
-    // qDebug() << "########Current preset: " << current_preset;
     switch (current_preset) {
-    case EPresets::kDarkPreset: {
-        auto preset = darkColorPreset();
-        // qDebug() << "########case EPresets::kDarkPreset: ";
-        // for (auto& val : preset) {
-        //     qDebug() << "val: " << val;
-        // }
-        return preset;
-    }
-    case EPresets::kLightPreset: {
-        auto preset = lightColorPreset();
-        return preset;
-    }
-    case EPresets::kCustom1: {
-        auto preset = customPreset1();
-        return preset;
-    }
-    case EPresets::kCustom2: {
-        auto preset = customPreset2();
-        return preset;
-    }
-    case EPresets::kCustom3: {
-        auto preset = customPreset3();
-        return preset;
-    }
-    case EPresets::kCustom4: {
-        auto preset = customPreset4();
-        return preset;
-    }
+    case EPresets::kDarkPreset:
+        return darkColorPreset();
+    case EPresets::kLightPreset:
+        return lightColorPreset();
+    case EPresets::kCustom1:
+        return customPreset1();
+    case EPresets::kCustom2:
+        return customPreset2();
+    case EPresets::kCustom3:
+        return customPreset3();
+    case EPresets::kCustom4:
+        return customPreset4();
     default:
         break;
     };
-    // TODO: assert
     return SettingsHandler::CL{};
 }
 
@@ -300,41 +303,33 @@ void SettingsHandler::setCurrentColorPreset(const SettingsHandler::CL& preset)
     auto current_preset = currentPreset();
 
     switch (current_preset) {
-    case EPresets::kDarkPreset: {
+    case EPresets::kDarkPreset:
         setDarkColorPreset(preset);
         break;
-    }
-    case EPresets::kLightPreset: {
+    case EPresets::kLightPreset:
         setLightColorPreset(preset);
         break;
-    }
-    case EPresets::kCustom1: {
+    case EPresets::kCustom1:
         setCustomPreset1(preset);
         break;
-    }
-    case EPresets::kCustom2: {
+    case EPresets::kCustom2:
         setCustomPreset2(preset);
         break;
-    }
-    case EPresets::kCustom3: {
+    case EPresets::kCustom3:
         setCustomPreset3(preset);
         break;
-    }
-    case EPresets::kCustom4: {
+    case EPresets::kCustom4:
         setCustomPreset4(preset);
         break;
-    }
     default:
         break;
     };
-    // TODO: assert
 }
 
 int SettingsHandler::getCurrentOpacity()
 {
     auto current_preset = currentPreset();
     auto master_opacity = masterOpacity();
-    // TODO: try catch
     return master_opacity[current_preset];
 }
 
@@ -342,213 +337,14 @@ void SettingsHandler::setCurrentOpacity(int opacity)
 {
     auto current_preset = currentPreset();
     auto master_opacity = masterOpacity();
-    // TODO: try catch
     master_opacity[current_preset] = opacity;
     setMasterOpacity(master_opacity);
 }
 
-bool SettingsHandler::checkForErrors() const
+
+QSharedPointer<ValueHandler> SettingsHandler::valueHandler(const QString& key) const
 {
-    // Bitwise & (not &&) was deliberate here: all three checks log/
-    // collect their own offenders as a side effect and must all run,
-    // even if an earlier one already failed - spelled out as separate
-    // statements instead, so this reads as intentional rather than a
-    // stray bitwise-vs-logical typo.
-    const bool unrecognizedOk = checkUnrecognizedSettings();
-    const bool shortcutsOk = checkShortcutConflicts();
-    const bool semanticsOk = checkSemantics();
-    return unrecognizedOk && shortcutsOk && semanticsOk;
-}
-
-
-bool SettingsHandler::checkUnrecognizedSettings(QList<QString>* offenders) const
-{
-    // sort the config keys by group
-    QSet<QString> generalKeys = keysFromGroup(SETTINGS_GROUP_GENERAL),
-                  shortcutKeys = keysFromGroup(SETTINGS_GROUP_SHORTCUTS),
-                  recognizedGeneralKeys = recognizedGeneralOptions(),
-                  recognizedShortcutKeys = recognizedShortcutNames();
-
-    // subtract recognized keys
-    generalKeys.subtract(recognizedGeneralKeys);
-    shortcutKeys.subtract(recognizedShortcutKeys);
-
-    // what is left are the unrecognized keys - hopefully empty
-    bool ok = generalKeys.isEmpty() && shortcutKeys.isEmpty();
-    if (offenders != nullptr) {
-        for (const QString& key : generalKeys) {
-            if (offenders) {
-                offenders->append(key);
-            }
-        }
-        for (const QString& key : shortcutKeys) {
-            if (offenders) {
-                offenders->append(SETTINGS_GROUP_SHORTCUTS "/" + key);
-            }
-        }
-    }
-    return ok;
-}
-
-
-bool SettingsHandler::checkShortcutConflicts() const
-{
-    bool ok = true;
-    settings_.beginGroup(SETTINGS_GROUP_SHORTCUTS);
-    QStringList shortcuts = settings_.allKeys();
-    QStringList reportedInLog;
-    for (auto key1 = shortcuts.begin(); key1 != shortcuts.end(); ++key1) {
-        for (auto key2 = key1 + 1; key2 != shortcuts.end(); ++key2) {
-            // values stored in variables are useful when running debugger
-            QString value1 = settings_.value(*key1).toString(),
-                    value2 = settings_.value(*key2).toString();
-            // The check will pass if:
-            // - one shortcut is empty (the action doesn't use a shortcut)
-            // - or one of the settings is not found in m_settings, i.e.
-            //   user wants to use flameshot's default shortcut for the action
-            // - or the shortcuts for both actions are different
-            if (!(value1.isEmpty() || !settings_.contains(*key1)
-                  || !settings_.contains(*key2) || value1 != value2)) {
-                ok = false;
-                break;
-            }
-        }
-    }
-    settings_.endGroup();
-    return ok;
-}
-
-
-bool SettingsHandler::checkSemantics(QList<QString>* offenders) const
-{
-    QStringList allKeys = settings_.allKeys();
-    bool ok = true;
-    for (const QString& key : allKeys) {
-        // Test if the key is recognized
-        if (!recognizedGeneralOptions().contains(key)
-            && (!isShortcut(key)
-                || !recognizedShortcutNames().contains(baseName(key)))) {
-            continue;
-        }
-        QVariant val = settings_.value(key);
-        auto valueHandler = this->valueHandler(key);
-        if (val.isValid() && !valueHandler->check(val)) {
-            // Key does not pass the check
-            ok = false;
-            if (offenders == nullptr) {
-                break;
-            }
-            if (offenders != nullptr) {
-                offenders->append(key);
-            }
-        }
-    }
-    return ok;
-}
-
-
-void SettingsHandler::checkAndHandleError() const
-{
-    if (!QFile(settings_.fileName()).exists()) {
-        setErrorState(false);
-    } else {
-        setErrorState(!checkForErrors());
-    }
-
-    ensureFileWatched();
-}
-
-
-bool SettingsHandler::hasError() const
-{
-    if (errorCheckPending_) {
-        checkAndHandleError();
-        errorCheckPending_ = false;
-    }
-    return hasError_;
-}
-
-
-QString SettingsHandler::errorMessage() const
-{
-    return tr(
-        "The configuration contains an error. Open configuration to resolve.");
-}
-
-
-void SettingsHandler::ensureFileWatched() const
-{
-    QFile file(settings_.fileName());
-    if (!file.exists()) {
-        // Pre-touch the file into existence so there's something on
-        // disk for settingsWatcher_ to watch below.
-        (void) file.open(QFileDevice::WriteOnly);
-        file.close();
-    }
-    if (settingsWatcher_ != nullptr && settingsWatcher_->files().isEmpty()
-        && qApp != nullptr // ensures that the organization name can be accessed
-    ) {
-        settingsWatcher_->addPath(settings_.fileName());
-    }
-}
-
-
-void SettingsHandler::assertKeyRecognized(const QString& key) const
-{
-    bool recognized = isShortcut(key)
-                          ? recognizedShortcutNames().contains(baseName(key))
-                          : ::recognizedGeneralOptions.contains(key);
-    if (!recognized) {
-        setErrorState(true);
-    }
-}
-
-
-bool SettingsHandler::isShortcut(const QString& key) const
-{
-    return settings_.group() == QStringLiteral(SETTINGS_GROUP_SHORTCUTS)
-           || key.startsWith(QStringLiteral(SETTINGS_GROUP_SHORTCUTS "/"));
-}
-
-
-QString SettingsHandler::baseName(QString key) const
-{
-    return QFileInfo(key).baseName();
-}
-
-
-QSharedPointer<ValueHandler> SettingsHandler::valueHandler(
-    const QString& key) const
-{
-    QSharedPointer<ValueHandler> handler;
-    if (isShortcut(key)) {
-        handler = recognizedShortcuts.value(baseName(key),
-                                            QSharedPointer<KeySequence>(
-                                                new KeySequence()));
-    } else { // General group
-        handler = ::recognizedGeneralOptions.value(key);
-    }
-    return handler;
-}
-
-
-void SettingsHandler::setErrorState(bool error) const
-{
-    bool hadError = hasError_;
-    hasError_ = error;
-    // Notify user every time m_hasError changes
-    if (!hadError && hasError_) {
-        QString msg = errorMessage();
-        FLOG_WARN(Ch::Settings, "{}", msg);
-        //        AbstractLogger::error() << msg;
-        emit getInstance() -> error();
-    } else if (hadError && !hasError_) {
-        auto msg = tr(
-            "You have successfully resolved the configuration error.");
-        FLOG_INFO(Ch::Settings, "{}", msg);
-        //        AbstractLogger::info() << msg;
-        emit getInstance() -> errorResolved();
-    }
+    return ::recognizedGeneralOptions.value(key);
 }
 
 
@@ -626,12 +422,3 @@ void SettingsHandler::setShortcuts(const QString& group,
 {
     KeyboardSettings().setShortcuts(group, key, values);
 }
-
-
-// STATIC MEMBER DEFINITIONS
-
-bool SettingsHandler::hasError_ = false;
-bool SettingsHandler::errorCheckPending_ = true;
-bool SettingsHandler::skipNextErrorCheck_ = false;
-
-QSharedPointer<QFileSystemWatcher> SettingsHandler::settingsWatcher_;

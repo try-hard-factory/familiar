@@ -7,8 +7,10 @@
 #include <widgets/settings_dialog.h>
 #include <core/controls.h>
 #include <core/settings.h>
+#include <core/settingshandler.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
+#include <QFileDialog>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -208,16 +210,48 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     bottomRow->addWidget(resetBtn);
     bottomRow->addStretch();
 
-    // TODOLATER: wire up once a settings import/export file format exists
-    // (see memory/familiar_next_steps.md step 5/6 - single JSON settings
-    // file). Shown disabled rather than faked, so the layout is in place
-    // without pretending this works yet.
     auto* importBtn = new QToolButton(this);
     importBtn->setText(tr("Import"));
-    importBtn->setEnabled(false);
+    connect(importBtn, &QToolButton::clicked, this, [this]() {
+        const QString path = QFileDialog::getOpenFileName(
+            this, tr("Import Settings"), {}, tr("JSON files (*.json)"));
+        if (path.isEmpty())
+            return;
+        if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
+            showMessageBox(QMessageBox::Warning,
+                           this,
+                           tr("Import failed"),
+                           tr("Could not read settings from %1.").arg(path));
+            return;
+        }
+        // Not restoreDefaults() - that would wipe out what was just
+        // imported instead of showing it. These are the same three
+        // signals that already keep every live settings widget in sync
+        // (Misc/Images group boxes, Keyboard Shortcuts tree, Colors) -
+        // see bindingsChanged()/refreshAll() wiring above and
+        // ColorsWidget::updateComponents()'s presetsChanged connection.
+        emit SettingsEvents::instance().restoreDefaults();
+        emit SettingsEvents::instance().restoreKeyboardDefaults();
+        emit SettingsHandler::getInstance()->presetsChanged();
+    });
+
     auto* exportBtn = new QToolButton(this);
     exportBtn->setText(tr("Export"));
-    exportBtn->setEnabled(false);
+    connect(exportBtn, &QToolButton::clicked, this, [this]() {
+        const QString path = QFileDialog::getSaveFileName(
+            this,
+            tr("Export Settings"),
+            QStringLiteral("familiar-settings.json"),
+            tr("JSON files (*.json)"));
+        if (path.isEmpty())
+            return;
+        if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
+            showMessageBox(QMessageBox::Warning,
+                           this,
+                           tr("Export failed"),
+                           tr("Could not write settings to %1.").arg(path));
+        }
+    });
     bottomRow->addWidget(importBtn);
     bottomRow->addWidget(exportBtn);
     leftColumn->addLayout(bottomRow);
