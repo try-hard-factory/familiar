@@ -1,6 +1,16 @@
 #include "actions.h"
 #include <core/settingshandler.h>
 #include <QAction>
+#include <QSet>
+
+namespace {
+
+bool sameModifiers(const QStringList& a, const QStringList& b)
+{
+    return QSet<QString>(a.begin(), a.end()) == QSet<QString>(b.begin(), b.end());
+}
+
+} // namespace
 
 // ─── Action methods ───────────────────────────────────────────────────────────
 
@@ -66,6 +76,36 @@ QString Action::getDefaultShortcut(int index) const
     return {};
 }
 
+QList<Binding> Action::get_mouse_bindings() const
+{
+    const QStringList serialized = KeyboardSettings().getList(
+        QString::fromLatin1(SETTINGS_GROUP), id + QStringLiteral("_mouse"), {});
+    QList<Binding> out;
+    for (const QString& s : serialized)
+        out.append(Binding::deserialize(s));
+    return out;
+}
+
+void Action::setMouseBindings(const QList<Binding>& values)
+{
+    QStringList serialized;
+    for (const Binding& b : values)
+        serialized.append(b.serialize());
+    KeyboardSettings().setList(QString::fromLatin1(SETTINGS_GROUP),
+                               id + QStringLiteral("_mouse"),
+                               serialized,
+                               {});
+}
+
+QString Action::displayText() const
+{
+    QString t = text;
+    t.replace(QLatin1String("&&"), QLatin1String("\x01"));
+    t.remove(QLatin1Char('&'));
+    t.replace(QLatin1String("\x01"), QLatin1String("&"));
+    return t;
+}
+
 // ─── ActionRegistry ───────────────────────────────────────────────────────────
 
 void ActionRegistry::add(Action action)
@@ -107,6 +147,37 @@ QList<Action*> ActionRegistry::all()
     return result;
 }
 
+Action* ActionRegistry::findByShortcut(const QString& excludeId,
+                                       const QString& shortcut)
+{
+    if (shortcut.isEmpty())
+        return nullptr;
+    for (Action* a : all()) {
+        if (a->id == excludeId)
+            continue;
+        if (a->get_shortcuts().contains(shortcut))
+            return a;
+    }
+    return nullptr;
+}
+
+Action* ActionRegistry::findByMouseBinding(const QString& excludeId,
+                                           const Binding& candidate)
+{
+    if (candidate.mouseButton.isEmpty())
+        return nullptr;
+    for (Action* a : all()) {
+        if (a->id == excludeId)
+            continue;
+        for (const Binding& b : a->get_mouse_bindings()) {
+            if (b.mouseButton == candidate.mouseButton
+                && sameModifiers(b.mouseModifiers, candidate.mouseModifiers))
+                return a;
+        }
+    }
+    return nullptr;
+}
+
 QStringList ActionRegistry::keys() const
 {
     return order_;
@@ -120,85 +191,85 @@ static ActionRegistry buildRegistry()
     ActionRegistry r;
 
     // ── File ──────────────────────────────────────────────────────────────────
-    r.add(A::make("new_scene", "&New Scene", "on_action_new_scene", {"Ctrl+N"}));
-    r.add(A::make("open", "&Open", "on_action_open", {"Ctrl+O"}));
+    r.add(A::make("new_scene", "New Scene", "on_action_new_scene", {"Ctrl+N"}));
+    r.add(A::make("open", "Open", "on_action_open", {"Ctrl+O"}));
     r.add(A::make("save",
-                  "&Save",
+                  "Save",
                   "on_action_save",
                   {"Ctrl+S"},
                   false,
                   false,
                   "active_when_items_in_scene"));
     r.add(A::make("save_as",
-                  "Save &As...",
+                  "Save As...",
                   "on_action_save_as",
                   {"Ctrl+Shift+S"},
                   false,
                   false,
                   "active_when_items_in_scene"));
     r.add(A::make("export_scene",
-                  "E&xport Scene...",
+                  "Export Scene...",
                   "on_action_export_scene",
                   {"Ctrl+Shift+E"},
                   false,
                   false,
                   "active_when_items_in_scene"));
     r.add(A::make("export_images",
-                  "Export &Images...",
+                  "Export Images...",
                   "on_action_export_images",
                   {},
                   false,
                   false,
                   "active_when_items_in_scene"));
-    r.add(A::make("quit", "&Quit", "on_action_quit", {"Ctrl+Q"}));
+    r.add(A::make("quit", "Quit", "on_action_quit", {"Ctrl+Q"}));
 
     // ── Edit ──────────────────────────────────────────────────────────────────
     r.add(A::make("undo",
-                  "&Undo",
+                  "Undo",
                   "on_action_undo",
                   {"Ctrl+Z"},
                   false,
                   false,
                   "active_when_can_undo"));
     r.add(A::make("redo",
-                  "&Redo",
+                  "Redo",
                   "on_action_redo",
                   {"Ctrl+Shift+Z"},
                   false,
                   false,
                   "active_when_can_redo"));
     r.add(A::make("select_all",
-                  "&Select All",
+                  "Select All",
                   "on_action_select_all",
                   {"Ctrl+A"}));
     r.add(A::make("deselect_all",
-                  "Deselect &All",
+                  "Deselect All",
                   "on_action_deselect_all",
                   {"Ctrl+Shift+A"}));
     r.add(A::make("cut",
-                  "Cu&t",
+                  "Cut",
                   "on_action_cut",
                   {"Ctrl+X"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("copy",
-                  "&Copy",
+                  "Copy",
                   "on_action_copy",
                   {"Ctrl+C"},
                   false,
                   false,
                   "active_when_selection"));
-    r.add(A::make("paste", "&Paste", "on_action_paste", {"Ctrl+V"}));
+    r.add(A::make("paste", "Paste", "on_action_paste", {"Ctrl+V"}));
     r.add(A::make("delete",
-                  "&Delete",
+                  "Delete",
                   "on_action_delete_items",
                   {"Del"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("raise_to_top",
-                  "&Raise to Top",
+                  "Raise to Top",
                   "on_action_raise_to_top",
                   {"PgUp"},
                   false,
@@ -213,26 +284,28 @@ static ActionRegistry buildRegistry()
                   "active_when_selection"));
 
     // ── View ──────────────────────────────────────────────────────────────────
-    r.add(A::make("fit_scene", "&Fit Scene", "on_action_fit_scene", {"1"}));
+    r.add(A::make("fit_scene", "Fit Scene", "on_action_fit_scene", {"1"}));
     r.add(A::make("fit_selection",
-                  "Fit &Selection",
+                  "Fit Selection",
                   "on_action_fit_selection",
                   {"2"},
                   false,
                   false,
                   "active_when_selection"));
+    r.add(A::make("zoom_in", "Zoom In", "on_action_zoom_in", {"Ctrl++"}));
+    r.add(A::make("zoom_out", "Zoom Out", "on_action_zoom_out", {"Ctrl+-"}));
     r.add(A::make("fullscreen",
-                  "&Fullscreen",
+                  "Fullscreen",
                   "on_action_fullscreen",
                   {"F11"},
                   true));
     r.add(A::make("always_on_top",
-                  "&Always On Top",
+                  "Always On Top",
                   "on_action_always_on_top",
                   {},
                   true));
     r.add(A::make("show_menubar",
-                  "Show &Menu Bar",
+                  "Show Menu Bar",
                   "on_action_show_menubar",
                   {},
                   true,
@@ -242,63 +315,63 @@ static ActionRegistry buildRegistry()
 
     // ── Insert ────────────────────────────────────────────────────────────────
     r.add(A::make("insert_images",
-                  "&Images...",
+                  "Images...",
                   "on_action_insert_images",
                   {"Ctrl+I"}));
-    r.add(A::make("insert_text", "&Text", "on_action_insert_text", {"Ctrl+T"}));
+    r.add(A::make("insert_text", "Text", "on_action_insert_text", {"Ctrl+T"}));
 
     // ── Transform ─────────────────────────────────────────────────────────────
     r.add(A::make("crop",
-                  "&Crop",
+                  "Crop",
                   "on_action_crop",
                   {"Shift+C"},
                   false,
                   false,
                   "active_when_single_image"));
     r.add(A::make("flip_horizontally",
-                  "Flip &Horizontally",
+                  "Flip Horizontally",
                   "on_action_flip_horizontally",
                   {"H"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("flip_vertically",
-                  "Flip &Vertically",
+                  "Flip Vertically",
                   "on_action_flip_vertically",
                   {"V"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_scale",
-                  "Reset &Scale",
+                  "Reset Scale",
                   "on_action_reset_scale",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_rotation",
-                  "Reset &Rotation",
+                  "Reset Rotation",
                   "on_action_reset_rotation",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_flip",
-                  "Reset &Flip",
+                  "Reset Flip",
                   "on_action_reset_flip",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_crop",
-                  "Reset Cro&p",
+                  "Reset Crop",
                   "on_action_reset_crop",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_transforms",
-                  "Reset &All",
+                  "Reset All",
                   "on_action_reset_transforms",
                   {"R"},
                   false,
@@ -307,21 +380,21 @@ static ActionRegistry buildRegistry()
 
     // ── Normalize ─────────────────────────────────────────────────────────────
     r.add(A::make("normalize_height",
-                  "&Height",
+                  "Height",
                   "on_action_normalize_height",
                   {"Shift+H"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("normalize_width",
-                  "&Width",
+                  "Width",
                   "on_action_normalize_width",
                   {"Shift+W"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("normalize_size",
-                  "&Size",
+                  "Size",
                   "on_action_normalize_size",
                   {"Shift+S"},
                   false,
@@ -330,28 +403,28 @@ static ActionRegistry buildRegistry()
 
     // ── Arrange ───────────────────────────────────────────────────────────────
     r.add(A::make("arrange_optimal",
-                  "&Optimal",
+                  "Optimal",
                   "on_action_arrange_optimal",
                   {"Shift+O"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("arrange_horizontal",
-                  "&Horizontal (by filename)",
+                  "Horizontal (by filename)",
                   "on_action_arrange_horizontal",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("arrange_vertical",
-                  "&Vertical (by filename)",
+                  "Vertical (by filename)",
                   "on_action_arrange_vertical",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("arrange_square",
-                  "&Square (by filename)",
+                  "Square (by filename)",
                   "on_action_arrange_square",
                   {},
                   false,
@@ -360,21 +433,21 @@ static ActionRegistry buildRegistry()
 
     // ── Images ────────────────────────────────────────────────────────────────
     r.add(A::make("change_opacity",
-                  "Change &Opacity...",
+                  "Change Opacity...",
                   "on_action_change_opacity",
                   {},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("grayscale",
-                  "&Toggle Grayscale",
+                  "Toggle Grayscale",
                   "on_action_grayscale",
                   {"G"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("show_color_gamut",
-                  "Show &Color Gamut",
+                  "Show Color Gamut",
                   "on_action_show_color_gamut",
                   {},
                   false,
@@ -389,19 +462,19 @@ static ActionRegistry buildRegistry()
                   "active_when_items_in_scene"));
 
     // ── Settings ──────────────────────────────────────────────────────────────
-    r.add(A::make("settings", "&Settings", "on_action_settings"));
-    r.add(A::make("settings_new", "Settings &(New)", "on_action_settings_new"));
+    r.add(A::make("settings", "Settings", "on_action_settings"));
+    r.add(A::make("settings_new", "Settings (New)", "on_action_settings_new"));
     r.add(A::make("keyboard_settings",
-                  "&Keyboard && Mouse",
+                  "Keyboard && Mouse",
                   "on_action_keyboard_settings"));
     r.add(A::make("open_settings_dir",
-                  "&Open Settings Folder",
+                  "Open Settings Folder",
                   "on_action_open_settings_dir"));
 
     // ── Help ──────────────────────────────────────────────────────────────────
-    r.add(A::make("help", "&Help", "on_action_help", {"F1", "Ctrl+H"}));
-    r.add(A::make("about", "&About", "on_action_about"));
-    r.add(A::make("debuglog", "Show &Debug Log", "on_action_debuglog"));
+    r.add(A::make("help", "Help", "on_action_help", {"F1"}));
+    r.add(A::make("about", "About", "on_action_about"));
+    r.add(A::make("debuglog", "Show Debug Log", "on_action_debuglog"));
 
     return r;
 }

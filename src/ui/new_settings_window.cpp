@@ -1,9 +1,7 @@
 #include "new_settings_window.h"
 #include "mainwindow.h"
 #include <ui/colors_widget.h>
-#include <widgets/controls/keyboard_controls.h>
-#include <widgets/controls/mouse_controls.h>
-#include <widgets/controls/mousewheel_controls.h>
+#include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/dialogs.h>
 #include <widgets/settings_dialog.h>
 #include <core/controls.h>
@@ -35,12 +33,7 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     , arrangeDefault_(new ArrangeDefaultWidget)
     , colorsPage_(new QWidget)
     , colors_(new ColorsWidget(this))
-    , shortcutsPage_(new QWidget)
-    , shortcuts_(new KeyboardShortcutsView)
-    , mousePage_(new QWidget)
-    , mouse_(new MouseView)
-    , mouseWheelPage_(new QWidget)
-    , mouseWheel_(new MouseWheelView)
+    , keyboardShortcutsPage_(new KeyboardShortcutsPage)
 {
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
@@ -152,20 +145,9 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     colorsLayout->addWidget(colors_);
     addCategory(tr("Colors"), colorsPage_);
 
-    // Keyboard Shortcuts
-    auto* shortcutsLayout = new QVBoxLayout(shortcutsPage_);
-    shortcutsLayout->addWidget(shortcuts_);
-    addCategory(tr("Keyboard Shortcuts"), shortcutsPage_);
-
-    // Mouse
-    auto* mouseLayout = new QVBoxLayout(mousePage_);
-    mouseLayout->addWidget(mouse_);
-    addCategory(tr("Mouse"), mousePage_);
-
-    // Mouse Wheel
-    auto* mouseWheelLayout = new QVBoxLayout(mouseWheelPage_);
-    mouseWheelLayout->addWidget(mouseWheel_);
-    addCategory(tr("Mouse Wheel"), mouseWheelPage_);
+    // Keyboard Shortcuts (Actions + Controls sections, replaces the old
+    // separate Keyboard Shortcuts/Mouse/Mouse Wheel categories)
+    addCategory(tr("Keyboard Shortcuts"), keyboardShortcutsPage_);
 
     categoryLayout->addStretch(1);
 

@@ -764,6 +764,9 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
+    FLOG_DEBUG(Ch::Scene,
+              "CanvasScene::mouseReleaseEvent active_mode_={}",
+              int(active_mode_));
     if (active_mode_ == kRubberbandMode) {
         end_rubberband_mode();
     }

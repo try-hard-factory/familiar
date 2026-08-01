@@ -1,5 +1,7 @@
 #pragma once
 
+#include <core/controls.h>
+
 #include <QKeySequence>
 #include <QList>
 #include <QMap>
@@ -41,6 +43,17 @@ struct Action
     QKeySequence getKeySequence(int index) const;
     bool shortcutsChanged() const;
     QString getDefaultShortcut(int index) const;
+
+    // Mouse-chord and mixed mouse+key aliases - a separate, additive
+    // store (key "Actions/<id>_mouse") from the plain keyboard shortcuts
+    // above; dispatched by ActionMouseDispatcher (actions/
+    // action_mouse_dispatch.h), not by Qt's native QAction::setShortcuts().
+    QList<Binding> get_mouse_bindings() const;
+    void setMouseBindings(const QList<Binding>& values);
+
+    // text with the Qt mnemonic marker stripped - a lone '&' is removed,
+    // but '&&' (escaped, meant to display as a literal '&') is kept.
+    QString displayText() const;
 };
 
 // Insertion-ordered registry (QMap for O(log n) lookup, QList for order).
@@ -54,6 +67,14 @@ public:
     bool contains(const QString& id) const;
     QList<Action*> all();     // in insertion order
     QStringList keys() const; // in insertion order
+
+    // Action (other than excludeId) whose shortcuts already contain
+    // `shortcut`, or nullptr if none.
+    Action* findByShortcut(const QString& excludeId, const QString& shortcut);
+
+    // Action (other than excludeId) whose mouse bindings already use the
+    // same button+modifiers as `candidate`, or nullptr if none.
+    Action* findByMouseBinding(const QString& excludeId, const Binding& candidate);
 
 private:
     QList<QString> order_;

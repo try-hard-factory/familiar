@@ -89,7 +89,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     connect(buttons, &QDialogButtonBox::rejected, this, &QWidget::close);
 
-    auto* resetBtn = new QPushButton(tr("&Restore Defaults"), this);
+    auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
     connect(resetBtn, &QPushButton::clicked, this, [this]() {
         const auto reply = showMessageBox(

@@ -107,20 +107,13 @@ int MouseControlsEditor::findConflictingRow() const
     if (!currentAction_)
         return -1;
 
-    MouseConfig temp(QString{},
-                     QString{},
-                     QString{},
-                     getButton(),
-                     getModifiers(),
-                     false);
-    const auto& list = KeyboardSettings::mouseActions();
-    for (int i = 0; i < list.size(); ++i) {
-        if (list[i] == *currentAction_)
-            continue;
-        if (list[i].conflictsWith(temp))
-            return i;
-    }
-    return -1;
+    Binding candidate;
+    candidate.mouseButton
+        = (getButton() == QLatin1String("Not Configured")) ? QString()
+                                                            : getButton();
+    candidate.mouseModifiers = getModifiers();
+    return KeyboardSettings().findConflictingMouseGroup(currentAction_->id(),
+                                                         candidate);
 }
 
 QString MouseControlsEditor::conflictingActionText(int row) const

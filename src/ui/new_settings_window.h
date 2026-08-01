@@ -13,9 +13,7 @@ class ImageStorageFormatWidget;
 class ArrangeGapWidget;
 class AllocationLimitWidget;
 class ArrangeDefaultWidget;
-class KeyboardShortcutsView;
-class MouseView;
-class MouseWheelView;
+class KeyboardShortcutsPage;
 
 // Prototype of the settings window: sidebar category list + stacked pages,
 // instead of SettingsWindow's QTabWidget (ui/settings_window.h). Same
@@ -50,14 +48,7 @@ private:
     QWidget* colorsPage_ = nullptr;
     ColorsWidget* colors_ = nullptr;
 
-    QWidget* shortcutsPage_ = nullptr;
-    KeyboardShortcutsView* shortcuts_ = nullptr;
-
-    QWidget* mousePage_ = nullptr;
-    MouseView* mouse_ = nullptr;
-
-    QWidget* mouseWheelPage_ = nullptr;
-    MouseWheelView* mouseWheel_ = nullptr;
+    KeyboardShortcutsPage* keyboardShortcutsPage_ = nullptr;
 };
 
 #endif // NEWSETTINGSWINDOW_H

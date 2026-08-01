@@ -54,33 +54,27 @@ void KeyboardShortcutsEditor::onEditingFinished()
         return;
     }
 
-    auto all = getActions().all();
-    for (int i = 0; i < all.size(); ++i) {
-        if (all[i] == action_)
-            continue;
-        if (all[i]->get_shortcuts().contains(shortcut)) {
-            QString txt = all[i]->text;
-            txt.remove(QLatin1Char('&'));
-            if (txt.endsWith(QLatin1String("...")))
-                txt.chop(3);
+    if (Action* conflicting = getActions().findByShortcut(action_->id, shortcut)) {
+        QString txt = conflicting->displayText();
+        if (txt.endsWith(QLatin1String("...")))
+            txt.chop(3);
 
-            const auto reply = showMessageBox(
-                QMessageBox::Question,
-                this,
-                tr("Shortcut Conflict"),
-                tr("This shortcut is already assigned to \"%1\". "
-                   "Do you want to remove it from there?")
-                    .arg(txt),
-                QMessageBox::Yes | QMessageBox::No);
+        const auto reply = showMessageBox(
+            QMessageBox::Question,
+            this,
+            tr("Shortcut Conflict"),
+            tr("This shortcut is already assigned to \"%1\". "
+               "Do you want to remove it from there?")
+                .arg(txt),
+            QMessageBox::Yes | QMessageBox::No);
 
-            if (reply == QMessageBox::Yes) {
-                conflictingRow_ = i;
-            } else {
-                setKeySequence(QKeySequence(oldValue_));
-            }
-            emit done();
-            return;
+        if (reply == QMessageBox::Yes) {
+            conflictingRow_ = getActions().all().indexOf(conflicting);
+        } else {
+            setKeySequence(QKeySequence(oldValue_));
         }
+        emit done();
+        return;
     }
     emit done();
 }
@@ -177,9 +171,7 @@ QVariant KeyboardShortcutsModel::data(const QModelIndex& index, int role) const
 
     if (role == Qt::DisplayRole || role == Qt::EditRole) {
         if (col == 0) {
-            QString txt = action->text;
-            txt.remove(QLatin1Char('&'));
-            return txt;
+            return action->displayText();
         }
         if (col == 1)
             return action->shortcutsChanged() ? QStringLiteral("✎") : QString{};
