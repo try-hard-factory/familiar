@@ -391,7 +391,7 @@ public:
             return;
         }
 
-        // PureRef-style "peek": the multi-select bounding box fades out
+        // "Peek": the multi-select bounding box fades out
         // while this window isn't active and the cursor isn't hovering
         // it either, so it doesn't stay visible while the user's
         // working in another window - see CanvasView::

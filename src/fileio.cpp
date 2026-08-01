@@ -18,8 +18,8 @@ namespace {
 
 // Google Images search results ("imgres?...") link to the search result
 // page, not the image itself - the actual image URL is embedded in the
-// "imgurl" query parameter. Unwrap it, the same way beeref's
-// fileio/image.py's load_image() unwraps Pinterest page URLs.
+// "imgurl" query parameter. Unwrap it, same idea as unwrapping Pinterest
+// page URLs to their real image target.
 QUrl unwrap_known_redirect(const QUrl& url)
 {
     if (url.host().endsWith(QStringLiteral("google.com"))
@@ -85,7 +85,7 @@ QImage download_image(QNetworkAccessManager& manager,
     // Some CDNs/anti-bot setups throttle or stall the response body for
     // requests with no recognizable browser User-Agent (observed: fast
     // headers, then the transfer stalls) - claim to be an ordinary
-    // browser, the same way e.g. PureRef's own downloader does.
+    // browser to avoid that.
     request
         .setHeader(QNetworkRequest::UserAgentHeader,
                    QStringLiteral(
