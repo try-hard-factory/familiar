@@ -5,7 +5,7 @@
 
 class MainWindow;
 class QLineEdit;
-class QListWidget;
+class QButtonGroup;
 class QStackedWidget;
 class ColorsWidget;
 class ConfirmCloseUnsavedWidget;
@@ -17,9 +17,9 @@ class KeyboardShortcutsView;
 class MouseView;
 class MouseWheelView;
 
-// PureRef-style prototype of the settings window: sidebar category list +
-// stacked pages, instead of SettingsWindow's QTabWidget (ui/settings_window.h).
-// Same underlying widgets/logic, different shell - see
+// Prototype of the settings window: sidebar category list + stacked pages,
+// instead of SettingsWindow's QTabWidget (ui/settings_window.h). Same
+// underlying widgets/logic, different shell - see
 // memory/familiar_next_steps.md step 6 for why this exists alongside the
 // tabbed version rather than replacing it yet.
 class NewSettingsWindow : public QWidget
@@ -34,7 +34,8 @@ protected:
 private:
     MainWindow* window_ = nullptr;
     QLineEdit* searchBox_ = nullptr;
-    QListWidget* categoryList_ = nullptr;
+    QWidget* categoryPanel_ = nullptr;
+    QButtonGroup* categoryButtons_ = nullptr;
     QStackedWidget* stack_ = nullptr;
 
     QWidget* miscPage_ = nullptr;

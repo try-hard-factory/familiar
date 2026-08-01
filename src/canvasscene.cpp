@@ -1035,8 +1035,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 // through set_z_value() (not the raw setZValue() call
                 // above), since that's the only one wired to update
                 // scene->max_z/min_z (QGraphicsItem::setZValue() isn't
-                // virtual, so it can't be overridden the way beeref's
-                // Python setZValue() is).
+                // virtual, so it can't be overridden directly).
                 baseItem->set_z_value(item->zValue());
 
                 if (selected) {

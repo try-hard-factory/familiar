@@ -644,7 +644,7 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
         // (observed: a real site taking 15s+ to serve one image, or an
         // HTML page instead of image bytes), while the browser's own
         // rendered thumbnail is right there in text/html's <img src> -
-        // prefer that, the same fast preview PureRef ends up using.
+        // prefer that as a fast preview instead.
         // Only for a single-image drag: with several URLs dropped at
         // once there's no way to tell which one (if any) this one <img>
         // match corresponds to.
