@@ -82,6 +82,7 @@ public slots:
 
     // Settings / Help
     void on_action_settings();
+    void on_action_settings_new();
     void on_action_keyboard_settings();
     void on_action_open_settings_dir();
     void on_action_help();
@@ -249,6 +250,7 @@ private slots:
     void saveAll();
     void newFile();
     void settingsWindow();
+    void settingsWindowNew();
     void saveFile();
     void quit();
     void openFile();

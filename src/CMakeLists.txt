@@ -72,6 +72,8 @@ set(PROJECT_SOURCES
         savecheckbox.h
         ui/settings_window.cpp
         ui/settings_window.h
+        ui/new_settings_window.cpp
+        ui/new_settings_window.h
         ui/presetsave_window.cpp
         ui/presetsave_window.h
         actions/actions.cpp
