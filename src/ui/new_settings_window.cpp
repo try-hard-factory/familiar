@@ -213,10 +213,21 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     auto* importBtn = new QToolButton(this);
     importBtn->setText(tr("Import"));
     connect(importBtn, &QToolButton::clicked, this, [this]() {
-        const QString path = QFileDialog::getOpenFileName(
-            this, tr("Import Settings"), {}, tr("JSON files (*.json)"));
-        if (path.isEmpty())
+        // Plain QFileDialog::getOpenFileName() uses the native dialog by
+        // default, which hangs on this Qt build - every other file
+        // dialog in the app (file_actions.cpp, canvasview.cpp) already
+        // works around this the same way.
+        QFileDialog dialog(this, tr("Import Settings"));
+        dialog.setAttribute(Qt::WA_TranslucentBackground, false);
+        dialog.setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+        dialog.setAcceptMode(QFileDialog::AcceptOpen);
+        dialog.setFileMode(QFileDialog::ExistingFile);
+        dialog.setNameFilter(tr("JSON files (*.json)"));
+        if (dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
             return;
+        const QString path = dialog.selectedFiles().first();
         if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
@@ -238,13 +249,18 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     auto* exportBtn = new QToolButton(this);
     exportBtn->setText(tr("Export"));
     connect(exportBtn, &QToolButton::clicked, this, [this]() {
-        const QString path = QFileDialog::getSaveFileName(
-            this,
-            tr("Export Settings"),
-            QStringLiteral("familiar-settings.json"),
-            tr("JSON files (*.json)"));
-        if (path.isEmpty())
+        QFileDialog dialog(this, tr("Export Settings"));
+        dialog.setAttribute(Qt::WA_TranslucentBackground, false);
+        dialog.setStyleSheet(
+            "* { background-color: palette(window); color: palette(window-text); }");
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+        dialog.setAcceptMode(QFileDialog::AcceptSave);
+        dialog.setFileMode(QFileDialog::AnyFile);
+        dialog.selectFile(QStringLiteral("familiar-settings.json"));
+        dialog.setNameFilter(tr("JSON files (*.json)"));
+        if (dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
             return;
+        const QString path = dialog.selectedFiles().first();
         if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
