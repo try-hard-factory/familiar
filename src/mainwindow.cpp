@@ -66,12 +66,9 @@ MainWindow::MainWindow(QWidget* parent)
 
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
-    tabpane_->setStyleSheet(
-        "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane "
-        "{ border: "
-        "1px solid lightgray; top:-1px; background:  transparent; }");
-
-    //tabpane_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 0, 128);");
+    // Tab bar styling is set by settingsChangedSlot() above (line 65),
+    // which already ran once with the initial settings - no need to
+    // duplicate it here.
     setCentralWidget(tabpane_);
 
     setAttribute(Qt::WA_TranslucentBackground);
@@ -185,10 +182,24 @@ void MainWindow::settingsChangedSlot()
                              .arg(backGroundColor_.blue())
                              .arg(currentOpacity_);
 
+    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+    // All tabs share the same background color; the selected one is
+    // marked only by a selection-color underline. Unselected tabs get the
+    // same 2px border in a transparent color rather than no border at
+    // all, so the box model stays identical and tabs don't resize when
+    // the selection changes.
+    const QColor& selectionColor = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto rgb = [](const QColor& c) {
+        return QString("rgb(%1, %2, %3)").arg(c.red()).arg(c.green()).arg(c.blue());
+    };
     tabpane_->setStyleSheet(
-        "QTabBar::tab { background: rgba(255, 255, 0, 128); } QTabWidget::pane "
-        "{ border: "
-        "1px solid lightgray; top:-1px; background:  transparent; }");
+        QString("QTabBar::tab { background: %1; color: %2; "
+                "border-bottom: 2px solid transparent; "
+                "padding: 6px 14px; } "
+                "QTabBar::tab:selected { border-bottom: 2px solid %3; } "
+                "QTabWidget::pane { border: 1px solid lightgray; top:-1px; "
+                "background: transparent; }")
+            .arg(rgb(backGroundColor_), rgb(textColor), rgb(selectionColor)));
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
     update();
