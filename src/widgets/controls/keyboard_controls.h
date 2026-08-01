@@ -67,8 +67,7 @@ class KeyboardShortcutsModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    // Only one shortcut per action - no "Alternative" column (unlike
-    // beeref, which supports two).
+    // Only one shortcut per action - no "Alternative" column.
     static inline QStringList HEADER = {
         QStringLiteral("Action"),
         QStringLiteral("✎"),

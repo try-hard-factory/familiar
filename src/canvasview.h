@@ -57,7 +57,7 @@ public:
     QPointF getViewCenter() const;
 
     // 1.0 while this window is active or the cursor is hovering this
-    // view (PureRef-style "peek" - see updateSelectionVisibility()),
+    // view ("peek" - see updateSelectionVisibility()),
     // fading to 0.0 otherwise. SelectableMixin::paint_selectable()
     // (selector.h) multiplies the multi-select bounding box's alpha by
     // this so it doesn't stay visible while the user's working in

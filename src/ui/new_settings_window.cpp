@@ -8,11 +8,11 @@
 #include <widgets/settings_dialog.h>
 #include <core/controls.h>
 #include <core/settings.h>
+#include <QButtonGroup>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLineEdit>
-#include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
@@ -23,7 +23,8 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     : QWidget(parent)
     , window_(wm)
     , searchBox_(new QLineEdit(this))
-    , categoryList_(new QListWidget(this))
+    , categoryPanel_(new QWidget(this))
+    , categoryButtons_(new QButtonGroup(this))
     , stack_(new QStackedWidget(this))
     , miscPage_(new QWidget)
     , confirmCloseUnsaved_(new ConfirmCloseUnsavedWidget)
@@ -50,19 +51,39 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
 
     auto* root = new QHBoxLayout(this);
 
-    // ─── Left column: search + category list + bottom button row ──────────────
+    // ─── Left column: search + category buttons + bottom button row ───────────
     auto* leftColumn = new QVBoxLayout();
 
     searchBox_->setPlaceholderText(tr("Search"));
     connect(searchBox_, &QLineEdit::textChanged, this, [this](const QString& text) {
-        for (int i = 0; i < categoryList_->count(); ++i) {
-            QListWidgetItem* item = categoryList_->item(i);
-            item->setHidden(!text.isEmpty()
-                            && !item->text().contains(text, Qt::CaseInsensitive));
+        for (auto* btn : categoryPanel_->findChildren<QPushButton*>()) {
+            btn->setVisible(text.isEmpty()
+                            || btn->text().contains(text, Qt::CaseInsensitive));
         }
     });
     leftColumn->addWidget(searchBox_);
-    leftColumn->addWidget(categoryList_, /*stretch=*/1);
+
+    // Vertical nav: plain checkable buttons instead of a QListWidget,
+    // one exclusive group so exactly one stays highlighted.
+    categoryPanel_->setStyleSheet(
+        "QPushButton#categoryButton {"
+        "  text-align: left;"
+        "  padding: 6px 10px;"
+        "  border: none;"
+        "  background: transparent;"
+        "}"
+        "QPushButton#categoryButton:checked {"
+        "  background: palette(highlight);"
+        "  color: palette(highlighted-text);"
+        "}"
+        "QPushButton#categoryButton:hover:!checked {"
+        "  background: palette(alternate-base);"
+        "}");
+    auto* categoryLayout = new QVBoxLayout(categoryPanel_);
+    categoryLayout->setContentsMargins(0, 0, 0, 0);
+    categoryLayout->setSpacing(0);
+    categoryButtons_->setExclusive(true);
+    leftColumn->addWidget(categoryPanel_, /*stretch=*/1);
 
     auto* bottomRow = new QHBoxLayout();
     auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
@@ -84,8 +105,8 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
 
     // TODOLATER: wire up once a settings import/export file format exists
     // (see memory/familiar_next_steps.md step 5/6 - single JSON settings
-    // file). Shown disabled rather than faked, matching the PureRef
-    // reference layout without pretending this works yet.
+    // file). Shown disabled rather than faked, so the layout is in place
+    // without pretending this works yet.
     auto* importBtn = new QToolButton(this);
     importBtn->setText(tr("Import"));
     importBtn->setEnabled(false);
@@ -101,11 +122,22 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
 
     // ─── Pages - same content as SettingsWindow's tabs (ui/settings_window.cpp) ─
 
+    int categoryIndex = 0;
+    auto addCategory = [this, categoryLayout, &categoryIndex](const QString& label,
+                                                               QWidget* page) {
+        auto* btn = new QPushButton(label, categoryPanel_);
+        btn->setObjectName(QStringLiteral("categoryButton"));
+        btn->setCheckable(true);
+        categoryLayout->addWidget(btn);
+        categoryButtons_->addButton(btn, categoryIndex);
+        stack_->addWidget(page);
+        ++categoryIndex;
+    };
+
     // Miscellaneous
     auto* miscLayout = new QGridLayout(miscPage_);
     miscLayout->addWidget(confirmCloseUnsaved_, 0, 0);
-    categoryList_->addItem(tr("Miscellaneous"));
-    stack_->addWidget(miscPage_);
+    addCategory(tr("Miscellaneous"), miscPage_);
 
     // Images & Items
     auto* imagesLayout = new QGridLayout(imagesPage_);
@@ -113,38 +145,36 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     imagesLayout->addWidget(allocationLimit_, 0, 1);
     imagesLayout->addWidget(arrangeGap_, 1, 0);
     imagesLayout->addWidget(arrangeDefault_, 1, 1);
-    categoryList_->addItem(tr("Images & Items"));
-    stack_->addWidget(imagesPage_);
+    addCategory(tr("Images & Items"), imagesPage_);
 
     // Colors
     auto* colorsLayout = new QVBoxLayout(colorsPage_);
     colorsLayout->addWidget(colors_);
-    categoryList_->addItem(tr("Colors"));
-    stack_->addWidget(colorsPage_);
+    addCategory(tr("Colors"), colorsPage_);
 
     // Keyboard Shortcuts
     auto* shortcutsLayout = new QVBoxLayout(shortcutsPage_);
     shortcutsLayout->addWidget(shortcuts_);
-    categoryList_->addItem(tr("Keyboard Shortcuts"));
-    stack_->addWidget(shortcutsPage_);
+    addCategory(tr("Keyboard Shortcuts"), shortcutsPage_);
 
     // Mouse
     auto* mouseLayout = new QVBoxLayout(mousePage_);
     mouseLayout->addWidget(mouse_);
-    categoryList_->addItem(tr("Mouse"));
-    stack_->addWidget(mousePage_);
+    addCategory(tr("Mouse"), mousePage_);
 
     // Mouse Wheel
     auto* mouseWheelLayout = new QVBoxLayout(mouseWheelPage_);
     mouseWheelLayout->addWidget(mouseWheel_);
-    categoryList_->addItem(tr("Mouse Wheel"));
-    stack_->addWidget(mouseWheelPage_);
+    addCategory(tr("Mouse Wheel"), mouseWheelPage_);
 
-    connect(categoryList_,
-            &QListWidget::currentRowChanged,
+    categoryLayout->addStretch(1);
+
+    connect(categoryButtons_,
+            &QButtonGroup::idClicked,
             stack_,
             &QStackedWidget::setCurrentIndex);
-    categoryList_->setCurrentRow(0);
+    categoryButtons_->button(0)->setChecked(true);
+    stack_->setCurrentIndex(0);
 }
 
 void NewSettingsWindow::keyPressEvent(QKeyEvent* e)
