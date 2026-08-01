@@ -2,10 +2,12 @@
 #include "mainwindow.h"
 #include <ui/colors_widget.h>
 #include <widgets/controls/keyboard_shortcuts_page.h>
+#include <widgets/controls/search_highlight.h>
 #include <widgets/dialogs.h>
 #include <widgets/settings_dialog.h>
 #include <core/controls.h>
 #include <core/settings.h>
+#include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -14,8 +16,86 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStyleOptionButton>
+#include <QStylePainter>
+#include <QTextDocument>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+namespace {
+
+// Misc/Images & Items are a QGridLayout of SettingsGroupBase-derived
+// QGroupBoxes (settings_dialog.h), each already carrying its display
+// title as objectName() (see SettingsGroupBase::updateTitle()) - reused
+// here as-is rather than adding a parallel "searchable label" API.
+// Colors has no such children (ColorsWidget is one monolithic custom
+// widget, not decomposed into named sub-items), so this simply finds
+// nothing and reports no content match there - it can still be reached
+// by matching the category name itself.
+bool applyGroupFilter(QWidget* page, const QString& text)
+{
+    bool anyVisible = false;
+    for (SettingsGroupBase* group : page->findChildren<SettingsGroupBase*>()) {
+        const bool matches
+            = text.isEmpty() || group->objectName().contains(text, Qt::CaseInsensitive);
+        group->setVisible(matches);
+        anyVisible = anyVisible || matches;
+    }
+    return anyVisible;
+}
+
+// QPushButton::setText() can't render the <b> a search match needs to be
+// bolded - nesting a QLayout+QLabel inside the button to work around that
+// visually broke the checked/hover background (it ended up painted at a
+// different, stale geometry than the label, a QSS/QAbstractButton
+// layout-caching mismatch). Painting the rich text directly instead:
+// draw the normal button chrome via the style with its text left empty,
+// then lay `richText_` out with QTextDocument on top, in the same paint
+// pass - so background and text can never drift apart again.
+class CategoryNavButton : public QPushButton
+{
+public:
+    explicit CategoryNavButton(QWidget* parent)
+        : QPushButton(parent)
+    {}
+
+    void setLabelText(const QString& richText)
+    {
+        richText_ = richText;
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
+        QStylePainter painter(this);
+        QStyleOptionButton opt;
+        initStyleOption(&opt);
+        opt.text.clear();
+        painter.drawControl(QStyle::CE_PushButton, opt);
+
+        const QColor color = palette().color(isChecked() ? QPalette::HighlightedText
+                                                          : QPalette::ButtonText);
+        QTextDocument doc;
+        doc.setDefaultFont(font());
+        doc.setDefaultStyleSheet(
+            QStringLiteral("body { color: %1; }").arg(color.name()));
+        doc.setHtml(QStringLiteral("<body>%1</body>").arg(richText_));
+        doc.setTextWidth(width() - 20);
+
+        painter.save();
+        painter.translate(10, (height() - doc.size().height()) / 2);
+        QAbstractTextDocumentLayout::PaintContext ctx;
+        ctx.palette.setColor(QPalette::Text, color);
+        doc.documentLayout()->draw(&painter, ctx);
+        painter.restore();
+    }
+
+private:
+    QString richText_;
+};
+
+} // namespace
 
 NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     : QWidget(parent)
@@ -48,26 +128,58 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     auto* leftColumn = new QVBoxLayout();
 
     searchBox_->setPlaceholderText(tr("Search"));
+    searchBox_->setClearButtonEnabled(true);
+    // PureRef-style search: a category's nav button stays visible if its
+    // own name matches OR any item inside it does; the page itself is
+    // filtered down to just the matching items (whole page shown
+    // unfiltered when the category name itself is what matched). If the
+    // currently open category drops out, jump to the first one that's
+    // still visible so the user isn't left looking at a hidden page.
     connect(searchBox_, &QLineEdit::textChanged, this, [this](const QString& text) {
-        for (auto* btn : categoryPanel_->findChildren<QPushButton*>()) {
-            btn->setVisible(text.isEmpty()
-                            || btn->text().contains(text, Qt::CaseInsensitive));
+        QPushButton* firstVisible = nullptr;
+        bool currentStillVisible = false;
+        for (const SettingsCategory& cat : categories_) {
+            const bool nameMatches
+                = text.isEmpty() || cat.name.contains(text, Qt::CaseInsensitive);
+            const QString contentFilter = nameMatches ? QString() : text;
+            bool contentMatches;
+            if (auto* kb = qobject_cast<KeyboardShortcutsPage*>(cat.page))
+                contentMatches = kb->applySearchFilter(contentFilter);
+            else
+                contentMatches = applyGroupFilter(cat.page, contentFilter);
+
+            // Only the category's own name is a candidate for bolding here
+            // - if nothing but its content matched, the name itself has
+            // no matched substring to highlight.
+            static_cast<CategoryNavButton*>(cat.button)->setLabelText(
+                highlightSearchMatch(cat.name, nameMatches ? text : QString()));
+
+            const bool visible = nameMatches || contentMatches;
+            cat.button->setVisible(visible);
+            if (visible) {
+                if (!firstVisible)
+                    firstVisible = cat.button;
+                if (cat.button->isChecked())
+                    currentStillVisible = true;
+            }
         }
+        if (!currentStillVisible && firstVisible)
+            firstVisible->click();
     });
     leftColumn->addWidget(searchBox_);
 
     // Vertical nav: plain checkable buttons instead of a QListWidget,
-    // one exclusive group so exactly one stays highlighted.
+    // one exclusive group so exactly one stays highlighted. Text color
+    // is picked in CategoryNavButton::paintEvent() directly rather than
+    // through this stylesheet's "color" property, since that's only
+    // read by the style's own (now-unused) text drawing.
     categoryPanel_->setStyleSheet(
         "QPushButton#categoryButton {"
-        "  text-align: left;"
-        "  padding: 6px 10px;"
         "  border: none;"
         "  background: transparent;"
         "}"
         "QPushButton#categoryButton:checked {"
         "  background: palette(highlight);"
-        "  color: palette(highlighted-text);"
         "}"
         "QPushButton#categoryButton:hover:!checked {"
         "  background: palette(alternate-base);"
@@ -118,12 +230,15 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     int categoryIndex = 0;
     auto addCategory = [this, categoryLayout, &categoryIndex](const QString& label,
                                                                QWidget* page) {
-        auto* btn = new QPushButton(label, categoryPanel_);
+        auto* btn = new CategoryNavButton(categoryPanel_);
         btn->setObjectName(QStringLiteral("categoryButton"));
         btn->setCheckable(true);
+        btn->setMinimumHeight(28);
+        btn->setLabelText(highlightSearchMatch(label, QString()));
         categoryLayout->addWidget(btn);
         categoryButtons_->addButton(btn, categoryIndex);
         stack_->addWidget(page);
+        categories_.append({btn, page, label});
         ++categoryIndex;
     };
 

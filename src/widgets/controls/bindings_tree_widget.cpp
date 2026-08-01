@@ -1,5 +1,6 @@
 #include "bindings_tree_widget.h"
 #include "binding_dialogs.h"
+#include "search_highlight.h"
 
 #include <QHBoxLayout>
 #include <QLabel>
@@ -36,6 +37,11 @@ CollapsibleSection::CollapsibleSection(const QString& title,
     layout->addWidget(content_);
 }
 
+void CollapsibleSection::setExpanded(bool expanded)
+{
+    headerBtn_->setChecked(expanded);
+}
+
 // ─── BindingsTreeWidget ───────────────────────────────────────────────────────
 
 BindingsTreeWidget::BindingsTreeWidget(const QList<BindingTarget*>& targets,
@@ -56,6 +62,31 @@ BindingsTreeWidget::BindingsTreeWidget(const QList<BindingTarget*>& targets,
         layout->addWidget(container);
         refreshTarget(target);
     }
+}
+
+void BindingsTreeWidget::refreshAll()
+{
+    for (BindingTarget* target : targets_)
+        refreshTarget(target);
+}
+
+bool BindingsTreeWidget::applySearchFilter(const QString& text)
+{
+    searchFilter_ = text;
+    bool anyVisible = false;
+    for (BindingTarget* target : targets_) {
+        QWidget* container = rowContainers_.value(target);
+        if (!container)
+            continue;
+        const bool matches = text.isEmpty()
+            || target->text().contains(text, Qt::CaseInsensitive);
+        container->setVisible(matches);
+        anyVisible = anyVisible || matches;
+        // Rebuilds the row's label with the new searchFilter_ so the
+        // matched substring gets bolded (or un-bolded, once cleared).
+        refreshTarget(target);
+    }
+    return anyVisible;
 }
 
 void BindingsTreeWidget::refreshTarget(BindingTarget* target)
@@ -131,7 +162,8 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         layout->addWidget(spacer);
     }
 
-    layout->addWidget(new QLabel(label, row));
+    auto* nameLabel = new QLabel(highlightSearchMatch(label, searchFilter_), row);
+    layout->addWidget(nameLabel);
     layout->addStretch(1);
 
     if (bindingIndex >= 0) {
@@ -155,6 +187,7 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
             auto* dlg = new RebindDialog(target, bindingIndex, this);
             connect(dlg, &QDialog::accepted, this, [this, target]() {
                 refreshTarget(target);
+                emit bindingsChanged();
             });
             dlg->exec();
             dlg->deleteLater();
@@ -176,6 +209,7 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
                     target->setBindings(bindings);
                 }
                 refreshTarget(target);
+                emit bindingsChanged();
             });
             layout->addWidget(removeBtn);
         }
@@ -188,6 +222,7 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
             auto* dlg = new AddAliasDialog(target, this);
             connect(dlg, &QDialog::accepted, this, [this, target]() {
                 refreshTarget(target);
+                emit bindingsChanged();
             });
             dlg->exec();
             dlg->deleteLater();

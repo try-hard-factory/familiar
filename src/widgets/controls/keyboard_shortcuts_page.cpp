@@ -4,6 +4,7 @@
 
 #include <actions/actions.h>
 #include <core/controls.h>
+#include <core/settings.h>
 
 #include <QScrollArea>
 #include <QSet>
@@ -46,15 +47,40 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
                                          BindingTargetKind::MouseWheelControl));
     }
 
-    auto* actionsTree = new BindingsTreeWidget(actionTargets_, this);
-    auto* controlsTree = new BindingsTreeWidget(controlTargets_, this);
+    actionsTree_ = new BindingsTreeWidget(actionTargets_, this);
+    controlsTree_ = new BindingsTreeWidget(controlTargets_, this);
+
+    // Restore Defaults wipes storage out from under these targets without
+    // going through any of the tree's own Add/Remove/Rebind dialogs (which
+    // already refresh themselves) - rebuild every row when it fires.
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::restoreKeyboardDefaults,
+            actionsTree_,
+            &BindingsTreeWidget::refreshAll);
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::restoreKeyboardDefaults,
+            controlsTree_,
+            &BindingsTreeWidget::refreshAll);
+
+    // A conflict can be resolved by stealing a binding from a target in
+    // the OTHER tree (an Action and a Control can now conflict over the
+    // same mouse chord) - each tree only knows how to refresh its own
+    // rows, so wire both trees' changes to refresh both.
+    connect(actionsTree_, &BindingsTreeWidget::bindingsChanged, actionsTree_,
+           &BindingsTreeWidget::refreshAll);
+    connect(actionsTree_, &BindingsTreeWidget::bindingsChanged, controlsTree_,
+           &BindingsTreeWidget::refreshAll);
+    connect(controlsTree_, &BindingsTreeWidget::bindingsChanged, controlsTree_,
+           &BindingsTreeWidget::refreshAll);
+    connect(controlsTree_, &BindingsTreeWidget::bindingsChanged, actionsTree_,
+           &BindingsTreeWidget::refreshAll);
 
     auto* scrollContent = new QWidget(this);
     auto* scrollLayout = new QVBoxLayout(scrollContent);
-    scrollLayout->addWidget(
-        new CollapsibleSection(tr("Actions"), actionsTree, scrollContent));
-    scrollLayout->addWidget(
-        new CollapsibleSection(tr("Controls"), controlsTree, scrollContent));
+    actionsSection_ = new CollapsibleSection(tr("Actions"), actionsTree_, scrollContent);
+    controlsSection_ = new CollapsibleSection(tr("Controls"), controlsTree_, scrollContent);
+    scrollLayout->addWidget(actionsSection_);
+    scrollLayout->addWidget(controlsSection_);
     scrollLayout->addStretch(1);
 
     auto* scrollArea = new QScrollArea(this);
@@ -70,4 +96,21 @@ KeyboardShortcutsPage::~KeyboardShortcutsPage()
 {
     qDeleteAll(actionTargets_);
     qDeleteAll(controlTargets_);
+}
+
+bool KeyboardShortcutsPage::applySearchFilter(const QString& text)
+{
+    const bool actionsMatch = actionsTree_->applySearchFilter(text);
+    const bool controlsMatch = controlsTree_->applySearchFilter(text);
+    actionsSection_->setVisible(actionsMatch);
+    controlsSection_->setVisible(controlsMatch);
+    // Auto-expand a matching section while searching, so results aren't
+    // hidden behind a chevron the user collapsed earlier.
+    if (!text.isEmpty()) {
+        if (actionsMatch)
+            actionsSection_->setExpanded(true);
+        if (controlsMatch)
+            controlsSection_->setExpanded(true);
+    }
+    return actionsMatch || controlsMatch;
 }

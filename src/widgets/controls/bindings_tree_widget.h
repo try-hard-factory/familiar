@@ -18,6 +18,8 @@ public:
                        QWidget* content,
                        QWidget* parent = nullptr);
 
+    void setExpanded(bool expanded);
+
 private:
     QToolButton* headerBtn_ = nullptr;
     QWidget* content_ = nullptr;
@@ -41,6 +43,28 @@ public:
     explicit BindingsTreeWidget(const QList<BindingTarget*>& targets,
                                 QWidget* parent = nullptr);
 
+    // Rebuilds every row from current storage - e.g. after Restore
+    // Defaults, which changes bindings out from under this widget without
+    // going through its own Add/Remove/Rebind dialogs (those already call
+    // refreshTarget() themselves).
+    void refreshAll();
+
+    // Hides rows whose target name doesn't contain `text` (case
+    // insensitive) and bolds the matched substring in the ones that
+    // remain; empty text shows everything unfiltered. Returns whether
+    // any row is left visible, so the owner can hide/collapse an empty
+    // section entirely.
+    bool applySearchFilter(const QString& text);
+
+signals:
+    // A binding was added/removed/rebound (including a conflict getting
+    // resolved by stealing a binding from some OTHER target, possibly in
+    // a different BindingsTreeWidget entirely - e.g. an Action and a
+    // Control conflicting over the same mouse chord). The owner
+    // (KeyboardShortcutsPage) uses this to refresh every tree, since this
+    // one only knows how to refresh its own rows.
+    void bindingsChanged();
+
 private:
     void refreshTarget(BindingTarget* target);
     QWidget* buildRow(BindingTarget* target,
@@ -52,4 +76,5 @@ private:
 
     QList<BindingTarget*> targets_;
     QMap<BindingTarget*, QWidget*> rowContainers_;
+    QString searchFilter_;
 };
