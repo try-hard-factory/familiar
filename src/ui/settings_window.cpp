@@ -1,13 +1,13 @@
 #include "settings_window.h"
 #include "mainwindow.h"
+#include <core/controls.h>
+#include <core/settings.h>
 #include <ui/colors_widget.h>
 #include <widgets/controls/keyboard_controls.h>
 #include <widgets/controls/mouse_controls.h>
 #include <widgets/controls/mousewheel_controls.h>
 #include <widgets/dialogs.h>
 #include <widgets/settings_dialog.h>
-#include <core/controls.h>
-#include <core/settings.h>
 #include <QDialogButtonBox>
 #include <QGridLayout>
 #include <QMessageBox>

@@ -17,6 +17,7 @@ inline QString highlightSearchMatch(const QString& text, const QString& query)
     if (idx < 0)
         return text.toHtmlEscaped();
     return text.left(idx).toHtmlEscaped() + QStringLiteral("<b>")
-        + text.mid(idx, query.length()).toHtmlEscaped() + QStringLiteral("</b>")
-        + text.mid(idx + query.length()).toHtmlEscaped();
+           + text.mid(idx, query.length()).toHtmlEscaped()
+           + QStringLiteral("</b>")
+           + text.mid(idx + query.length()).toHtmlEscaped();
 }

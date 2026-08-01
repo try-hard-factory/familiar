@@ -39,7 +39,7 @@ int MouseWheelModifiersEditor::findConflictingRow() const
     Binding candidate;
     candidate.mouseModifiers = getModifiers();
     return KeyboardSettings().findConflictingWheelGroup(currentAction_->id(),
-                                                         candidate);
+                                                        candidate);
 }
 
 QString MouseWheelModifiersEditor::conflictingActionText(int row) const
@@ -78,8 +78,8 @@ QWidget* MouseWheelDelegate::createEditor(QWidget* parent,
                      [editor, proxy, index]() {
                          if (!proxy)
                              return;
-                         const QVariant data
-                             = QVariant::fromValue(editor->getModifiers());
+                         const QVariant data = QVariant::fromValue(
+                             editor->getModifiers());
                          proxy->setDataEx(index,
                                           data,
                                           Qt::EditRole,

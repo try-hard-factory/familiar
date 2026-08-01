@@ -37,9 +37,13 @@ struct Binding
     QString mouseButton;
     QStringList mouseModifiers;
     bool inverted = false;
-    bool systemGlobal = false; // stored for forward compat; no dispatch effect yet
+    bool systemGlobal
+        = false; // stored for forward compat; no dispatch effect yet
 
-    bool isEmpty() const { return keySequence.isEmpty() && mouseButton.isEmpty(); }
+    bool isEmpty() const
+    {
+        return keySequence.isEmpty() && mouseButton.isEmpty();
+    }
     bool isKeyboardOnly() const
     {
         return mouseButton.isEmpty() && !keySequence.isEmpty();

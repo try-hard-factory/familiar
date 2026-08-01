@@ -39,7 +39,8 @@ void ActionBindingTarget::setBindings(const QList<Binding>& bindings)
     QList<Binding> mouseBindings;
     for (const Binding& b : bindings) {
         if (!b.mouseButton.isEmpty())
-            mouseBindings.append(b); // mouse-only or mixed (keeps keySequence too)
+            mouseBindings.append(
+                b); // mouse-only or mixed (keeps keySequence too)
         else if (!b.keySequence.isEmpty())
             seqs.append(b.keySequence);
     }

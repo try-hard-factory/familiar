@@ -724,7 +724,6 @@ protected:
                     event->accept();
                     return;
                 }
-
             }
 
             //Check if we are in one of the edge's scale areas - same

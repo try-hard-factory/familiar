@@ -1,13 +1,13 @@
 #include "new_settings_window.h"
 #include "mainwindow.h"
+#include <core/controls.h>
+#include <core/settings.h>
+#include <core/settingshandler.h>
 #include <ui/colors_widget.h>
 #include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/controls/search_highlight.h>
 #include <widgets/dialogs.h>
 #include <widgets/settings_dialog.h>
-#include <core/controls.h>
-#include <core/settings.h>
-#include <core/settingshandler.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
 #include <QFileDialog>
@@ -39,7 +39,8 @@ bool applyGroupFilter(QWidget* page, const QString& text)
     bool anyVisible = false;
     for (SettingsGroupBase* group : page->findChildren<SettingsGroupBase*>()) {
         const bool matches
-            = text.isEmpty() || group->objectName().contains(text, Qt::CaseInsensitive);
+            = text.isEmpty()
+              || group->objectName().contains(text, Qt::CaseInsensitive);
         group->setVisible(matches);
         anyVisible = anyVisible || matches;
     }
@@ -76,8 +77,8 @@ protected:
         opt.text.clear();
         painter.drawControl(QStyle::CE_PushButton, opt);
 
-        const QColor color = palette().color(isChecked() ? QPalette::HighlightedText
-                                                          : QPalette::ButtonText);
+        const QColor color = palette().color(
+            isChecked() ? QPalette::HighlightedText : QPalette::ButtonText);
         QTextDocument doc;
         doc.setDefaultFont(font());
         doc.setDefaultStyleSheet(
@@ -141,8 +142,9 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
         QPushButton* firstVisible = nullptr;
         bool currentStillVisible = false;
         for (const SettingsCategory& cat : categories_) {
-            const bool nameMatches
-                = text.isEmpty() || cat.name.contains(text, Qt::CaseInsensitive);
+            const bool nameMatches = text.isEmpty()
+                                     || cat.name.contains(text,
+                                                          Qt::CaseInsensitive);
             const QString contentFilter = nameMatches ? QString() : text;
             bool contentMatches;
             if (auto* kb = qobject_cast<KeyboardShortcutsPage*>(cat.page))
@@ -153,8 +155,10 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
             // Only the category's own name is a candidate for bolding here
             // - if nothing but its content matched, the name itself has
             // no matched substring to highlight.
-            static_cast<CategoryNavButton*>(cat.button)->setLabelText(
-                highlightSearchMatch(cat.name, nameMatches ? text : QString()));
+            static_cast<CategoryNavButton*>(cat.button)
+                ->setLabelText(
+                    highlightSearchMatch(cat.name,
+                                         nameMatches ? text : QString()));
 
             const bool visible = nameMatches || contentMatches;
             cat.button->setVisible(visible);
@@ -175,17 +179,16 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     // is picked in CategoryNavButton::paintEvent() directly rather than
     // through this stylesheet's "color" property, since that's only
     // read by the style's own (now-unused) text drawing.
-    categoryPanel_->setStyleSheet(
-        "QPushButton#categoryButton {"
-        "  border: none;"
-        "  background: transparent;"
-        "}"
-        "QPushButton#categoryButton:checked {"
-        "  background: palette(highlight);"
-        "}"
-        "QPushButton#categoryButton:hover:!checked {"
-        "  background: palette(alternate-base);"
-        "}");
+    categoryPanel_->setStyleSheet("QPushButton#categoryButton {"
+                                  "  border: none;"
+                                  "  background: transparent;"
+                                  "}"
+                                  "QPushButton#categoryButton:checked {"
+                                  "  background: palette(highlight);"
+                                  "}"
+                                  "QPushButton#categoryButton:hover:!checked {"
+                                  "  background: palette(alternate-base);"
+                                  "}");
     auto* categoryLayout = new QVBoxLayout(categoryPanel_);
     categoryLayout->setContentsMargins(0, 0, 0, 0);
     categoryLayout->setSpacing(0);
@@ -219,13 +222,14 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
         // works around this the same way.
         QFileDialog dialog(this, tr("Import Settings"));
         dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-        dialog.setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        dialog.setStyleSheet("* { background-color: palette(window); color: "
+                             "palette(window-text); }");
         dialog.setOption(QFileDialog::DontUseNativeDialog, true);
         dialog.setAcceptMode(QFileDialog::AcceptOpen);
         dialog.setFileMode(QFileDialog::ExistingFile);
         dialog.setNameFilter(tr("JSON files (*.json)"));
-        if (dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
+        if (dialog.exec() != QDialog::Accepted
+            || dialog.selectedFiles().isEmpty())
             return;
         const QString path = dialog.selectedFiles().first();
         if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
@@ -243,7 +247,7 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
         // ColorsWidget::updateComponents()'s presetsChanged connection.
         emit SettingsEvents::instance().restoreDefaults();
         emit SettingsEvents::instance().restoreKeyboardDefaults();
-        emit SettingsHandler::getInstance()->presetsChanged();
+        emit SettingsHandler::getInstance() -> presetsChanged();
     });
 
     auto* exportBtn = new QToolButton(this);
@@ -251,14 +255,15 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     connect(exportBtn, &QToolButton::clicked, this, [this]() {
         QFileDialog dialog(this, tr("Export Settings"));
         dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-        dialog.setStyleSheet(
-            "* { background-color: palette(window); color: palette(window-text); }");
+        dialog.setStyleSheet("* { background-color: palette(window); color: "
+                             "palette(window-text); }");
         dialog.setOption(QFileDialog::DontUseNativeDialog, true);
         dialog.setAcceptMode(QFileDialog::AcceptSave);
         dialog.setFileMode(QFileDialog::AnyFile);
         dialog.selectFile(QStringLiteral("familiar-settings.json"));
         dialog.setNameFilter(tr("JSON files (*.json)"));
-        if (dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
+        if (dialog.exec() != QDialog::Accepted
+            || dialog.selectedFiles().isEmpty())
             return;
         const QString path = dialog.selectedFiles().first();
         if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
@@ -278,8 +283,9 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     // ─── Pages - same content as SettingsWindow's tabs (ui/settings_window.cpp) ─
 
     int categoryIndex = 0;
-    auto addCategory = [this, categoryLayout, &categoryIndex](const QString& label,
-                                                               QWidget* page) {
+    auto addCategory = [this,
+                        categoryLayout,
+                        &categoryIndex](const QString& label, QWidget* page) {
         auto* btn = new CategoryNavButton(categoryPanel_);
         btn->setObjectName(QStringLiteral("categoryButton"));
         btn->setCheckable(true);

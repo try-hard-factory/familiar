@@ -183,7 +183,8 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
     const FieldConfig& conf = f[key];
 
     const QJsonValue raw
-        = SettingsHandler::getInstance()->jsonValue(keyGroup(key), keySubkey(key));
+        = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
+                                                    keySubkey(key));
     if (raw.isUndefined())
         return conf.defaultValue;
     QVariant val = raw.toVariant();
@@ -233,23 +234,27 @@ void FamSettings::onStartup()
 
 void FamSettings::setValue(const QString& key, const QVariant& value)
 {
-    SettingsHandler::getInstance()->setJsonValue(keyGroup(key), keySubkey(key),
+    SettingsHandler::getInstance()->setJsonValue(keyGroup(key),
+                                                 keySubkey(key),
                                                  QJsonValue::fromVariant(value));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback)
         f[key].postSaveCallback(value);
 }
 
-QVariant FamSettings::value(const QString& key, const QVariant& defaultValue) const
+QVariant FamSettings::value(const QString& key,
+                            const QVariant& defaultValue) const
 {
     const QJsonValue raw
-        = SettingsHandler::getInstance()->jsonValue(keyGroup(key), keySubkey(key));
+        = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
+                                                    keySubkey(key));
     return raw.isUndefined() ? defaultValue : raw.toVariant();
 }
 
 void FamSettings::remove(const QString& key)
 {
-    SettingsHandler::getInstance()->removeJsonValue(keyGroup(key), keySubkey(key));
+    SettingsHandler::getInstance()->removeJsonValue(keyGroup(key),
+                                                    keySubkey(key));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback)
         f[key].postSaveCallback(valueOrDefault(key));

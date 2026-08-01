@@ -489,9 +489,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
 void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 {
     FLOG_DEBUG(Ch::View,
-              "CanvasView::mouseReleaseEvent activeMode_={} spontaneous={}",
-              int(activeMode_),
-              event->spontaneous());
+               "CanvasView::mouseReleaseEvent activeMode_={} spontaneous={}",
+               int(activeMode_),
+               event->spontaneous());
     if (activeMode_ == ModePan) {
         viewport()->unsetCursor();
         activeMode_ = ModeNone;

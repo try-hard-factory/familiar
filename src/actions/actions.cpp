@@ -7,7 +7,8 @@ namespace {
 
 bool sameModifiers(const QStringList& a, const QStringList& b)
 {
-    return QSet<QString>(a.begin(), a.end()) == QSet<QString>(b.begin(), b.end());
+    return QSet<QString>(a.begin(), a.end())
+           == QSet<QString>(b.begin(), b.end());
 }
 
 } // namespace
@@ -40,14 +41,14 @@ Action Action::make(const QString& id,
 
 QStringList Action::get_shortcuts() const
 {
-    return SettingsHandler::getInstance()->getShortcuts(
-        QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
+    return SettingsHandler::getInstance()
+        ->getShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
 }
 
 void Action::setShortcuts(const QStringList& values)
 {
-    SettingsHandler::getInstance()->setShortcuts(
-        QString::fromLatin1(SETTINGS_GROUP), id, values);
+    SettingsHandler::getInstance()
+        ->setShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, values);
     if (qaction) {
         QList<QKeySequence> seqs;
         for (const QString& s : values)
@@ -78,8 +79,10 @@ QString Action::getDefaultShortcut(int index) const
 
 QList<Binding> Action::get_mouse_bindings() const
 {
-    const QStringList serialized = KeyboardSettings().getList(
-        QString::fromLatin1(SETTINGS_GROUP), id + QStringLiteral("_mouse"), {});
+    const QStringList serialized
+        = KeyboardSettings().getList(QString::fromLatin1(SETTINGS_GROUP),
+                                     id + QStringLiteral("_mouse"),
+                                     {});
     QList<Binding> out;
     for (const QString& s : serialized)
         out.append(Binding::deserialize(s));
@@ -238,10 +241,8 @@ static ActionRegistry buildRegistry()
                   false,
                   false,
                   "active_when_can_redo"));
-    r.add(A::make("select_all",
-                  "Select All",
-                  "on_action_select_all",
-                  {"Ctrl+A"}));
+    r.add(
+        A::make("select_all", "Select All", "on_action_select_all", {"Ctrl+A"}));
     r.add(A::make("deselect_all",
                   "Deselect All",
                   "on_action_deselect_all",

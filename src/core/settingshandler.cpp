@@ -95,7 +95,8 @@ QVariant jsonToVariant(const QJsonValue& v)
     if (v.isDouble()) {
         const double d = v.toDouble();
         if (d == std::trunc(d)
-            && std::abs(d) <= static_cast<double>(std::numeric_limits<int>::max()))
+            && std::abs(d)
+                   <= static_cast<double>(std::numeric_limits<int>::max()))
             return static_cast<int>(d);
         return d;
     }
@@ -138,7 +139,8 @@ bool SettingsHandler::saveDocument() const
     QDir().mkpath(QFileInfo(settingsFilePath_).absolutePath());
     QFile file(settingsFilePath_);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        FLOG_WARN(Ch::Settings, "Could not write settings file {}",
+        FLOG_WARN(Ch::Settings,
+                  "Could not write settings file {}",
                   settingsFilePath_.toStdString());
         return false;
     }
@@ -151,12 +153,14 @@ QString SettingsHandler::settingsFilePath() const
     return settingsFilePath_;
 }
 
-QJsonValue SettingsHandler::jsonValue(const QString& group, const QString& key) const
+QJsonValue SettingsHandler::jsonValue(const QString& group,
+                                      const QString& key) const
 {
     return document_.value(group).toObject().value(key);
 }
 
-void SettingsHandler::setJsonValue(const QString& group, const QString& key,
+void SettingsHandler::setJsonValue(const QString& group,
+                                   const QString& key,
                                    const QJsonValue& value)
 {
     QJsonObject groupObj = document_.value(group).toObject();
@@ -182,7 +186,8 @@ void SettingsHandler::removeJsonGroup(const QString& group)
 QStringList SettingsHandler::recentFilesRaw() const
 {
     QStringList out;
-    for (const QJsonValue& v : document_.value(QStringLiteral("RecentFiles")).toArray())
+    for (const QJsonValue& v :
+         document_.value(QStringLiteral("RecentFiles")).toArray())
         out.append(v.toString());
     return out;
 }
@@ -222,22 +227,28 @@ void SettingsHandler::setDefaultCurrentPreset()
     auto current_preset = currentPreset();
     switch (current_preset) {
     case EPresets::kDarkPreset:
-        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("darkColorPreset"));
+        removeJsonValue(QStringLiteral("Colors"),
+                        QStringLiteral("darkColorPreset"));
         break;
     case EPresets::kLightPreset:
-        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("lightColorPreset"));
+        removeJsonValue(QStringLiteral("Colors"),
+                        QStringLiteral("lightColorPreset"));
         break;
     case EPresets::kCustom1:
-        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset1"));
+        removeJsonValue(QStringLiteral("Colors"),
+                        QStringLiteral("customPreset1"));
         break;
     case EPresets::kCustom2:
-        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset2"));
+        removeJsonValue(QStringLiteral("Colors"),
+                        QStringLiteral("customPreset2"));
         break;
     case EPresets::kCustom3:
-        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset3"));
+        removeJsonValue(QStringLiteral("Colors"),
+                        QStringLiteral("customPreset3"));
         break;
     case EPresets::kCustom4:
-        removeJsonValue(QStringLiteral("Colors"), QStringLiteral("customPreset4"));
+        removeJsonValue(QStringLiteral("Colors"),
+                        QStringLiteral("customPreset4"));
         break;
     default:
         break;
@@ -271,8 +282,9 @@ void SettingsHandler::remove(const QString& key)
 
 void SettingsHandler::resetValue(const QString& key)
 {
-    setJsonValue(QStringLiteral("Colors"), key,
-                QJsonValue::fromVariant(valueHandler(key)->fallback()));
+    setJsonValue(QStringLiteral("Colors"),
+                 key,
+                 QJsonValue::fromVariant(valueHandler(key)->fallback()));
 }
 
 SettingsHandler::CL SettingsHandler::getCurrentColorPreset()
@@ -342,7 +354,8 @@ void SettingsHandler::setCurrentOpacity(int opacity)
 }
 
 
-QSharedPointer<ValueHandler> SettingsHandler::valueHandler(const QString& key) const
+QSharedPointer<ValueHandler> SettingsHandler::valueHandler(
+    const QString& key) const
 {
     return ::recognizedGeneralOptions.value(key);
 }
@@ -378,7 +391,9 @@ void SettingsHandler::setActionState(const QString& key, const QVariant& value)
 
 qreal SettingsHandler::arrangeGap() const
 {
-    return FamSettings().valueOrDefault(QStringLiteral("Items/arrange_gap")).toReal();
+    return FamSettings()
+        .valueOrDefault(QStringLiteral("Items/arrange_gap"))
+        .toReal();
 }
 
 QString SettingsHandler::arrangeDefault() const

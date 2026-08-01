@@ -54,19 +54,20 @@ void KeyboardShortcutsEditor::onEditingFinished()
         return;
     }
 
-    if (Action* conflicting = getActions().findByShortcut(action_->id, shortcut)) {
+    if (Action* conflicting = getActions().findByShortcut(action_->id,
+                                                          shortcut)) {
         QString txt = conflicting->displayText();
         if (txt.endsWith(QLatin1String("...")))
             txt.chop(3);
 
-        const auto reply = showMessageBox(
-            QMessageBox::Question,
-            this,
-            tr("Shortcut Conflict"),
-            tr("This shortcut is already assigned to \"%1\". "
-               "Do you want to remove it from there?")
-                .arg(txt),
-            QMessageBox::Yes | QMessageBox::No);
+        const auto reply
+            = showMessageBox(QMessageBox::Question,
+                             this,
+                             tr("Shortcut Conflict"),
+                             tr("This shortcut is already assigned to \"%1\". "
+                                "Do you want to remove it from there?")
+                                 .arg(txt),
+                             QMessageBox::Yes | QMessageBox::No);
 
         if (reply == QMessageBox::Yes) {
             conflictingRow_ = getActions().all().indexOf(conflicting);

@@ -20,7 +20,8 @@ class ActionMouseDispatcher : public QObject
     Q_OBJECT
 
 public:
-    explicit ActionMouseDispatcher(QWidget* invokeTarget, QObject* parent = nullptr);
+    explicit ActionMouseDispatcher(QWidget* invokeTarget,
+                                   QObject* parent = nullptr);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;

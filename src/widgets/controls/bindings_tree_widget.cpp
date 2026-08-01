@@ -79,7 +79,8 @@ bool BindingsTreeWidget::applySearchFilter(const QString& text)
         if (!container)
             continue;
         const bool matches = text.isEmpty()
-            || target->text().contains(text, Qt::CaseInsensitive);
+                             || target->text().contains(text,
+                                                        Qt::CaseInsensitive);
         container->setVisible(matches);
         anyVisible = anyVisible || matches;
         // Rebuilds the row's label with the new searchFilter_ so the
@@ -116,8 +117,11 @@ void BindingsTreeWidget::refreshTarget(BindingTarget* target)
         extraLayout->setContentsMargins(0, 0, 0, 0);
         extraLayout->setSpacing(0);
         for (int i = 1; i < bindings.size(); ++i) {
-            extraLayout->addWidget(
-                buildRow(target, QString(), i, /*showAdd=*/false, /*indent=*/true));
+            extraLayout->addWidget(buildRow(target,
+                                            QString(),
+                                            i,
+                                            /*showAdd=*/false,
+                                            /*indent=*/true));
         }
     }
 
@@ -151,10 +155,14 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         chevron->setArrowType(Qt::DownArrow);
         chevron->setAutoRaise(true);
         chevron->setStyleSheet(QStringLiteral("QToolButton { border: none; }"));
-        connect(chevron, &QToolButton::toggled, this, [toggleTarget, chevron](bool checked) {
-            toggleTarget->setVisible(checked);
-            chevron->setArrowType(checked ? Qt::DownArrow : Qt::RightArrow);
-        });
+        connect(chevron,
+                &QToolButton::toggled,
+                this,
+                [toggleTarget, chevron](bool checked) {
+                    toggleTarget->setVisible(checked);
+                    chevron->setArrowType(checked ? Qt::DownArrow
+                                                  : Qt::RightArrow);
+                });
         layout->addWidget(chevron);
     } else if (!indent) {
         auto* spacer = new QWidget(row);
@@ -162,36 +170,39 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         layout->addWidget(spacer);
     }
 
-    auto* nameLabel = new QLabel(highlightSearchMatch(label, searchFilter_), row);
+    auto* nameLabel = new QLabel(highlightSearchMatch(label, searchFilter_),
+                                 row);
     layout->addWidget(nameLabel);
     layout->addStretch(1);
 
     if (bindingIndex >= 0) {
         const Binding b = target->bindings().value(bindingIndex);
         const QString chipLabel = b.displayText().isEmpty() ? tr("(none)")
-                                                             : b.displayText();
+                                                            : b.displayText();
         auto* chip = new QPushButton(chipLabel, row);
         chip->setCursor(Qt::PointingHandCursor);
-        chip->setStyleSheet(
-            QStringLiteral("QPushButton {"
-                          "  padding: 2px 8px;"
-                          "  border: 1px solid palette(mid);"
-                          "  border-radius: 4px;"
-                          "  background: palette(button);"
-                          "}"
-                          "QPushButton:hover {"
-                          "  background: palette(highlight);"
-                          "  color: palette(highlighted-text);"
-                          "}"));
-        connect(chip, &QPushButton::clicked, this, [this, target, bindingIndex]() {
-            auto* dlg = new RebindDialog(target, bindingIndex, this);
-            connect(dlg, &QDialog::accepted, this, [this, target]() {
-                refreshTarget(target);
-                emit bindingsChanged();
-            });
-            dlg->exec();
-            dlg->deleteLater();
-        });
+        chip->setStyleSheet(QStringLiteral("QPushButton {"
+                                           "  padding: 2px 8px;"
+                                           "  border: 1px solid palette(mid);"
+                                           "  border-radius: 4px;"
+                                           "  background: palette(button);"
+                                           "}"
+                                           "QPushButton:hover {"
+                                           "  background: palette(highlight);"
+                                           "  color: palette(highlighted-text);"
+                                           "}"));
+        connect(chip,
+                &QPushButton::clicked,
+                this,
+                [this, target, bindingIndex]() {
+                    auto* dlg = new RebindDialog(target, bindingIndex, this);
+                    connect(dlg, &QDialog::accepted, this, [this, target]() {
+                        refreshTarget(target);
+                        emit bindingsChanged();
+                    });
+                    dlg->exec();
+                    dlg->deleteLater();
+                });
         layout->addWidget(chip);
 
         // No "-" on the primary slot (index 0) - that's the default
@@ -202,15 +213,19 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         if (bindingIndex > 0) {
             auto* removeBtn = new QToolButton(row);
             removeBtn->setText(QStringLiteral("-"));
-            connect(removeBtn, &QToolButton::clicked, this, [this, target, bindingIndex]() {
-                QList<Binding> bindings = target->bindings();
-                if (bindingIndex >= 0 && bindingIndex < bindings.size()) {
-                    bindings.removeAt(bindingIndex);
-                    target->setBindings(bindings);
-                }
-                refreshTarget(target);
-                emit bindingsChanged();
-            });
+            connect(removeBtn,
+                    &QToolButton::clicked,
+                    this,
+                    [this, target, bindingIndex]() {
+                        QList<Binding> bindings = target->bindings();
+                        if (bindingIndex >= 0
+                            && bindingIndex < bindings.size()) {
+                            bindings.removeAt(bindingIndex);
+                            target->setBindings(bindings);
+                        }
+                        refreshTarget(target);
+                        emit bindingsChanged();
+                    });
             layout->addWidget(removeBtn);
         }
     }

@@ -108,12 +108,12 @@ int MouseControlsEditor::findConflictingRow() const
         return -1;
 
     Binding candidate;
-    candidate.mouseButton
-        = (getButton() == QLatin1String("Not Configured")) ? QString()
-                                                            : getButton();
+    candidate.mouseButton = (getButton() == QLatin1String("Not Configured"))
+                                ? QString()
+                                : getButton();
     candidate.mouseModifiers = getModifiers();
     return KeyboardSettings().findConflictingMouseGroup(currentAction_->id(),
-                                                         candidate);
+                                                        candidate);
 }
 
 QString MouseControlsEditor::conflictingActionText(int row) const

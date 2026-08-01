@@ -34,7 +34,9 @@ void MouseControlsEditorBase::initModifiersInput()
         QCheckBox* cb = new QCheckBox(name, box);
         checkboxes_[name] = cb;
         layout->addWidget(cb);
-        connect(cb, &QCheckBox::checkStateChanged, this,
+        connect(cb,
+                &QCheckBox::checkStateChanged,
+                this,
                 [this, name](Qt::CheckState state) {
                     onModifiersChanged(name, static_cast<int>(state));
                 });

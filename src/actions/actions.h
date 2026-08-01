@@ -74,7 +74,8 @@ public:
 
     // Action (other than excludeId) whose mouse bindings already use the
     // same button+modifiers as `candidate`, or nullptr if none.
-    Action* findByMouseBinding(const QString& excludeId, const Binding& candidate);
+    Action* findByMouseBinding(const QString& excludeId,
+                               const Binding& candidate);
 
 private:
     QList<QString> order_;

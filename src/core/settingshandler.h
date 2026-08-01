@@ -102,7 +102,8 @@ public:
     // prefix.
     QString settingsFilePath() const;
     QJsonValue jsonValue(const QString& group, const QString& key) const;
-    void setJsonValue(const QString& group, const QString& key,
+    void setJsonValue(const QString& group,
+                      const QString& key,
                       const QJsonValue& value);
     void removeJsonValue(const QString& group, const QString& key);
     void removeJsonGroup(const QString& group);
@@ -142,8 +143,8 @@ public:
     std::optional<ControlMatch> mouseActionForEvent(
         const QMouseEvent* event) const;
     QStringList getShortcuts(const QString& group,
-                            const QString& key,
-                            const QStringList& defaults = {}) const;
+                             const QString& key,
+                             const QStringList& defaults = {}) const;
     void setShortcuts(const QString& group,
                       const QString& key,
                       const QStringList& values);

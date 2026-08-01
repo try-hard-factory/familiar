@@ -146,7 +146,8 @@ void MainWindow::settingsWindow()
 
 void MainWindow::settingsWindowNew()
 {
-    NewSettingsWindow* widget = new NewSettingsWindow(this, this->parentWidget());
+    NewSettingsWindow* widget = new NewSettingsWindow(this,
+                                                      this->parentWidget());
 
     widget->show();
     centered_widget(this, widget);

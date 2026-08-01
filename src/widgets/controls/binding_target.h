@@ -41,7 +41,10 @@ public:
 
     QString id() const override;
     QString text() const override;
-    BindingTargetKind kind() const override { return BindingTargetKind::Action; }
+    BindingTargetKind kind() const override
+    {
+        return BindingTargetKind::Action;
+    }
     QList<Binding> bindings() const override;
     QList<Binding> defaultBindings() const override;
     void setBindings(const QList<Binding>& bindings) override;
@@ -53,7 +56,8 @@ private:
 class MouseConfigBindingTarget : public BindingTarget
 {
 public:
-    MouseConfigBindingTarget(const MouseConfigBase* config, BindingTargetKind kind)
+    MouseConfigBindingTarget(const MouseConfigBase* config,
+                             BindingTargetKind kind)
         : config_(config)
         , kind_(kind)
     {}

@@ -86,23 +86,24 @@ bool focusIsTextInput()
     QWidget* focused = qApp->focusWidget();
     if (!focused)
         return false;
-    return qobject_cast<QLineEdit*>(focused) || qobject_cast<QTextEdit*>(focused)
-        || qobject_cast<QPlainTextEdit*>(focused);
+    return qobject_cast<QLineEdit*>(focused)
+           || qobject_cast<QTextEdit*>(focused)
+           || qobject_cast<QPlainTextEdit*>(focused);
 }
 
 const QSet<QString>& bareModifierNames()
 {
-    static const QSet<QString> names
-        = {QStringLiteral("Ctrl"),
-           QStringLiteral("Shift"),
-           QStringLiteral("Alt"),
-           QStringLiteral("Meta")};
+    static const QSet<QString> names = {QStringLiteral("Ctrl"),
+                                        QStringLiteral("Shift"),
+                                        QStringLiteral("Alt"),
+                                        QStringLiteral("Meta")};
     return names;
 }
 
 } // namespace
 
-ActionMouseDispatcher::ActionMouseDispatcher(QWidget* invokeTarget, QObject* parent)
+ActionMouseDispatcher::ActionMouseDispatcher(QWidget* invokeTarget,
+                                             QObject* parent)
     : QObject(parent)
     , target_(invokeTarget)
 {}
@@ -161,9 +162,9 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
         return false;
 
     FLOG_DEBUG(familiar::log::Ch::UI,
-              "tryKeyPress: held={} pressed='{}'",
-              int(held),
-              pressed.toStdString());
+               "tryKeyPress: held={} pressed='{}'",
+               int(held),
+               pressed.toStdString());
 
     for (Action* action : getActions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
@@ -172,9 +173,11 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
             const Qt::MouseButton flag = buttonFlagFor(b.mouseButton);
             if (flag != Qt::NoButton && (held & flag)) {
                 FLOG_DEBUG(familiar::log::Ch::UI,
-                          "tryKeyPress: matched mixed alias for action '{}'",
-                          action->id.toStdString());
-                releasePressTargetBeforeAction(target_, flag, event->modifiers());
+                           "tryKeyPress: matched mixed alias for action '{}'",
+                           action->id.toStdString());
+                releasePressTargetBeforeAction(target_,
+                                               flag,
+                                               event->modifiers());
                 invoke(target_, action);
                 return true;
             }

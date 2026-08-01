@@ -66,19 +66,31 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
     // the OTHER tree (an Action and a Control can now conflict over the
     // same mouse chord) - each tree only knows how to refresh its own
     // rows, so wire both trees' changes to refresh both.
-    connect(actionsTree_, &BindingsTreeWidget::bindingsChanged, actionsTree_,
-           &BindingsTreeWidget::refreshAll);
-    connect(actionsTree_, &BindingsTreeWidget::bindingsChanged, controlsTree_,
-           &BindingsTreeWidget::refreshAll);
-    connect(controlsTree_, &BindingsTreeWidget::bindingsChanged, controlsTree_,
-           &BindingsTreeWidget::refreshAll);
-    connect(controlsTree_, &BindingsTreeWidget::bindingsChanged, actionsTree_,
-           &BindingsTreeWidget::refreshAll);
+    connect(actionsTree_,
+            &BindingsTreeWidget::bindingsChanged,
+            actionsTree_,
+            &BindingsTreeWidget::refreshAll);
+    connect(actionsTree_,
+            &BindingsTreeWidget::bindingsChanged,
+            controlsTree_,
+            &BindingsTreeWidget::refreshAll);
+    connect(controlsTree_,
+            &BindingsTreeWidget::bindingsChanged,
+            controlsTree_,
+            &BindingsTreeWidget::refreshAll);
+    connect(controlsTree_,
+            &BindingsTreeWidget::bindingsChanged,
+            actionsTree_,
+            &BindingsTreeWidget::refreshAll);
 
     auto* scrollContent = new QWidget(this);
     auto* scrollLayout = new QVBoxLayout(scrollContent);
-    actionsSection_ = new CollapsibleSection(tr("Actions"), actionsTree_, scrollContent);
-    controlsSection_ = new CollapsibleSection(tr("Controls"), controlsTree_, scrollContent);
+    actionsSection_ = new CollapsibleSection(tr("Actions"),
+                                             actionsTree_,
+                                             scrollContent);
+    controlsSection_ = new CollapsibleSection(tr("Controls"),
+                                              controlsTree_,
+                                              scrollContent);
     scrollLayout->addWidget(actionsSection_);
     scrollLayout->addWidget(controlsSection_);
     scrollLayout->addStretch(1);
