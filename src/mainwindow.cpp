@@ -58,14 +58,11 @@ MainWindow::MainWindow(QWidget* parent)
     setMouseTracking(true);
     //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
-    auto colorPreset = settings_.getCurrentColorPreset();
-    backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    currentOpacity_ = settings_.getCurrentOpacity();
-    rgbaBackGroundStr_ = QString("rgba(%1, %2, %3, %4);")
-                             .arg(backGroundColor_.red())
-                             .arg(backGroundColor_.green())
-                             .arg(backGroundColor_.blue())
-                             .arg(currentOpacity_);
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            &MainWindow::settingsChangedSlot);
+    settingsChangedSlot();
 
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
@@ -178,9 +175,10 @@ void MainWindow::saveFileAs()
 
 void MainWindow::settingsChangedSlot()
 {
-    auto colorPreset = settings_.getCurrentColorPreset();
+    auto* settings = SettingsHandler::getInstance();
+    auto colorPreset = settings->getCurrentColorPreset();
     backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    currentOpacity_ = settings_.getCurrentOpacity();
+    currentOpacity_ = settings->getCurrentOpacity();
     rgbaBackGroundStr_ = QString("rgba(%1, %2, %3, %4);")
                              .arg(backGroundColor_.red())
                              .arg(backGroundColor_.green())
@@ -193,6 +191,7 @@ void MainWindow::settingsChangedSlot()
         "1px solid lightgray; top:-1px; background:  transparent; }");
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
+    update();
 }
 
 

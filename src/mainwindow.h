@@ -16,7 +16,6 @@
 #include "tabpane.h"
 #include <actions/action_mixin.h>
 #include <canvasview.h>
-#include <core/settingshandler.h>
 #include <utils/utils.h>
 #include <QApplication>
 #include <QCursor>
@@ -288,7 +287,6 @@ private:
     QPointer<CanvasScene> hookedScene_;
     QPointer<QUndoStack> hookedUndoStack_;
 
-    SettingsHandler settings_;
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
