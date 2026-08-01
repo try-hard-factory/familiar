@@ -2,20 +2,89 @@
 #include "settings.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QKeyEvent>
 #include <QMouseEvent>
+#include <QSet>
 #include <QWheelEvent>
-// TODO:
+
+QString keyEventToSequenceString(const QKeyEvent* event)
+{
+    switch (event->key()) {
+    case Qt::Key_Control:
+        return QStringLiteral("Ctrl");
+    case Qt::Key_Shift:
+        return QStringLiteral("Shift");
+    case Qt::Key_Alt:
+    case Qt::Key_AltGr:
+        return QStringLiteral("Alt");
+    case Qt::Key_Meta:
+        return QStringLiteral("Meta");
+    default:
+        break;
+    }
+    return QKeySequence(event->keyCombination()).toString();
+}
+
+// ─── Binding ──────────────────────────────────────────────────────────────────
+
+QString Binding::displayText() const
+{
+    QStringList parts;
+    if (!mouseButton.isEmpty())
+        parts << mouseButton + QStringLiteral(" MB");
+    if (!mouseModifiers.isEmpty()
+        && mouseModifiers != QStringList{QStringLiteral("No Modifier")})
+        parts << mouseModifiers.join(QLatin1Char('+'));
+    if (!keySequence.isEmpty())
+        parts << keySequence;
+
+    // A wheel binding with no button/key and "No Modifier" (scroll alone
+    // triggers it) would otherwise display as empty, indistinguishable
+    // from "not configured at all" - spell it out instead.
+    if (parts.isEmpty() && !mouseModifiers.isEmpty())
+        parts << QStringLiteral("No Modifier");
+
+    return parts.join(QStringLiteral(" + "));
+}
+
+QString Binding::serialize() const
+{
+    return QStringLiteral("%1|%2|%3|%4|%5")
+        .arg(keySequence,
+             mouseButton,
+             mouseModifiers.join(QLatin1Char('+')),
+             inverted ? QStringLiteral("1") : QStringLiteral("0"),
+             systemGlobal ? QStringLiteral("1") : QStringLiteral("0"));
+}
+
+Binding Binding::deserialize(const QString& s)
+{
+    const QStringList parts = s.split(QLatin1Char('|'));
+    Binding b;
+    if (parts.size() > 0)
+        b.keySequence = parts[0];
+    if (parts.size() > 1)
+        b.mouseButton = parts[1];
+    if (parts.size() > 2 && !parts[2].isEmpty())
+        b.mouseModifiers = parts[2].split(QLatin1Char('+'));
+    if (parts.size() > 3)
+        b.inverted = parts[3] == QLatin1String("1");
+    if (parts.size() > 4)
+        b.systemGlobal = parts[4] == QLatin1String("1");
+    return b;
+}
+
 // ─── MouseConfigBase ──────────────────────────────────────────────────────────
 
 MouseConfigBase::MouseConfigBase(const QString& id,
                                  const QString& group,
                                  const QString& text,
-                                 const QStringList& defaultModifiers,
+                                 const QList<Binding>& defaultBindings,
                                  bool invertible)
     : id_(id)
     , group_(group)
     , text_(text)
-    , defaultModifiers_(defaultModifiers)
+    , defaultBindings_(defaultBindings)
     , invertible_(invertible)
 {}
 
@@ -38,6 +107,7 @@ const QList<QPair<QString, Qt::MouseButton>>& MouseConfigBase::buttonMap()
         {"Not Configured", Qt::NoButton},
         {"Left", Qt::LeftButton},
         {"Middle", Qt::MiddleButton},
+        {"Right", Qt::RightButton},
     };
     return map;
 }
@@ -57,36 +127,63 @@ Qt::KeyboardModifiers MouseConfigBase::modifiersToQt(const QStringList& modifier
     return result;
 }
 
+QList<Binding> MouseConfigBase::getBindings() const
+{
+    QStringList defaultSerialized;
+    for (const Binding& b : defaultBindings_)
+        defaultSerialized.append(b.serialize());
+
+    const QStringList serialized
+        = KeyboardSettings().getList(settingsGroup(),
+                                     id_ + QStringLiteral("_bindings"),
+                                     defaultSerialized);
+    QList<Binding> out;
+    for (const QString& s : serialized)
+        out.append(Binding::deserialize(s));
+    return out;
+}
+
+void MouseConfigBase::setBindings(const QList<Binding>& bindings) const
+{
+    QStringList serialized;
+    for (const Binding& b : bindings)
+        serialized.append(b.serialize());
+    QStringList defaultSerialized;
+    for (const Binding& b : defaultBindings_)
+        defaultSerialized.append(b.serialize());
+
+    KeyboardSettings().setList(settingsGroup(),
+                               id_ + QStringLiteral("_bindings"),
+                               serialized,
+                               defaultSerialized);
+}
+
 QStringList MouseConfigBase::getModifiers() const
 {
-    return KeyboardSettings().getList(settingsGroup(),
-                                      id_ + QStringLiteral("_modifiers"),
-                                      defaultModifiers_);
+    return getBindings().value(0).mouseModifiers;
 }
 
 void MouseConfigBase::setModifiers(const QStringList& values) const
 {
-    KeyboardSettings().setList(settingsGroup(),
-                               id_ + QStringLiteral("_modifiers"),
-                               values,
-                               defaultModifiers_);
+    QList<Binding> bindings = getBindings();
+    if (bindings.isEmpty())
+        bindings.append(Binding{});
+    bindings[0].mouseModifiers = values;
+    setBindings(bindings);
 }
 
 bool MouseConfigBase::getInverted() const
 {
-    return KeyboardSettings()
-        .getScalar(settingsGroup(),
-                   id_ + QStringLiteral("_inverted"),
-                   defaultInverted_)
-        .toBool();
+    return getBindings().value(0).inverted;
 }
 
 void MouseConfigBase::setInverted(bool value) const
 {
-    KeyboardSettings().setScalar(settingsGroup(),
-                                 id_ + QStringLiteral("_inverted"),
-                                 value,
-                                 defaultInverted_);
+    QList<Binding> bindings = getBindings();
+    if (bindings.isEmpty())
+        bindings.append(Binding{});
+    bindings[0].inverted = value;
+    setBindings(bindings);
 }
 
 // ─── MouseWheelConfig ─────────────────────────────────────────────────────────
@@ -94,9 +191,9 @@ void MouseConfigBase::setInverted(bool value) const
 MouseWheelConfig::MouseWheelConfig(const QString& id,
                                    const QString& group,
                                    const QString& text,
-                                   const QStringList& defaultModifiers,
+                                   const QList<Binding>& defaultBindings,
                                    bool invertible)
-    : MouseConfigBase(id, group, text, defaultModifiers, invertible)
+    : MouseConfigBase(id, group, text, defaultBindings, invertible)
 {}
 
 const char* MouseWheelConfig::settingsGroup() const
@@ -106,38 +203,44 @@ const char* MouseWheelConfig::settingsGroup() const
 
 bool MouseWheelConfig::controlsChanged() const
 {
-    const QStringList cur = getModifiers();
-    return QSet<QString>(cur.begin(), cur.end())
-               != QSet<QString>(defaultModifiers_.begin(),
-                                defaultModifiers_.end())
-           || getInverted() != defaultInverted_;
+    return getBindings() != defaultBindings_;
 }
 
 bool MouseWheelConfig::isConfigured() const
 {
-    return !getModifiers().isEmpty();
+    return !getBindings().isEmpty();
 }
 
 void MouseWheelConfig::removeControls() const
 {
-    setModifiers({});
-    setInverted(false);
+    setBindings({});
 }
 
-bool MouseWheelConfig::conflictsWith(const MouseWheelConfig& other) const
+std::optional<Binding> MouseWheelConfig::matchesEvent(
+    const QWheelEvent* event) const
 {
-    if (!isConfigured() || !other.isConfigured())
-        return false;
-    const QStringList a = getModifiers(), b = other.getModifiers();
-    return QSet<QString>(a.begin(), a.end())
-           == QSet<QString>(b.begin(), b.end());
-}
+    for (const Binding& b : getBindings()) {
+        if (b.mouseModifiers.isEmpty() && b.keySequence.isEmpty())
+            continue;
 
-bool MouseWheelConfig::matchesEvent(const QWheelEvent* event) const
-{
-    if (!isConfigured())
-        return false;
-    return modifiersToQt(getModifiers()) == event->modifiers();
+        Qt::KeyboardModifiers required = modifiersToQt(b.mouseModifiers);
+        if (!b.keySequence.isEmpty()) {
+            bool isBareModifier = false;
+            for (const auto& pair : modifierMap()) {
+                if (pair.first == b.keySequence) {
+                    required |= pair.second;
+                    isBareModifier = true;
+                    break;
+                }
+            }
+            if (!isBareModifier)
+                continue;
+        }
+
+        if (required == event->modifiers())
+            return b;
+    }
+    return std::nullopt;
 }
 
 // ─── MouseConfig ──────────────────────────────────────────────────────────────
@@ -145,11 +248,9 @@ bool MouseWheelConfig::matchesEvent(const QWheelEvent* event) const
 MouseConfig::MouseConfig(const QString& id,
                          const QString& group,
                          const QString& text,
-                         const QString& defaultButton,
-                         const QStringList& defaultModifiers,
+                         const QList<Binding>& defaultBindings,
                          bool invertible)
-    : MouseConfigBase(id, group, text, defaultModifiers, invertible)
-    , defaultButton_(defaultButton)
+    : MouseConfigBase(id, group, text, defaultBindings, invertible)
 {}
 
 const char* MouseConfig::settingsGroup() const
@@ -159,29 +260,29 @@ const char* MouseConfig::settingsGroup() const
 
 QString MouseConfig::getButton() const
 {
-    return KeyboardSettings()
-        .getScalar(settingsGroup(),
-                   id_ + QStringLiteral("_button"),
-                   defaultButton_)
-        .toString();
+    const QString btn = getBindings().value(0).mouseButton;
+    return btn.isEmpty() ? QStringLiteral("Not Configured") : btn;
 }
 
 void MouseConfig::setButton(const QString& value) const
 {
-    KeyboardSettings().setScalar(settingsGroup(),
-                                 id_ + QStringLiteral("_button"),
-                                 value,
-                                 defaultButton_);
+    QList<Binding> bindings = getBindings();
+    if (bindings.isEmpty())
+        bindings.append(Binding{});
+    bindings[0].mouseButton
+        = (value == QLatin1String("Not Configured")) ? QString() : value;
+    setBindings(bindings);
+}
+
+QString MouseConfig::defaultButton() const
+{
+    const QString btn = defaultBindings_.value(0).mouseButton;
+    return btn.isEmpty() ? QStringLiteral("Not Configured") : btn;
 }
 
 bool MouseConfig::controlsChanged() const
 {
-    const QStringList cur = getModifiers();
-    return getButton() != defaultButton_
-           || QSet<QString>(cur.begin(), cur.end())
-                  != QSet<QString>(defaultModifiers_.begin(),
-                                   defaultModifiers_.end())
-           || getInverted() != defaultInverted_;
+    return getBindings() != defaultBindings_;
 }
 
 bool MouseConfig::isConfigured() const
@@ -191,36 +292,51 @@ bool MouseConfig::isConfigured() const
 
 void MouseConfig::removeControls() const
 {
-    setButton(QStringLiteral("Not Configured"));
-    setModifiers({});
-    setInverted(false);
+    setBindings({});
 }
 
-bool MouseConfig::conflictsWith(const MouseConfig& other) const
+std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
 {
-    if (!isConfigured() || !other.isConfigured())
-        return false;
-    const QStringList a = getModifiers(), b = other.getModifiers();
-    return getButton() == other.getButton()
-           && QSet<QString>(a.begin(), a.end())
-                  == QSet<QString>(b.begin(), b.end());
-}
-
-bool MouseConfig::matchesEvent(const QMouseEvent* event) const
-{
-    if (!isConfigured())
-        return false;
     const auto& bmap = buttonMap();
-    Qt::MouseButton btn = Qt::NoButton;
-    const QString bname = getButton();
-    for (const auto& [key, flag] : bmap) {
-        if (key == bname) {
-            btn = flag;
-            break;
+    for (const Binding& b : getBindings()) {
+        if (b.mouseButton.isEmpty())
+            continue;
+        Qt::MouseButton btn = Qt::NoButton;
+        for (const auto& [key, flag] : bmap) {
+            if (key == b.mouseButton) {
+                btn = flag;
+                break;
+            }
         }
+        if (btn != event->button())
+            continue;
+
+        // The Mouse buttons field only ever captures the button itself
+        // (see MouseButtonCaptureField) - a modifier held during the
+        // click is captured separately, via the Keyboard keys field, as
+        // a bare modifier name ("Alt", not a real key). Fold that into
+        // the required modifier set alongside the legacy mouseModifiers
+        // (still used by the hardcoded defaults, e.g. Zoom's Ctrl).
+        Qt::KeyboardModifiers required = modifiersToQt(b.mouseModifiers);
+        if (!b.keySequence.isEmpty()) {
+            bool isBareModifier = false;
+            for (const auto& pair : modifierMap()) {
+                if (pair.first == b.keySequence) {
+                    required |= pair.second;
+                    isBareModifier = true;
+                    break;
+                }
+            }
+            // A real key (not a bare modifier) in keySequence isn't
+            // something a mouse click alone can satisfy - skip it here.
+            if (!isBareModifier)
+                continue;
+        }
+
+        if (required == event->modifiers())
+            return b;
     }
-    return modifiersToQt(getModifiers()) == event->modifiers()
-           && btn == event->button();
+    return std::nullopt;
 }
 
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
@@ -234,28 +350,19 @@ KeyboardSettings::KeyboardSettings()
 
 const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
 {
+    // Plain scroll-to-zoom (no modifier) isn't listed here - it's not
+    // user-configurable, see CanvasView::wheelEvent(). Everything else
+    // (pan) needs a modifier held, so it stays a real Control.
     static const QList<MouseWheelConfig> list = {
-        {"zoom1", "zoom", "Zoom", {"No Modifier"}, true},
-        {"zoom2", "zoom", "Zoom (alternative)", {}, true},
-        {"pan_horizontal1",
+        {"pan_horizontal",
          "pan_horizontal",
          "Pan horizontally",
-         {"Shift"},
+         {Binding{{}, {}, {"Shift"}, true}},
          true},
-        {"pan_horizontal2",
-         "pan_horizontal",
-         "Pan horizontally (alternative)",
-         {},
-         true},
-        {"pan_vertical1",
+        {"pan_vertical",
          "pan_vertical",
          "Pan vertically",
-         {"Shift", "Ctrl"},
-         true},
-        {"pan_vertical2",
-         "pan_vertical",
-         "Pan vertically (alternative)",
-         {},
+         {Binding{{}, {}, {"Shift", "Ctrl"}, true}},
          true},
     };
     return list;
@@ -264,21 +371,16 @@ const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
 const QList<MouseConfig>& KeyboardSettings::mouseActions()
 {
     static const QList<MouseConfig> list = {
-        {"zoom1", "zoom", "Zoom", "Middle", {"Ctrl"}, true},
-        {"zoom2", "zoom", "Zoom (alternative)", "Not Configured", {}, true},
-        {"pan1", "pan", "Pan", "Middle", {"No Modifier"}, false},
-        {"pan2", "pan", "Pan (alternative)", "Left", {"Alt"}, false},
-        {"movewindow1",
+        {"zoom", "zoom", "Zoom", {Binding{{}, "Middle", {"Ctrl"}, false}}, true},
+        {"pan",
+         "pan",
+         "Pan",
+         {Binding{{}, "Left", {"Alt"}, false}},
+         false},
+        {"movewindow",
          "movewindow",
          "Move Window",
-         "Left",
-         {"Ctrl", "Alt"},
-         false},
-        {"movewindow2",
-         "movewindow",
-         "Move Window (alternative)",
-         "Not Configured",
-         {},
+         {Binding{{}, "Left", {"Ctrl", "Alt"}, false}},
          false},
     };
     return list;
@@ -368,8 +470,8 @@ std::optional<ControlMatch> KeyboardSettings::mousewheelActionForEvent(
     const QWheelEvent* event) const
 {
     for (const MouseWheelConfig& action : mousewheelActions()) {
-        if (action.matchesEvent(event))
-            return ControlMatch{action.group(), action.getInverted()};
+        if (auto binding = action.matchesEvent(event))
+            return ControlMatch{action.group(), binding->inverted};
     }
     return std::nullopt;
 }
@@ -378,8 +480,55 @@ std::optional<ControlMatch> KeyboardSettings::mouseActionForEvent(
     const QMouseEvent* event) const
 {
     for (const MouseConfig& action : mouseActions()) {
-        if (action.matchesEvent(event))
-            return ControlMatch{action.group(), action.getInverted()};
+        if (auto binding = action.matchesEvent(event))
+            return ControlMatch{action.group(), binding->inverted};
     }
     return std::nullopt;
+}
+
+int KeyboardSettings::findConflictingMouseGroup(const QString& excludeId,
+                                                const Binding& candidate) const
+{
+    if (candidate.mouseButton.isEmpty() && candidate.keySequence.isEmpty())
+        return -1;
+    const auto& list = mouseActions();
+    for (int i = 0; i < list.size(); ++i) {
+        if (list[i].id() == excludeId)
+            continue;
+        for (const Binding& b : list[i].getBindings()) {
+            const bool mouseMatch = !candidate.mouseButton.isEmpty()
+                && b.mouseButton == candidate.mouseButton
+                && QSet<QString>(b.mouseModifiers.begin(), b.mouseModifiers.end())
+                       == QSet<QString>(candidate.mouseModifiers.begin(),
+                                        candidate.mouseModifiers.end());
+            const bool keyMatch = !candidate.keySequence.isEmpty()
+                && b.keySequence == candidate.keySequence;
+            if (mouseMatch || keyMatch)
+                return i;
+        }
+    }
+    return -1;
+}
+
+int KeyboardSettings::findConflictingWheelGroup(const QString& excludeId,
+                                                const Binding& candidate) const
+{
+    if (candidate.mouseModifiers.isEmpty() && candidate.keySequence.isEmpty())
+        return -1;
+    const auto& list = mousewheelActions();
+    for (int i = 0; i < list.size(); ++i) {
+        if (list[i].id() == excludeId)
+            continue;
+        for (const Binding& b : list[i].getBindings()) {
+            const bool modMatch = !candidate.mouseModifiers.isEmpty()
+                && QSet<QString>(b.mouseModifiers.begin(), b.mouseModifiers.end())
+                       == QSet<QString>(candidate.mouseModifiers.begin(),
+                                        candidate.mouseModifiers.end());
+            const bool keyMatch = !candidate.keySequence.isEmpty()
+                && b.keySequence == candidate.keySequence;
+            if (modMatch || keyMatch)
+                return i;
+        }
+    }
+    return -1;
 }

@@ -166,7 +166,7 @@ public:
         QScrollArea* scroll = new QScrollArea(this);
         scroll->setWidgetResizable(true);
         scroll->setWidget(controls);
-        tabs->addTab(scroll, "&Controls");
+        tabs->addTab(scroll, "Controls");
 
         QVBoxLayout* layout = new QVBoxLayout();
         setLayout(layout);

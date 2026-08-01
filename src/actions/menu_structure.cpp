@@ -3,11 +3,11 @@
 const QList<MenuNode>& menuStructure()
 {
     static const QList<MenuNode> s = {
-        MenuNode::submenu("&File",
+        MenuNode::submenu("File",
                           {
                               MenuNode::action("new_scene"),
                               MenuNode::action("open"),
-                              MenuNode::submenu("Open &Recent",
+                              MenuNode::submenu("Open Recent",
                                                 {
                                                     MenuNode::dynamic(
                                                         "_build_recent_files"),
@@ -20,7 +20,7 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::sep(),
                               MenuNode::action("quit"),
                           }),
-        MenuNode::submenu("&Edit",
+        MenuNode::submenu("Edit",
                           {
                               MenuNode::action("undo"),
                               MenuNode::action("redo"),
@@ -36,21 +36,23 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::action("raise_to_top"),
                               MenuNode::action("lower_to_bottom"),
                           }),
-        MenuNode::submenu("&View",
+        MenuNode::submenu("View",
                           {
                               MenuNode::action("fit_scene"),
                               MenuNode::action("fit_selection"),
+                              MenuNode::action("zoom_in"),
+                              MenuNode::action("zoom_out"),
                               MenuNode::sep(),
                               MenuNode::action("fullscreen"),
                               MenuNode::action("always_on_top"),
                               MenuNode::action("show_menubar"),
                           }),
-        MenuNode::submenu("&Insert",
+        MenuNode::submenu("Insert",
                           {
                               MenuNode::action("insert_images"),
                               MenuNode::action("insert_text"),
                           }),
-        MenuNode::submenu("&Transform",
+        MenuNode::submenu("Transform",
                           {
                               MenuNode::action("crop"),
                               MenuNode::action("flip_horizontally"),
@@ -62,20 +64,20 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::action("reset_crop"),
                               MenuNode::action("reset_transforms"),
                           }),
-        MenuNode::submenu("&Normalize",
+        MenuNode::submenu("Normalize",
                           {
                               MenuNode::action("normalize_height"),
                               MenuNode::action("normalize_width"),
                               MenuNode::action("normalize_size"),
                           }),
-        MenuNode::submenu("&Arrange",
+        MenuNode::submenu("Arrange",
                           {
                               MenuNode::action("arrange_optimal"),
                               MenuNode::action("arrange_horizontal"),
                               MenuNode::action("arrange_vertical"),
                               MenuNode::action("arrange_square"),
                           }),
-        MenuNode::submenu("&Images",
+        MenuNode::submenu("Images",
                           {
                               MenuNode::action("change_opacity"),
                               MenuNode::action("grayscale"),
@@ -83,14 +85,14 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::action("show_color_gamut"),
                               MenuNode::action("sample_color"),
                           }),
-        MenuNode::submenu("&Settings",
+        MenuNode::submenu("Settings",
                           {
                               MenuNode::action("settings"),
                               MenuNode::action("settings_new"),
                               MenuNode::action("keyboard_settings"),
                               MenuNode::action("open_settings_dir"),
                           }),
-        MenuNode::submenu("&Help",
+        MenuNode::submenu("Help",
                           {
                               MenuNode::action("help"),
                               MenuNode::action("about"),

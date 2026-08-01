@@ -148,6 +148,8 @@ public:
     // View
     void on_action_fit_scene();
     void on_action_fit_selection();
+    void on_action_zoom_in();
+    void on_action_zoom_out();
 
     // Insert
     void on_action_insert_images();
@@ -210,6 +212,13 @@ private:
     void recalcSceneRect();
     void doScale(qreal sx, qreal sy);
     double getZoomSize(std::function<double(double, double)> func) const;
+    // Discrete one-step nudge for a Control keyboard-alias (see
+    // widgets/controls/binding_dialogs.cpp - Controls can now carry a
+    // keySequence too), reusing wheelEvent()'s existing single-notch step
+    // convention. Only Zoom and the two wheel Pan groups have a
+    // well-defined single-press meaning; Pan/Move Window (mouse, drag-
+    // based) don't and are left unhandled here - returns false for those.
+    bool tryControlKeyNudge(QKeyEvent* event);
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
     QString getSupportedImageFormats() const;

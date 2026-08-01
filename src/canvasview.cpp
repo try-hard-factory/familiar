@@ -376,6 +376,16 @@ void CanvasView::pan(QPointF delta)
 
 void CanvasView::wheelEvent(QWheelEvent* event)
 {
+    // Plain scroll-to-zoom isn't user-configurable (obvious default, not
+    // worth exposing as a Control - see KeyboardSettings::
+    // mousewheelActions()) - handled directly, before the configurable
+    // pan bindings below.
+    if (event->modifiers() == Qt::NoModifier) {
+        zoom(-event->angleDelta().y(), event->position());
+        event->accept();
+        return;
+    }
+
     auto match = SettingsHandler::getInstance()->mousewheelActionForEvent(event);
     if (!match)
         return;
@@ -384,10 +394,7 @@ void CanvasView::wheelEvent(QWheelEvent* event)
     if (match->inverted)
         delta = -delta;
 
-    if (match->group == QLatin1String("zoom")) {
-        zoom(delta, event->position());
-        event->accept();
-    } else if (match->group == QLatin1String("pan_horizontal")) {
+    if (match->group == QLatin1String("pan_horizontal")) {
         pan(QPointF(0.0, 0.5 * delta));
         event->accept();
     } else if (match->group == QLatin1String("pan_vertical")) {
@@ -481,6 +488,10 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
 
 void CanvasView::mouseReleaseEvent(QMouseEvent* event)
 {
+    FLOG_DEBUG(Ch::View,
+              "CanvasView::mouseReleaseEvent activeMode_={} spontaneous={}",
+              int(activeMode_),
+              event->spontaneous());
     if (activeMode_ == ModePan) {
         viewport()->unsetCursor();
         activeMode_ = ModeNone;
@@ -511,7 +522,46 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
         event->accept();
         return;
     }
+    if (tryControlKeyNudge(event)) {
+        event->accept();
+        return;
+    }
     QGraphicsView::keyPressEvent(event);
+}
+
+bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
+{
+    const QString pressed = keyEventToSequenceString(event);
+    if (pressed.isEmpty())
+        return false;
+
+    for (const MouseConfig& cfg : KeyboardSettings::mouseActions()) {
+        if (cfg.group() != QLatin1String("zoom"))
+            continue;
+        for (const Binding& b : cfg.getBindings()) {
+            if (b.keySequence == pressed) {
+                zoom(120.0, getViewCenter());
+                return true;
+            }
+        }
+    }
+
+    for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheelActions()) {
+        for (const Binding& b : cfg.getBindings()) {
+            if (b.keySequence != pressed)
+                continue;
+            const double delta = b.inverted ? -120.0 : 120.0;
+            if (cfg.group() == QLatin1String("pan_horizontal")) {
+                pan(QPointF(0.0, 0.5 * delta));
+                return true;
+            }
+            if (cfg.group() == QLatin1String("pan_vertical")) {
+                pan(QPointF(0.5 * delta, 0.0));
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 void CanvasView::resizeEvent(QResizeEvent* event)
@@ -1089,6 +1139,18 @@ void CanvasView::on_action_fit_scene()
 void CanvasView::on_action_fit_selection()
 {
     fitRect(scene_->itemsBoundingRect(true));
+}
+
+void CanvasView::on_action_zoom_in()
+{
+    // 120 matches one wheelEvent() notch (angleDelta().y() == ±120) -
+    // same visible step size as scrolling to zoom.
+    zoom(120.0, getViewCenter());
+}
+
+void CanvasView::on_action_zoom_out()
+{
+    zoom(-120.0, getViewCenter());
 }
 
 // ─── Insert actions ───────────────────────────────────────────────────────────

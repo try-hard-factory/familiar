@@ -113,6 +113,8 @@ public slots:
     // View
     void on_action_fit_scene();
     void on_action_fit_selection();
+    void on_action_zoom_in();
+    void on_action_zoom_out();
 
     // Insert
     void on_action_insert_images();

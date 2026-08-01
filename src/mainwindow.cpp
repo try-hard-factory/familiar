@@ -12,6 +12,8 @@
 #include "project_settings.h"
 #include "saveallwindow.h"
 #include "tabpane.h"
+#include <actions/action_mouse_dispatch.h>
+#include <core/held_buttons_tracker.h>
 #include <core/settingshandler.h>
 #include <map>
 #include <ui/new_settings_window.h>
@@ -91,6 +93,14 @@ MainWindow::MainWindow(QWidget* parent)
     // Central widget (tabpane_) covers the whole frameless window, so this
     // watches every mouse move to keep the border-resize cursor in sync.
     qApp->installEventFilter(this);
+
+    // Dispatches Action mouse-chord/mixed aliases (Action::
+    // get_mouse_bindings(), see widgets/controls/binding_dialogs.cpp) -
+    // the mouse-side counterpart to Qt's native keyboard shortcut
+    // dispatch. HeldButtonsTracker just observes; install it first so the
+    // dispatcher can query held mouse buttons from a later keyPressEvent.
+    qApp->installEventFilter(&HeldButtonsTracker::instance());
+    qApp->installEventFilter(new ActionMouseDispatcher(this, this));
 }
 
 
@@ -461,6 +471,16 @@ void MainWindow::on_action_fit_selection()
 {
     if (auto* cv = tabpane_->currentWidget())
         cv->on_action_fit_selection();
+}
+void MainWindow::on_action_zoom_in()
+{
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_zoom_in();
+}
+void MainWindow::on_action_zoom_out()
+{
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_zoom_out();
 }
 // Insert
 void MainWindow::on_action_insert_images()

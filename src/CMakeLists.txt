@@ -80,10 +80,14 @@ set(PROJECT_SOURCES
         actions/actions.h
         actions/menu_structure.cpp
         actions/menu_structure.h
+        actions/action_mouse_dispatch.cpp
+        actions/action_mouse_dispatch.h
         core/qguiappcurrentscreen.cpp
         core/qguiappcurrentscreen.h
         core/controls.cpp
         core/controls.h
+        core/held_buttons_tracker.cpp
+        core/held_buttons_tracker.h
         core/settings.cpp
         core/settings.h
         core/settingshandler.cpp
@@ -124,6 +128,14 @@ set(PROJECT_SOURCES
         widgets/controls/mouse_controls.h
         widgets/controls/mousewheel_controls.cpp
         widgets/controls/mousewheel_controls.h
+        widgets/controls/binding_target.cpp
+        widgets/controls/binding_target.h
+        widgets/controls/binding_dialogs.cpp
+        widgets/controls/binding_dialogs.h
+        widgets/controls/bindings_tree_widget.cpp
+        widgets/controls/bindings_tree_widget.h
+        widgets/controls/keyboard_shortcuts_page.cpp
+        widgets/controls/keyboard_shortcuts_page.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 

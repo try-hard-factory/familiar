@@ -36,15 +36,10 @@ int MouseWheelModifiersEditor::findConflictingRow() const
     if (!currentAction_)
         return -1;
 
-    MouseWheelConfig temp(QString{}, QString{}, QString{}, getModifiers(), false);
-    const auto& list = KeyboardSettings::mousewheelActions();
-    for (int i = 0; i < list.size(); ++i) {
-        if (list[i] == *currentAction_)
-            continue;
-        if (list[i].conflictsWith(temp))
-            return i;
-    }
-    return -1;
+    Binding candidate;
+    candidate.mouseModifiers = getModifiers();
+    return KeyboardSettings().findConflictingWheelGroup(currentAction_->id(),
+                                                         candidate);
 }
 
 QString MouseWheelModifiersEditor::conflictingActionText(int row) const
