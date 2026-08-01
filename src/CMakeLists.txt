@@ -136,6 +136,7 @@ set(PROJECT_SOURCES
         widgets/controls/bindings_tree_widget.h
         widgets/controls/keyboard_shortcuts_page.cpp
         widgets/controls/keyboard_shortcuts_page.h
+        widgets/controls/search_highlight.h
 )
 add_executable(familiar ${PROJECT_SOURCES})
 
