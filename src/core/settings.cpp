@@ -1,11 +1,12 @@
 #include "settings.h"
+#include "settingshandler.h"
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QImageReader>
-// TODO:
+
 // ─── CommandlineArgs ──────────────────────────────────────────────────────────
 
 CommandlineArgs& CommandlineArgs::instance()
@@ -28,10 +29,10 @@ static void addOptions(QCommandLineParser& parser)
          QStringLiteral("path")});
 
     parser.addOption(
-        {QStringLiteral("settings-dir"),
+        {QStringLiteral("settings"),
          QCoreApplication::tr(
-             "Settings directory to use instead of default location"),
-         QStringLiteral("dir")});
+             "JSON settings file to use instead of the default location"),
+         QStringLiteral("path")});
 
     parser.addOption(
         {QStringList{QStringLiteral("l"), QStringLiteral("loglevel")},
@@ -66,7 +67,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
     if (parser.isSet(QStringLiteral("file")))
         filename_ = parser.value(QStringLiteral("file"));
 
-    settingsDir_ = parser.value(QStringLiteral("settings-dir"));
+    settingsFile_ = parser.value(QStringLiteral("settings"));
     loglevel_ = parser.value(QStringLiteral("loglevel"));
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
     debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
@@ -85,8 +86,8 @@ void CommandlineArgs::parse(const QStringList& args)
     if (parser.isSet(QStringLiteral("file")))
         filename_ = parser.value(QStringLiteral("file"));
 
-    if (parser.isSet(QStringLiteral("settings-dir")))
-        settingsDir_ = parser.value(QStringLiteral("settings-dir"));
+    if (parser.isSet(QStringLiteral("settings")))
+        settingsFile_ = parser.value(QStringLiteral("settings"));
     if (parser.isSet(QStringLiteral("loglevel")))
         loglevel_ = parser.value(QStringLiteral("loglevel"));
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
@@ -103,6 +104,21 @@ SettingsEvents& SettingsEvents::instance()
 }
 
 // ─── FamSettings ─────────────────────────────────────────────────────────────
+
+namespace {
+
+// "Save/confirm_close_unsaved" -> group="Save", subkey="confirm_close_unsaved".
+QString keyGroup(const QString& key)
+{
+    return key.section(QLatin1Char('/'), 0, 0);
+}
+
+QString keySubkey(const QString& key)
+{
+    return key.section(QLatin1Char('/'), 1);
+}
+
+} // namespace
 
 const QMap<QString, FieldConfig>& FamSettings::fields()
 {
@@ -160,39 +176,17 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
     return map;
 }
 
-QSettings::Format FamSettings::initPathAndReturnFormat()
-{
-    // TODOLATER: --settings-dir is a stub for now - settings storage is
-    // getting rewritten wholesale (a single JSON file the user points at
-    // directly, not a directory QSettings writes an .ini into), so there's
-    // no point wiring this QSettings-specific path override up properly
-    // only to tear it out again. The option still parses (see addOptions()
-    // below), it just doesn't do anything yet.
-    return QSettings::IniFormat;
-}
-
-FamSettings::FamSettings()
-    : QSettings(initPathAndReturnFormat(),
-                QSettings::UserScope,
-                qApp->organizationName(),
-                qApp->applicationName())
-{}
-
-FamSettings* FamSettings::getInstance()
-{
-    static FamSettings config;
-    return &config;
-}
-
 QVariant FamSettings::valueOrDefault(const QString& key) const
 {
     const auto& f = fields();
     Q_ASSERT(f.contains(key));
     const FieldConfig& conf = f[key];
 
-    QVariant val = QSettings::value(key);
-    if (!val.isValid())
+    const QJsonValue raw
+        = SettingsHandler::getInstance()->jsonValue(keyGroup(key), keySubkey(key));
+    if (raw.isUndefined())
         return conf.defaultValue;
+    QVariant val = raw.toVariant();
 
     if (conf.cast) {
         try {
@@ -214,8 +208,13 @@ bool FamSettings::valueChanged(const QString& key) const
 
 void FamSettings::restoreDefaults()
 {
-    for (const QString& key : fields().keys())
-        remove(key);
+    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Save"));
+    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Items"));
+    for (const QString& key : fields().keys()) {
+        const auto& conf = fields()[key];
+        if (conf.postSaveCallback)
+            conf.postSaveCallback(conf.defaultValue);
+    }
     emit SettingsEvents::instance().restoreDefaults();
 }
 
@@ -234,15 +233,23 @@ void FamSettings::onStartup()
 
 void FamSettings::setValue(const QString& key, const QVariant& value)
 {
-    QSettings::setValue(key, value);
+    SettingsHandler::getInstance()->setJsonValue(keyGroup(key), keySubkey(key),
+                                                 QJsonValue::fromVariant(value));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback)
         f[key].postSaveCallback(value);
 }
 
+QVariant FamSettings::value(const QString& key, const QVariant& defaultValue) const
+{
+    const QJsonValue raw
+        = SettingsHandler::getInstance()->jsonValue(keyGroup(key), keySubkey(key));
+    return raw.isUndefined() ? defaultValue : raw.toVariant();
+}
+
 void FamSettings::remove(const QString& key)
 {
-    QSettings::remove(key);
+    SettingsHandler::getInstance()->removeJsonValue(keyGroup(key), keySubkey(key));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback)
         f[key].postSaveCallback(valueOrDefault(key));
@@ -258,24 +265,12 @@ void FamSettings::updateRecentFiles(const QString& filename)
     if (values.size() > 10)
         values = values.mid(0, 10);
 
-    beginWriteArray(QStringLiteral("RecentFiles"));
-    for (int i = 0; i < values.size(); ++i) {
-        setArrayIndex(i);
-        QSettings::setValue(QStringLiteral("path"), values[i]);
-    }
-    endArray();
+    SettingsHandler::getInstance()->setRecentFilesRaw(values);
 }
 
 QStringList FamSettings::getRecentFiles(bool existingOnly) const
 {
-    QStringList values;
-    auto* s = const_cast<FamSettings*>(this);
-    const int size = s->beginReadArray(QStringLiteral("RecentFiles"));
-    for (int i = 0; i < size; ++i) {
-        s->setArrayIndex(i);
-        values.append(QSettings::value(QStringLiteral("path")).toString());
-    }
-    s->endArray();
+    QStringList values = SettingsHandler::getInstance()->recentFilesRaw();
 
     if (existingOnly) {
         values.erase(std::remove_if(values.begin(),
@@ -286,6 +281,11 @@ QStringList FamSettings::getRecentFiles(bool existingOnly) const
                      values.end());
     }
     return values;
+}
+
+QString FamSettings::fileName() const
+{
+    return SettingsHandler::getInstance()->settingsFilePath();
 }
 
 // ─── logfileName ─────────────────────────────────────────────────────────────

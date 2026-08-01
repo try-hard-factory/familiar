@@ -185,7 +185,6 @@ QString Color::expected()
 
 
 // COLOR LIST
-using CCollection = QMap<int, QColor>;
 
 ColorList::ColorList(QMap<int, QColor> def)
     : m_def(def)
@@ -196,10 +195,21 @@ bool ColorList::check(const QVariant& val)
     return true;
 }
 
+// Stored as a JSON array of hex color strings, index = map key - not the
+// QMap<int,QColor> itself, which only round-tripped through QSettings by
+// accident (IniFormat base64-encodes unknown QVariant types via
+// QDataStream, i.e. the "ini" file held opaque blobs for this key). The
+// value handled internally (process()'s return, what callers actually
+// get back from SettingsHandler::value()) is still QMap<int,QColor> -
+// only the storage-facing shape (representation()/the input to process())
+// changed.
 QVariant ColorList::process(const QVariant& val)
 {
-    auto colorList = val.value<QMap<int, QColor>>();
-    return QVariant::fromValue(colorList);
+    QMap<int, QColor> out;
+    const QVariantList list = val.toList();
+    for (int i = 0; i < list.size(); ++i)
+        out[i] = QColor(list[i].toString());
+    return QVariant::fromValue(out);
 }
 
 QVariant ColorList::fallback()
@@ -209,8 +219,11 @@ QVariant ColorList::fallback()
 
 QVariant ColorList::representation(const QVariant& val)
 {
-    auto colorVector = val.value<CCollection>();
-    return QVariant::fromValue(colorVector);
+    const auto map = val.value<QMap<int, QColor>>();
+    QVariantList out;
+    for (int i = 0; i < map.size(); ++i)
+        out.append(map.value(i).name(QColor::HexArgb));
+    return out;
 }
 
 QString ColorList::expected()
@@ -220,7 +233,6 @@ QString ColorList::expected()
 
 
 // OPACITY LIST
-using OCollection = QMap<int, int>;
 
 OpacityList::OpacityList(QMap<int, int> def)
     : m_def(def)
@@ -231,10 +243,14 @@ bool OpacityList::check(const QVariant& val)
     return true;
 }
 
+// Same reasoning as ColorList above - JSON array of ints, index = map key.
 QVariant OpacityList::process(const QVariant& val)
 {
-    auto OpacityList = val.value<QMap<int, int>>();
-    return QVariant::fromValue(OpacityList);
+    QMap<int, int> out;
+    const QVariantList list = val.toList();
+    for (int i = 0; i < list.size(); ++i)
+        out[i] = list[i].toInt();
+    return QVariant::fromValue(out);
 }
 
 QVariant OpacityList::fallback()
@@ -244,8 +260,11 @@ QVariant OpacityList::fallback()
 
 QVariant OpacityList::representation(const QVariant& val)
 {
-    auto colorVector = val.value<OCollection>();
-    return QVariant::fromValue(colorVector);
+    const auto map = val.value<QMap<int, int>>();
+    QVariantList out;
+    for (int i = 0; i < map.size(); ++i)
+        out.append(map.value(i));
+    return out;
 }
 
 QString OpacityList::expected()

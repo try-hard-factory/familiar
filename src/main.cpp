@@ -48,13 +48,23 @@ int main(int argc, char* argv[])
     qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
 
     QApplication a(argc, argv);
-    // TODOLATER:
-    // app.setOrganizationName(constants.APPNAME)
-    // app.setApplicationName(constants.APPNAME)
+    // Needed for a sane default settings file location
+    // (QStandardPaths::AppConfigLocation, see
+    // SettingsHandler::SettingsHandler() in core/settingshandler.cpp) -
+    // without it, applicationName() is empty and that path degenerates.
+    // Organization name deliberately left unset - Qt nests
+    // AppConfigLocation under BOTH organizationName and applicationName
+    // when both are set, which produced ".config/familiar/familiar/".
+    a.setApplicationName(QStringLiteral("familiar"));
 
     // Must run before anything below reads a CommandlineArgs getter (log
     // level, filename to open, ...) - see CommandlineArgs::process().
     CommandlineArgs::instance().process(a);
+
+    // Was defined but never actually called - the image allocation limit
+    // never took effect at startup, only whenever something happened to
+    // resave settings afterward.
+    FamSettings().onStartup();
 
     // Window/taskbar icon. Built from the raster PNGs (rather than the
     // .svg also in graphics.qrc) since QIcon needs the Qt SVG icon-engine

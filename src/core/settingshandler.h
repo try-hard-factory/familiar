@@ -5,17 +5,16 @@
 
 #include <optional>
 
+#include <QColor>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QObject>
-#include <QSettings>
 #include <QStringList>
 #include <QVariant>
 #include <QVector>
 
 class QWheelEvent;
 class QMouseEvent;
-
-#define SETTINGS_GROUP_GENERAL "General"
-#define SETTINGS_GROUP_SHORTCUTS "Shortcuts"
 
 enum EPresets {
     kDarkPreset = 0,
@@ -36,12 +35,9 @@ enum EPresetsColorIdx {
     kAllIdx = 5
 };
 
-class QFileSystemWatcher;
 class ValueHandler;
 template<class T>
 class QSharedPointer;
-class QTextStream;
-//class AbstractLogger;
 
 #define SETTINGS_GETTER(KEY, TYPE) \
     TYPE KEY() \
@@ -52,8 +48,6 @@ class QTextStream;
     void FUNC(const TYPE& val) \
     { \
         QString key = QStringLiteral(#KEY); \
-        /* Without this check, multiple `flameshot gui` instances running */ \
-        /* simultaneously would cause an endless loop of fileWatcher calls */ \
         if (QVariant::fromValue(val) != value(key)) { \
             setValue(key, QVariant::fromValue(val)); \
         } \
@@ -85,35 +79,48 @@ public:
 
     void setDefaultCurrentPreset();
 
+    // These back onto the "Colors" JSON group via valueHandler()'s
+    // check/process/fallback/representation (core/valuehandler.h) - kept
+    // as the stable entry point SETTINGS_GETTER_SETTER expands into.
     void setValue(const QString& key, const QVariant& value);
     QVariant value(const QString& key) const;
     void remove(const QString& key);
     void resetValue(const QString& key);
 
-    // INFO
-    static QSet<QString>& recognizedGeneralOptions();
-    static QSet<QString>& recognizedShortcutNames();
-    QSet<QString> keysFromGroup(const QString& group) const;
     CL getCurrentColorPreset();
     void setCurrentColorPreset(const CL& preset);
     int getCurrentOpacity();
     void setCurrentOpacity(int opacity);
 
-    // errors catching
-    bool checkForErrors() const;
-    bool checkUnrecognizedSettings(QList<QString>* offenders = nullptr) const;
-    bool checkShortcutConflicts() const;
-    bool checkSemantics(QList<QString>* offenders = nullptr) const;
-    void checkAndHandleError() const;
-    void setErrorState(bool error) const;
-    bool hasError() const;
-    QString errorMessage() const;
+    // ── The single JSON settings file (core/settingshandler.cpp) ──────────────
+    // Every other settings-adjacent class (FamSettings/KeyboardSettings,
+    // core/settings.h / core/controls.h) funnels its group/key reads and
+    // writes through these instead of touching disk itself - this is the
+    // only class that actually owns the file. Group names are just the
+    // group half of the flat "Group/key" strings those classes already
+    // used with QSettings, now real JSON nesting instead of a "/"-joined
+    // prefix.
+    QString settingsFilePath() const;
+    QJsonValue jsonValue(const QString& group, const QString& key) const;
+    void setJsonValue(const QString& group, const QString& key,
+                      const QJsonValue& value);
+    void removeJsonValue(const QString& group, const QString& key);
+    void removeJsonGroup(const QString& group);
+    QStringList recentFilesRaw() const;
+    void setRecentFilesRaw(const QStringList& files);
+
+    // Import replaces the live document (and persists it) without
+    // clearing anything first, unlike restoreDefaults() - the imported
+    // values ARE the new state, not a reason to fall back to defaults.
+    // Export just writes the current document out to a second location.
+    bool exportSettingsTo(const QString& path) const;
+    bool importSettingsFrom(const QString& path);
 
     // FACADE: SettingsHandler is the only settings class code outside
     // the settings subsystem itself (core/, widgets/controls/,
     // widgets/settings_dialog.*) should call. These delegate to
     // FamSettings/KeyboardSettings (core/settings.h, core/controls.h),
-    // which stay the internal storage - not reimplemented here.
+    // which stay the internal storage-shaped API - not reimplemented here.
 
     // FamSettings-backed
     void updateRecentFiles(const QString& filename);
@@ -145,25 +152,15 @@ public:
 signals:
     void settingsChanged() const;
     void presetsChanged() const;
-    void fileChanged();
-    void error();
-    void errorResolved();
 
 private:
-    void ensureFileWatched() const;
     QSharedPointer<ValueHandler> valueHandler(const QString& key) const;
-    void assertKeyRecognized(const QString& key) const;
-    bool isShortcut(const QString& key) const;
-    QString baseName(QString key) const;
+    void loadDocument();
+    bool saveDocument() const;
 
 private:
-    mutable QSettings settings_;
-
-    static bool hasError_;
-    static bool errorCheckPending_;
-    static bool skipNextErrorCheck_;
-
-    static QSharedPointer<QFileSystemWatcher> settingsWatcher_;
+    QString settingsFilePath_;
+    QJsonObject document_;
 };
 
 #endif // SETTINGSHANDLER_H

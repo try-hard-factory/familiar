@@ -1,7 +1,10 @@
 #include "controls.h"
 #include "settings.h"
+#include "settingshandler.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonValue>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QSet>
@@ -198,7 +201,13 @@ MouseWheelConfig::MouseWheelConfig(const QString& id,
 
 const char* MouseWheelConfig::settingsGroup() const
 {
-    return "MouseWheel";
+    // Same JSON group as MouseConfig - both are "Controls" in the
+    // Keyboard Shortcuts UI (widgets/controls/keyboard_shortcuts_page.h),
+    // just two different C++ classes internally (wheel vs click
+    // matching). ids don't collide between the two ("zoom"/"pan"/
+    // "movewindow" vs "pan_horizontal"/"pan_vertical"), so sharing one
+    // group is safe.
+    return "Controls";
 }
 
 bool MouseWheelConfig::controlsChanged() const
@@ -255,7 +264,8 @@ MouseConfig::MouseConfig(const QString& id,
 
 const char* MouseConfig::settingsGroup() const
 {
-    return "Mouse";
+    // See MouseWheelConfig::settingsGroup() - shared "Controls" JSON group.
+    return "Controls";
 }
 
 QString MouseConfig::getButton() const
@@ -341,13 +351,6 @@ std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
 
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
 
-KeyboardSettings::KeyboardSettings()
-    : QSettings(QFileInfo(FamSettings().fileName())
-                    .dir()
-                    .filePath(QStringLiteral("KeyboardSettings.ini")),
-                QSettings::IniFormat)
-{}
-
 const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
 {
     // Plain scroll-to-zoom (no modifier) isn't listed here - it's not
@@ -386,11 +389,31 @@ const QList<MouseConfig>& KeyboardSettings::mouseActions()
     return list;
 }
 
+namespace {
+
+QJsonArray toJsonArray(const QStringList& values)
+{
+    QJsonArray arr;
+    for (const QString& v : values)
+        arr.append(v);
+    return arr;
+}
+
+QStringList fromJsonArray(const QJsonValue& v)
+{
+    QStringList out;
+    for (const QJsonValue& e : v.toArray())
+        out.append(e.toString());
+    return out;
+}
+
+} // namespace
+
 void KeyboardSettings::setShortcuts(const QString& group,
                                     const QString& key,
                                     const QStringList& values)
 {
-    setValue(group + QLatin1Char('/') + key, values.join(QStringLiteral(", ")));
+    SettingsHandler::getInstance()->setJsonValue(group, key, toJsonArray(values));
 }
 
 // TODOLATER: ?? this fn doesn't exist in python
@@ -398,15 +421,9 @@ QStringList KeyboardSettings::get_shortcuts(const QString& group,
                                             const QString& key,
                                             const QStringList& defaultValues)
 {
-    const QVariant v = value(group + QLatin1Char('/') + key);
-    if (v.isValid()) {
-        QStringList out;
-        for (const QString& s : v.toString().split(QStringLiteral(", "))) {
-            if (!s.isEmpty())
-                out.append(s);
-        }
-        return out;
-    }
+    const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
+    if (!v.isUndefined())
+        return fromJsonArray(v);
     if (saveUnknownShortcuts)
         setShortcuts(group, key, defaultValues);
     return defaultValues;
@@ -417,26 +434,18 @@ void KeyboardSettings::setList(const QString& group,
                                const QStringList& values,
                                const QStringList& defaultValues)
 {
-    const QString full = group + QLatin1Char('/') + key;
     if (values == defaultValues)
-        QSettings::remove(full);
+        SettingsHandler::getInstance()->removeJsonValue(group, key);
     else
-        setValue(full, values.join(QStringLiteral(", ")));
+        SettingsHandler::getInstance()->setJsonValue(group, key, toJsonArray(values));
 }
 
 QStringList KeyboardSettings::getList(const QString& group,
                                       const QString& key,
                                       const QStringList& defaultValues) const
 {
-    const QVariant v = value(group + QLatin1Char('/') + key);
-    if (!v.isValid())
-        return defaultValues;
-    QStringList out;
-    for (const QString& s : v.toString().split(QStringLiteral(", "))) {
-        if (!s.isEmpty())
-            out.append(s);
-    }
-    return out;
+    const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
+    return v.isUndefined() ? defaultValues : fromJsonArray(v);
 }
 
 void KeyboardSettings::setScalar(const QString& group,
@@ -444,25 +453,25 @@ void KeyboardSettings::setScalar(const QString& group,
                                  const QVariant& value,
                                  const QVariant& defaultValue)
 {
-    const QString full = group + QLatin1Char('/') + key;
     if (value == defaultValue)
-        QSettings::remove(full);
+        SettingsHandler::getInstance()->removeJsonValue(group, key);
     else
-        QSettings::setValue(full, value);
+        SettingsHandler::getInstance()->setJsonValue(group, key,
+                                                      QJsonValue::fromVariant(value));
 }
 
 QVariant KeyboardSettings::getScalar(const QString& group,
                                      const QString& key,
                                      const QVariant& defaultValue) const
 {
-    const QVariant v = value(group + QLatin1Char('/') + key);
-    return v.isValid() ? v : defaultValue;
+    const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
+    return v.isUndefined() ? defaultValue : v.toVariant();
 }
 
 void KeyboardSettings::restoreDefaults()
 {
-    for (const QString& k : allKeys())
-        QSettings::remove(k);
+    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Actions"));
+    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
     emit SettingsEvents::instance().restoreKeyboardDefaults();
 }
 
