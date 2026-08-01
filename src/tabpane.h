@@ -24,6 +24,7 @@ public:
 
     void setCurrentTabTitle(const QString& title);
     QString getCurrentTabTitle();
+    void setTabTitle(CanvasView* view, const QString& title);
 
     void setCurrentTabProjectName(const QString& pn);
     QString getCurrentTabProjectName();
