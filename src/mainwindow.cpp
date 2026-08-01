@@ -14,6 +14,7 @@
 #include "tabpane.h"
 #include <core/settingshandler.h>
 #include <map>
+#include <ui/new_settings_window.h>
 #include <ui/settings_window.h>
 #include <QUndoStack>
 
@@ -129,6 +130,14 @@ void MainWindow::settingsWindow()
     SettingsWindow* widget = new SettingsWindow(this, this->parentWidget());
 
     // widget->raise();
+    widget->show();
+    centered_widget(this, widget);
+}
+
+void MainWindow::settingsWindowNew()
+{
+    NewSettingsWindow* widget = new NewSettingsWindow(this, this->parentWidget());
+
     widget->show();
     centered_widget(this, widget);
 }
@@ -313,6 +322,11 @@ void MainWindow::on_action_show_menubar(bool checked)
 void MainWindow::on_action_settings()
 {
     settingsWindow();
+}
+
+void MainWindow::on_action_settings_new()
+{
+    settingsWindowNew();
 }
 
 void MainWindow::on_action_keyboard_settings()
