@@ -8,12 +8,14 @@ using namespace familiar::log;
 
 #include <QColorDialog>
 #include <QComboBox>
+#include <QFileDialog>
 #include <QFontComboBox>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPainter>
+#include <QShortcut>
 #include <QTextBlock>
 #include <QTextBlockFormat>
 #include <QTextCursor>
@@ -21,6 +23,7 @@ using namespace familiar::log;
 #include <QTextList>
 #include <QTimer>
 #include <QToolButton>
+#include <QUrl>
 
 #include <algorithm>
 
@@ -124,6 +127,34 @@ QFrame* makeSeparator(QWidget* parent)
     line->setFrameShape(QFrame::VLine);
     line->setFixedWidth(1);
     return line;
+}
+
+// Two overlapping rounded-rect "links" on the diagonal - drawn outlined
+// rather than filled (unlike the other icons here), since a solid chain
+// link reads as a blob at this size; the outline is what actually makes
+// the shape recognizable.
+QIcon makeLinkIcon(const QColor& glyphColor, qreal dpr)
+{
+    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+    QPen pen(glyphColor);
+    pen.setWidthF(2.0);
+    p.setPen(pen);
+    p.setBrush(Qt::NoBrush);
+
+    p.translate(kIconSize / 2.0, kIconSize / 2.0);
+    p.rotate(-40);
+    p.drawRoundedRect(QRectF(-7, -3, 7, 6), 3, 3);
+    p.drawRoundedRect(QRectF(0, -3, 7, 6), 3, 3);
+
+    p.end();
+    QIcon icon;
+    icon.addPixmap(pm);
+    return icon;
 }
 
 // Not QColorDialog::getColor(): that static convenience builds/execs/
@@ -241,6 +272,9 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         underlineBtn_->setFont(f);
     }
 
+    linkBtn_ = makeButton(QString(), tr("Insert link"), false);
+    linkBtn_->setIconSize(QSize(kIconSize, kIconSize));
+
     lay->addWidget(makeSeparator(this));
 
     bulletListBtn_ = makeButton(QString(), tr("Bulleted list"), true);
@@ -345,6 +379,8 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         applyCharFormat(format);
     });
 
+    connect(linkBtn_, &QToolButton::clicked, this, &TextEditToolbar::showLinkPopup);
+
     // clicked, not toggled: whether the block ends up listed (and which
     // style) depends on the CURRENT document state, not a simple bool
     // flip - toggleListStyle() figures that out itself, then
@@ -415,6 +451,146 @@ void TextEditToolbar::applyCharFormat(const QTextCharFormat& format)
     if (!cursor.hasSelection())
         cursor.select(QTextCursor::Document);
     cursor.mergeCharFormat(format);
+}
+
+void TextEditToolbar::applyLink(const QString& href)
+{
+    if (!item_ || href.isEmpty())
+        return;
+    QTextCharFormat format;
+    format.setAnchor(true);
+    format.setAnchorHref(href);
+    // QTextDocument doesn't style anchors on its own - underline + the
+    // theme's accent color is what actually makes it read as a link.
+    format.setFontUnderline(true);
+    format.setForeground(
+        SettingsHandler::getInstance()
+            ->getCurrentColorPreset()[EPresetsColorIdx::kSelectionColor]);
+
+    // Inserts href AS the visible link text (PureRef-style) rather than
+    // formatting whatever's currently selected - a selection is replaced
+    // (like typing normally would), not preserved-and-wrapped.
+    QTextCursor cursor = item_->textCursor();
+    cursor.beginEditBlock();
+    if (cursor.hasSelection())
+        cursor.removeSelectedText();
+    cursor.insertText(href, format);
+    cursor.endEditBlock();
+    // insertText() advanced this local cursor copy, but the item's own
+    // "live" cursor (what you'd keep typing at) doesn't follow it
+    // automatically - without this, the next keystroke would land back
+    // wherever editing started instead of after the link just inserted.
+    item_->setTextCursor(cursor);
+}
+
+void TextEditToolbar::showLinkPopup()
+{
+    if (!item_)
+        return;
+
+    // Qt::Tool, not Qt::Popup: a Popup auto-closes (and, with
+    // WA_DeleteOnClose below, gets destroyed) the moment it loses
+    // activation - which is exactly what happens the instant the
+    // "browse" button opens its own QFileDialog beneath it. That would
+    // free `popup`/`edit` while dialog.exec()'s nested event loop is
+    // still pumping (deleteLater() is processed by whatever loop is
+    // running), making the edit->setText() after exec() returns a
+    // use-after-free. A Tool window has no such auto-close behavior, so
+    // it survives a child dialog fine; dismissal is explicit instead
+    // (Apply, Enter, or Escape below).
+    auto* popup = new QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint);
+    popup->setAttribute(Qt::WA_DeleteOnClose);
+    // Same reasoning as every other top-level widget in this app
+    // (widgets/dialogs.h, MainWindow::updateWindowControlsStyle_()):
+    // without this it inherits MainWindow's translucent stylesheet and
+    // paints solid black.
+    popup->setAttribute(Qt::WA_TranslucentBackground, false);
+
+    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+    popup->setStyleSheet(
+        QStringLiteral("QWidget {"
+                       "  background-color: %1;"
+                       "  color: %2;"
+                       "  border: 1px solid %3;"
+                       "  border-radius: 6px;"
+                       "}"
+                       "QLineEdit {"
+                       "  background-color: %1;"
+                       "  border: 1px solid %3;"
+                       "  border-radius: 4px;"
+                       "  padding: 3px 6px;"
+                       "}"
+                       "QToolButton {"
+                       "  border: none;"
+                       "  border-radius: 4px;"
+                       "  padding: 2px;"
+                       "}"
+                       "QToolButton:hover { background-color: %3; }")
+            .arg(background.name(), text.name(), border.name()));
+
+    auto* lay = new QHBoxLayout(popup);
+    lay->setContentsMargins(6, 6, 6, 6);
+    lay->setSpacing(4);
+
+    auto* browseBtn = new QToolButton(popup);
+    browseBtn->setText(QStringLiteral("\U0001F4C1")); // folder
+    browseBtn->setToolTip(tr("Browse for local file"));
+    browseBtn->setAutoRaise(true);
+    lay->addWidget(browseBtn);
+
+    auto* edit = new QLineEdit(popup);
+    edit->setPlaceholderText(tr("URL or file path"));
+    edit->setMinimumWidth(220);
+    // Editing an existing link (cursor already inside one) starts from
+    // its current target instead of empty.
+    const QString existingHref = item_->textCursor().charFormat().anchorHref();
+    if (!existingHref.isEmpty())
+        edit->setText(existingHref);
+    lay->addWidget(edit);
+
+    auto* applyBtn = new QToolButton(popup);
+    applyBtn->setText(QStringLiteral("✓")); // checkmark
+    applyBtn->setToolTip(tr("Apply"));
+    applyBtn->setAutoRaise(true);
+    lay->addWidget(applyBtn);
+
+    connect(browseBtn, &QToolButton::clicked, popup, [popup, edit] {
+        // Stack-allocated, exec()'d inline - same DontUseNativeDialog +
+        // translucency fix as every other file dialog in this project
+        // (see file_actions.cpp/canvasview.cpp), the native one hangs on
+        // this Qt build.
+        QFileDialog dialog(popup);
+        dialog.setWindowTitle(tr("Select a file to link to"));
+        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
+        dialog.setAcceptMode(QFileDialog::AcceptOpen);
+        dialog.setFileMode(QFileDialog::ExistingFile);
+        dialog.setAttribute(Qt::WA_TranslucentBackground, false);
+        dialog.setStyleSheet("* { background-color: palette(window); color: "
+                             "palette(window-text); }");
+        if (dialog.exec() == QDialog::Accepted
+            && !dialog.selectedFiles().isEmpty())
+            edit->setText(
+                QUrl::fromLocalFile(dialog.selectedFiles().first()).toString());
+    });
+
+    connect(applyBtn, &QToolButton::clicked, this, [this, edit, popup] {
+        applyLink(edit->text().trimmed());
+        popup->close();
+    });
+    connect(edit, &QLineEdit::returnPressed, this, [this, edit, popup] {
+        applyLink(edit->text().trimmed());
+        popup->close();
+    });
+
+    auto* escShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), popup);
+    connect(escShortcut, &QShortcut::activated, popup, &QWidget::close);
+
+    popup->move(linkBtn_->mapToGlobal(linkBtn_->rect().bottomLeft()));
+    popup->show();
+    edit->setFocus();
 }
 
 void TextEditToolbar::toggleListStyle(int style)
@@ -662,6 +838,7 @@ void TextEditToolbar::restyleFromPreset()
     const qreal dpr = devicePixelRatioF();
     bulletListBtn_->setIcon(makeListIcon(false, iconGlyphColor_, dpr));
     numberedListBtn_->setIcon(makeListIcon(true, iconGlyphColor_, dpr));
+    linkBtn_->setIcon(makeLinkIcon(iconGlyphColor_, dpr));
 
     updateColorButtonIcons();
 }

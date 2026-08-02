@@ -42,6 +42,13 @@ private:
     // moveitem.h/QTextListFormat - a block-level format, not a
     // QTextCharFormat, so it doesn't go through applyCharFormat().
     void toggleListStyle(int style);
+    // Small popup (URL field + browse-for-local-file + apply) anchored
+    // under linkBtn_, PureRef-style - see the .cpp for the widget itself.
+    void showLinkPopup();
+    // Applies (or, if href is empty, does nothing - the popup's Apply
+    // button already guards against that) an anchor format to the
+    // current selection.
+    void applyLink(const QString& href);
     // Reflect the char format under the item's cursor in the controls.
     // QGraphicsTextItem has no cursorPositionChanged signal, so this is
     // polled by syncTimer_ while the toolbar is visible.
@@ -62,6 +69,7 @@ private:
     QToolButton* boldBtn_ = nullptr;
     QToolButton* italicBtn_ = nullptr;
     QToolButton* underlineBtn_ = nullptr;
+    QToolButton* linkBtn_ = nullptr;
     QToolButton* bulletListBtn_ = nullptr;
     QToolButton* numberedListBtn_ = nullptr;
     QComboBox* sizeBox_ = nullptr;
