@@ -171,6 +171,22 @@ protected:
     // which child widget actually received the event.
     bool eventFilter(QObject* watched, QEvent* event) override
     {
+        if (event->type() == QEvent::MouseMove
+            || event->type() == QEvent::MouseButtonPress) {
+            // This is an application-wide filter (qApp->installEventFilter),
+            // so `watched` can belong to an entirely different top-level
+            // window overlapping this one on screen - e.g. a QColorDialog
+            // opened from the floating text toolbar, which tends to land
+            // near the top of the screen, right over the resize border/
+            // menu bar drag zone. mapFromGlobal() below has no idea the
+            // click wasn't meant for us; without this guard, such a click
+            // gets silently reinterpreted as a resize/window-drag and the
+            // dialog underneath never sees it (see roadmap step 9 postmortem).
+            auto* w = qobject_cast<QWidget*>(watched);
+            if (!w || w->window() != this)
+                return QMainWindow::eventFilter(watched, event);
+        }
+
         if (event->type() == QEvent::MouseMove) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             const QPoint pos

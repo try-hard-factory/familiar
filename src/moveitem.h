@@ -828,6 +828,19 @@ public:
     QColor fill_color() const { return fill_color_; }
     void set_fill_color(const QColor& color)
     {
+        // TEMPORARY debug logging (roadmap step 9 fill-color
+        // investigation) - remove once the BG/H no-op bug is confirmed
+        // fixed.
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "set_fill_color: {},{},{},{} -> {},{},{},{}",
+                   fill_color_.red(),
+                   fill_color_.green(),
+                   fill_color_.blue(),
+                   fill_color_.alpha(),
+                   color.red(),
+                   color.green(),
+                   color.blue(),
+                   color.alpha());
         fill_color_ = color;
         update();
     }
@@ -841,6 +854,19 @@ public:
                const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override
     {
+        // TEMPORARY debug logging (roadmap step 9 fill-color
+        // investigation) - remove once the BG/H no-op bug is confirmed
+        // fixed. Throttled to once per actual value (paint() runs every
+        // frame) so this doesn't flood the log.
+        if (fill_color_ != lastPaintLoggedFillColor_) {
+            lastPaintLoggedFillColor_ = fill_color_;
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "paint(): drawing fill_color_ = {},{},{},{}",
+                       fill_color_.red(),
+                       fill_color_.green(),
+                       fill_color_.blue(),
+                       fill_color_.alpha());
+        }
         painter->setPen(Qt::NoPen);
         painter->setBrush(QBrush(fill_color_));
         painter->drawRect(QGraphicsTextItem::boundingRect());
@@ -955,6 +981,8 @@ protected:
 private:
     QColor fill_color_;
     QColor old_fill_color_;
+    // TEMPORARY (see paint() above) - remove together with that logging.
+    QColor lastPaintLoggedFillColor_;
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.
