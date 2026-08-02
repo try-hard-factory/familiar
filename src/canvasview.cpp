@@ -713,7 +713,16 @@ void CanvasView::leaveEvent(QEvent* event)
 
 void CanvasView::updateSelectionVisibility()
 {
-    const bool visible = isActiveWindow() || selectionOutlineHover_;
+    // qApp->activeWindow(), not isActiveWindow(): the latter is specific
+    // to THIS top-level window, so it goes false the moment any other
+    // window of ours - a modal-ish dialog like ChangeOpacityDialog, a
+    // color picker, the settings window - takes OS focus, triggering the
+    // same "user switched away" fade this was designed for (see the
+    // fades_with_window_focus() comment above) even though the user
+    // never left the app. qApp->activeWindow() stays non-null as long as
+    // ANY window of this application has focus, and is only null once
+    // focus genuinely moves to a different application.
+    const bool visible = qApp->activeWindow() != nullptr || selectionOutlineHover_;
 
     if (visible) {
         selectionFadeAnim_->stop();
