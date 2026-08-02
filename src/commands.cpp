@@ -540,6 +540,42 @@ void ChangeOpacityCommand::undo()
 }
 
 // ============================================================================
+// ResizeTextFieldCommand
+// ============================================================================
+ResizeTextFieldCommand::ResizeTextFieldCommand(TextItem* item,
+                                               qreal newWidth,
+                                               qreal newHeight,
+                                               qreal oldWidth,
+                                               qreal oldHeight,
+                                               bool anchorRight,
+                                               bool anchorBottom,
+                                               bool ignoreFirstRedo)
+    : QUndoCommand(QObject::tr("Resize text field"))
+    , item_(item)
+    , newWidth_(newWidth)
+    , newHeight_(newHeight)
+    , oldWidth_(oldWidth)
+    , oldHeight_(oldHeight)
+    , anchorRight_(anchorRight)
+    , anchorBottom_(anchorBottom)
+    , ignoreFirstRedo_(ignoreFirstRedo)
+{}
+
+void ResizeTextFieldCommand::redo()
+{
+    if (ignoreFirstRedo_) {
+        ignoreFirstRedo_ = false;
+        return;
+    }
+    item_->resize_field(newWidth_, newHeight_, anchorRight_, anchorBottom_);
+}
+
+void ResizeTextFieldCommand::undo()
+{
+    item_->resize_field(oldWidth_, oldHeight_, anchorRight_, anchorBottom_);
+}
+
+// ============================================================================
 // ChangeTextCommand
 // ============================================================================
 ChangeTextCommand::ChangeTextCommand(TextItem* item,

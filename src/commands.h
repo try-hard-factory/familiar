@@ -318,6 +318,39 @@ private:
 };
 
 // ============================================================================
+// ResizeTextFieldCommand - Ресайз поля текстового айтема (edit-mode
+// квадратные хендлы, см. ItemMixin::resize_field() в moveitem.h) -
+// отдельно от ScaleItemsByCommand, так как это не масштаб, а
+// width/height самого QTextDocument, и всегда для одного айтема (эта
+// операция доступна только внутри edit-режима, где выделение всегда
+// одиночное).
+// ============================================================================
+class ResizeTextFieldCommand : public QUndoCommand
+{
+public:
+    ResizeTextFieldCommand(TextItem* item,
+                           qreal newWidth,
+                           qreal newHeight,
+                           qreal oldWidth,
+                           qreal oldHeight,
+                           bool anchorRight,
+                           bool anchorBottom,
+                           bool ignoreFirstRedo = false);
+    void redo() override;
+    void undo() override;
+
+private:
+    TextItem* item_;
+    qreal newWidth_;
+    qreal newHeight_;
+    qreal oldWidth_;
+    qreal oldHeight_;
+    bool anchorRight_;
+    bool anchorBottom_;
+    bool ignoreFirstRedo_;
+};
+
+// ============================================================================
 // CropItemCommand - Применение кропа к элементу
 // ============================================================================
 class CropItemCommand : public QUndoCommand
