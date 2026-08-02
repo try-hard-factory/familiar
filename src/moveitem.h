@@ -967,11 +967,11 @@ protected:
         // were effectively single-line. Now that editing supports real
         // multi-line content (lists, wrapped paragraphs), it has to
         // insert a newline like any other text editor instead - exiting
-        // is Escape (discard, below) or clicking elsewhere on the canvas
-        // (commit, see CanvasScene::mousePressEvent()'s edit_item check).
+        // is Escape or clicking elsewhere on the canvas (both commit, see
+        // CanvasScene::mousePressEvent()'s edit_item check).
         if (event->key() == Qt::Key_Escape
             && event->modifiers() == Qt::NoModifier) {
-            exit_edit_mode(false);
+            exit_edit_mode(true);
             event->accept();
             return;
         }
