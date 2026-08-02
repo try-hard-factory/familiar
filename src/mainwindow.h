@@ -184,7 +184,7 @@ protected:
             // Resize wins over drag: the top kResizeBorder pixels overlap
             // the menu bar, and the thin border is harder to hit.
             if (mouseEvent->button() == Qt::LeftButton
-                && (tryStartSystemResize(pos) || tryStartMenubarDrag_(pos))) {
+                && (tryStartSystemResize(pos) || tryStartWindowDrag_(pos))) {
                 return true;
             }
         }
@@ -312,7 +312,7 @@ private:
     void startUiFade_(bool visible);
     void onUiHideTimeout_();
     void handleUiHover_(const QPoint& pos);
-    bool tryStartMenubarDrag_(const QPoint& pos);
+    bool tryStartWindowDrag_(const QPoint& pos);
     bool uiStripContains_(const QPoint& pos) const;
     int uiStripHeight_() const;
 

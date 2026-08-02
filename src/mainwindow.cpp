@@ -585,19 +585,41 @@ void MainWindow::handleUiHover_(const QPoint& pos)
     }
 }
 
-bool MainWindow::tryStartMenubarDrag_(const QPoint& pos)
+bool MainWindow::tryStartWindowDrag_(const QPoint& pos)
 {
-    if (!menubar_ || !menubar_->isVisible() || !windowHandle())
+    if (!windowHandle())
         return false;
-    const QPoint local = menubar_->mapFromParent(pos);
-    if (!menubar_->rect().contains(local))
-        return false;
-    // Only empty menu bar space drags the window: a menu title opens its
+
+    // Empty menu bar space drags the window; a menu title opens its
     // menu, the corner controls keep their clicks.
-    if (menubar_->actionAt(local) || menubar_->childAt(local))
-        return false;
-    windowHandle()->startSystemMove();
-    return true;
+    if (menubar_ && menubar_->isVisible()) {
+        const QPoint local = menubar_->mapFromParent(pos);
+        if (menubar_->rect().contains(local)) {
+            if (menubar_->actionAt(local) || menubar_->childAt(local))
+                return false;
+            windowHandle()->startSystemMove();
+            return true;
+        }
+    }
+
+    // Same for the tab-bar row: a click on a tab (or its close button)
+    // switches/closes it, anywhere else in the row - including the empty
+    // space right of the last tab, which belongs to the QTabWidget, not
+    // the QTabBar - drags the window.
+    if (QTabBar* tb = tabpane_ ? tabpane_->tabBar() : nullptr;
+        tb && tb->isVisible()) {
+        const QRect row(0, tb->mapTo(this, QPoint(0, 0)).y(), width(),
+                        tb->height());
+        if (row.contains(pos)) {
+            const QPoint local = tb->mapFrom(this, pos);
+            if (tb->rect().contains(local)
+                && (tb->tabAt(local) >= 0 || tb->childAt(local)))
+                return false;
+            windowHandle()->startSystemMove();
+            return true;
+        }
+    }
+    return false;
 }
 
 bool MainWindow::uiStripContains_(const QPoint& pos) const
