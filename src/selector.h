@@ -413,6 +413,16 @@ public:
 
         painter->save();
 
+        // QGraphicsScene applies the item's own opacity() to the painter
+        // BEFORE calling paint() (it composites the whole paint() output
+        // at that opacity) - without resetting it here, lowering an
+        // image's opacity via Change Opacity also fades out this outline
+        // and its handles, since they're drawn with the same painter at
+        // the tail end of PixmapItem::paint()/TextItem::paint(). The
+        // "peek" window-focus fade above is unaffected: it's baked into
+        // selectColor's alpha channel, not painter opacity.
+        painter->setOpacity(1.0);
+
         auto colorPreset
             = SettingsHandler::getInstance()->getCurrentColorPreset();
         QColor selectColor = colorPreset[EPresetsColorIdx::kSelectionColor];

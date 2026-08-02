@@ -296,7 +296,18 @@ public:
                          bool ignoreFirstRedo = false);
     void redo() override;
     void undo() override;
-    void setOpacity(qreal opacity) { opacity_ = opacity; }
+    // Floored just above 0, never exactly 0: QGraphicsScene skips
+    // calling paint() at all for an item whose effective opacity is
+    // exactly zero (a documented painting optimization), which would
+    // also skip our own selection-outline/handles drawn at the tail end
+    // of that same paint() call (see selector.h paint_selectable()) -
+    // the selection would vanish right as content faded out completely.
+    // One 8-bit alpha step is visually indistinguishable from fully
+    // transparent, so this costs nothing.
+    void setOpacity(qreal opacity)
+    {
+        opacity_ = qMax(opacity, 1.0 / 255.0);
+    }
     void setIgnoreFirstRedo(bool value) { ignoreFirstRedo_ = value; }
 
 private:
