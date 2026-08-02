@@ -7,9 +7,11 @@
 #include <algorithm>
 #include <functional>
 #include <optional>
+#include <QAbstractTextDocumentLayout>
 #include <QBuffer>
 #include <QClipboard>
 #include <QCursor>
+#include <QDesktopServices>
 #include <QFileInfo>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
@@ -20,6 +22,7 @@
 #include <QStyle>
 #include <QStyleOptionGraphicsItem>
 #include <QTextCursor>
+#include <QUrl>
 #include <QUuid>
 #include <QVariantMap>
 #include <QWheelEvent>
@@ -961,6 +964,30 @@ public:
 
 
 protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override
+    {
+        // Ctrl+click a hyperlink (inserted via the floating toolbar's
+        // link popup, ui/text_edit_toolbar.cpp) to open it - same
+        // convention as most code/text editors, so a PLAIN click while
+        // editing still just moves the text cursor there like normal
+        // typing, instead of yanking focus away to a browser/file
+        // manager every time you click near a link to keep editing.
+        // Not gated on edit_mode: the document layout can be queried
+        // regardless, so this works the same whether the note is
+        // currently being edited or just selected.
+        if (event->button() == Qt::LeftButton
+            && event->modifiers() == Qt::ControlModifier) {
+            const QString href
+                = document()->documentLayout()->anchorAt(event->pos());
+            if (!href.isEmpty()) {
+                QDesktopServices::openUrl(QUrl(href));
+                event->accept();
+                return;
+            }
+        }
+        ItemMixin<TextItem, QGraphicsTextItem>::mousePressEvent(event);
+    }
+
     void keyPressEvent(QKeyEvent* event) override
     {
         // Enter/Return used to commit-and-exit here, back when notes
