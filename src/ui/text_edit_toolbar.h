@@ -36,6 +36,12 @@ public:
 
 private:
     void applyCharFormat(const QTextCharFormat& format);
+    // Toggles the current block(s) in/out of a list of the given style:
+    // off if already that style, switched in place if a different style,
+    // otherwise a new list is created from the selection. See
+    // moveitem.h/QTextListFormat - a block-level format, not a
+    // QTextCharFormat, so it doesn't go through applyCharFormat().
+    void toggleListStyle(int style);
     // Reflect the char format under the item's cursor in the controls.
     // QGraphicsTextItem has no cursorPositionChanged signal, so this is
     // polled by syncTimer_ while the toolbar is visible.
@@ -56,6 +62,8 @@ private:
     QToolButton* boldBtn_ = nullptr;
     QToolButton* italicBtn_ = nullptr;
     QToolButton* underlineBtn_ = nullptr;
+    QToolButton* bulletListBtn_ = nullptr;
+    QToolButton* numberedListBtn_ = nullptr;
     QComboBox* sizeBox_ = nullptr;
     QFontComboBox* fontBox_ = nullptr;
     QTimer* syncTimer_ = nullptr;

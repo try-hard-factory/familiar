@@ -963,15 +963,24 @@ public:
 protected:
     void keyPressEvent(QKeyEvent* event) override
     {
-        if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)
-            && event->modifiers() == Qt::NoModifier) {
-            exit_edit_mode();
-            event->accept();
-            return;
-        }
+        // Enter/Return used to commit-and-exit here, back when notes
+        // were effectively single-line. Now that editing supports real
+        // multi-line content (lists, wrapped paragraphs), it has to
+        // insert a newline like any other text editor instead - exiting
+        // is Escape (discard, below) or clicking elsewhere on the canvas
+        // (commit, see CanvasScene::mousePressEvent()'s edit_item check).
         if (event->key() == Qt::Key_Escape
             && event->modifiers() == Qt::NoModifier) {
             exit_edit_mode(false);
+            event->accept();
+            return;
+        }
+        // QGraphicsTextItem's default handling inserts a literal tab
+        // character - since that's plain text, not list/indent
+        // formatting, it silently survives even after the list itself is
+        // later removed via the toolbar. Swallow Tab/Shift+Tab instead of
+        // letting anything be typed.
+        if (event->key() == Qt::Key_Tab || event->key() == Qt::Key_Backtab) {
             event->accept();
             return;
         }
