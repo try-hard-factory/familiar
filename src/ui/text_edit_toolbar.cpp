@@ -9,13 +9,69 @@ using namespace familiar::log;
 #include <QColorDialog>
 #include <QComboBox>
 #include <QFontComboBox>
+#include <QFrame>
+#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QPainter>
 #include <QTextCursor>
 #include <QTimer>
 #include <QToolButton>
 
 namespace {
+
+// Square, uniform for every icon-only button on the bar - the plain-text
+// glyphs used to size themselves off the text ("BG" wider than "B"),
+// which looked ragged sitting side by side.
+constexpr int kButtonSize = 30;
+constexpr int kIconSize = 20;
+
+// A/H/BG's icon: the letter plus a small rounded color-swatch bar along
+// the bottom, so the button shows what color it currently represents
+// instead of being a plain, identical-looking letter every time.
+QIcon makeColorGlyphIcon(const QString& glyph,
+                         const QColor& swatch,
+                         const QColor& glyphColor,
+                         qreal dpr)
+{
+    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    QFont f = p.font();
+    f.setPointSizeF(f.pointSizeF() * 1.05);
+    f.setBold(true);
+    p.setFont(f);
+    p.setPen(glyphColor);
+    p.drawText(QRect(0, 0, kIconSize, kIconSize - 5),
+              Qt::AlignCenter,
+              glyph);
+
+    // An unset highlight (background().color() invalid, alpha 0) still
+    // gets a visible neutral bar - an invisible bar would look identical
+    // to a plain letter and defeat the point of the swatch.
+    QColor bar = swatch.isValid() ? swatch : QColor(128, 128, 128);
+    bar.setAlpha(qMax(bar.alpha(), 60));
+    p.setPen(Qt::NoPen);
+    p.setBrush(bar);
+    p.drawRoundedRect(QRectF(3, kIconSize - 4, kIconSize - 6, 3), 1.5, 1.5);
+
+    p.end();
+    QIcon icon;
+    icon.addPixmap(pm);
+    return icon;
+}
+
+QFrame* makeSeparator(QWidget* parent)
+{
+    auto* line = new QFrame(parent);
+    line->setFrameShape(QFrame::VLine);
+    line->setFixedWidth(1);
+    return line;
+}
 
 // Not QColorDialog::getColor(): that static convenience builds/execs/
 // destroys the dialog internally, with no chance to apply the fix below
@@ -76,9 +132,17 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     // actually paint it (otherwise it stays transparent over the canvas).
     setAttribute(Qt::WA_StyledBackground);
 
+    // Floating-card feel, separating the bar from the canvas underneath
+    // it more clearly than the border alone.
+    auto* shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setBlurRadius(18);
+    shadow->setOffset(0, 3);
+    shadow->setColor(QColor(0, 0, 0, 140));
+    setGraphicsEffect(shadow);
+
     auto* lay = new QHBoxLayout(this);
-    lay->setContentsMargins(6, 4, 6, 4);
-    lay->setSpacing(4);
+    lay->setContentsMargins(8, 5, 8, 5);
+    lay->setSpacing(2);
 
     auto makeButton = [this, lay](const QString& glyph,
                                   const QString& tooltip,
@@ -88,6 +152,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         b->setToolTip(tooltip);
         b->setCheckable(checkable);
         b->setAutoRaise(true);
+        b->setFixedSize(kButtonSize, kButtonSize);
         // Don't steal focus from the text item being edited - its cursor/
         // selection is what the buttons operate on.
         b->setFocusPolicy(Qt::NoFocus);
@@ -95,11 +160,18 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         return b;
     };
 
-    textColorBtn_ = makeButton(QStringLiteral("A"), tr("Text color"), false);
+    // Icons (not setText()) are drawn lazily by updateColorButtonIcons()
+    // once restyleFromPreset() has a glyph color to paint with - empty
+    // for now, just reserving the buttons/tooltips/layout slot.
+    textColorBtn_ = makeButton(QString(), tr("Text color"), false);
     highlightColorBtn_
-        = makeButton(QStringLiteral("H"), tr("Text highlight color"), false);
-    fillColorBtn_
-        = makeButton(QStringLiteral("BG"), tr("Note fill color"), false);
+        = makeButton(QString(), tr("Text highlight color"), false);
+    fillColorBtn_ = makeButton(QString(), tr("Note fill color"), false);
+    for (QToolButton* b : {textColorBtn_, highlightColorBtn_, fillColorBtn_})
+        b->setIconSize(QSize(kIconSize, kIconSize));
+
+    lay->addWidget(makeSeparator(this));
+
     boldBtn_ = makeButton(QStringLiteral("B"), tr("Bold"), true);
     italicBtn_ = makeButton(QStringLiteral("I"), tr("Italic"), true);
     underlineBtn_ = makeButton(QStringLiteral("U"), tr("Underline"), true);
@@ -116,6 +188,8 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         underlineBtn_->setFont(f);
     }
 
+    lay->addWidget(makeSeparator(this));
+
     sizeBox_ = new QComboBox(this);
     sizeBox_->setEditable(true);
     sizeBox_->setInsertPolicy(QComboBox::NoInsert);
@@ -124,10 +198,12 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     sizeBox_->setToolTip(tr("Font size"));
     sizeBox_->setFixedWidth(sizeBox_->fontMetrics().horizontalAdvance("000")
                             + 30);
+    sizeBox_->setFixedHeight(kButtonSize);
     lay->addWidget(sizeBox_);
 
     fontBox_ = new QFontComboBox(this);
     fontBox_->setToolTip(tr("Font"));
+    fontBox_->setFixedHeight(kButtonSize);
     lay->addWidget(fontBox_);
 
     connect(textColorBtn_, &QToolButton::clicked, this, [this] {
@@ -144,6 +220,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         QTextCharFormat format;
         format.setForeground(color);
         applyCharFormat(format);
+        updateColorButtonIcons();
     });
 
     connect(highlightColorBtn_, &QToolButton::clicked, this, [this] {
@@ -166,6 +243,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         QTextCharFormat format;
         format.setBackground(color);
         applyCharFormat(format);
+        updateColorButtonIcons();
     });
 
     connect(fillColorBtn_, &QToolButton::clicked, this, [this] {
@@ -185,8 +263,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         FLOG_DEBUG(Ch::UI,
                   "fillColorBtn_: picked color valid={} -> calling set_fill_color",
                   color.isValid());
-        if (color.isValid())
+        if (color.isValid()) {
             item_->set_fill_color(color);
+            updateColorButtonIcons();
+        }
     });
 
     connect(boldBtn_, &QToolButton::toggled, this, [this](bool checked) {
@@ -286,6 +366,36 @@ void TextEditToolbar::syncFromCursor()
         QSignalBlocker b(fontBox_);
         fontBox_->setCurrentFont(format.font());
     }
+
+    updateColorButtonIcons();
+}
+
+void TextEditToolbar::updateColorButtonIcons()
+{
+    if (!item_)
+        return;
+    const qreal dpr = devicePixelRatioF();
+    const QTextCharFormat format = item_->textCursor().charFormat();
+
+    QColor textC = format.foreground().color();
+    if (!textC.isValid())
+        textC = item_->defaultTextColor();
+    textColorBtn_->setIcon(
+        makeColorGlyphIcon(QStringLiteral("A"), textC, iconGlyphColor_, dpr));
+
+    // format.background() comes back as an invalid QColor when no
+    // highlight is set - makeColorGlyphIcon() already renders that as a
+    // neutral gray bar, so no substitution needed here (unlike the color
+    // picker's "initial" value, which needs a real starting hue/alpha).
+    highlightColorBtn_->setIcon(makeColorGlyphIcon(QStringLiteral("H"),
+                                                   format.background().color(),
+                                                   iconGlyphColor_,
+                                                   dpr));
+
+    fillColorBtn_->setIcon(makeColorGlyphIcon(QStringLiteral("BG"),
+                                              item_->fill_color(),
+                                              iconGlyphColor_,
+                                              dpr));
 }
 
 void TextEditToolbar::restyleFromPreset()
@@ -295,6 +405,7 @@ void TextEditToolbar::restyleFromPreset()
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    iconGlyphColor_ = text;
     auto rgba = [](const QColor& c, int alpha) {
         return QStringLiteral("rgba(%1, %2, %3, %4)")
             .arg(c.red())
@@ -310,23 +421,27 @@ void TextEditToolbar::restyleFromPreset()
         QStringLiteral("TextEditToolbar {"
                        "  background-color: %1;"
                        "  border: 1px solid %2;"
-                       "  border-radius: 6px;"
+                       "  border-radius: 8px;"
                        "}"
                        "QToolButton {"
                        "  background: transparent;"
                        "  color: %3;"
                        "  border: none;"
-                       "  border-radius: 4px;"
-                       "  padding: 2px 6px;"
+                       "  border-radius: 5px;"
                        "}"
                        "QToolButton:hover { background-color: %4; }"
                        "QToolButton:pressed { background-color: %5; }"
                        "QToolButton:checked { background-color: %5; }"
+                       "QFrame {"
+                       "  background-color: %2;"
+                       "  border: none;"
+                       "  margin: 4px 4px;"
+                       "}"
                        "QComboBox, QFontComboBox {"
                        "  background-color: %1;"
                        "  color: %3;"
                        "  border: 1px solid %2;"
-                       "  border-radius: 4px;"
+                       "  border-radius: 5px;"
                        "  padding: 1px 4px;"
                        "}"
                        "QComboBox QAbstractItemView {"
@@ -339,11 +454,13 @@ void TextEditToolbar::restyleFromPreset()
                        "  color: %3;"
                        "  border: 1px solid %2;"
                        "}")
-            .arg(rgba(background, 235),
+            .arg(rgba(background, 245),
                  border.name(),
                  text.name(),
                  rgba(selection, 90),
                  rgba(selection, 170),
                  background.name(),
                  selection.name()));
+
+    updateColorButtonIcons();
 }

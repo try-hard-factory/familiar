@@ -40,6 +40,12 @@ private:
     // QGraphicsTextItem has no cursorPositionChanged signal, so this is
     // polled by syncTimer_ while the toolbar is visible.
     void syncFromCursor();
+    // Redraws textColorBtn_/highlightColorBtn_/fillColorBtn_'s icons from
+    // whatever color each currently represents - called from
+    // syncFromCursor() (so the swatch tracks the cursor like B/I/U do)
+    // and right after a color picker closes (so a pick is reflected
+    // immediately, not only at the next poll).
+    void updateColorButtonIcons();
 
     TextItem* item_ = nullptr;
     QToolButton* textColorBtn_ = nullptr;
@@ -53,6 +59,9 @@ private:
     QComboBox* sizeBox_ = nullptr;
     QFontComboBox* fontBox_ = nullptr;
     QTimer* syncTimer_ = nullptr;
+    // Glyph color used when (re)drawing the three color-button icons;
+    // refreshed by restyleFromPreset() alongside the rest of the QSS.
+    QColor iconGlyphColor_;
 };
 
 #endif // TEXT_EDIT_TOOLBAR_H
