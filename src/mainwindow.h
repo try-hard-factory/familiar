@@ -27,6 +27,10 @@ class project_settings;
 class QFileDialog;
 class SaveAllWindow;
 class QShortcut;
+class QMenuBar;
+class QGraphicsOpacityEffect;
+class QVariantAnimation;
+class QTimer;
 
 constexpr QPoint kInvalidPoint(-1, -1);
 
@@ -78,6 +82,7 @@ public slots:
     void on_action_fullscreen(bool checked);
     void on_action_always_on_top(bool checked);
     void on_action_show_menubar(bool checked);
+    void on_action_auto_hide_ui(bool checked);
 
     // Settings / Help
     void on_action_settings();
@@ -150,6 +155,7 @@ protected:
     void closeEvent(QCloseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
     void changeEvent(QEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 protected:
     void mouseMoveEvent(QMouseEvent* event) override
@@ -167,13 +173,18 @@ protected:
     {
         if (event->type() == QEvent::MouseMove) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            updateResizeCursor(
-                mapFromGlobal(mouseEvent->globalPosition().toPoint()));
+            const QPoint pos
+                = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            updateResizeCursor(pos);
+            handleUiHover_(pos);
         } else if (event->type() == QEvent::MouseButtonPress) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            const QPoint pos
+                = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            // Resize wins over drag: the top kResizeBorder pixels overlap
+            // the menu bar, and the thin border is harder to hit.
             if (mouseEvent->button() == Qt::LeftButton
-                && tryStartSystemResize(
-                    mapFromGlobal(mouseEvent->globalPosition().toPoint()))) {
+                && (tryStartSystemResize(pos) || tryStartMenubarDrag_(pos))) {
                 return true;
             }
         }
@@ -286,6 +297,33 @@ private:
     // the moment the tracked QObject's destructor runs.
     QPointer<CanvasScene> hookedScene_;
     QPointer<QUndoStack> hookedUndoStack_;
+
+    // ── Menu bar overlay (see mainwindow.cpp, "Menu bar" section) ─────────
+    // The menu bar is a long-lived direct child laid at the top of the
+    // window, NOT installed via QMainWindow::setMenuBar() -
+    // setMenuBar(nullptr) deleteLater()s the old bar, which would forbid
+    // hiding/showing the same instance. Auto-hide ("auto_hide_ui") fades
+    // the menu bar AND the tab bar out when the cursor leaves the top
+    // strip; both keep their layout space, so nothing underneath ever
+    // moves or gets covered.
+    void ensureMenubar_();
+    void applyMenubarState_();
+    void updateMenubarGeometry();
+    void startUiFade_(bool visible);
+    void onUiHideTimeout_();
+    void handleUiHover_(const QPoint& pos);
+    bool tryStartMenubarDrag_(const QPoint& pos);
+    bool uiStripContains_(const QPoint& pos) const;
+
+    QMenuBar* menubar_ = nullptr;
+    QGraphicsOpacityEffect* menubarOpacity_ = nullptr;
+    QGraphicsOpacityEffect* tabbarOpacity_ = nullptr;
+    QVariantAnimation* uiFadeAnim_ = nullptr;
+    QTimer* uiHideTimer_ = nullptr;
+    bool autoHideUi_ = false;
+    // Logical shown/hidden state of the auto-hidden UI: the target of
+    // the running (or last finished) fade.
+    bool uiFadeTargetVisible_ = true;
 
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;

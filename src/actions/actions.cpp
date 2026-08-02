@@ -313,6 +313,18 @@ static ActionRegistry buildRegistry()
                   false,
                   {},
                   "View/show_menubar"));
+    // Fades the menu bar and the tab bar out while the cursor is away
+    // from the top strip. Only meaningful while the menu bar is shown;
+    // MainWindow::applyMenubarState_() keeps the QAction disabled
+    // otherwise.
+    r.add(A::make("auto_hide_ui",
+                  "Auto-Hide Interface",
+                  "on_action_auto_hide_ui",
+                  {},
+                  true,
+                  false,
+                  {},
+                  "View/auto_hide_ui"));
 
     // ── Insert ────────────────────────────────────────────────────────────────
     r.add(A::make("insert_images",

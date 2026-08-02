@@ -34,6 +34,10 @@ public:
     void setCurrentIndex(int index);
     int count();
 
+    // The internal QTabWidget's tab bar - MainWindow fades it together
+    // with the menu bar in auto-hide-UI mode.
+    QTabBar* tabBar() const { return tabs_->tabBar(); }
+
 signals:
     // Forwards the internal QTabWidget's currentChanged(int), so
     // MainWindow can resync its shared action enabled-state to whichever
