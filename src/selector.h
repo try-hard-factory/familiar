@@ -445,6 +445,16 @@ public:
             for (const auto& edge : get_edge_bounds()) {
                 painter->drawPoint(edge.rect.center());
             }
+        } else if (static_cast<Mixin*>(this)->paints_edit_mode_handles()) {
+            // Edit mode: same corner positions, square caps - the visual
+            // cue (matching PureRef) that clicks now place the text
+            // cursor instead of scaling the item.
+            pen.setWidth(selectHandleSize_);
+            pen.setCapStyle(Qt::SquareCap);
+            painter->setPen(pen);
+            for (const QPointF& corner : corners()) {
+                painter->drawPoint(corner);
+            }
         }
 
         painter->restore();
@@ -1005,6 +1015,7 @@ public:
 
     virtual bool has_selection_outline() const { return true; }
     virtual bool has_selection_handles() const { return true; }
+    virtual bool paints_edit_mode_handles() const { return false; }
 
     // Only the multi-select bounding box (this item) fades with window
     // activation/hover - see CanvasView::updateSelectionVisibility() and

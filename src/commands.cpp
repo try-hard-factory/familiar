@@ -543,22 +543,28 @@ void ChangeOpacityCommand::undo()
 // ChangeTextCommand
 // ============================================================================
 ChangeTextCommand::ChangeTextCommand(TextItem* item,
-                                     const QString& newText,
-                                     const QString& oldText)
+                                     const QString& newHtml,
+                                     const QString& oldHtml,
+                                     const QColor& newFillColor,
+                                     const QColor& oldFillColor)
     : QUndoCommand(QObject::tr("Change text"))
     , item_(item)
-    , newText_(newText)
-    , oldText_(oldText)
+    , newHtml_(newHtml)
+    , oldHtml_(oldHtml)
+    , newFillColor_(newFillColor)
+    , oldFillColor_(oldFillColor)
 {}
 
 void ChangeTextCommand::redo()
 {
-    item_->setPlainText(newText_);
+    item_->setHtml(newHtml_);
+    item_->set_fill_color(newFillColor_);
 }
 
 void ChangeTextCommand::undo()
 {
-    item_->setPlainText(oldText_);
+    item_->setHtml(oldHtml_);
+    item_->set_fill_color(oldFillColor_);
 }
 
 // ============================================================================

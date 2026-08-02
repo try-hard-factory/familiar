@@ -21,11 +21,13 @@ class CanvasScene;
 class QUndoStack;
 class IBaseItem;
 class PixmapItem;
+class TextItem;
 class SampleColorWidget;
 class ThreadedIO;
 class SceneExporterBase;
 class ImagesToDirectoryExporter;
 class QVariantAnimation;
+class TextEditToolbar;
 
 struct PreviousTransform
 {
@@ -195,6 +197,10 @@ private slots:
     void on_export_images_finished(const QString& dirname,
                                    const QStringList& errors);
 
+    // Shows/hides the floating text-format toolbar when a TextItem
+    // enters/leaves edit mode (CanvasScene::edit_item_changed).
+    void on_edit_item_changed(TextItem* item);
+
 protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
@@ -222,10 +228,15 @@ private:
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
     QString getSupportedImageFormats() const;
+    // Keeps the floating text toolbar glued above the item being edited
+    // through pans (scrollbar valueChanged), zooms (doScale) and view
+    // resizes.
+    void updateTextToolbarPos_();
 
     qreal selectionOutlineOpacity_ = 1.0;
     bool selectionOutlineHover_ = false;
     QVariantAnimation* selectionFadeAnim_ = nullptr;
+    TextEditToolbar* textToolbar_ = nullptr;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;

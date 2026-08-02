@@ -35,6 +35,17 @@ public:
 signals:
     void cursor_changed(QCursor);
     void cursor_cleared();
+    // Fired by TextItem::enter_edit_mode()/exit_edit_mode() (nullptr on
+    // exit) - CanvasView shows/hides the floating text toolbar on this.
+    void edit_item_changed(TextItem* item);
+
+public:
+    // TextItem is not in a position to emit our signals itself (signals
+    // are protected in Qt) - it calls this instead.
+    void notify_edit_item_changed(TextItem* item)
+    {
+        emit edit_item_changed(item);
+    }
 
 public:
     // Holds data for an item queued via add_item_later(), consumed by

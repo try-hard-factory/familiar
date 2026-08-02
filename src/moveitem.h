@@ -54,6 +54,11 @@ public:
         return this->isSelected() && scene && scene->has_single_selection();
     }
 
+    // Draw square (not round) corner markers instead of the interactive
+    // scale handles - TextItem returns true while in edit mode
+    // (PureRef-style visual cue that clicks now edit text, not resize).
+    virtual bool paints_edit_mode_handles() const { return false; }
+
     virtual QList<QGraphicsItem*> selection_action_items()
     {
         return QList<QGraphicsItem*>() << this;
@@ -754,11 +759,16 @@ class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 public:
     const std::string TYPE = "text"; // static constexpr
     bool edit_mode = false;
-    QString old_text;
+    QString old_html;
+
+    // Default note fill - the backdrop TextItem always painted, now
+    // per-item and persisted (PureRef-style notes, roadmap step 9).
+    static QColor default_fill_color() { return QColor(0, 0, 0, 40); }
 
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
+        , fill_color_(default_fill_color())
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
 
@@ -782,14 +792,44 @@ public:
 
     static TextItem* create_from_data(const QVariantMap& data = QVariantMap())
     {
-        return new TextItem(data.value(QStringLiteral("text")).toString());
+        auto* item = new TextItem(data.value(QStringLiteral("text")).toString());
+        item->apply_extra_save_data(data);
+        return item;
     }
 
     QVariantMap get_extra_save_data() const override
     {
         QVariantMap data;
+        // Plain text stays alongside the html: forward-compatible
+        // fallback and greppable manifests (docs/fml_format_design.md).
         data[QStringLiteral("text")] = this->toPlainText();
+        data[QStringLiteral("html")] = this->toHtml();
+        if (fill_color_ != default_fill_color())
+            data[QStringLiteral("fill_color")]
+                = fill_color_.name(QColor::HexArgb);
         return data;
+    }
+
+    // Counterpart of get_extra_save_data() minus "text" (the caller
+    // decides how the initial plain text reaches the constructor).
+    void apply_extra_save_data(const QVariantMap& data)
+    {
+        const QString html = data.value(QStringLiteral("html")).toString();
+        if (!html.isEmpty())
+            this->setHtml(html);
+        const QString fill = data.value(QStringLiteral("fill_color")).toString();
+        if (!fill.isEmpty()) {
+            QColor c(fill);
+            if (c.isValid())
+                fill_color_ = c;
+        }
+    }
+
+    QColor fill_color() const { return fill_color_; }
+    void set_fill_color(const QColor& color)
+    {
+        fill_color_ = color;
+        update();
     }
 
     bool contains(const QPointF& point) const override
@@ -802,9 +842,7 @@ public:
                QWidget* widget = nullptr) override
     {
         painter->setPen(Qt::NoPen);
-        QColor color(0, 0, 0);
-        color.setAlpha(40);
-        painter->setBrush(QBrush(color));
+        painter->setBrush(QBrush(fill_color_));
         painter->drawRect(QGraphicsTextItem::boundingRect());
         QStyleOptionGraphicsItem updatedOption(*option);
         updatedOption.state = QStyle::State_Enabled;
@@ -815,6 +853,8 @@ public:
     IBaseItem* create_copy() override
     {
         auto* new_item = new TextItem(this->toPlainText());
+        new_item->setHtml(this->toHtml());
+        new_item->set_fill_color(fill_color_);
         new_item->setPos(this->pos());
         new_item->setZValue(this->zValue());
         new_item->setScale(this->scale());
@@ -832,10 +872,14 @@ public:
                    "Entering edit mode on {}",
                    toString());
         edit_mode = true;
-        old_text = this->toPlainText();
+        // html, not plain text: the same commit-on-exit diff also carries
+        // any formatting the floating toolbar applied during the session.
+        old_html = this->toHtml();
+        old_fill_color_ = fill_color_;
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         scene->edit_item = this;
+        scene->notify_edit_item_changed(this);
     }
 
     void exit_edit_mode(bool commit = true)
@@ -849,16 +893,21 @@ public:
         this->setTextInteractionFlags(Qt::NoTextInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         scene->edit_item = nullptr;
+        scene->notify_edit_item_changed(nullptr);
         if (commit) {
-            scene->undo_stack_->push(
-                new ChangeTextCommand(this, this->toPlainText(), old_text));
+            scene->undo_stack_->push(new ChangeTextCommand(this,
+                                                           this->toHtml(),
+                                                           old_html,
+                                                           fill_color_,
+                                                           old_fill_color_));
             if (this->toPlainText().trimmed().isEmpty()) {
                 FLOG_DEBUG(familiar::log::Ch::Items, "Removing empty text item");
                 scene->undo_stack_->push(
                     new DeleteItemsCommand(scene, QList<QGraphicsItem*>{this}));
             }
         } else {
-            setPlainText(old_text);
+            setHtml(old_html);
+            set_fill_color(old_fill_color_);
         }
     }
 
@@ -867,6 +916,8 @@ public:
         return ItemMixin<TextItem, QGraphicsTextItem>::has_selection_handles()
                && !edit_mode;
     }
+
+    bool paints_edit_mode_handles() const override { return edit_mode; }
 
     void copy_to_clipboard(QClipboard* clipboard)
     {
@@ -895,6 +946,10 @@ protected:
         }
         QGraphicsTextItem::keyPressEvent(event);
     }
+
+private:
+    QColor fill_color_;
+    QColor old_fill_color_;
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.

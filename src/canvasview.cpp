@@ -6,6 +6,7 @@
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "project_settings.h"
+#include "ui/text_edit_toolbar.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
 #include <cmath>
@@ -70,7 +71,24 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
             &CanvasScene::cursor_cleared,
             this,
             &CanvasView::on_cursor_cleared);
+    connect(scene_,
+            &CanvasScene::edit_item_changed,
+            this,
+            &CanvasView::on_edit_item_changed);
     setScene(scene_);
+
+    // Floating text-format toolbar (roadmap step 9); hidden until a
+    // TextItem enters edit mode. Pans move the view via the (hidden)
+    // scrollbars, so their valueChanged covers repositioning; zoom is
+    // handled in doScale(), resizes in resizeEvent().
+    textToolbar_ = new TextEditToolbar(viewport());
+    textToolbar_->hide();
+    connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, [this] {
+        updateTextToolbarPos_();
+    });
+    connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this] {
+        updateTextToolbarPos_();
+    });
 
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
@@ -214,6 +232,8 @@ void CanvasView::settingsChangedSlot()
     canvasColor_ = colorPreset[EPresetsColorIdx::kCanvasColor];
     borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
     currentOpacity_ = settings->getCurrentOpacity();
+    if (textToolbar_)
+        textToolbar_->restyleFromPreset();
 }
 
 // ─── Active modes ─────────────────────────────────────────────────────────────
@@ -309,6 +329,35 @@ void CanvasView::doScale(qreal sx, qreal sy)
     QGraphicsView::scale(sx, sy);
     scene_->on_view_scale_change();
     recalcSceneRect();
+    updateTextToolbarPos_();
+}
+
+void CanvasView::on_edit_item_changed(TextItem* item)
+{
+    textToolbar_->attach(item);
+    if (item) {
+        textToolbar_->show();
+        textToolbar_->raise();
+        updateTextToolbarPos_();
+    } else {
+        textToolbar_->hide();
+    }
+}
+
+void CanvasView::updateTextToolbarPos_()
+{
+    if (!textToolbar_ || !textToolbar_->isVisible() || !textToolbar_->item())
+        return;
+    const QRectF itemRect = textToolbar_->item()->sceneBoundingRect();
+    const QPoint top = mapFromScene(itemRect.topLeft());
+    int x = top.x();
+    int y = top.y() - textToolbar_->height() - 8;
+    // Keep it inside the viewport; when the item is at the very top the
+    // toolbar drops below the top edge (over the note) rather than
+    // getting clipped away.
+    x = qBound(0, x, qMax(0, viewport()->width() - textToolbar_->width()));
+    y = qMax(0, y);
+    textToolbar_->move(x, y);
 }
 
 double CanvasView::getZoomSize(std::function<double(double, double)> func) const
@@ -587,6 +636,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
         centerOn(oldCenter);
     }
     welcomeOverlay_->resize(size());
+    updateTextToolbarPos_();
 }
 
 
