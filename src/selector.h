@@ -262,6 +262,13 @@ class SelectableMixin : public BaseItemMixin<T>
 
     QPointF eventStart_;
     QPointF eventDirection_;
+    // Distance from the fixed anchor (the opposite corner/edge-midpoint,
+    // mirrored across the center - see get_scale_anchor()) to the handle
+    // being dragged, at scale 1. get_scale_factor() divides by this to
+    // convert a mouse-movement distance into a scale delta; see its
+    // comment for why this must differ between a corner drag (the
+    // diagonal) and an edge drag (just that edge's own dimension).
+    qreal scaleRefLength_{0};
     qreal scaleOrigFactor_;
     qreal rotateOrigDegrees_;
     QPointF eventAnchor_;
@@ -738,6 +745,10 @@ protected:
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(get_scale_anchor(corner));
+                    // Anchor is the OPPOSITE corner, so the relevant
+                    // distance is corner-to-corner: the full diagonal.
+                    scaleRefLength_ = qSqrt(this->width() * this->width()
+                                            + this->height() * this->height());
                     for (auto& item :
                          static_cast<Mixin*>(this)->selection_action_items()) {
                         auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -773,6 +784,15 @@ protected:
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(
                         get_scale_anchor(edge.rect.center()));
+                    // Anchor is the midpoint of the OPPOSITE edge, so the
+                    // relevant distance is edge-to-edge along that one
+                    // axis - not the diagonal (that would be the
+                    // anchor-to-CORNER distance, always longer than the
+                    // anchor-to-this-edge-midpoint distance actually
+                    // being dragged, which under-scaled the response and
+                    // made the handle visibly lag behind the cursor).
+                    scaleRefLength_ = edge.vertical ? this->height()
+                                                    : this->width();
                     for (auto& item :
                          static_cast<Mixin*>(this)->selection_action_items()) {
                         auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -789,11 +809,15 @@ protected:
 
     qreal get_scale_factor(QGraphicsSceneMouseEvent* event) const
     {
-        qreal imgSize = qSqrt(this->width() * this->width()
-                              + this->height() * this->height());
+        // scaleRefLength_ (set in mousePressEvent() when the drag
+        // started) is the anchor-to-handle distance at scale 1: the full
+        // diagonal for a corner drag, or just that one edge's own
+        // dimension for an edge-midpoint drag - using the diagonal for
+        // both (as this used to) under-scaled edge drags, since the
+        // diagonal is always longer than either side alone.
         QPointF p = event->scenePos() - eventStart_;
         QPointF direction = eventDirection_;
-        qreal delta = QPointF::dotProduct(direction, p) / imgSize;
+        qreal delta = QPointF::dotProduct(direction, p) / scaleRefLength_;
         return (scaleOrigFactor_ + delta) / scaleOrigFactor_;
     }
 
