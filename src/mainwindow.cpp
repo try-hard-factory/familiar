@@ -1,12 +1,18 @@
 #include "mainwindow.h"
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QGraphicsOpacityEffect>
 #include <QLabel>
 #include <QLayout>
+#include <QMenuBar>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QShortcut>
 #include <QStatusBar>
+#include <QTabBar>
+#include <QTimer>
+#include <QToolButton>
+#include <QVariantAnimation>
 
 #include "canvasscene.h"
 #include "project_settings.h"
@@ -79,6 +85,10 @@ MainWindow::MainWindow(QWidget* parent)
     // which already ran once with the initial settings - no need to
     // duplicate it here.
     setCentralWidget(tabpane_);
+    // The menu bar already exists (built by the initial checkable
+    // callbacks inside build_menu_and_actions() above); re-raise it above
+    // the freshly-installed central widget.
+    updateMenubarGeometry();
 
     // WA_TranslucentBackground + frameless flags are set at the very top
     // of this constructor (see comment there) - don't re-apply here:
@@ -359,12 +369,241 @@ void MainWindow::on_action_always_on_top(bool checked)
     show();
 }
 
-void MainWindow::on_action_show_menubar(bool checked)
+// ── Menu bar ─────────────────────────────────────────────────────────────────
+// One long-lived QMenuBar laid at the top of the window (see mainwindow.h
+// for why it is not installed via setMenuBar()). Two independent checkable
+// actions drive it: show_menubar (exists/visible at all) and auto_hide_ui
+// (fade the menu bar and the tab bar out when the cursor leaves the top
+// strip, fade them back in when it returns). Both slots funnel into
+// applyMenubarState_() so their initial firing order
+// (fireInitialCheckableCallbacks_) is irrelevant.
+
+void MainWindow::on_action_show_menubar(bool /*checked*/)
 {
-    if (checked)
-        setMenuBar(create_menubar());
-    else
-        setMenuBar(nullptr);
+    applyMenubarState_();
+}
+
+void MainWindow::on_action_auto_hide_ui(bool /*checked*/)
+{
+    applyMenubarState_();
+}
+
+void MainWindow::ensureMenubar_()
+{
+    if (menubar_)
+        return;
+
+    menubar_ = create_menubar();
+    menubar_->setParent(this);
+
+    // Window controls in the top-right corner. They live inside the menu
+    // bar on purpose: with show_menubar off the app is a "clean" overlay
+    // and the controls disappear together with it (actions/shortcuts keep
+    // working).
+    auto* corner = new QWidget(menubar_);
+    auto* lay = new QHBoxLayout(corner);
+    lay->setContentsMargins(4, 0, 4, 0);
+    lay->setSpacing(2);
+    auto makeButton = [corner, lay](const QString& glyph,
+                                    const QString& tooltip) {
+        auto* b = new QToolButton(corner);
+        b->setText(glyph);
+        b->setToolTip(tooltip);
+        b->setAutoRaise(true);
+        lay->addWidget(b);
+        return b;
+    };
+
+    QToolButton* onTopBtn = makeButton("▲", "Always on top");
+    QToolButton* minBtn = makeButton("–", "Minimize");
+    QToolButton* maxBtn = makeButton("□", "Maximize / Restore");
+    QToolButton* closeBtn = makeButton("✕", "Close");
+
+    // Mirror the existing checkable always_on_top action instead of
+    // duplicating its destroy()/create() logic - toggling either side
+    // keeps the other in sync through the QAction.
+    if (Action* a = getActions().find("always_on_top");
+        a && a->qaction) {
+        onTopBtn->setCheckable(true);
+        onTopBtn->setChecked(a->qaction->isChecked());
+        connect(onTopBtn, &QToolButton::clicked, a->qaction, &QAction::setChecked);
+        connect(a->qaction, &QAction::toggled, onTopBtn, &QToolButton::setChecked);
+    }
+    connect(minBtn, &QToolButton::clicked, this, &MainWindow::showMinimized);
+    connect(maxBtn, &QToolButton::clicked, this, [this] {
+        if (isMaximized())
+            showNormal();
+        else
+            showMaximized();
+    });
+    // close() runs closeEvent() -> checkSave(), same as quitting from the
+    // window manager.
+    connect(closeBtn, &QToolButton::clicked, this, &MainWindow::close);
+
+    menubar_->setCornerWidget(corner, Qt::TopRightCorner);
+
+    // Fade machinery - same QVariantAnimation pattern as the selection
+    // outline fade in CanvasView. One animation drives both opacity
+    // effects (menu bar + tab bar); the effects are only enabled while
+    // hidden or animating, so fully-shown UI paints directly.
+    menubarOpacity_ = new QGraphicsOpacityEffect(menubar_);
+    menubarOpacity_->setOpacity(1.0);
+    menubarOpacity_->setEnabled(false);
+    menubar_->setGraphicsEffect(menubarOpacity_);
+
+    tabbarOpacity_ = new QGraphicsOpacityEffect(tabpane_->tabBar());
+    tabbarOpacity_->setOpacity(1.0);
+    tabbarOpacity_->setEnabled(false);
+    tabpane_->tabBar()->setGraphicsEffect(tabbarOpacity_);
+
+    uiFadeAnim_ = new QVariantAnimation(this);
+    connect(uiFadeAnim_,
+            &QVariantAnimation::valueChanged,
+            this,
+            [this](const QVariant& value) {
+                menubarOpacity_->setOpacity(value.toReal());
+                tabbarOpacity_->setOpacity(value.toReal());
+            });
+    connect(uiFadeAnim_, &QVariantAnimation::finished, this, [this] {
+        // Fully shown again - drop back to direct (effect-less) painting.
+        if (uiFadeTargetVisible_) {
+            menubarOpacity_->setEnabled(false);
+            tabbarOpacity_->setEnabled(false);
+        }
+    });
+
+    uiHideTimer_ = new QTimer(this);
+    uiHideTimer_->setSingleShot(true);
+    uiHideTimer_->setInterval(400);
+    connect(uiHideTimer_,
+            &QTimer::timeout,
+            this,
+            &MainWindow::onUiHideTimeout_);
+}
+
+void MainWindow::applyMenubarState_()
+{
+    ensureMenubar_();
+
+    Action* show = getActions().find("show_menubar");
+    Action* autoHide = getActions().find("auto_hide_ui");
+    const bool shown = show && show->qaction && show->qaction->isChecked();
+    const bool wantAutoHide
+        = autoHide && autoHide->qaction && autoHide->qaction->isChecked();
+
+    // Auto-hide is meaningless without a menu bar - grey it out.
+    if (autoHide && autoHide->qaction)
+        autoHide->qaction->setEnabled(shown);
+
+    autoHideUi_ = shown && wantAutoHide;
+
+    // Reset any in-flight fade to a clean, fully-opaque state.
+    uiFadeAnim_->stop();
+    uiHideTimer_->stop();
+    menubarOpacity_->setEnabled(false);
+    menubarOpacity_->setOpacity(1.0);
+    tabbarOpacity_->setEnabled(false);
+    tabbarOpacity_->setOpacity(1.0);
+    uiFadeTargetVisible_ = true;
+
+    menubar_->setVisible(shown);
+    if (autoHideUi_)
+        // Start visible, then fade away unless the cursor is over the
+        // strip (the timeout re-checks).
+        uiHideTimer_->start();
+
+    updateMenubarGeometry();
+}
+
+void MainWindow::updateMenubarGeometry()
+{
+    if (!menubar_)
+        return;
+    const int h = menubar_->sizeHint().height();
+    menubar_->setGeometry(0, 0, width(), h);
+    // The central widget is (re)set after the initial applyMenubarState_()
+    // call in the constructor, which would stack it above us.
+    menubar_->raise();
+
+    Action* show = getActions().find("show_menubar");
+    const bool shown = show && show->qaction && show->qaction->isChecked();
+    // The strip is reserved whenever the menu bar is enabled, auto-hide
+    // included: the tab bar sits at the very top of the central widget,
+    // i.e. exactly under the reveal zone - an overlaying bar would cover
+    // the tabs the moment the cursor approaches them. With the strip
+    // always reserved, auto-hide only blanks the strip visually and the
+    // canvas/tabs never move or get covered.
+    setContentsMargins(0, shown ? h : 0, 0, 0);
+}
+
+void MainWindow::startUiFade_(bool visible)
+{
+    uiFadeTargetVisible_ = visible;
+    menubarOpacity_->setEnabled(true);
+    tabbarOpacity_->setEnabled(true);
+    uiFadeAnim_->stop();
+    uiFadeAnim_->setStartValue(menubarOpacity_->opacity());
+    uiFadeAnim_->setEndValue(visible ? 1.0 : 0.0);
+    // Reveal must feel immediate; hiding matches the unhurried selection
+    // outline fade (canvasview.cpp).
+    uiFadeAnim_->setDuration(visible ? 200 : 600);
+    uiFadeAnim_->start();
+}
+
+void MainWindow::onUiHideTimeout_()
+{
+    if (!autoHideUi_ || !uiFadeTargetVisible_)
+        return;
+    // Keep the UI while one of the menu bar's popups is open, or if the
+    // cursor came back without generating a move (e.g. menu closed via
+    // Esc) - re-arm and check again later.
+    if (qApp->activePopupWidget()
+        || uiStripContains_(mapFromGlobal(QCursor::pos()))) {
+        uiHideTimer_->start();
+        return;
+    }
+    startUiFade_(false);
+}
+
+void MainWindow::handleUiHover_(const QPoint& pos)
+{
+    if (!autoHideUi_)
+        return;
+
+    if (uiStripContains_(pos)) {
+        uiHideTimer_->stop();
+        if (!uiFadeTargetVisible_)
+            startUiFade_(true);
+    } else if (uiFadeTargetVisible_ && !uiHideTimer_->isActive()) {
+        uiHideTimer_->start();
+    }
+}
+
+bool MainWindow::tryStartMenubarDrag_(const QPoint& pos)
+{
+    if (!menubar_ || !menubar_->isVisible() || !windowHandle())
+        return false;
+    const QPoint local = menubar_->mapFromParent(pos);
+    if (!menubar_->rect().contains(local))
+        return false;
+    // Only empty menu bar space drags the window: a menu title opens its
+    // menu, the corner controls keep their clicks.
+    if (menubar_->actionAt(local) || menubar_->childAt(local))
+        return false;
+    windowHandle()->startSystemMove();
+    return true;
+}
+
+bool MainWindow::uiStripContains_(const QPoint& pos) const
+{
+    if (!menubar_)
+        return false;
+    // Menu bar strip plus the tab bar right under it - both the reveal
+    // zone and the "don't hide yet" zone for auto-hide.
+    int h = menubar_->sizeHint().height();
+    if (QTabBar* tb = tabpane_ ? tabpane_->tabBar() : nullptr)
+        h += tb->height();
+    return QRect(0, 0, width(), h).contains(pos);
 }
 
 // Settings / Help
@@ -744,6 +983,12 @@ void MainWindow::changeEvent(QEvent* event)
             tabpane_->widgetAt(i)->updateSelectionVisibility();
         }
     }
+}
+
+void MainWindow::resizeEvent(QResizeEvent* event)
+{
+    QMainWindow::resizeEvent(event);
+    updateMenubarGeometry();
 }
 
 void MainWindow::paintEvent(QPaintEvent* event)

@@ -46,6 +46,7 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::action("fullscreen"),
                               MenuNode::action("always_on_top"),
                               MenuNode::action("show_menubar"),
+                              MenuNode::action("auto_hide_ui"),
                           }),
         MenuNode::submenu("Insert",
                           {
