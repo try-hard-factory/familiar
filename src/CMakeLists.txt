@@ -76,6 +76,8 @@ set(PROJECT_SOURCES
         ui/new_settings_window.h
         ui/presetsave_window.cpp
         ui/presetsave_window.h
+        ui/text_edit_toolbar.cpp
+        ui/text_edit_toolbar.h
         actions/actions.cpp
         actions/actions.h
         actions/menu_structure.cpp

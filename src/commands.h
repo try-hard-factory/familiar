@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <QColor>
 #include <QGraphicsItem>
 #include <QList>
 #include <QPointF>
@@ -328,17 +329,24 @@ private:
 class ChangeTextCommand : public QUndoCommand
 {
 public:
+    // Html, not plain text: one commit-on-exit diff carries typing and
+    // any formatting/fill changes made by the text toolbar in the same
+    // edit session.
     ChangeTextCommand(TextItem* item,
-                      const QString& newText,
-                      const QString& oldText);
+                      const QString& newHtml,
+                      const QString& oldHtml,
+                      const QColor& newFillColor,
+                      const QColor& oldFillColor);
 
     void redo() override;
     void undo() override;
 
 private:
     TextItem* item_;
-    QString newText_;
-    QString oldText_;
+    QString newHtml_;
+    QString oldHtml_;
+    QColor newFillColor_;
+    QColor oldFillColor_;
 };
 
 // ============================================================================

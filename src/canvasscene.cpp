@@ -984,12 +984,16 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 item = pixmapItem;
             }
         } else if (typ == "text") {
-            QString text = data.value("data").toMap().value("text").toString();
+            const QVariantMap extraMap = data.value("data").toMap();
+            QString text = extraMap.value("text").toString();
             if (text.isEmpty()) {
                 text = "Text";
             }
             TextItem* textItem = new TextItem();
             textItem->setPlainText(text);
+            // Rich text ("html") and note fill ("fill_color") override
+            // the plain-text fallback when present.
+            textItem->apply_extra_save_data(extraMap);
             item = textItem;
         } else {
             FLOG_WARN(Ch::Scene, "Encountered item of unknown type: {}", typ);
