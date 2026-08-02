@@ -14,9 +14,15 @@ using namespace familiar::log;
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPainter>
+#include <QTextBlock>
+#include <QTextBlockFormat>
 #include <QTextCursor>
+#include <QTextDocument>
+#include <QTextList>
 #include <QTimer>
 #include <QToolButton>
+
+#include <algorithm>
 
 namespace {
 
@@ -58,6 +64,53 @@ QIcon makeColorGlyphIcon(const QString& glyph,
     p.setPen(Qt::NoPen);
     p.setBrush(bar);
     p.drawRoundedRect(QRectF(3, kIconSize - 4, kIconSize - 6, 3), 1.5, 1.5);
+
+    p.end();
+    QIcon icon;
+    icon.addPixmap(pm);
+    return icon;
+}
+
+// Bullet/numbered list icon: a few short rows, each a marker (dot or
+// digit) followed by a stand-in text bar - reads as "list" at a glance
+// without needing an external asset, same drawn-icon approach as
+// makeColorGlyphIcon() above.
+QIcon makeListIcon(bool numbered, const QColor& glyphColor, qreal dpr)
+{
+    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+
+    constexpr int rows = 3;
+    const qreal rowH = kIconSize / qreal(rows);
+    const qreal markerW = numbered ? 8.0 : 4.0;
+
+    QFont f = p.font();
+    f.setPointSizeF(rowH * 0.62);
+    f.setBold(true);
+    p.setFont(f);
+
+    for (int i = 0; i < rows; ++i) {
+        const qreal top = rowH * i;
+        const qreal cy = top + rowH / 2.0;
+
+        p.setPen(Qt::NoPen);
+        p.setBrush(glyphColor);
+        if (numbered) {
+            p.setPen(glyphColor);
+            p.drawText(QRectF(0, top, markerW, rowH),
+                      Qt::AlignVCenter | Qt::AlignLeft,
+                      QString::number(i + 1));
+            p.setPen(Qt::NoPen);
+        } else {
+            p.drawEllipse(QPointF(markerW / 2.0, cy), 1.6, 1.6);
+        }
+        p.drawRoundedRect(
+            QRectF(markerW + 2, cy - 1, kIconSize - markerW - 4, 2), 1, 1);
+    }
 
     p.end();
     QIcon icon;
@@ -190,6 +243,13 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
 
     lay->addWidget(makeSeparator(this));
 
+    bulletListBtn_ = makeButton(QString(), tr("Bulleted list"), true);
+    numberedListBtn_ = makeButton(QString(), tr("Numbered list"), true);
+    for (QToolButton* b : {bulletListBtn_, numberedListBtn_})
+        b->setIconSize(QSize(kIconSize, kIconSize));
+
+    lay->addWidget(makeSeparator(this));
+
     sizeBox_ = new QComboBox(this);
     sizeBox_->setEditable(true);
     sizeBox_->setInsertPolicy(QComboBox::NoInsert);
@@ -285,6 +345,20 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         applyCharFormat(format);
     });
 
+    // clicked, not toggled: whether the block ends up listed (and which
+    // style) depends on the CURRENT document state, not a simple bool
+    // flip - toggleListStyle() figures that out itself, then
+    // syncFromCursor() corrects whatever checked state Qt's own
+    // checkable-button click already applied to reflect the real result.
+    connect(bulletListBtn_, &QToolButton::clicked, this, [this] {
+        toggleListStyle(QTextListFormat::ListDisc);
+        syncFromCursor();
+    });
+    connect(numberedListBtn_, &QToolButton::clicked, this, [this] {
+        toggleListStyle(QTextListFormat::ListDecimal);
+        syncFromCursor();
+    });
+
     auto applySize = [this](const QString& text) {
         bool ok = false;
         const qreal size = text.toDouble(&ok);
@@ -343,6 +417,119 @@ void TextEditToolbar::applyCharFormat(const QTextCharFormat& format)
     cursor.mergeCharFormat(format);
 }
 
+void TextEditToolbar::toggleListStyle(int style)
+{
+    if (!item_)
+        return;
+    const auto wanted = static_cast<QTextListFormat::Style>(style);
+    QTextCursor cursor = item_->textCursor();
+
+    // QTextList::remove() (qtextlist.cpp) deliberately folds the list's
+    // own indent level into the block's *own* QTextBlockFormat::indent()
+    // when detaching - by design, so plain "remove list" in a word
+    // processor doesn't also snap the paragraph back to the margin
+    // (that's a separate "decrease indent" action there). We have no
+    // such action, so from our toolbar "remove list" should mean fully
+    // plain again - zero the block's own indent right back out after
+    // detaching.
+    auto detachFromList = [](QTextList* list, const QTextBlock& block) {
+        list->remove(block);
+        QTextCursor c(block);
+        QTextBlockFormat bf = c.blockFormat();
+        if (bf.indent() != 0) {
+            bf.setIndent(0);
+            c.setBlockFormat(bf);
+        }
+    };
+
+    if (!cursor.hasSelection()) {
+        cursor.beginEditBlock();
+        if (QTextList* list = cursor.currentList()) {
+            if (list->format().style() == wanted) {
+                // Already this style - toggle off by detaching the block.
+                detachFromList(list, cursor.block());
+            } else {
+                // Different style - switch the existing list in place
+                // rather than nesting a new one inside it.
+                QTextListFormat fmt = list->format();
+                fmt.setStyle(wanted);
+                list->setFormat(fmt);
+            }
+        } else {
+            QTextListFormat fmt;
+            fmt.setStyle(wanted);
+            cursor.createList(fmt);
+        }
+        cursor.endEditBlock();
+        return;
+    }
+
+    // Multi-block selection: QTextCursor::currentList() only ever looks
+    // at the single block the cursor's OWN position sits in, never the
+    // whole selection - toggling off used to silently stop after the
+    // first line because of that. Collect every block the selection
+    // actually spans and act on all of them instead.
+    //
+    // Walk by block IDENTITY (compare to findBlock(selectionEnd()), stop
+    // once reached) rather than by a position+length arithmetic check -
+    // the arithmetic version was off by one for the last block in the
+    // selection (QTextBlock::length() counts the block's own trailing
+    // separator, which the *last* block in the document doesn't
+    // necessarily have one of), so a selection running to the end of the
+    // text silently dropped its last line.
+    QTextDocument* doc = item_->document();
+    const QTextBlock endBlock = doc->findBlock(cursor.selectionEnd());
+    QList<QTextBlock> blocks;
+    for (QTextBlock block = doc->findBlock(cursor.selectionStart());
+        block.isValid();
+        block = block.next()) {
+        blocks.append(block);
+        if (block == endBlock)
+            break;
+    }
+
+    const bool anyListed = std::any_of(blocks.begin(), blocks.end(), [](const QTextBlock& b) {
+        return QTextCursor(b).currentList() != nullptr;
+    });
+    // Only a uniform "every line already has this exact style" selection
+    // toggles off; anything else (nothing listed, or a mixed selection)
+    // is treated as "make it this style".
+    const bool turningOff
+        = anyListed
+          && std::all_of(blocks.begin(), blocks.end(), [wanted](const QTextBlock& b) {
+                 QTextList* l = QTextCursor(b).currentList();
+                 return l && l->format().style() == wanted;
+             });
+
+    cursor.beginEditBlock();
+    if (!anyListed) {
+        // Clean slate - one call creates a single shared list spanning
+        // every block in the selection, instead of a separate QTextList
+        // per line (which would restart numbering at 1 on each line).
+        QTextListFormat fmt;
+        fmt.setStyle(wanted);
+        cursor.createList(fmt);
+    } else {
+        for (const QTextBlock& block : blocks) {
+            QTextCursor blockCursor(block);
+            QTextList* list = blockCursor.currentList();
+            if (turningOff) {
+                if (list && list->format().style() == wanted)
+                    detachFromList(list, block);
+            } else if (list) {
+                QTextListFormat fmt = list->format();
+                fmt.setStyle(wanted);
+                list->setFormat(fmt);
+            } else {
+                QTextListFormat fmt;
+                fmt.setStyle(wanted);
+                blockCursor.createList(fmt);
+            }
+        }
+    }
+    cursor.endEditBlock();
+}
+
 void TextEditToolbar::syncFromCursor()
 {
     if (!item_)
@@ -354,6 +541,14 @@ void TextEditToolbar::syncFromCursor()
         boldBtn_->setChecked(format.fontWeight() >= QFont::Bold);
         italicBtn_->setChecked(format.fontItalic());
         underlineBtn_->setChecked(format.fontUnderline());
+    }
+    {
+        QSignalBlocker b1(bulletListBtn_), b2(numberedListBtn_);
+        QTextList* list = item_->textCursor().currentList();
+        const QTextListFormat::Style style
+            = list ? list->format().style() : QTextListFormat::ListStyleUndefined;
+        bulletListBtn_->setChecked(style == QTextListFormat::ListDisc);
+        numberedListBtn_->setChecked(style == QTextListFormat::ListDecimal);
     }
     {
         QSignalBlocker b(sizeBox_);
@@ -461,6 +656,12 @@ void TextEditToolbar::restyleFromPreset()
                  rgba(selection, 170),
                  background.name(),
                  selection.name()));
+
+    // Static glyphs (don't depend on item_/cursor state, just the theme
+    // color), unlike the three color-swatch icons below.
+    const qreal dpr = devicePixelRatioF();
+    bulletListBtn_->setIcon(makeListIcon(false, iconGlyphColor_, dpr));
+    numberedListBtn_->setIcon(makeListIcon(true, iconGlyphColor_, dpr));
 
     updateColorButtonIcons();
 }
