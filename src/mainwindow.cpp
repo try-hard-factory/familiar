@@ -461,8 +461,12 @@ void MainWindow::ensureMenubar_()
             &QVariantAnimation::valueChanged,
             this,
             [this](const QVariant& value) {
-                menubarOpacity_->setOpacity(value.toReal());
-                tabbarOpacity_->setOpacity(value.toReal());
+                uiOpacity_ = value.toReal();
+                menubarOpacity_->setOpacity(uiOpacity_);
+                tabbarOpacity_->setOpacity(uiOpacity_);
+                // The window's own background fill under the strip fades
+                // too (paintEvent).
+                update();
             });
     connect(uiFadeAnim_, &QVariantAnimation::finished, this, [this] {
         // Fully shown again - drop back to direct (effect-less) painting.
@@ -505,6 +509,7 @@ void MainWindow::applyMenubarState_()
     tabbarOpacity_->setEnabled(false);
     tabbarOpacity_->setOpacity(1.0);
     uiFadeTargetVisible_ = true;
+    uiOpacity_ = 1.0;
 
     menubar_->setVisible(shown);
     if (autoHideUi_)
@@ -513,6 +518,7 @@ void MainWindow::applyMenubarState_()
         uiHideTimer_->start();
 
     updateMenubarGeometry();
+    update();
 }
 
 void MainWindow::updateMenubarGeometry()
@@ -596,14 +602,20 @@ bool MainWindow::tryStartMenubarDrag_(const QPoint& pos)
 
 bool MainWindow::uiStripContains_(const QPoint& pos) const
 {
+    return QRect(0, 0, width(), uiStripHeight_()).contains(pos);
+}
+
+int MainWindow::uiStripHeight_() const
+{
     if (!menubar_)
-        return false;
-    // Menu bar strip plus the tab bar right under it - both the reveal
-    // zone and the "don't hide yet" zone for auto-hide.
+        return 0;
+    // Menu bar strip plus the tab bar right under it - the reveal zone,
+    // the "don't hide yet" zone and the background region that fades
+    // along with the widgets (paintEvent).
     int h = menubar_->sizeHint().height();
     if (QTabBar* tb = tabpane_ ? tabpane_->tabBar() : nullptr)
         h += tb->height();
-    return QRect(0, 0, width(), h).contains(pos);
+    return h;
 }
 
 // Settings / Help
@@ -995,6 +1007,29 @@ void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
     qreal opacity = (qreal) currentOpacity_ / 255;
+
+    // In auto-hide-UI mode the window's own background fill in the top
+    // strip (menu bar + tab bar) fades together with the widgets sitting
+    // there - once hidden, the strip is fully transparent and only the
+    // canvas remains visible. The strip still belongs to the window, so
+    // it keeps receiving the hover events that reveal the UI again.
+    const int stripH = autoHideUi_ ? uiStripHeight_() : 0;
+    if (stripH > 0) {
+        const QRect strip
+            = QRect(0, 0, width(), stripH).intersected(event->rect());
+        const QRect below = QRect(0, stripH, width(), height() - stripH)
+                                .intersected(event->rect());
+        if (!strip.isEmpty()) {
+            painter.setOpacity(opacity * uiOpacity_);
+            painter.fillRect(strip, backGroundColor_);
+        }
+        if (!below.isEmpty()) {
+            painter.setOpacity(opacity);
+            painter.fillRect(below, backGroundColor_);
+        }
+        return;
+    }
+
     painter.setOpacity(opacity);
     painter.fillRect(
         event->rect(),

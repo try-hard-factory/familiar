@@ -314,6 +314,7 @@ private:
     void handleUiHover_(const QPoint& pos);
     bool tryStartMenubarDrag_(const QPoint& pos);
     bool uiStripContains_(const QPoint& pos) const;
+    int uiStripHeight_() const;
 
     QMenuBar* menubar_ = nullptr;
     QGraphicsOpacityEffect* menubarOpacity_ = nullptr;
@@ -324,6 +325,10 @@ private:
     // Logical shown/hidden state of the auto-hidden UI: the target of
     // the running (or last finished) fade.
     bool uiFadeTargetVisible_ = true;
+    // Current fade opacity, mirrored out of the animation so paintEvent
+    // can dim the window's own background fill under the top strip in
+    // sync with the fading widgets.
+    qreal uiOpacity_ = 1.0;
 
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
