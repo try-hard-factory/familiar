@@ -430,7 +430,11 @@ void CanvasView::wheelEvent(QWheelEvent* event)
     // mousewheelActions()) - handled directly, before the configurable
     // pan bindings below.
     if (event->modifiers() == Qt::NoModifier) {
-        zoom(-event->angleDelta().y(), event->position());
+        // angleDelta().y() is positive for a wheel-up/forward notch (the
+        // conventional "zoom in" direction) - zoom() itself already
+        // treats a positive delta as zoom-in, so pass it straight
+        // through instead of negating it.
+        zoom(event->angleDelta().y(), event->position());
         event->accept();
         return;
     }
