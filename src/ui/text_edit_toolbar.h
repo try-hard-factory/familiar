@@ -72,6 +72,10 @@ private:
     QToolButton* linkBtn_ = nullptr;
     QToolButton* bulletListBtn_ = nullptr;
     QToolButton* numberedListBtn_ = nullptr;
+    // Resets a manually-resized field (edit-mode square handles,
+    // moveitem.h TextItem::resize_field()) back to its natural
+    // content-driven size.
+    QToolButton* autosizeBtn_ = nullptr;
     QComboBox* sizeBox_ = nullptr;
     QFontComboBox* fontBox_ = nullptr;
     QTimer* syncTimer_ = nullptr;

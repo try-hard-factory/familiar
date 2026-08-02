@@ -157,6 +157,48 @@ QIcon makeLinkIcon(const QColor& glyphColor, qreal dpr)
     return icon;
 }
 
+// "Fit to content" glyph: four inward-pointing corner brackets around a
+// shrunken center square - viewfinder-style, the common visual shorthand
+// for "snap to size" across most creative-tool toolbars.
+QIcon makeAutosizeIcon(const QColor& glyphColor, qreal dpr)
+{
+    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing);
+    QPen pen(glyphColor);
+    pen.setWidthF(2.0);
+    pen.setCapStyle(Qt::RoundCap);
+    p.setPen(pen);
+
+    const qreal inner = 6.5;
+    const qreal armLen = 4.0;
+    // Corner brackets: two short strokes meeting at each of the four
+    // corners of an inner square, pointing in towards the center.
+    struct Corner
+    {
+        QPointF at;
+        QPointF horiz;
+        QPointF vert;
+    };
+    const Corner corners[4]
+        = {{{inner, inner}, {armLen, 0}, {0, armLen}},
+          {{kIconSize - inner, inner}, {-armLen, 0}, {0, armLen}},
+          {{inner, kIconSize - inner}, {armLen, 0}, {0, -armLen}},
+          {{kIconSize - inner, kIconSize - inner}, {-armLen, 0}, {0, -armLen}}};
+    for (const Corner& c : corners) {
+        p.drawLine(c.at, c.at + c.horiz);
+        p.drawLine(c.at, c.at + c.vert);
+    }
+
+    p.end();
+    QIcon icon;
+    icon.addPixmap(pm);
+    return icon;
+}
+
 // Not QColorDialog::getColor(): that static convenience builds/execs/
 // destroys the dialog internally, with no chance to apply the fix below
 // before it's shown - same reasoning as showMessageBox() in
@@ -299,6 +341,18 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     fontBox_->setToolTip(tr("Font"));
     fontBox_->setFixedHeight(kButtonSize);
     lay->addWidget(fontBox_);
+
+    lay->addWidget(makeSeparator(this));
+
+    autosizeBtn_ = makeButton(QString(),
+                              tr("Autosize (fit field to content)"),
+                              false);
+    autosizeBtn_->setIconSize(QSize(kIconSize, kIconSize));
+
+    connect(autosizeBtn_, &QToolButton::clicked, this, [this] {
+        if (item_)
+            item_->reset_manual_size();
+    });
 
     connect(textColorBtn_, &QToolButton::clicked, this, [this] {
         if (!item_)
@@ -839,6 +893,7 @@ void TextEditToolbar::restyleFromPreset()
     bulletListBtn_->setIcon(makeListIcon(false, iconGlyphColor_, dpr));
     numberedListBtn_->setIcon(makeListIcon(true, iconGlyphColor_, dpr));
     linkBtn_->setIcon(makeLinkIcon(iconGlyphColor_, dpr));
+    autosizeBtn_->setIcon(makeAutosizeIcon(iconGlyphColor_, dpr));
 
     updateColorButtonIcons();
 }

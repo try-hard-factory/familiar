@@ -276,6 +276,27 @@ class SelectableMixin : public BaseItemMixin<T>
     int viewport_scale_{1};
     bool is_editable_{false};
 
+    // kFieldResizeMode drag state (edit-mode square handles only - see
+    // ItemMixin::resize_field(), moveitem.h). eventAnchor_ above holds
+    // the SCENE position of the fixed corner/edge, captured once at
+    // press - re-mapped into LOCAL coordinates fresh on every
+    // mouseMoveEvent (via mapFromScene()) rather than cached, since the
+    // anchor's LOCAL coordinate is exactly the thing that changes as the
+    // field is resized (e.g. the right edge's local x is always
+    // "current width", not the width at press time).
+    // Which side is fixed while the OTHER side follows the cursor - true
+    // = the right/bottom edge is the anchor (dragging the left/top
+    // handle), matching resize_field()'s own parameter names.
+    bool fieldResizeAnchorRight_{false};
+    bool fieldResizeAnchorBottom_{false};
+    bool fieldResizeAffectsWidth_{false};
+    bool fieldResizeAffectsHeight_{false};
+    // Size at the moment the drag started, for the undo command pushed
+    // in mouseReleaseEvent() (ResizeTextFieldCommand needs an "old"
+    // value; unlike scale/rotation there's no separately-tracked
+    // per-item "orig" accessor for this, since it's TextItem-only).
+    QSizeF fieldResizeOrigSize_;
+
     //QVector<QPointF> corners;
     QVector<QRectF> flipBounds;
 
@@ -296,6 +317,9 @@ public:
         kNone = 0,
         kScaleMode = 1,
         kRotateMode = 2,
+        // Edit-mode (square handle) drag - resizes the field itself
+        // (ItemMixin::resize_field()) instead of uniformly scaling.
+        kFieldResizeMode = 3,
     };
 
     EItemMode active_mode_{kNone};
@@ -741,6 +765,22 @@ protected:
             for (auto& corner : corners()) {
                 //Check if we are in one of the corner's scale areas
                 if (get_scale_bounds(corner).contains(event->pos())) {
+                    if (resizeOnly) {
+                        // Edit mode: resize the field (both dimensions -
+                        // it's a corner), not a uniform scale.
+                        active_mode_ = kFieldResizeMode;
+                        eventAnchor_
+                            = this->mapToScene(get_scale_anchor(corner));
+                        const QPointF c = this->center();
+                        fieldResizeAnchorRight_ = corner.x() < c.x();
+                        fieldResizeAnchorBottom_ = corner.y() < c.y();
+                        fieldResizeAffectsWidth_ = true;
+                        fieldResizeAffectsHeight_ = true;
+                        fieldResizeOrigSize_
+                            = this->bounding_rect_unselected().size();
+                        event->accept();
+                        return;
+                    }
                     active_mode_ = kScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
@@ -779,6 +819,25 @@ protected:
             //item's center, corner or edge midpoint alike).
             for (const auto& edge : get_edge_bounds()) {
                 if (isInEdgeHandle(edge.rect, event->pos())) {
+                    if (resizeOnly) {
+                        // Edit mode: resize the field along whichever
+                        // one axis this edge governs, leaving the other
+                        // dimension untouched.
+                        active_mode_ = kFieldResizeMode;
+                        eventAnchor_ = this->mapToScene(
+                            get_scale_anchor(edge.rect.center()));
+                        const QPointF c = this->center();
+                        fieldResizeAnchorRight_
+                            = !edge.vertical && edge.rect.center().x() < c.x();
+                        fieldResizeAnchorBottom_
+                            = edge.vertical && edge.rect.center().y() < c.y();
+                        fieldResizeAffectsWidth_ = !edge.vertical;
+                        fieldResizeAffectsHeight_ = edge.vertical;
+                        fieldResizeOrigSize_
+                            = this->bounding_rect_unselected().size();
+                        event->accept();
+                        return;
+                    }
                     active_mode_ = kScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
@@ -946,6 +1005,35 @@ protected:
             }
             event->accept();
             return;
+        } else if (active_mode_ == kFieldResizeMode) {
+            // Local coordinates throughout (not the diagonal-projection
+            // math get_scale_factor() uses) - a field resize just needs
+            // "how far past the anchor is the mouse now", one axis at a
+            // time. eventAnchor_ (scene, fixed since press) is remapped
+            // to LOCAL coordinates fresh here, every call, rather than
+            // cached: its local coordinate is exactly what's changing as
+            // the field resizes (e.g. the right edge's local x is
+            // whatever the CURRENT width is, not the width at press
+            // time) - a cached value would only stay correct for the
+            // near/origin-side handles, silently drifting for the far
+            // side (which is exactly the bug this replaced).
+            const QPointF localMouse = this->mapFromScene(event->scenePos());
+            const QPointF localAnchor = this->mapFromScene(eventAnchor_);
+            const QRectF cur = this->bounding_rect_unselected();
+            const qreal newWidth
+                = fieldResizeAffectsWidth_
+                     ? qAbs(localMouse.x() - localAnchor.x())
+                     : cur.width();
+            const qreal newHeight
+                = fieldResizeAffectsHeight_
+                     ? qAbs(localMouse.y() - localAnchor.y())
+                     : cur.height();
+            static_cast<Mixin*>(this)->resize_field(newWidth,
+                                                    newHeight,
+                                                    fieldResizeAnchorRight_,
+                                                    fieldResizeAnchorBottom_);
+            event->accept();
+            return;
         }
 
         T::mouseMoveEvent(event); // see mousePressEvent() comment above
@@ -982,6 +1070,15 @@ protected:
                                              eventAnchor_,
                                              true));
             }
+            event->accept();
+            resetActions();
+            return;
+        } else if (active_mode_ == kFieldResizeMode) {
+            static_cast<Mixin*>(this)->commit_field_resize(
+                fieldResizeOrigSize_.width(),
+                fieldResizeOrigSize_.height(),
+                fieldResizeAnchorRight_,
+                fieldResizeAnchorBottom_);
             event->accept();
             resetActions();
             return;
@@ -1066,6 +1163,12 @@ public:
     virtual bool has_selection_outline() const { return true; }
     virtual bool has_selection_handles() const { return true; }
     virtual bool paints_edit_mode_handles() const { return false; }
+    // See ItemMixin::resize_field()/commit_field_resize() (moveitem.h) -
+    // never actually called here (paints_edit_mode_handles() is always
+    // false), just needs to exist for the CRTP calls in selector.h to
+    // compile.
+    virtual void resize_field(qreal, qreal, bool, bool) {}
+    virtual void commit_field_resize(qreal, qreal, bool, bool) {}
 
     // Only the multi-select bounding box (this item) fades with window
     // activation/hover - see CanvasView::updateSelectionVisibility() and

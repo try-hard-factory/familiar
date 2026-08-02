@@ -62,6 +62,47 @@ public:
     // (PureRef-style visual cue that clicks now edit text, not resize).
     virtual bool paints_edit_mode_handles() const { return false; }
 
+    // Edit-mode (square-handle) drag target: resize the FIELD itself
+    // (width/height) instead of the uniform set_scale() the round
+    // handles use. anchorRight/anchorBottom say which side must stay
+    // visually fixed (true = the right/bottom edge is the anchor,
+    // i.e. the left/top handle is what's being dragged) - see
+    // selector.h's kFieldResizeMode for how these are derived. Only
+    // TextItem overrides this with a real implementation - everything
+    // else never has paints_edit_mode_handles() true, so this is never
+    // actually invoked for them; it only needs to exist so the CRTP call
+    // in selector.h compiles for every Mixin.
+    virtual void resize_field(qreal newWidth,
+                              qreal newHeight,
+                              bool anchorRight,
+                              bool anchorBottom)
+    {
+        Q_UNUSED(newWidth);
+        Q_UNUSED(newHeight);
+        Q_UNUSED(anchorRight);
+        Q_UNUSED(anchorBottom);
+    }
+
+    // Pushes the undo command for a completed kFieldResizeMode drag
+    // (selector.h mouseReleaseEvent()). A separate hook from
+    // resize_field() itself (which only applies the live value, called
+    // on every mouseMove) because the actual QUndoCommand
+    // (ResizeTextFieldCommand, commands.h) takes a concrete TextItem* -
+    // selector.h can't construct one directly (it's included FROM
+    // moveitem.h, so TextItem is only ever an incomplete forward
+    // declaration from selector.h's side); only TextItem's own override
+    // does anything, same reasoning as resize_field() above.
+    virtual void commit_field_resize(qreal oldWidth,
+                                     qreal oldHeight,
+                                     bool anchorRight,
+                                     bool anchorBottom)
+    {
+        Q_UNUSED(oldWidth);
+        Q_UNUSED(oldHeight);
+        Q_UNUSED(anchorRight);
+        Q_UNUSED(anchorBottom);
+    }
+
     virtual QList<QGraphicsItem*> selection_action_items()
     {
         return QList<QGraphicsItem*>() << this;
@@ -810,6 +851,14 @@ public:
         if (fill_color_ != default_fill_color())
             data[QStringLiteral("fill_color")]
                 = fill_color_.name(QColor::HexArgb);
+        // Manual field size from the edit-mode square handles
+        // (resize_field()) - absent entirely for the common case (never
+        // manually resized), same -1-is-auto convention as
+        // document()->textWidth() itself.
+        if (this->document()->textWidth() >= 0)
+            data[QStringLiteral("field_width")] = this->document()->textWidth();
+        if (manualHeight_ >= 0)
+            data[QStringLiteral("field_height")] = manualHeight_;
         return data;
     }
 
@@ -826,6 +875,11 @@ public:
             if (c.isValid())
                 fill_color_ = c;
         }
+        if (data.contains(QStringLiteral("field_width")))
+            this->document()->setTextWidth(
+                data.value(QStringLiteral("field_width")).toReal());
+        if (data.contains(QStringLiteral("field_height")))
+            manualHeight_ = data.value(QStringLiteral("field_height")).toReal();
     }
 
     QColor fill_color() const { return fill_color_; }
@@ -853,6 +907,131 @@ public:
         return this->boundingRect().contains(point);
     }
 
+    // Natural content size unless the edit-mode square handles
+    // (resize_field() below) stretched the field taller than the text
+    // actually needs - width never needs the same treatment, since
+    // setTextWidth() already directly drives QGraphicsTextItem's own
+    // boundingRect(), wrapping included.
+    QRectF bounding_rect_unselected() const override
+    {
+        QRectF rect = QGraphicsTextItem::boundingRect();
+        if (manualHeight_ > rect.height())
+            rect.setHeight(manualHeight_);
+        return rect;
+    }
+
+    // Edit-mode (square handle) drag target - see moveitem.h's
+    // ItemMixin::resize_field() and selector.h's kFieldResizeMode.
+    // Unlike the round handles' uniform set_scale(), this changes the
+    // field's own width (word-wrap via setTextWidth(), Qt handles the
+    // rest) and height (manualHeight_, only ever pads empty space below
+    // the text - see bounding_rect_unselected() above).
+    //
+    // anchorRight/anchorBottom say which side must stay visually fixed.
+    // Unlike set_scale()/set_rotation(), setTextWidth()/manualHeight_
+    // only change the DOCUMENT layout, never this item's own transform -
+    // so the "capture mapToScene(anchor) before and after, shift pos() by
+    // the difference" trick those use doesn't apply here at all: with no
+    // transform change, that difference is always exactly zero
+    // regardless of which point you pick. What actually has to happen
+    // instead: work out in LOCAL terms how far the near (unanchored) side
+    // moved by directly (deltaWidth/deltaHeight), then shift pos() by
+    // that LOCAL vector re-expressed in scene space (mapToScene(v) -
+    // mapToScene(origin) isolates just the rotation/scale part of the
+    // transform, which is exactly the part a plain size change needs to
+    // go through - the translation cancels out of the subtraction, so
+    // this part of the trick is still valid).
+    //
+    // newWidth/newHeight < 0 means "auto" for that dimension (matching
+    // QTextDocument::textWidth()'s own -1-is-auto convention) - used by
+    // reset_manual_size() and by ResizeTextFieldCommand's undo() (the
+    // "old" side of an undo can itself be "was auto" if the very first
+    // manual resize is undone).
+    void resize_field(qreal newWidth,
+                      qreal newHeight,
+                      bool anchorRight,
+                      bool anchorBottom) override
+    {
+        constexpr qreal kMinFieldSize = 20.0;
+        this->prepareGeometryChange();
+
+        const qreal oldWidth = document()->textWidth() < 0
+                                  ? QGraphicsTextItem::boundingRect().width()
+                                  : document()->textWidth();
+        const qreal oldHeight = manualHeight_ < 0
+                                   ? QGraphicsTextItem::boundingRect().height()
+                                   : manualHeight_;
+
+        const qreal clampedWidth
+            = newWidth < 0 ? -1 : qMax(newWidth, kMinFieldSize);
+        const qreal clampedHeight
+            = newHeight < 0 ? -1 : qMax(newHeight, kMinFieldSize);
+
+        document()->setTextWidth(clampedWidth);
+        manualHeight_ = clampedHeight;
+
+        const qreal deltaW = (clampedWidth < 0 ? oldWidth : clampedWidth)
+                            - oldWidth;
+        const qreal deltaH = (clampedHeight < 0 ? oldHeight : clampedHeight)
+                            - oldHeight;
+        const QPointF localShift(anchorRight ? -deltaW : 0.0,
+                                 anchorBottom ? -deltaH : 0.0);
+        if (!localShift.isNull()) {
+            const QPointF origin = this->mapToScene(QPointF(0, 0));
+            const QPointF shifted = this->mapToScene(localShift);
+            this->setPos(this->pos() + (shifted - origin));
+        }
+        update();
+    }
+
+    // Pushes the undo command for a completed drag (selector.h
+    // mouseReleaseEvent(), kFieldResizeMode) - the live values were
+    // already applied by resize_field() on every mouseMove, so this
+    // just needs the "old" side and ignoreFirstRedo (see
+    // ResizeTextFieldCommand, commands.h).
+    void commit_field_resize(qreal oldWidth,
+                             qreal oldHeight,
+                             bool anchorRight,
+                             bool anchorBottom) override
+    {
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        if (!scene)
+            return;
+        scene->undo_stack_->push(
+            new ResizeTextFieldCommand(this,
+                                       document()->textWidth(),
+                                       manualHeight_,
+                                       oldWidth,
+                                       oldHeight,
+                                       anchorRight,
+                                       anchorBottom,
+                                       /*ignoreFirstRedo=*/true));
+    }
+
+    // "Autosize" toolbar button (ui/text_edit_toolbar.cpp) - undoes any
+    // manual field sizing from resize_field(), snapping back to however
+    // big the text naturally needs to be. anchorRight=anchorBottom=false
+    // (top-left/origin side is the anchor) since there's no dragged
+    // handle here to determine a side from, and the origin never moves
+    // due to size alone anyway.
+    void reset_manual_size()
+    {
+        const qreal oldWidth = document()->textWidth();
+        const qreal oldHeight = manualHeight_;
+        if (oldWidth < 0 && oldHeight < 0)
+            return; // already natural size
+        resize_field(-1, -1, false, false);
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            scene->undo_stack_->push(new ResizeTextFieldCommand(
+                this, -1, -1, oldWidth, oldHeight, false, false, true));
+        }
+    }
+
+    bool has_manual_size() const
+    {
+        return document()->textWidth() >= 0 || manualHeight_ >= 0;
+    }
+
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override
@@ -872,7 +1051,11 @@ public:
         }
         painter->setPen(Qt::NoPen);
         painter->setBrush(QBrush(fill_color_));
-        painter->drawRect(QGraphicsTextItem::boundingRect());
+        // bounding_rect_unselected(), not QGraphicsTextItem::boundingRect()
+        // directly: the manual-height padding from resize_field() needs
+        // to actually show up as extra colored space, not just affect
+        // hit-testing/selection UI.
+        painter->drawRect(this->bounding_rect_unselected());
         QStyleOptionGraphicsItem updatedOption(*option);
         updatedOption.state = QStyle::State_Enabled;
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
@@ -884,6 +1067,8 @@ public:
         auto* new_item = new TextItem(this->toPlainText());
         new_item->setHtml(this->toHtml());
         new_item->set_fill_color(fill_color_);
+        new_item->document()->setTextWidth(this->document()->textWidth());
+        new_item->manualHeight_ = manualHeight_;
         new_item->setPos(this->pos());
         new_item->setZValue(this->zValue());
         new_item->setScale(this->scale());
@@ -1019,6 +1204,10 @@ private:
     QColor old_fill_color_;
     // TEMPORARY (see paint() above) - remove together with that logging.
     QColor lastPaintLoggedFillColor_;
+    // -1 = natural (content-driven) height, matching document()->
+    // textWidth()'s own -1-means-auto convention - see
+    // bounding_rect_unselected()/resize_field()/reset_manual_size().
+    qreal manualHeight_{-1};
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.
