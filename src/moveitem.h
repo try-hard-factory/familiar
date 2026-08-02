@@ -913,8 +913,13 @@ public:
 
     bool has_selection_handles() const override
     {
-        return ItemMixin<TextItem, QGraphicsTextItem>::has_selection_handles()
-               && !edit_mode;
+        // Handles stay live in edit mode too - PureRef lets you resize a
+        // note while typing. paints_edit_mode_handles() below switches
+        // corners to resize-only/square (see selector.h paint_selectable/
+        // hoverMoveEvent/mousePressEvent/shape()) instead of disabling
+        // them outright, which used to make clicking near the item's
+        // edges do nothing while editing.
+        return ItemMixin<TextItem, QGraphicsTextItem>::has_selection_handles();
     }
 
     bool paints_edit_mode_handles() const override { return edit_mode; }

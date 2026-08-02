@@ -429,8 +429,13 @@ public:
 
         // If it's a single selection, draw the handles:
         if (static_cast<Mixin*>(this)->has_selection_handles() == true) {
+            // Edit mode (TextItem, mid-typing): square caps - the visual
+            // cue (matching PureRef) that a corner only resizes now, it
+            // won't rotate (see hoverMoveEvent()/mousePressEvent() below).
+            const bool resizeOnly
+                = static_cast<Mixin*>(this)->paints_edit_mode_handles();
             pen.setWidth(selectHandleSize_);
-            pen.setCapStyle(Qt::RoundCap);
+            pen.setCapStyle(resizeOnly ? Qt::SquareCap : Qt::RoundCap);
             painter->setPen(pen);
             for (const QPointF& corner : corners()) {
                 painter->drawPoint(corner);
@@ -439,21 +444,12 @@ public:
             // Smaller edge-midpoint handles - dragging these scales the
             // same way as the corners (see mousePressEvent()), just
             // anchored on the opposite edge instead of the opposite
-            // corner.
+            // corner. Same cap style as the corners.
             pen.setWidth(selectEdgeHandleSize_);
+            pen.setCapStyle(resizeOnly ? Qt::SquareCap : Qt::RoundCap);
             painter->setPen(pen);
             for (const auto& edge : get_edge_bounds()) {
                 painter->drawPoint(edge.rect.center());
-            }
-        } else if (static_cast<Mixin*>(this)->paints_edit_mode_handles()) {
-            // Edit mode: same corner positions, square caps - the visual
-            // cue (matching PureRef) that clicks now place the text
-            // cursor instead of scaling the item.
-            pen.setWidth(selectHandleSize_);
-            pen.setCapStyle(Qt::SquareCap);
-            painter->setPen(pen);
-            for (const QPointF& corner : corners()) {
-                painter->drawPoint(corner);
             }
         }
 
@@ -601,8 +597,13 @@ public:
                 QMarginsF(margin, margin, margin, margin));
             path.addRect(rect);
 
-            for (const QPointF& corner : corners()) {
-                path.addPath(this->get_rotate_bounds(corner));
+            // Edit mode: no rotate handles, so don't claim their hit
+            // area either - a click just past the corner should reach
+            // whatever's underneath (or the text cursor), not this item.
+            if (!static_cast<const Mixin*>(this)->paints_edit_mode_handles()) {
+                for (const QPointF& corner : corners()) {
+                    path.addPath(this->get_rotate_bounds(corner));
+                }
             }
         } else {
             path.addRect(this->bounding_rect_unselected());
@@ -643,11 +644,15 @@ protected:
             return;
         }
 
+        // Edit mode: corners resize only, never rotate (see
+        // paint_selectable() above).
+        const bool resizeOnly
+            = static_cast<Mixin*>(this)->paints_edit_mode_handles();
         for (const QPointF& corner : corners()) {
             if (isInScaleHandle(corner, pos)) {
                 this->set_cursor(get_corner_scale_cursor(corner));
                 return;
-            } else if (isInRotateHandle(corner, pos)) {
+            } else if (!resizeOnly && isInRotateHandle(corner, pos)) {
                 // TODOLATER: custom rotate icon
                 this->set_cursor(QCursor(Qt::SizeAllCursor));
                 return;
@@ -691,7 +696,13 @@ protected:
         if (!this->isSelected()) {
             //User has just selected this item with this click; don't
             //activate any transformations yet
-            QGraphicsItem::mousePressEvent(event);
+            //
+            // T::, not QGraphicsItem:: - for TextItem, T is
+            // QGraphicsTextItem, whose own mousePressEvent places the
+            // text cursor / starts a drag-selection. Qualifying to
+            // QGraphicsItem here would silently skip that (this is the
+            // same bug as the two fallbacks below).
+            T::mousePressEvent(event);
             return;
         }
 
@@ -699,9 +710,14 @@ protected:
             //This area should always trigger regular move operations,
             //even if it is covered by selection scale/flip/... handles.
             //This ensures that small items can always still be moved/edited.
-            QGraphicsItem::mousePressEvent(event);
+            T::mousePressEvent(event); // see comment above
             return;
         }
+
+        // Edit mode: corners resize only, never rotate (see
+        // paint_selectable() above).
+        const bool resizeOnly
+            = static_cast<Mixin*>(this)->paints_edit_mode_handles();
 
         if (event->button() == Qt::LeftButton
             && static_cast<Mixin*>(this)->has_selection_handles() == true) {
@@ -722,7 +738,7 @@ protected:
                 }
 
                 //Check if we are in one of the corner's rotate areas
-                if (isInRotateHandle(corner, event->pos())) {
+                if (!resizeOnly && isInRotateHandle(corner, event->pos())) {
                     active_mode_ = kRotateMode;
                     eventAnchor_ = this->center_scene_coords();
                     rotateStartAngle_ = get_rotate_angle(event->scenePos());
@@ -758,7 +774,7 @@ protected:
             }
         }
 
-        QGraphicsItem::mousePressEvent(event);
+        T::mousePressEvent(event); // see comment above
     }
 
     qreal get_scale_factor(QGraphicsSceneMouseEvent* event) const
@@ -898,7 +914,7 @@ protected:
             return;
         }
 
-        QGraphicsItem::mouseMoveEvent(event);
+        T::mouseMoveEvent(event); // see mousePressEvent() comment above
     }
 
     void resetActions() { active_mode_ = kNone; }
@@ -938,7 +954,7 @@ protected:
         }
 
         resetActions();
-        QGraphicsItem::mouseReleaseEvent(event);
+        T::mouseReleaseEvent(event); // see mousePressEvent() comment above
     }
 
     void paint(QPainter* painter,
