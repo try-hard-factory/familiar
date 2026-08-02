@@ -309,6 +309,7 @@ private:
     void ensureMenubar_();
     void applyMenubarState_();
     void updateMenubarGeometry();
+    void updateWindowControlsStyle_();
     void startUiFade_(bool visible);
     void onUiHideTimeout_();
     void handleUiHover_(const QPoint& pos);
@@ -317,6 +318,9 @@ private:
     int uiStripHeight_() const;
 
     QMenuBar* menubar_ = nullptr;
+    // Corner widget with the window-control buttons; restyled from the
+    // current color preset on every settings change.
+    QWidget* windowControls_ = nullptr;
     QGraphicsOpacityEffect* menubarOpacity_ = nullptr;
     QGraphicsOpacityEffect* tabbarOpacity_ = nullptr;
     QVariantAnimation* uiFadeAnim_ = nullptr;

@@ -225,6 +225,7 @@ void MainWindow::settingsChangedSlot()
             .arg(rgb(backGroundColor_), rgb(textColor), rgb(selectionColor)));
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
+    updateWindowControlsStyle_();
     update();
 }
 
@@ -401,6 +402,7 @@ void MainWindow::ensureMenubar_()
     // and the controls disappear together with it (actions/shortcuts keep
     // working).
     auto* corner = new QWidget(menubar_);
+    windowControls_ = corner;
     auto* lay = new QHBoxLayout(corner);
     lay->setContentsMargins(4, 0, 4, 0);
     lay->setSpacing(2);
@@ -441,6 +443,7 @@ void MainWindow::ensureMenubar_()
     connect(closeBtn, &QToolButton::clicked, this, &MainWindow::close);
 
     menubar_->setCornerWidget(corner, Qt::TopRightCorner);
+    updateWindowControlsStyle_();
 
     // Fade machinery - same QVariantAnimation pattern as the selection
     // outline fade in CanvasView. One animation drives both opacity
@@ -483,6 +486,53 @@ void MainWindow::ensureMenubar_()
             &QTimer::timeout,
             this,
             &MainWindow::onUiHideTimeout_);
+}
+
+void MainWindow::updateWindowControlsStyle_()
+{
+    if (!windowControls_)
+        return;
+
+    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto rgba = [](const QColor& c, int alpha) {
+        return QStringLiteral("rgba(%1, %2, %3, %4)")
+            .arg(c.red())
+            .arg(c.green())
+            .arg(c.blue())
+            .arg(alpha);
+    };
+
+    // The window-wide "background: transparent" stylesheet strips
+    // QToolButton's native hover/checked rendering, so spell the states
+    // out explicitly. The QToolTip rule is here for the same reason the
+    // context menu gets one in action_mixin.h: an unstyled tooltip over a
+    // translucent window paints as a solid black plate. Tooltips have no
+    // alpha channel - keep their colors fully opaque.
+    windowControls_->setStyleSheet(
+        QStringLiteral("QToolButton {"
+                       "  background: transparent;"
+                       "  color: %1;"
+                       "  border: none;"
+                       "  border-radius: 4px;"
+                       "  padding: 2px 6px;"
+                       "}"
+                       "QToolButton:hover { background-color: %2; }"
+                       "QToolButton:pressed { background-color: %3; }"
+                       "QToolButton:checked { background-color: %3; }"
+                       "QToolTip {"
+                       "  background-color: %4;"
+                       "  color: %1;"
+                       "  border: 1px solid %5;"
+                       "}")
+            .arg(text.name(),
+                 rgba(selection, 90),
+                 rgba(selection, 170),
+                 background.name(),
+                 border.name()));
 }
 
 void MainWindow::applyMenubarState_()
