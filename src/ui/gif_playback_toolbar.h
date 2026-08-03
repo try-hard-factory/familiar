@@ -15,6 +15,7 @@
 class GifItem;
 class QToolButton;
 class QHBoxLayout;
+class QVBoxLayout;
 class QResizeEvent;
 
 class GifPlaybackToolbar : public QWidget
@@ -30,6 +31,18 @@ public:
     // Re-derive the QSS from the current color preset (called on attach
     // and whenever settings change).
     void restyleFromPreset();
+
+    // Positions the control row at `desiredCenterX` (toolbar-local
+    // x-coordinate), clamped so it never leaves the toolbar's own bounds.
+    // The owner (CanvasView) calls this with the item's center mapped
+    // into toolbar-local coordinates - it can't just center the row
+    // within the toolbar's own layout, because once the whole toolbar
+    // gets clamped against the edge of the viewport (item near the edge
+    // of the canvas, wide filmstrip open), the toolbar's own center no
+    // longer lines up with the item's center, and a layout-centered row
+    // would drift off toward the middle of the (now off-center) filmstrip
+    // instead of staying above the item.
+    void positionControlsRow(int desiredCenterX);
 
 signals:
     // Fired whenever the widget's own size changes (e.g. the frames
@@ -63,6 +76,9 @@ private:
     QWidget* filmstrip_ = nullptr;
     QHBoxLayout* filmstripLay_ = nullptr;
     QColor iconGlyphColor_;
+    // Needed by positionControlsRow() to move controlsRow_ within it.
+    QVBoxLayout* outerLay_ = nullptr;
+    QWidget* controlsRow_ = nullptr;
     // Speed popup is reused across clicks (see showSpeedPopup_()) instead
     // of being recreated each time - cleared back to nullptr on close via
     // QObject::destroyed (WA_DeleteOnClose still owns its lifetime).
