@@ -3,7 +3,9 @@
 #include "canvasscene.h"
 #include "fml_archive.h"
 
+#include <QBuffer>
 #include <QEventLoop>
+#include <QFile>
 #include <QImageReader>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -34,21 +36,46 @@ QUrl unwrap_known_redirect(const QUrl& url)
     return url;
 }
 
+// Decoded image data plus the ENCODED bytes it came from - the latter is
+// what an animated GIF actually needs (GifItem's QMovie decodes the
+// whole stream itself; a single decoded QImage would just be its first
+// frame). `image` alone is enough for anything else, so most call sites
+// only ever look at that field.
+struct LoadedImage
+{
+    QImage image;
+    QByteArray bytes;
+};
+
+// True if `bytes` is a multi-frame (animated) image Qt can decode -
+// checked on the raw bytes regardless of where they came from (local
+// file/data URI/download), so all three sources get the same treatment.
+bool is_animated(const QByteArray& bytes)
+{
+    if (bytes.isEmpty())
+        return false;
+    QBuffer buf;
+    buf.setData(bytes);
+    buf.open(QIODevice::ReadOnly);
+    QImageReader reader(&buf);
+    return reader.imageCount() > 1;
+}
+
 // Decodes an embedded "data:[<mediatype>][;base64],<data>" URI - no
 // network involved. Percent-decoding the payload before base64-decoding
 // it is a no-op if the base64 alphabet survived QUrl's own encoding
 // unchanged, and correctly undoes it if QUrl percent-encoded any of
 // '+'/'/'/'=' along the way - safe either way.
-QImage decode_data_url(const QUrl& url)
+LoadedImage decode_data_url(const QUrl& url)
 {
     QString full = url.toString(QUrl::FullyEncoded);
     if (!full.startsWith(QStringLiteral("data:"))) {
-        return QImage();
+        return {};
     }
     QString payload = full.mid(5);
     int commaIdx = payload.indexOf(QLatin1Char(','));
     if (commaIdx < 0) {
-        return QImage();
+        return {};
     }
     QString header = payload.left(commaIdx);
     QByteArray decoded = QByteArray::fromPercentEncoding(
@@ -61,7 +88,7 @@ QImage decode_data_url(const QUrl& url)
 
     QImage img;
     img.loadFromData(bytes);
-    return img;
+    return {img, bytes};
 }
 
 constexpr int kDownloadTimeoutMs = 15000;
@@ -77,9 +104,9 @@ constexpr int kCancelPollMs = 200;
 // load_images() run, and its progress dialog) forever - a timeout, plus
 // polling `worker->canceled` so the dialog's own Cancel button actually
 // works mid-download, both just quit the same local loop early.
-QImage download_image(QNetworkAccessManager& manager,
-                      const QUrl& url,
-                      ThreadedIO* worker)
+LoadedImage download_image(QNetworkAccessManager& manager,
+                           const QUrl& url,
+                           ThreadedIO* worker)
 {
     QNetworkRequest request(url);
     // Some CDNs/anti-bot setups throttle or stall the response body for
@@ -114,18 +141,20 @@ QImage download_image(QNetworkAccessManager& manager,
     loop.exec();
 
     QImage img;
+    QByteArray bytes;
     if (!reply->isFinished()) {
         FLOG_DEBUG(Ch::IO,
                    "Download aborted (timed out or canceled): {}",
                    url.toString());
         reply->abort();
     } else if (reply->error() == QNetworkReply::NoError) {
-        img.loadFromData(reply->readAll());
+        bytes = reply->readAll();
+        img.loadFromData(bytes);
     } else {
         FLOG_DEBUG(Ch::IO, "Downloading image failed: {}", reply->errorString());
     }
     reply->deleteLater();
-    return img;
+    return {img, bytes};
 }
 
 } // namespace
@@ -163,11 +192,20 @@ void load_images(const QList<QUrl>& urls,
     for (int i = 0; i < urls.size(); ++i) {
         const QUrl& rawUrl = urls.at(i);
         QImage img;
+        QByteArray bytes;
         QString label;
 
         if (rawUrl.isLocalFile()) {
             label = rawUrl.toLocalFile();
             FLOG_DEBUG(Ch::IO, "Loading image from file {}", label);
+            // Raw bytes read unconditionally (cheap - these are images,
+            // not video), not just the decoded first frame: an animated
+            // GIF needs the whole stream for GifItem's QMovie, and
+            // is_animated() below needs something to sniff regardless.
+            QFile file(label);
+            if (file.open(QIODevice::ReadOnly)) {
+                bytes = file.readAll();
+            }
             QImageReader reader(label);
             reader.setAutoTransform(true); // apply EXIF rotation
             img = reader.read();
@@ -176,7 +214,9 @@ void load_images(const QList<QUrl>& urls,
                    == 0) {
             label = rawUrl.toString();
             FLOG_DEBUG(Ch::IO, "Decoding embedded data: image");
-            img = decode_data_url(rawUrl);
+            LoadedImage loaded = decode_data_url(rawUrl);
+            img = loaded.image;
+            bytes = loaded.bytes;
         } else {
             QUrl url = unwrap_known_redirect(rawUrl);
             label = url.toString();
@@ -189,7 +229,9 @@ void load_images(const QList<QUrl>& urls,
                 if (!netManager) {
                     netManager = new QNetworkAccessManager();
                 }
-                img = download_image(*netManager, url, worker);
+                LoadedImage loaded = download_image(*netManager, url, worker);
+                img = loaded.image;
+                bytes = loaded.bytes;
             } else {
                 FLOG_DEBUG(Ch::IO, "Unsupported URL scheme: {}", label);
             }
@@ -203,17 +245,23 @@ void load_images(const QList<QUrl>& urls,
             continue;
         }
 
-        // Queue the raw data instead of constructing a PixmapItem here:
-        // this runs on a background thread, and add_queued_items() (the
-        // consumer) must only ever touch the QGraphicsScene from the GUI
-        // thread. Center the item on `pos`, matching what
-        // PixmapItem::set_pos_center() would do for a fresh item (scale 1,
-        // rotation 0).
+        // Queue the raw data instead of constructing a Pixmap/GifItem
+        // here: this runs on a background thread, and
+        // add_queued_items() (the consumer) must only ever touch the
+        // QGraphicsScene from the GUI thread. Center the item on `pos`,
+        // matching what PixmapItem::set_pos_center() would do for a
+        // fresh item (scale 1, rotation 0).
         QPointF topLeft = pos - QPointF(img.width() / 2.0, img.height() / 2.0);
 
         QVariantMap itemData;
-        itemData[QStringLiteral("type")] = QStringLiteral("pixmap");
-        itemData[QStringLiteral("image")] = img;
+        if (is_animated(bytes)) {
+            FLOG_DEBUG(Ch::IO, "{} is animated - loading as GifItem", label);
+            itemData[QStringLiteral("type")] = QStringLiteral("gif");
+            itemData[QStringLiteral("gifBytes")] = bytes;
+        } else {
+            itemData[QStringLiteral("type")] = QStringLiteral("pixmap");
+            itemData[QStringLiteral("image")] = img;
+        }
         itemData[QStringLiteral("filename")] = label;
         itemData[QStringLiteral("x")] = topLeft.x();
         itemData[QStringLiteral("y")] = topLeft.y();

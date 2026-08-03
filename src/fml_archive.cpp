@@ -376,7 +376,28 @@ FmlResult FmlArchive::save(CanvasScene* scene,
         mi.flip = (baseItem->flip() == -1) ? -1 : 1;
         mi.data = baseItem->get_extra_save_data();
 
-        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
+        // GifItem checked BEFORE PixmapItem: it IS one (inherits it), so
+        // the PixmapItem branch below would also match it - and
+        // pixmap_to_bytes() only ever encodes the CURRENTLY DISPLAYED
+        // frame as a static raster, silently discarding the animation.
+        // Store the original GIF bytes verbatim instead - lossless, and
+        // exactly what GifItem's own constructor expects back on load.
+        if (auto* gifItem = dynamic_cast<GifItem*>(items[i])) {
+            const QByteArray& bytes = gifItem->gif_bytes();
+            QString idStr = mi.id.toString(QUuid::WithoutBraces);
+            mi.image = QStringLiteral("images/%1.gif").arg(idStr);
+
+            QByteArray archiveName = mi.image.toUtf8();
+            if (!mz_zip_writer_add_mem(zip.get(),
+                                       archiveName.constData(),
+                                       bytes.constData(),
+                                       static_cast<size_t>(bytes.size()),
+                                       MZ_NO_COMPRESSION)) {
+                result.itemErrors.append(
+                    QStringLiteral("Could not store image for item %1")
+                        .arg(idStr));
+            }
+        } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
             auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
             QString idStr = mi.id.toString(QUuid::WithoutBraces);
             mi.image = QStringLiteral("images/%1.%2").arg(idStr, imgformat);
@@ -529,7 +550,8 @@ FmlResult FmlArchive::load(const QString& filename,
         itemData[QStringLiteral("flip")] = mi.flip;
         itemData[QStringLiteral("data")] = mi.data;
 
-        if (mi.type == QStringLiteral("pixmap")) {
+        if (mi.type == QStringLiteral("pixmap")
+            || mi.type == QStringLiteral("gif")) {
             QByteArray imagePath = mi.image.toUtf8();
             int imageIndex = mz_zip_reader_locate_file(zip.get(),
                                                        imagePath.constData(),
@@ -546,13 +568,26 @@ FmlResult FmlArchive::load(const QString& filename,
                                                     &imgSize,
                                                     0);
                 if (imgBuf) {
-                    QImage image;
-                    ok = image.loadFromData(static_cast<const uchar*>(imgBuf),
-                                            static_cast<int>(imgSize));
-                    if (ok) {
-                        itemData[QStringLiteral("image")] = image;
+                    if (mi.type == QStringLiteral("gif")) {
+                        // Raw bytes, not decoded to a static QImage -
+                        // GifItem's constructor needs the whole animated
+                        // stream, not just one frame.
+                        itemData[QStringLiteral("gifBytes")]
+                            = QByteArray(static_cast<const char*>(imgBuf),
+                                        static_cast<int>(imgSize));
                         itemData[QStringLiteral("filename")] = mi.data.value(
                             QStringLiteral("filename"));
+                        ok = true;
+                    } else {
+                        QImage image;
+                        ok = image.loadFromData(
+                            static_cast<const uchar*>(imgBuf),
+                            static_cast<int>(imgSize));
+                        if (ok) {
+                            itemData[QStringLiteral("image")] = image;
+                            itemData[QStringLiteral("filename")]
+                                = mi.data.value(QStringLiteral("filename"));
+                        }
                     }
                     mz_free(imgBuf);
                 }

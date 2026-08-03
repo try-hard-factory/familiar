@@ -983,6 +983,34 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 }
                 item = pixmapItem;
             }
+        } else if (typ == "gif") {
+            QVariant gifVariant = data.value("gifBytes");
+            if (gifVariant.isValid()) {
+                QByteArray gifBytes = gifVariant.toByteArray();
+                QString filename = data.value("filename").toString();
+                GifItem* gifItem = new GifItem(gifBytes, filename);
+
+                // Same crop-restore as "pixmap" above, plus GIF-specific
+                // "speed" - both live under the same "data" extra-map.
+                QVariant extraData = data.value("data");
+                if (extraData.isValid()) {
+                    QVariantMap extraMap = extraData.toMap();
+
+                    QVariant cropVariant = extraMap.value("crop");
+                    if (cropVariant.isValid()) {
+                        QList<QVariant> cropList = cropVariant.toList();
+                        if (cropList.size() == 4) {
+                            QRectF crop(cropList[0].toReal(),
+                                        cropList[1].toReal(),
+                                        cropList[2].toReal(),
+                                        cropList[3].toReal());
+                            gifItem->set_crop(crop);
+                        }
+                    }
+                    gifItem->apply_extra_save_data(extraMap);
+                }
+                item = gifItem;
+            }
         } else if (typ == "text") {
             const QVariantMap extraMap = data.value("data").toMap();
             QString text = extraMap.value("text").toString();
@@ -1070,7 +1098,7 @@ bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
         return false;
     }
     const std::string type = baseItem->get_type();
-    return type == "pixmap" || type == "text";
+    return type == "pixmap" || type == "text" || type == "gif";
 }
 
 // ============================================================================

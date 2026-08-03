@@ -22,12 +22,14 @@ class QUndoStack;
 class IBaseItem;
 class PixmapItem;
 class TextItem;
+class GifItem;
 class SampleColorWidget;
 class ThreadedIO;
 class SceneExporterBase;
 class ImagesToDirectoryExporter;
 class QVariantAnimation;
 class TextEditToolbar;
+class GifPlaybackToolbar;
 
 struct PreviousTransform
 {
@@ -232,11 +234,18 @@ private:
     // through pans (scrollbar valueChanged), zooms (doScale) and view
     // resizes.
     void updateTextToolbarPos_();
+    // Same idea, for the GIF playback toolbar - glued below the item
+    // instead of above (see updateGifToolbarPos_()'s own comment for
+    // why), shown/hidden from on_selection_changed() rather than a
+    // dedicated signal: unlike text editing, GIF playback controls apply
+    // as soon as the item is simply selected.
+    void updateGifToolbarPos_();
 
     qreal selectionOutlineOpacity_ = 1.0;
     bool selectionOutlineHover_ = false;
     QVariantAnimation* selectionFadeAnim_ = nullptr;
     TextEditToolbar* textToolbar_ = nullptr;
+    GifPlaybackToolbar* gifToolbar_ = nullptr;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;

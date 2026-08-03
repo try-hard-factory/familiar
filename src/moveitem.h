@@ -15,7 +15,9 @@
 #include <QFileInfo>
 #include <QGraphicsItem>
 #include <QGraphicsSceneMouseEvent>
+#include <QImageReader>
 #include <QMap>
+#include <QMovie>
 #include <QObject>
 #include <QPainter>
 #include <QPair>
@@ -796,6 +798,199 @@ protected:
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseReleaseEvent(event);
         }
     }
+};
+
+// Animated GIF, playable on the canvas (roadmap step 11). Inherits
+// PixmapItem rather than building on ItemMixin directly - crop/scale/
+// rotate/flip/opacity/color-gamut all keep working unmodified, since to
+// Qt's rendering this is still "a QGraphicsPixmapItem with a pixmap set
+// on it"; only WHICH pixmap is set changes, once per animation frame.
+//
+// Not a QObject (QGraphicsItem/QGraphicsPixmapItem aren't either) - the
+// playback engine is QMovie, a real QObject we own and connect to via a
+// context-less lambda connect() (safe: movie_ is destroyed together with
+// this GifItem, in ~GifItem() below, which is the only thing that could
+// ever stop it emitting).
+class GifItem : public PixmapItem
+{
+public:
+    const std::string TYPE = "gif"; // static constexpr
+
+    explicit GifItem(const QByteArray& gifBytes,
+                     const QString& filename = QString(),
+                     QGraphicsPixmapItem* parent = nullptr)
+        : PixmapItem(QImage(), filename, parent)
+        , gifBytes_(gifBytes)
+    {
+        build_thumbnails_();
+        init_movie_(); // connects frameChanged, jumps to frame 0
+        // Base PixmapItem's ctor already ran reset_crop() against the
+        // empty placeholder QImage() above - redo it now that pixmap()
+        // reflects the real first frame's actual size.
+        reset_crop();
+        movie_->start();
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+    }
+
+    ~GifItem() override
+    {
+        delete movie_;
+        delete gifBuffer_;
+    }
+
+    std::string get_type() const override { return TYPE; }
+
+    QVariantMap get_extra_save_data() const override
+    {
+        QVariantMap data = PixmapItem::get_extra_save_data();
+        data[QStringLiteral("speed")] = speed_percent();
+        return data;
+    }
+
+    // Counterpart of get_extra_save_data()'s "speed" - called by
+    // canvasscene.cpp after construction, same naming/shape as
+    // TextItem::apply_extra_save_data().
+    void apply_extra_save_data(const QVariantMap& data)
+    {
+        if (data.contains(QStringLiteral("speed")))
+            set_speed_percent(data.value(QStringLiteral("speed")).toInt());
+    }
+
+    IBaseItem* create_copy() override
+    {
+        auto* item = new GifItem(gifBytes_, filename_);
+        item->setPos(pos());
+        item->setZValue(zValue());
+        item->setScale(scale());
+        item->setRotation(rotation());
+        item->setOpacity(opacity());
+        if (this->flip() == -1) {
+            item->do_flip();
+        }
+        item->set_crop(crop_);
+        item->set_speed_percent(speed_percent());
+        return item;
+    }
+
+    // Exposed so GifPlaybackToolbar can connect directly to
+    // frameChanged() itself (a real QObject signal) instead of polling -
+    // same rationale as exposing document() from QGraphicsTextItem.
+    QMovie* movie() const { return movie_; }
+    const QByteArray& gif_bytes() const { return gifBytes_; }
+    // Small pre-scaled thumbnails, one per frame, decoded once up front
+    // for the "show all frames" filmstrip - QMovie::frameCount() is
+    // lazily determined for some formats/plugins and not reliable before
+    // a full pass, so this doubles as the authoritative frame count too.
+    const QList<QPixmap>& frame_thumbnails() const { return frameThumbnails_; }
+    int frame_count() const { return frameThumbnails_.size(); }
+
+    bool is_playing() const
+    {
+        return movie_ && movie_->state() == QMovie::Running;
+    }
+    void play()
+    {
+        if (movie_)
+            movie_->setPaused(false);
+    }
+    void pause()
+    {
+        if (movie_)
+            movie_->setPaused(true);
+    }
+    void toggle_play_pause()
+    {
+        if (!movie_)
+            return;
+        if (is_playing())
+            pause();
+        else
+            play();
+    }
+    int current_frame() const { return movie_ ? movie_->currentFrameNumber() : 0; }
+    // Pauses (stepping/scrubbing while it's still playing would just get
+    // immediately overridden by the next natural tick) and jumps by
+    // `delta` frames, wrapping around either end.
+    void step_frame(int delta)
+    {
+        if (!movie_ || frameThumbnails_.isEmpty())
+            return;
+        pause();
+        const int count = frameThumbnails_.size();
+        int next = (current_frame() + delta) % count;
+        if (next < 0)
+            next += count;
+        movie_->jumpToFrame(next);
+    }
+    void jump_to_frame(int index)
+    {
+        if (!movie_ || frameThumbnails_.isEmpty())
+            return;
+        pause();
+        movie_->jumpToFrame(qBound(0, index, frameThumbnails_.size() - 1));
+    }
+    // QMovie's own convention: 100 = normal speed, 25 = x0.25, 200 = x2 -
+    // matches PureRef's playback-speed steps directly, no remapping.
+    void set_speed_percent(int percent)
+    {
+        if (movie_)
+            movie_->setSpeed(percent);
+    }
+    int speed_percent() const { return movie_ ? movie_->speed() : 100; }
+
+private:
+    // Decodes every frame once via QImageReader (independent of movie_ -
+    // its own read position isn't disturbed) into small thumbnails for
+    // the filmstrip. QImageReader::read()/canRead() auto-advance through
+    // an animated source's frames, same idiom as Qt's own animated-image
+    // examples - no explicit jumpToNextImage() needed.
+    void build_thumbnails_()
+    {
+        QBuffer buf;
+        buf.setData(gifBytes_);
+        buf.open(QIODevice::ReadOnly);
+        QImageReader reader(&buf);
+        while (reader.canRead()) {
+            QImage frame = reader.read();
+            if (frame.isNull())
+                break;
+            frameThumbnails_.append(
+                QPixmap::fromImage(frame).scaled(48,
+                                                 48,
+                                                 Qt::KeepAspectRatio,
+                                                 Qt::SmoothTransformation));
+        }
+    }
+
+    void init_movie_()
+    {
+        gifBuffer_ = new QBuffer();
+        gifBuffer_->setData(gifBytes_);
+        gifBuffer_->open(QIODevice::ReadOnly);
+        movie_ = new QMovie(gifBuffer_);
+        movie_->setCacheMode(QMovie::CacheAll);
+        // QObject::connect(), qualified: GifItem itself isn't a QObject
+        // (QGraphicsItem/QGraphicsPixmapItem aren't either), so the bare
+        // connect() free function - which only resolves via QObject's
+        // OWN member/static lookup inside a QObject-derived class - isn't
+        // in scope here. Calling the static method explicitly works
+        // regardless of what class we're in, as long as the sender
+        // (movie_) is a real QObject, which it is.
+        QObject::connect(movie_, &QMovie::frameChanged, [this](int) {
+            // QGraphicsPixmapItem::setPixmap(), NOT our own
+            // PixmapItem::setPixmap() override - that one also calls
+            // reset_crop(), which would wipe out any crop the user
+            // applied, every single animation tick.
+            this->QGraphicsPixmapItem::setPixmap(movie_->currentPixmap());
+            this->update();
+        });
+        movie_->jumpToFrame(0);
+    }
+
+    QByteArray gifBytes_;
+    QBuffer* gifBuffer_ = nullptr;
+    QMovie* movie_ = nullptr;
+    QList<QPixmap> frameThumbnails_;
 };
 
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
