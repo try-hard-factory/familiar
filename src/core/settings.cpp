@@ -292,12 +292,3 @@ QString FamSettings::fileName() const
 {
     return SettingsHandler::getInstance()->settingsFilePath();
 }
-
-// ─── logfileName ─────────────────────────────────────────────────────────────
-
-QString logfileName()
-{
-    return QFileInfo(FamSettings().fileName())
-        .dir()
-        .filePath(qApp->applicationName() + QStringLiteral(".log"));
-}

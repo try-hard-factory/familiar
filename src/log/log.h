@@ -25,10 +25,8 @@ enum class Ch { Core, Scene, View, Items, Undo, IO, Net, Settings, UI, Qt };
 struct Options
 {
     Level consoleLevel = Level::Debug;
-    Level fileLevel = Level::Info;
+    Level fileLevel = Level::Debug;
     QString filePath; // default: AppLocalDataLocation/<appName>.log
-    size_t rotateBytes = 5 * 1024 * 1024;
-    int rotateCount = 3; // <file>.log, .1, .2
     bool console = true; // auto-off when stdout isn't a tty
     size_t ringCapacity = 2000;
 };
@@ -67,9 +65,15 @@ QString debugString(const T& value)
     return result;
 }
 
-// Last N formatted lines, for a future DebugLogDialog live-tail; returns
-// nullptr if init() hasn't run yet.
+// Last N formatted lines, for DebugLogDialog's live tail; returns nullptr
+// if init() hasn't run yet.
 RingSink* ringSink();
+
+// Resolved path of the current session's log file (after any default
+// AppLocalDataLocation fallback in init()) - the single source of truth
+// for anything that needs to show/open it (DebugLogDialog, ...). Empty
+// if init() hasn't run yet.
+QString logFilePath();
 
 namespace detail {
 quill::LogLevel toQuillLevel(Level level);

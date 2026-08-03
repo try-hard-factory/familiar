@@ -18,6 +18,7 @@
 #include "project_settings.h"
 #include "saveallwindow.h"
 #include "tabpane.h"
+#include "widgets/dialogs.h"
 #include <actions/action_mouse_dispatch.h>
 #include <core/held_buttons_tracker.h>
 #include <core/settingshandler.h>
@@ -744,7 +745,7 @@ void MainWindow::on_action_about()
 
 void MainWindow::on_action_debuglog()
 {
-    // TODOLATER: open debug log dialog
+    new DebugLogDialog(this);
 }
 
 // ─── Per-tab actions ───────────────────────────────────────────────────────────

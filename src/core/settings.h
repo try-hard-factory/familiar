@@ -115,6 +115,4 @@ public:
     QString fileName() const;
 };
 
-QString logfileName();
-
 #endif // SETTINGS_H
