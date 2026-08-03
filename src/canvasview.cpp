@@ -408,17 +408,26 @@ void CanvasView::updateGifToolbarPos_()
     if (!gifToolbar_ || !gifToolbar_->isVisible() || !gifToolbar_->item())
         return;
     // Below the item and horizontally centered under it (PureRef's own
-    // placement) - GIF selections are typically shorter/wider on screen
-    // and the controls read more naturally as a "player" hugging the
-    // bottom-center edge.
+    // placement). Near the edge of the visible canvas, the qBound() clamp
+    // below takes over and slides the toolbar to stay on-screen - that's
+    // the only case it should ever look "snapped" rather than centered.
     const QRectF itemRect = gifToolbar_->item()->sceneBoundingRect();
-    const QPoint bottomCenter
-        = mapFromScene(QPointF(itemRect.center().x(), itemRect.bottom()));
-    int x = bottomCenter.x() - gifToolbar_->width() / 2;
-    int y = bottomCenter.y() + 8;
+    const int leftView = mapFromScene(itemRect.bottomLeft()).x();
+    const int rightView = mapFromScene(itemRect.bottomRight()).x();
+    const int itemCenterView = (leftView + rightView) / 2;
+    int x = itemCenterView - gifToolbar_->width() / 2;
+    int y = mapFromScene(itemRect.bottomLeft()).y() + 8;
     x = qBound(0, x, qMax(0, viewport()->width() - gifToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - gifToolbar_->height()));
     gifToolbar_->move(x, y);
+    // The control row is positioned separately from the toolbar's own
+    // move() above, using the item's center re-expressed in
+    // toolbar-local coordinates - if the toolbar itself just got clamped
+    // against the viewport edge (item near the edge of the canvas, wide
+    // filmstrip open), the toolbar's own center no longer lines up with
+    // the item's, and a row simply centered within the toolbar would
+    // drift away from the item towards the middle of the filmstrip.
+    gifToolbar_->positionControlsRow(itemCenterView - x);
 }
 
 double CanvasView::getZoomSize(std::function<double(double, double)> func) const

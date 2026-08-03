@@ -141,11 +141,12 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 140));
     setGraphicsEffect(shadow);
 
-    auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(0, 0, 0, 0);
-    outer->setSpacing(6);
+    outerLay_ = new QVBoxLayout(this);
+    outerLay_->setContentsMargins(0, 0, 0, 0);
+    outerLay_->setSpacing(6);
 
-    auto* row = new QWidget(this);
+    controlsRow_ = new QWidget(this);
+    auto* row = controlsRow_;
     auto* lay = new QHBoxLayout(row);
     lay->setContentsMargins(8, 5, 8, 5);
     lay->setSpacing(2);
@@ -177,22 +178,27 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     nextBtn_ = makeButton(tr("Next frame"), false);
     framesBtn_ = makeButton(tr("Show all frames"), true);
 
-    // Fixed and centered, not stretched - every button in it already has
-    // setFixedSize, so this is its one true width. Without this, the
-    // outer QVBoxLayout stretches "row" to match the filmstrip's width
-    // once it's shown (the layout sizes every child to the widest one),
-    // which is the opposite of what we want: the filmstrip should be as
-    // wide as it needs to be, but the control row above it should stay a
-    // compact pill, not balloon out to match it.
+    // Fixed, not stretched - every button in it already has setFixedSize,
+    // so this is its one true width. Without this, the outer QVBoxLayout
+    // stretches "row" to match the filmstrip's width once it's shown (the
+    // layout sizes every child to the widest one), which is the opposite
+    // of what we want: the filmstrip should be as wide as it needs to be,
+    // but the control row above it should stay a compact pill, not
+    // balloon out to match it.
+    //
+    // Left-aligned here rather than centered - the real horizontal
+    // position is set by positionControlsRow(), called by the owner
+    // (CanvasView) every time it repositions the toolbar. Left is just
+    // this layout's resting state in between those calls.
     row->setFixedWidth(row->sizeHint().width());
-    outer->addWidget(row, 0, Qt::AlignHCenter);
+    outerLay_->addWidget(row, 0, Qt::AlignLeft);
 
     filmstrip_ = new QWidget(this);
     filmstripLay_ = new QHBoxLayout(filmstrip_);
     filmstripLay_->setContentsMargins(6, 4, 6, 6);
     filmstripLay_->setSpacing(4);
     filmstrip_->hide();
-    outer->addWidget(filmstrip_);
+    outerLay_->addWidget(filmstrip_);
 
     connect(prevBtn_, &QToolButton::clicked, this, [this] {
         if (item_)
@@ -393,6 +399,13 @@ void GifPlaybackToolbar::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
     emit geometryChanged();
+}
+
+void GifPlaybackToolbar::positionControlsRow(int desiredCenterX)
+{
+    int x = desiredCenterX - controlsRow_->width() / 2;
+    x = qBound(0, x, qMax(0, width() - controlsRow_->width()));
+    controlsRow_->move(x, controlsRow_->y());
 }
 
 void GifPlaybackToolbar::restyleFromPreset()
