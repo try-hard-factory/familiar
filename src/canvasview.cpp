@@ -6,6 +6,7 @@
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "project_settings.h"
+#include "ui/gif_playback_toolbar.h"
 #include "ui/text_edit_toolbar.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
@@ -83,11 +84,28 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     // handled in doScale(), resizes in resizeEvent().
     textToolbar_ = new TextEditToolbar(viewport());
     textToolbar_->hide();
+
+    // Floating GIF-playback toolbar (roadmap step 11); hidden until a
+    // GifItem is selected (see on_selection_changed()) - unlike the text
+    // toolbar, this doesn't need a dedicated "entered edit mode" signal.
+    gifToolbar_ = new GifPlaybackToolbar(viewport());
+    gifToolbar_->hide();
+    // Toggling the frames filmstrip (or anything else) resizes the
+    // toolbar without CanvasView calling move() again - reposition
+    // whenever that happens so it doesn't drift off its centered/clamped
+    // spot (see GifPlaybackToolbar::geometryChanged()'s doc comment).
+    connect(gifToolbar_,
+            &GifPlaybackToolbar::geometryChanged,
+            this,
+            &CanvasView::updateGifToolbarPos_);
+
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         updateTextToolbarPos_();
+        updateGifToolbarPos_();
     });
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         updateTextToolbarPos_();
+        updateGifToolbarPos_();
     });
 
     connect(SettingsHandler::getInstance(),
@@ -195,12 +213,34 @@ void CanvasView::on_scene_changed()
         welcomeOverlay_->hide();
     }
     recalcSceneRect();
+    // Keeps the GIF toolbar glued to its item while it's being dragged
+    // (this fires on every scene change, animation ticks included, but
+    // repositioning to an unchanged position is cheap - simpler than
+    // hooking drag-specific events separately).
+    updateGifToolbarPos_();
 }
 
 void CanvasView::on_selection_changed()
 {
     // TODOLATER: update grayscale action checked state from selected item
     viewport()->repaint();
+
+    // GIF playback toolbar: shown for exactly a single selected GifItem,
+    // unlike the text toolbar it doesn't need a dedicated "entered edit
+    // mode" signal - selecting the item is enough.
+    GifItem* gifItem = nullptr;
+    QList<QGraphicsItem*> selected = scene_->selectedItems(true);
+    if (selected.size() == 1)
+        gifItem = dynamic_cast<GifItem*>(selected.first());
+
+    gifToolbar_->attach(gifItem);
+    if (gifItem) {
+        gifToolbar_->show();
+        gifToolbar_->raise();
+        updateGifToolbarPos_();
+    } else {
+        gifToolbar_->hide();
+    }
 }
 
 void CanvasView::on_context_menu(const QPoint& point)
@@ -234,6 +274,8 @@ void CanvasView::settingsChangedSlot()
     currentOpacity_ = settings->getCurrentOpacity();
     if (textToolbar_)
         textToolbar_->restyleFromPreset();
+    if (gifToolbar_)
+        gifToolbar_->restyleFromPreset();
 }
 
 // ─── Active modes ─────────────────────────────────────────────────────────────
@@ -330,6 +372,7 @@ void CanvasView::doScale(qreal sx, qreal sy)
     scene_->on_view_scale_change();
     recalcSceneRect();
     updateTextToolbarPos_();
+    updateGifToolbarPos_();
 }
 
 void CanvasView::on_edit_item_changed(TextItem* item)
@@ -358,6 +401,24 @@ void CanvasView::updateTextToolbarPos_()
     x = qBound(0, x, qMax(0, viewport()->width() - textToolbar_->width()));
     y = qMax(0, y);
     textToolbar_->move(x, y);
+}
+
+void CanvasView::updateGifToolbarPos_()
+{
+    if (!gifToolbar_ || !gifToolbar_->isVisible() || !gifToolbar_->item())
+        return;
+    // Below the item and horizontally centered under it (PureRef's own
+    // placement) - GIF selections are typically shorter/wider on screen
+    // and the controls read more naturally as a "player" hugging the
+    // bottom-center edge.
+    const QRectF itemRect = gifToolbar_->item()->sceneBoundingRect();
+    const QPoint bottomCenter
+        = mapFromScene(QPointF(itemRect.center().x(), itemRect.bottom()));
+    int x = bottomCenter.x() - gifToolbar_->width() / 2;
+    int y = bottomCenter.y() + 8;
+    x = qBound(0, x, qMax(0, viewport()->width() - gifToolbar_->width()));
+    y = qMin(y, qMax(0, viewport()->height() - gifToolbar_->height()));
+    gifToolbar_->move(x, y);
 }
 
 double CanvasView::getZoomSize(std::function<double(double, double)> func) const
@@ -500,6 +561,14 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         }
     }
 
+    // Hide the GIF playback toolbar for whatever's about to happen below
+    // (resize/move/click-elsewhere) - see mouseReleaseEvent(), which
+    // re-shows it once the interaction is over. Left visible, it stays
+    // anchored to the item's PRE-drag bounding rect and visibly
+    // lags/overlaps the resize handles while dragging.
+    if (gifToolbar_->isVisible())
+        gifToolbar_->hide();
+
     QGraphicsView::mousePressEvent(event);
 }
 
@@ -536,6 +605,17 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
 
     if (mouseMoveEventMainControls(event))
         return;
+
+    // Covers the case mousePressEvent()'s own hide can't: pressing on a
+    // not-yet-selected GIF selects it (synchronously, inside
+    // QGraphicsView::mousePressEvent() below) and that selection change
+    // shows the toolbar via on_selection_changed() - AFTER
+    // mousePressEvent()'s hide line already ran. Without this, that
+    // select-and-drag-in-one-motion case leaves the toolbar visible and
+    // lagging behind the item for the whole drag.
+    if ((event->buttons() & Qt::LeftButton) && gifToolbar_->isVisible())
+        gifToolbar_->hide();
+
     QGraphicsView::mouseMoveEvent(event);
 }
 
@@ -559,6 +639,20 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
     if (mouseReleaseEventMainControls(event))
         return;
     QGraphicsView::mouseReleaseEvent(event);
+
+    // Re-show the GIF toolbar hidden in mousePressEvent(), but only if
+    // its item is still the sole selection - a click that deselected it
+    // (or selected something else) already got it hidden/detached via
+    // on_selection_changed(), and re-showing it here too would undo that.
+    if (GifItem* item = gifToolbar_->item()) {
+        QList<QGraphicsItem*> selected = scene_->selectedItems(true);
+        if (!gifToolbar_->isVisible() && selected.size() == 1
+            && selected.first() == item) {
+            gifToolbar_->show();
+            gifToolbar_->raise();
+            updateGifToolbarPos_();
+        }
+    }
 }
 
 void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
@@ -641,6 +735,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
     }
     welcomeOverlay_->resize(size());
     updateTextToolbarPos_();
+    updateGifToolbarPos_();
 }
 
 

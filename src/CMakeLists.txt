@@ -78,6 +78,8 @@ set(PROJECT_SOURCES
         ui/presetsave_window.h
         ui/text_edit_toolbar.cpp
         ui/text_edit_toolbar.h
+        ui/gif_playback_toolbar.cpp
+        ui/gif_playback_toolbar.h
         actions/actions.cpp
         actions/actions.h
         actions/menu_structure.cpp
