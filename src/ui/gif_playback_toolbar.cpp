@@ -177,7 +177,15 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     nextBtn_ = makeButton(tr("Next frame"), false);
     framesBtn_ = makeButton(tr("Show all frames"), true);
 
-    outer->addWidget(row);
+    // Fixed and centered, not stretched - every button in it already has
+    // setFixedSize, so this is its one true width. Without this, the
+    // outer QVBoxLayout stretches "row" to match the filmstrip's width
+    // once it's shown (the layout sizes every child to the widest one),
+    // which is the opposite of what we want: the filmstrip should be as
+    // wide as it needs to be, but the control row above it should stay a
+    // compact pill, not balloon out to match it.
+    row->setFixedWidth(row->sizeHint().width());
+    outer->addWidget(row, 0, Qt::AlignHCenter);
 
     filmstrip_ = new QWidget(this);
     filmstripLay_ = new QHBoxLayout(filmstrip_);
