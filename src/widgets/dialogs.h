@@ -24,6 +24,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QSize>
 #include <QSlider>
 #include <QSpinBox>
@@ -182,6 +183,12 @@ public:
 };
 
 
+// Live-tails familiar::log's RingSink (last N formatted lines, kept in
+// memory by the logger itself - see log/ring_sink.h) rather than reading
+// the log file off disk: a one-shot disk read would go stale the moment
+// new lines are logged, and would show nothing at all for lines still
+// sitting in quill's backend queue/buffer that haven't been flushed to
+// disk yet.
 class DebugLogDialog : public QDialog
 {
     Q_OBJECT
@@ -200,15 +207,28 @@ public:
         setStyleSheet("* { background-color: palette(window); color: "
                       "palette(window-text); }");
         setWindowTitle(qApp->applicationName() + " Debug Log");
-        QString logPath = logfileName();
-        QFile file(logPath);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            logTxt = in.readAll();
-        }
+        const QString logPath = familiar::log::logFilePath();
 
-        log = new QPlainTextEdit(logTxt);
+        log = new QPlainTextEdit();
         log->setReadOnly(true);
+        log->setLineWrapMode(QPlainTextEdit::NoWrap);
+        if (familiar::log::RingSink* ring = familiar::log::ringSink()) {
+            log->setPlainText(ring->entries().join('\n'));
+            connect(ring,
+                    &familiar::log::RingSink::entryAdded,
+                    this,
+                    &DebugLogDialog::appendLine);
+        }
+        // Follow the tail as new lines come in, unless the user has
+        // scrolled up to read something older.
+        QScrollBar* scrollBar = log->verticalScrollBar();
+        connect(scrollBar, &QScrollBar::rangeChanged, this, [this, scrollBar] {
+            if (followTail_)
+                scrollBar->setValue(scrollBar->maximum());
+        });
+        connect(scrollBar, &QScrollBar::valueChanged, this, [this, scrollBar] {
+            followTail_ = scrollBar->value() == scrollBar->maximum();
+        });
 
         QDialogButtonBox* buttons = new QDialogButtonBox(
             QDialogButtonBox::Close);
@@ -233,20 +253,15 @@ public:
 private:
     QPlainTextEdit* log;
     QPushButton* copyButton;
-    QString logTxt;
-
-    static QString logfileName()
-    {
-        return QStandardPaths::writableLocation(
-                   QStandardPaths::AppLocalDataLocation)
-               + "/" + qApp->applicationName() + ".log";
-    }
+    bool followTail_ = true;
 
 private slots:
+    void appendLine(const QString& line) { log->appendPlainText(line); }
+
     void copyToClipboard()
     {
         QClipboard* clipboard = QApplication::clipboard();
-        clipboard->setText(logTxt);
+        clipboard->setText(log->toPlainText());
     }
 };
 

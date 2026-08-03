@@ -12,6 +12,9 @@
 #endif
 
 #include <QApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QScreen>
 #include <QStandardPaths>
 #include <QSysInfo>
@@ -19,7 +22,7 @@
 #include "quill/Backend.h"
 #include "quill/Frontend.h"
 #include "quill/sinks/ConsoleSink.h"
-#include "quill/sinks/RotatingFileSink.h"
+#include "quill/sinks/FileSink.h"
 
 namespace familiar::log {
 namespace {
@@ -43,6 +46,20 @@ constexpr std::array<const char*, 10> kChannelNames = {
 
 std::array<quill::Logger*, kChannelNames.size()> g_loggers{};
 RingSink* g_ringSink = nullptr;
+QString g_filePath;
+
+// Derives "<dir>/<base>_old.<ext>" from "<dir>/<base>.<ext>" (e.g.
+// "familiar.log" -> "familiar_old.log"). Falls back to a plain "_old"
+// suffix for the (currently unused) case of an extension-less --settings
+// override path.
+QString oldLogFilePath(const QString& filePath)
+{
+    const QFileInfo fi(filePath);
+    const QString ext = fi.suffix();
+    return ext.isEmpty() ? filePath + QStringLiteral("_old")
+                          : fi.dir().filePath(fi.completeBaseName()
+                                              + QStringLiteral("_old.") + ext);
+}
 
 bool stdoutIsTty()
 {
@@ -192,13 +209,20 @@ void init(const Options& options)
                        QStandardPaths::AppLocalDataLocation)
                    + "/" + qApp->applicationName() + ".log";
     }
+    g_filePath = filePath;
 
-    auto fileSink = quill::Frontend::create_or_get_sink<
-        quill::RotatingFileSink>(filePath.toStdString(), [&options]() {
-        quill::RotatingFileSinkConfig cfg;
-        cfg.set_open_mode('a');
-        cfg.set_rotation_max_file_size(options.rotateBytes);
-        cfg.set_max_backup_files(uint32_t(options.rotateCount));
+    // Keep only the last 2 sessions' worth of logs: promote whatever the
+    // previous session left behind to "_old" (dropping anything older),
+    // then start this session with a fresh file - no size/count-based
+    // rotation within a session, just a straight swap on launch.
+    const QString oldFilePath = oldLogFilePath(filePath);
+    QFile::remove(oldFilePath);
+    QFile::rename(filePath, oldFilePath);
+
+    auto fileSink = quill::Frontend::create_or_get_sink<quill::FileSink>(
+        filePath.toStdString(), [] () {
+        quill::FileSinkConfig cfg;
+        cfg.set_open_mode('w');
         return cfg;
     }());
     fileSink->set_log_level_filter(detail::toQuillLevel(options.fileLevel));
@@ -212,7 +236,7 @@ void init(const Options& options)
         pattern{"%(time) [%(log_level_short_code)] %(logger:<10) "
                 "%(short_source_location) "
                 "%(caller_function)() | %(message)",
-                "%H:%M:%S.%Qus",
+                "%Y-%m-%d %H:%M:%S.%Qus",
                 quill::Timezone::LocalTime};
 
     // Logger-level gate: the more verbose of console/file, so neither sink
@@ -252,6 +276,11 @@ quill::Logger* channelLogger(Ch channel)
 RingSink* ringSink()
 {
     return g_ringSink;
+}
+
+QString logFilePath()
+{
+    return g_filePath;
 }
 
 } // namespace familiar::log
