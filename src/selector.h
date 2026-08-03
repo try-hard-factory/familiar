@@ -769,8 +769,8 @@ protected:
                         // Edit mode: resize the field (both dimensions -
                         // it's a corner), not a uniform scale.
                         active_mode_ = kFieldResizeMode;
-                        eventAnchor_
-                            = this->mapToScene(get_scale_anchor(corner));
+                        eventAnchor_ = this->mapToScene(
+                            get_scale_anchor(corner));
                         const QPointF c = this->center();
                         fieldResizeAnchorRight_ = corner.x() < c.x();
                         fieldResizeAnchorBottom_ = corner.y() < c.y();
@@ -827,10 +827,12 @@ protected:
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(edge.rect.center()));
                         const QPointF c = this->center();
-                        fieldResizeAnchorRight_
-                            = !edge.vertical && edge.rect.center().x() < c.x();
-                        fieldResizeAnchorBottom_
-                            = edge.vertical && edge.rect.center().y() < c.y();
+                        fieldResizeAnchorRight_ = !edge.vertical
+                                                  && edge.rect.center().x()
+                                                         < c.x();
+                        fieldResizeAnchorBottom_ = edge.vertical
+                                                   && edge.rect.center().y()
+                                                          < c.y();
                         fieldResizeAffectsWidth_ = !edge.vertical;
                         fieldResizeAffectsHeight_ = edge.vertical;
                         fieldResizeOrigSize_
@@ -1020,14 +1022,12 @@ protected:
             const QPointF localMouse = this->mapFromScene(event->scenePos());
             const QPointF localAnchor = this->mapFromScene(eventAnchor_);
             const QRectF cur = this->bounding_rect_unselected();
-            const qreal newWidth
-                = fieldResizeAffectsWidth_
-                     ? qAbs(localMouse.x() - localAnchor.x())
-                     : cur.width();
-            const qreal newHeight
-                = fieldResizeAffectsHeight_
-                     ? qAbs(localMouse.y() - localAnchor.y())
-                     : cur.height();
+            const qreal newWidth = fieldResizeAffectsWidth_
+                                       ? qAbs(localMouse.x() - localAnchor.x())
+                                       : cur.width();
+            const qreal newHeight = fieldResizeAffectsHeight_
+                                        ? qAbs(localMouse.y() - localAnchor.y())
+                                        : cur.height();
             static_cast<Mixin*>(this)->resize_field(newWidth,
                                                     newHeight,
                                                     fieldResizeAnchorRight_,
@@ -1074,11 +1074,11 @@ protected:
             resetActions();
             return;
         } else if (active_mode_ == kFieldResizeMode) {
-            static_cast<Mixin*>(this)->commit_field_resize(
-                fieldResizeOrigSize_.width(),
-                fieldResizeOrigSize_.height(),
-                fieldResizeAnchorRight_,
-                fieldResizeAnchorBottom_);
+            static_cast<Mixin*>(this)
+                ->commit_field_resize(fieldResizeOrigSize_.width(),
+                                      fieldResizeOrigSize_.height(),
+                                      fieldResizeAnchorRight_,
+                                      fieldResizeAnchorBottom_);
             event->accept();
             resetActions();
             return;

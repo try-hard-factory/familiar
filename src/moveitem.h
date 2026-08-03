@@ -849,8 +849,8 @@ public:
         data[QStringLiteral("text")] = this->toPlainText();
         data[QStringLiteral("html")] = this->toHtml();
         if (fill_color_ != default_fill_color())
-            data[QStringLiteral("fill_color")]
-                = fill_color_.name(QColor::HexArgb);
+            data[QStringLiteral("fill_color")] = fill_color_.name(
+                QColor::HexArgb);
         // Manual field size from the edit-mode square handles
         // (resize_field()) - absent entirely for the common case (never
         // manually resized), same -1-is-auto convention as
@@ -956,24 +956,25 @@ public:
         this->prepareGeometryChange();
 
         const qreal oldWidth = document()->textWidth() < 0
-                                  ? QGraphicsTextItem::boundingRect().width()
-                                  : document()->textWidth();
+                                   ? QGraphicsTextItem::boundingRect().width()
+                                   : document()->textWidth();
         const qreal oldHeight = manualHeight_ < 0
-                                   ? QGraphicsTextItem::boundingRect().height()
-                                   : manualHeight_;
+                                    ? QGraphicsTextItem::boundingRect().height()
+                                    : manualHeight_;
 
-        const qreal clampedWidth
-            = newWidth < 0 ? -1 : qMax(newWidth, kMinFieldSize);
-        const qreal clampedHeight
-            = newHeight < 0 ? -1 : qMax(newHeight, kMinFieldSize);
+        const qreal clampedWidth = newWidth < 0 ? -1
+                                                : qMax(newWidth, kMinFieldSize);
+        const qreal clampedHeight = newHeight < 0
+                                        ? -1
+                                        : qMax(newHeight, kMinFieldSize);
 
         document()->setTextWidth(clampedWidth);
         manualHeight_ = clampedHeight;
 
         const qreal deltaW = (clampedWidth < 0 ? oldWidth : clampedWidth)
-                            - oldWidth;
+                             - oldWidth;
         const qreal deltaH = (clampedHeight < 0 ? oldHeight : clampedHeight)
-                            - oldHeight;
+                             - oldHeight;
         const QPointF localShift(anchorRight ? -deltaW : 0.0,
                                  anchorBottom ? -deltaH : 0.0);
         if (!localShift.isNull()) {
@@ -1162,8 +1163,8 @@ protected:
         // currently being edited or just selected.
         if (event->button() == Qt::LeftButton
             && event->modifiers() == Qt::ControlModifier) {
-            const QString href
-                = document()->documentLayout()->anchorAt(event->pos());
+            const QString href = document()->documentLayout()->anchorAt(
+                event->pos());
             if (!href.isEmpty()) {
                 QDesktopServices::openUrl(QUrl(href));
                 event->accept();

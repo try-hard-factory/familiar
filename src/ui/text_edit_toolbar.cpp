@@ -55,9 +55,7 @@ QIcon makeColorGlyphIcon(const QString& glyph,
     f.setBold(true);
     p.setFont(f);
     p.setPen(glyphColor);
-    p.drawText(QRect(0, 0, kIconSize, kIconSize - 5),
-              Qt::AlignCenter,
-              glyph);
+    p.drawText(QRect(0, 0, kIconSize, kIconSize - 5), Qt::AlignCenter, glyph);
 
     // An unset highlight (background().color() invalid, alpha 0) still
     // gets a visible neutral bar - an invisible bar would look identical
@@ -105,14 +103,15 @@ QIcon makeListIcon(bool numbered, const QColor& glyphColor, qreal dpr)
         if (numbered) {
             p.setPen(glyphColor);
             p.drawText(QRectF(0, top, markerW, rowH),
-                      Qt::AlignVCenter | Qt::AlignLeft,
-                      QString::number(i + 1));
+                       Qt::AlignVCenter | Qt::AlignLeft,
+                       QString::number(i + 1));
             p.setPen(Qt::NoPen);
         } else {
             p.drawEllipse(QPointF(markerW / 2.0, cy), 1.6, 1.6);
         }
-        p.drawRoundedRect(
-            QRectF(markerW + 2, cy - 1, kIconSize - markerW - 4, 2), 1, 1);
+        p.drawRoundedRect(QRectF(markerW + 2, cy - 1, kIconSize - markerW - 4, 2),
+                          1,
+                          1);
     }
 
     p.end();
@@ -185,9 +184,9 @@ QIcon makeAutosizeIcon(const QColor& glyphColor, qreal dpr)
     };
     const Corner corners[4]
         = {{{inner, inner}, {armLen, 0}, {0, armLen}},
-          {{kIconSize - inner, inner}, {-armLen, 0}, {0, armLen}},
-          {{inner, kIconSize - inner}, {armLen, 0}, {0, -armLen}},
-          {{kIconSize - inner, kIconSize - inner}, {-armLen, 0}, {0, -armLen}}};
+           {{kIconSize - inner, inner}, {-armLen, 0}, {0, armLen}},
+           {{inner, kIconSize - inner}, {armLen, 0}, {0, -armLen}},
+           {{kIconSize - inner, kIconSize - inner}, {-armLen, 0}, {0, -armLen}}};
     for (const Corner& c : corners) {
         p.drawLine(c.at, c.at + c.horiz);
         p.drawLine(c.at, c.at + c.vert);
@@ -233,19 +232,19 @@ QColor pickColor(QWidget* parent,
     // remove once the BG/H no-op bug is confirmed fixed.
     const int result = dialog.exec();
     FLOG_DEBUG(Ch::UI,
-              "pickColor(\"{}\"): dialog.exec() = {}",
-              title.toStdString(),
-              result == QDialog::Accepted ? "Accepted" : "Rejected/other");
+               "pickColor(\"{}\"): dialog.exec() = {}",
+               title.toStdString(),
+               result == QDialog::Accepted ? "Accepted" : "Rejected/other");
     if (result != QDialog::Accepted)
         return QColor();
     const QColor picked = dialog.currentColor();
     FLOG_DEBUG(Ch::UI,
-              "pickColor(\"{}\"): currentColor() = {},{},{},{}",
-              title.toStdString(),
-              picked.red(),
-              picked.green(),
-              picked.blue(),
-              picked.alpha());
+               "pickColor(\"{}\"): currentColor() = {},{},{},{}",
+               title.toStdString(),
+               picked.red(),
+               picked.green(),
+               picked.blue(),
+               picked.alpha());
     return picked;
 }
 
@@ -290,8 +289,9 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     // once restyleFromPreset() has a glyph color to paint with - empty
     // for now, just reserving the buttons/tooltips/layout slot.
     textColorBtn_ = makeButton(QString(), tr("Text color"), false);
-    highlightColorBtn_
-        = makeButton(QString(), tr("Text highlight color"), false);
+    highlightColorBtn_ = makeButton(QString(),
+                                    tr("Text highlight color"),
+                                    false);
     fillColorBtn_ = makeButton(QString(), tr("Note fill color"), false);
     for (QToolButton* b : {textColorBtn_, highlightColorBtn_, fillColorBtn_})
         b->setIconSize(QSize(kIconSize, kIconSize));
@@ -408,9 +408,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
                                        initial,
                                        tr("Note fill color"),
                                        /*withAlpha=*/true);
-        FLOG_DEBUG(Ch::UI,
-                  "fillColorBtn_: picked color valid={} -> calling set_fill_color",
-                  color.isValid());
+        FLOG_DEBUG(
+            Ch::UI,
+            "fillColorBtn_: picked color valid={} -> calling set_fill_color",
+            color.isValid());
         if (color.isValid()) {
             item_->set_fill_color(color);
             updateColorButtonIcons();
@@ -433,7 +434,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         applyCharFormat(format);
     });
 
-    connect(linkBtn_, &QToolButton::clicked, this, &TextEditToolbar::showLinkPopup);
+    connect(linkBtn_,
+            &QToolButton::clicked,
+            this,
+            &TextEditToolbar::showLinkPopup);
 
     // clicked, not toggled: whether the block ends up listed (and which
     // style) depends on the CURRENT document state, not a simple bool
@@ -459,9 +463,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         applyCharFormat(format);
     };
     connect(sizeBox_, &QComboBox::textActivated, this, applySize);
-    connect(sizeBox_->lineEdit(), &QLineEdit::returnPressed, this, [this, applySize] {
-        applySize(sizeBox_->currentText());
-    });
+    connect(sizeBox_->lineEdit(),
+            &QLineEdit::returnPressed,
+            this,
+            [this, applySize] { applySize(sizeBox_->currentText()); });
 
     connect(fontBox_,
             &QFontComboBox::currentFontChanged,
@@ -477,7 +482,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     // formatting. Cheap: a handful of format reads 4x a second.
     syncTimer_ = new QTimer(this);
     syncTimer_->setInterval(250);
-    connect(syncTimer_, &QTimer::timeout, this, &TextEditToolbar::syncFromCursor);
+    connect(syncTimer_,
+            &QTimer::timeout,
+            this,
+            &TextEditToolbar::syncFromCursor);
 
     restyleFromPreset();
 }
@@ -711,25 +719,28 @@ void TextEditToolbar::toggleListStyle(int style)
     const QTextBlock endBlock = doc->findBlock(cursor.selectionEnd());
     QList<QTextBlock> blocks;
     for (QTextBlock block = doc->findBlock(cursor.selectionStart());
-        block.isValid();
-        block = block.next()) {
+         block.isValid();
+         block = block.next()) {
         blocks.append(block);
         if (block == endBlock)
             break;
     }
 
-    const bool anyListed = std::any_of(blocks.begin(), blocks.end(), [](const QTextBlock& b) {
-        return QTextCursor(b).currentList() != nullptr;
-    });
+    const bool anyListed
+        = std::any_of(blocks.begin(), blocks.end(), [](const QTextBlock& b) {
+              return QTextCursor(b).currentList() != nullptr;
+          });
     // Only a uniform "every line already has this exact style" selection
     // toggles off; anything else (nothing listed, or a mixed selection)
     // is treated as "make it this style".
     const bool turningOff
         = anyListed
-          && std::all_of(blocks.begin(), blocks.end(), [wanted](const QTextBlock& b) {
-                 QTextList* l = QTextCursor(b).currentList();
-                 return l && l->format().style() == wanted;
-             });
+          && std::all_of(blocks.begin(),
+                         blocks.end(),
+                         [wanted](const QTextBlock& b) {
+                             QTextList* l = QTextCursor(b).currentList();
+                             return l && l->format().style() == wanted;
+                         });
 
     cursor.beginEditBlock();
     if (!anyListed) {
@@ -776,7 +787,8 @@ void TextEditToolbar::syncFromCursor()
         QSignalBlocker b1(bulletListBtn_), b2(numberedListBtn_);
         QTextList* list = item_->textCursor().currentList();
         const QTextListFormat::Style style
-            = list ? list->format().style() : QTextListFormat::ListStyleUndefined;
+            = list ? list->format().style()
+                   : QTextListFormat::ListStyleUndefined;
         bulletListBtn_->setChecked(style == QTextListFormat::ListDisc);
         numberedListBtn_->setChecked(style == QTextListFormat::ListDecimal);
     }
@@ -842,50 +854,49 @@ void TextEditToolbar::restyleFromPreset()
     // Same reasoning as MainWindow::updateWindowControlsStyle_(): over a
     // translucent window every state must be spelled out, and popups/
     // tooltips need fully opaque colors.
-    setStyleSheet(
-        QStringLiteral("TextEditToolbar {"
-                       "  background-color: %1;"
-                       "  border: 1px solid %2;"
-                       "  border-radius: 8px;"
-                       "}"
-                       "QToolButton {"
-                       "  background: transparent;"
-                       "  color: %3;"
-                       "  border: none;"
-                       "  border-radius: 5px;"
-                       "}"
-                       "QToolButton:hover { background-color: %4; }"
-                       "QToolButton:pressed { background-color: %5; }"
-                       "QToolButton:checked { background-color: %5; }"
-                       "QFrame {"
-                       "  background-color: %2;"
-                       "  border: none;"
-                       "  margin: 4px 4px;"
-                       "}"
-                       "QComboBox, QFontComboBox {"
-                       "  background-color: %1;"
-                       "  color: %3;"
-                       "  border: 1px solid %2;"
-                       "  border-radius: 5px;"
-                       "  padding: 1px 4px;"
-                       "}"
-                       "QComboBox QAbstractItemView {"
-                       "  background-color: %6;"
-                       "  color: %3;"
-                       "  selection-background-color: %7;"
-                       "}"
-                       "QToolTip {"
-                       "  background-color: %6;"
-                       "  color: %3;"
-                       "  border: 1px solid %2;"
-                       "}")
-            .arg(rgba(background, 245),
-                 border.name(),
-                 text.name(),
-                 rgba(selection, 90),
-                 rgba(selection, 170),
-                 background.name(),
-                 selection.name()));
+    setStyleSheet(QStringLiteral("TextEditToolbar {"
+                                 "  background-color: %1;"
+                                 "  border: 1px solid %2;"
+                                 "  border-radius: 8px;"
+                                 "}"
+                                 "QToolButton {"
+                                 "  background: transparent;"
+                                 "  color: %3;"
+                                 "  border: none;"
+                                 "  border-radius: 5px;"
+                                 "}"
+                                 "QToolButton:hover { background-color: %4; }"
+                                 "QToolButton:pressed { background-color: %5; }"
+                                 "QToolButton:checked { background-color: %5; }"
+                                 "QFrame {"
+                                 "  background-color: %2;"
+                                 "  border: none;"
+                                 "  margin: 4px 4px;"
+                                 "}"
+                                 "QComboBox, QFontComboBox {"
+                                 "  background-color: %1;"
+                                 "  color: %3;"
+                                 "  border: 1px solid %2;"
+                                 "  border-radius: 5px;"
+                                 "  padding: 1px 4px;"
+                                 "}"
+                                 "QComboBox QAbstractItemView {"
+                                 "  background-color: %6;"
+                                 "  color: %3;"
+                                 "  selection-background-color: %7;"
+                                 "}"
+                                 "QToolTip {"
+                                 "  background-color: %6;"
+                                 "  color: %3;"
+                                 "  border: 1px solid %2;"
+                                 "}")
+                      .arg(rgba(background, 245),
+                           border.name(),
+                           text.name(),
+                           rgba(selection, 90),
+                           rgba(selection, 170),
+                           background.name(),
+                           selection.name()));
 
     // Static glyphs (don't depend on item_/cursor state, just the theme
     // color), unlike the three color-swatch icons below.

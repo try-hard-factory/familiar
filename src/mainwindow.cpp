@@ -424,12 +424,17 @@ void MainWindow::ensureMenubar_()
     // Mirror the existing checkable always_on_top action instead of
     // duplicating its destroy()/create() logic - toggling either side
     // keeps the other in sync through the QAction.
-    if (Action* a = getActions().find("always_on_top");
-        a && a->qaction) {
+    if (Action* a = getActions().find("always_on_top"); a && a->qaction) {
         onTopBtn->setCheckable(true);
         onTopBtn->setChecked(a->qaction->isChecked());
-        connect(onTopBtn, &QToolButton::clicked, a->qaction, &QAction::setChecked);
-        connect(a->qaction, &QAction::toggled, onTopBtn, &QToolButton::setChecked);
+        connect(onTopBtn,
+                &QToolButton::clicked,
+                a->qaction,
+                &QAction::setChecked);
+        connect(a->qaction,
+                &QAction::toggled,
+                onTopBtn,
+                &QToolButton::setChecked);
     }
     connect(minBtn, &QToolButton::clicked, this, &MainWindow::showMinimized);
     connect(maxBtn, &QToolButton::clicked, this, [this] {
@@ -482,10 +487,7 @@ void MainWindow::ensureMenubar_()
     uiHideTimer_ = new QTimer(this);
     uiHideTimer_->setSingleShot(true);
     uiHideTimer_->setInterval(400);
-    connect(uiHideTimer_,
-            &QTimer::timeout,
-            this,
-            &MainWindow::onUiHideTimeout_);
+    connect(uiHideTimer_, &QTimer::timeout, this, &MainWindow::onUiHideTimeout_);
 }
 
 void MainWindow::updateWindowControlsStyle_()
@@ -542,8 +544,8 @@ void MainWindow::applyMenubarState_()
     Action* show = getActions().find("show_menubar");
     Action* autoHide = getActions().find("auto_hide_ui");
     const bool shown = show && show->qaction && show->qaction->isChecked();
-    const bool wantAutoHide
-        = autoHide && autoHide->qaction && autoHide->qaction->isChecked();
+    const bool wantAutoHide = autoHide && autoHide->qaction
+                              && autoHide->qaction->isChecked();
 
     // Auto-hide is meaningless without a menu bar - grey it out.
     if (autoHide && autoHide->qaction)
@@ -658,7 +660,9 @@ bool MainWindow::tryStartWindowDrag_(const QPoint& pos)
     // the QTabBar - drags the window.
     if (QTabBar* tb = tabpane_ ? tabpane_->tabBar() : nullptr;
         tb && tb->isVisible()) {
-        const QRect row(0, tb->mapTo(this, QPoint(0, 0)).y(), width(),
+        const QRect row(0,
+                        tb->mapTo(this, QPoint(0, 0)).y(),
+                        width(),
                         tb->height());
         if (row.contains(pos)) {
             const QPoint local = tb->mapFrom(this, pos);

@@ -189,14 +189,14 @@ protected:
 
         if (event->type() == QEvent::MouseMove) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            const QPoint pos
-                = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            const QPoint pos = mapFromGlobal(
+                mouseEvent->globalPosition().toPoint());
             updateResizeCursor(pos);
             handleUiHover_(pos);
         } else if (event->type() == QEvent::MouseButtonPress) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
-            const QPoint pos
-                = mapFromGlobal(mouseEvent->globalPosition().toPoint());
+            const QPoint pos = mapFromGlobal(
+                mouseEvent->globalPosition().toPoint());
             // Resize wins over drag: the top kResizeBorder pixels overlap
             // the menu bar, and the thin border is harder to hit.
             if (mouseEvent->button() == Qt::LeftButton

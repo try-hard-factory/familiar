@@ -726,7 +726,8 @@ void CanvasView::updateSelectionVisibility()
     // never left the app. qApp->activeWindow() stays non-null as long as
     // ANY window of this application has focus, and is only null once
     // focus genuinely moves to a different application.
-    const bool visible = qApp->activeWindow() != nullptr || selectionOutlineHover_;
+    const bool visible = qApp->activeWindow() != nullptr
+                         || selectionOutlineHover_;
 
     if (visible) {
         selectionFadeAnim_->stop();
