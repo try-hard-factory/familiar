@@ -155,6 +155,7 @@ SingleCheckboxGroupWidget::SingleCheckboxGroupWidget(const QString& title,
             this,
             [this](Qt::CheckState state) {
                 onValueChanged(QVariant::fromValue(state));
+                emit toggled(state == Qt::Checked);
             });
 }
 
@@ -247,4 +248,27 @@ ConfirmCloseUnsavedWidget::ConfirmCloseUnsavedWidget(QWidget* parent)
                                 QStringLiteral("Save/confirm_close_unsaved"),
                                 QStringLiteral("Confirm when closing"),
                                 parent)
+{}
+
+AutosaveEnabledWidget::AutosaveEnabledWidget(QWidget* parent)
+    : SingleCheckboxGroupWidget(
+          QStringLiteral("Autosave:"),
+          QStringLiteral(
+              "Periodically save open files that already have a path in "
+              "the background (files never saved before are skipped, so "
+              "this never pops a Save As dialog)."),
+          QStringLiteral("Save/autosave_enabled"),
+          QStringLiteral("Enable autosave"),
+          parent)
+{}
+
+AutosaveIntervalWidget::AutosaveIntervalWidget(QWidget* parent)
+    : IntegerGroupWidget(QStringLiteral("Autosave Interval (seconds):"),
+                        QStringLiteral(
+                            "How often unsaved open files are automatically "
+                            "saved, while autosave is enabled above."),
+                        QStringLiteral("Save/autosave_interval_seconds"),
+                        1,
+                        3600,
+                        parent)
 {}

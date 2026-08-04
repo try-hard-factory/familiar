@@ -109,6 +109,8 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     , stack_(new QStackedWidget(this))
     , miscPage_(new QWidget)
     , confirmCloseUnsaved_(new ConfirmCloseUnsavedWidget)
+    , autosaveEnabled_(new AutosaveEnabledWidget)
+    , autosaveInterval_(new AutosaveIntervalWidget)
     , imagesPage_(new QWidget)
     , imageStorageFormat_(new ImageStorageFormatWidget)
     , arrangeGap_(new ArrangeGapWidget)
@@ -308,6 +310,19 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     // Miscellaneous
     auto* miscLayout = new QGridLayout(miscPage_);
     miscLayout->addWidget(confirmCloseUnsaved_, 0, 0);
+    miscLayout->addWidget(autosaveEnabled_, 1, 0);
+    // Nested inside the checkbox's own group box (not a separate row of
+    // its own) and disabled unless autosave is actually enabled - the
+    // interval is meaningless on its own.
+    autosaveEnabled_->addNestedWidget(autosaveInterval_);
+    autosaveInterval_->setEnabled(
+        FamSettings()
+            .valueOrDefault(QStringLiteral("Save/autosave_enabled"))
+            .toBool());
+    connect(autosaveEnabled_,
+            &AutosaveEnabledWidget::toggled,
+            autosaveInterval_,
+            &AutosaveIntervalWidget::setEnabled);
     addCategory(tr("Miscellaneous"), miscPage_);
 
     // Images & Items

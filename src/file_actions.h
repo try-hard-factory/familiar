@@ -7,6 +7,7 @@
 
 class TabPane;
 class MainWindow;
+class CanvasView;
 
 class FileActions
 {
@@ -18,6 +19,15 @@ public:
     void openFile();
     void processOpenFile(const QString& file);
 
+    // Saves `canvasView` specifically, regardless of which tab is
+    // currently active - used by autosave to save background tabs
+    // without visibly flipping the active tab (see MainWindow::
+    // onAutosaveTimeout_()). `path` must already exist on disk (checked
+    // by the caller before calling this - never true for an untitled
+    // tab); if it doesn't, this falls back to saveFileAs(), which is
+    // hard-wired to the *current* tab, so passing a background view with
+    // a nonexistent path would silently save the wrong tab instead.
+    int saveFile(CanvasView* canvasView, const QString& path);
     int saveFile(const QString& path);
     int saveFile();
     int saveFileAs();

@@ -167,14 +167,12 @@ void FileActions::processOpenFile(const QString& file)
     mainwindow_.update_menu_and_actions();
 }
 
-int FileActions::saveFile(const QString& path)
+int FileActions::saveFile(CanvasView* canvasView, const QString& path)
 {
     QFile file(path);
     if (!file.exists()) {
         return saveFileAs();
     }
-
-    CanvasView* canvasView = mainwindow_.tabPane().currentWidget();
 
     // Synchronous (not backgrounded like loadFmlIntoCurrentTab()): several
     // callers (TabPane::onTabClosed(), MainWindow::saveAllWindowSaveCB())
@@ -222,6 +220,11 @@ int FileActions::saveFile(const QString& path)
     mainwindow_.update_menu_and_actions();
 
     return QDialog::Accepted;
+}
+
+int FileActions::saveFile(const QString& path)
+{
+    return saveFile(mainwindow_.tabPane().currentWidget(), path);
 }
 
 int FileActions::saveFile()

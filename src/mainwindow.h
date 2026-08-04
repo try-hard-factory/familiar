@@ -275,6 +275,14 @@ private:
 public slots:
     void settingsChangedSlot();
 private slots:
+    // Periodic autosave (roadmap step 13). onAutosaveTimeout_() fires
+    // every autosaveTimer_ tick; restartAutosaveTimer_() re-reads
+    // Save/autosave_enabled + Save/autosave_interval_seconds fresh and
+    // (re)starts or stops the timer accordingly - called once at startup
+    // and again live whenever either setting changes (see
+    // SettingsEvents::autosaveSettingsChanged).
+    void onAutosaveTimeout_();
+    void restartAutosaveTimer_();
     void saveAll();
     void newFile();
     void settingsWindow();
@@ -352,6 +360,7 @@ private:
 
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
+    QTimer* autosaveTimer_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
 
     int currentOpacity_;
