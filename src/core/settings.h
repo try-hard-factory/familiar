@@ -56,6 +56,13 @@ public:
 signals:
     void restoreDefaults();
     void restoreKeyboardDefaults();
+    // Fired from both Save/autosave_enabled's and
+    // Save/autosave_interval_seconds' postSaveCallback so MainWindow's
+    // autosave QTimer can pick up either change live, instead of only on
+    // next launch (see FamSettings::setValue()). No payload - the
+    // listener just re-reads both settings fresh, since either one alone
+    // doesn't have the other's current value.
+    void autosaveSettingsChanged();
 
 private:
     SettingsEvents() = default;

@@ -10,6 +10,8 @@ class QButtonGroup;
 class QStackedWidget;
 class ColorsWidget;
 class ConfirmCloseUnsavedWidget;
+class AutosaveEnabledWidget;
+class AutosaveIntervalWidget;
 class ImageStorageFormatWidget;
 class ArrangeGapWidget;
 class AllocationLimitWidget;
@@ -55,6 +57,8 @@ private:
 
     QWidget* miscPage_ = nullptr;
     ConfirmCloseUnsavedWidget* confirmCloseUnsaved_ = nullptr;
+    AutosaveEnabledWidget* autosaveEnabled_ = nullptr;
+    AutosaveIntervalWidget* autosaveInterval_ = nullptr;
 
     QWidget* imagesPage_ = nullptr;
     ImageStorageFormatWidget* imageStorageFormat_ = nullptr;

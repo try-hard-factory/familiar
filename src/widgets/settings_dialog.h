@@ -18,6 +18,13 @@ public:
                                const QString& key,
                                QWidget* parent = nullptr);
 
+    // Inserts `w` into this group's own layout, just before the trailing
+    // stretch - for a setting that's only meaningful alongside this one
+    // (e.g. an interval spinbox that does nothing unless a sibling
+    // checkbox enables it) and should read as visually nested under it
+    // rather than as a separate, unrelated group box.
+    void addNestedWidget(QWidget* w) { vbox_->insertWidget(vbox_->count() - 1, w); }
+
 protected:
     virtual void setValue(const QVariant& value) = 0;
     virtual QVariant convertValueFromQt(const QVariant& value) { return value; }
@@ -91,6 +98,13 @@ public:
                                        const QString& label,
                                        QWidget* parent = nullptr);
 
+signals:
+    // Fired on every check-state change (in addition to the usual
+    // settings persistence) - for wiring up a dependent widget's
+    // setEnabled() live, e.g. AutosaveIntervalWidget under
+    // AutosaveEnabledWidget in ui/new_settings_window.cpp.
+    void toggled(bool checked);
+
 protected:
     void setValue(const QVariant& value) override;
     QVariant convertValueFromQt(const QVariant& value) override;
@@ -129,4 +143,16 @@ class ConfirmCloseUnsavedWidget : public SingleCheckboxGroupWidget
 {
 public:
     explicit ConfirmCloseUnsavedWidget(QWidget* parent = nullptr);
+};
+
+class AutosaveEnabledWidget : public SingleCheckboxGroupWidget
+{
+public:
+    explicit AutosaveEnabledWidget(QWidget* parent = nullptr);
+};
+
+class AutosaveIntervalWidget : public IntegerGroupWidget
+{
+public:
+    explicit AutosaveIntervalWidget(QWidget* parent = nullptr);
 };

@@ -21,6 +21,7 @@
 #include "widgets/dialogs.h"
 #include <actions/action_mouse_dispatch.h>
 #include <core/held_buttons_tracker.h>
+#include <core/settings.h>
 #include <core/settingshandler.h>
 #include <map>
 #include <ui/new_settings_window.h>
@@ -115,6 +116,19 @@ MainWindow::MainWindow(QWidget* parent)
     // dispatcher can query held mouse buttons from a later keyPressEvent.
     qApp->installEventFilter(&HeldButtonsTracker::instance());
     qApp->installEventFilter(new ActionMouseDispatcher(this, this));
+
+    // Periodic autosave (roadmap step 13) - see onAutosaveTimeout_()/
+    // restartAutosaveTimer_() in mainwindow.h for the full picture.
+    autosaveTimer_ = new QTimer(this);
+    connect(autosaveTimer_,
+            &QTimer::timeout,
+            this,
+            &MainWindow::onAutosaveTimeout_);
+    connect(&SettingsEvents::instance(),
+            &SettingsEvents::autosaveSettingsChanged,
+            this,
+            &MainWindow::restartAutosaveTimer_);
+    restartAutosaveTimer_();
 }
 
 
@@ -142,6 +156,36 @@ void MainWindow::saveAll()
     }
 }
 
+void MainWindow::onAutosaveTimeout_()
+{
+    // Unlike saveAll() above, this never touches tabpane_->setCurrentIndex()
+    // - flipping the visibly-active tab every autosave tick would be a
+    // jarring background interruption. FileActions::saveFile(CanvasView*,
+    // path) exists specifically so this can save each tab in place.
+    const int count = tabpane_->count();
+    for (int i = 0; i < count; ++i) {
+        CanvasView* cv = tabpane_->widgetAt(i);
+        if (cv->isModified() && !cv->isUntitled()) {
+            FLOG_INFO(Ch::IO, "Autosaving {}", cv->path().toStdString());
+            fileactions_->saveFile(cv, cv->path());
+        }
+    }
+}
+
+void MainWindow::restartAutosaveTimer_()
+{
+    autosaveTimer_->stop();
+    FamSettings settings;
+    const bool enabled
+        = settings.valueOrDefault(QStringLiteral("Save/autosave_enabled"))
+              .toBool();
+    const int seconds
+        = settings
+              .valueOrDefault(QStringLiteral("Save/autosave_interval_seconds"))
+              .toInt();
+    if (enabled)
+        autosaveTimer_->start(seconds * 1000);
+}
 
 void MainWindow::newFile()
 {

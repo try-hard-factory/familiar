@@ -172,6 +172,30 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
                  QImageReader::setAllocationLimit(v.toInt());
              },
          }},
+        {"Save/autosave_enabled",
+         {
+             /*default*/ false,
+             /*cast*/ [](const QVariant& v) -> QVariant { return v.toBool(); },
+             /*validate*/ {},
+             /*postSaveCallback*/
+             [](const QVariant&) {
+                 emit SettingsEvents::instance().autosaveSettingsChanged();
+             },
+         }},
+        {"Save/autosave_interval_seconds",
+         {
+             /*default*/ 5,
+             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*validate*/
+             [](const QVariant& v) {
+                 const int n = v.toInt();
+                 return n >= 1 && n <= 3600;
+             },
+             /*postSaveCallback*/
+             [](const QVariant&) {
+                 emit SettingsEvents::instance().autosaveSettingsChanged();
+             },
+         }},
     };
     return map;
 }
