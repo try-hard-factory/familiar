@@ -1,5 +1,6 @@
 #include "settingshandler.h"
 #include <cmath>
+#include <functional>
 #include <limits>
 
 #include <QCoreApplication>
@@ -103,6 +104,61 @@ QVariant jsonToVariant(const QJsonValue& v)
     return v.toVariant();
 }
 
+// ── Schema versioning ──────────────────────────────────────────────────
+// Mirrors the .fml project format's formatVersion/migration design (see
+// docs/fml_format_design.md §6), applied to settings.json instead - kept
+// deliberately separate from it (a settings-file quirk shouldn't block
+// opening a project, and vice versa).
+constexpr int kSettingsSchemaVersion = 1;
+constexpr char kSchemaVersionKey[] = "schemaVersion";
+
+// {fromVersion: transform} - migrations[N] upgrades a document from
+// schema N to N+1; applied in ascending order until the document reaches
+// kSettingsSchemaVersion. Empty for now - no breaking change has shipped
+// yet (the app itself is unreleased, so there's nothing real to migrate
+// from) - but the mechanism exists so the first real migration has
+// somewhere to go instead of being invented from scratch under time
+// pressure. Only bump kSettingsSchemaVersion for a change that actually
+// breaks reading old data (renamed/restructured key) - purely additive
+// changes (a new key with its own default, like every FamSettings field
+// added so far) don't need one.
+const QMap<int, std::function<void(QJsonObject&)>>& settingsMigrations()
+{
+    static const QMap<int, std::function<void(QJsonObject&)>> migrations = {
+        // {1, [](QJsonObject& doc) { ... }},
+    };
+    return migrations;
+}
+
+// Unlike .fml's parse_manifest() (which refuses to load a file newer
+// than the app supports - project data is worth protecting from a
+// half-understood load), a settings.json from a newer familiar is loaded
+// best-effort: every FamSettings field already falls back to its own
+// default on a bad/unrecognized value (see FamSettings::valueOrDefault()),
+// so the worst case is a handful of settings resetting to default, not a
+// hard failure to start the app over a non-critical file.
+void applySettingsMigrations(QJsonObject& doc)
+{
+    int version = doc.value(QLatin1String(kSchemaVersionKey))
+                      .toInt(kSettingsSchemaVersion);
+    if (version > kSettingsSchemaVersion) {
+        FLOG_WARN(Ch::Settings,
+                  "settings.json has schemaVersion {} - newer than this "
+                  "build supports ({}) - loading best-effort",
+                  version,
+                  kSettingsSchemaVersion);
+        return;
+    }
+    const auto& migrations = settingsMigrations();
+    while (version < kSettingsSchemaVersion) {
+        auto it = migrations.find(version);
+        if (it != migrations.end())
+            it.value()(doc);
+        ++version;
+    }
+    doc[QLatin1String(kSchemaVersionKey)] = kSettingsSchemaVersion;
+}
+
 } // namespace
 
 SettingsHandler::SettingsHandler()
@@ -126,12 +182,14 @@ SettingsHandler* SettingsHandler::getInstance()
 void SettingsHandler::loadDocument()
 {
     QFile file(settingsFilePath_);
-    if (!file.open(QIODevice::ReadOnly)) {
-        document_ = QJsonObject();
-        return;
+    QJsonObject doc;
+    if (file.open(QIODevice::ReadOnly)) {
+        const QJsonDocument parsed = QJsonDocument::fromJson(file.readAll());
+        if (parsed.isObject())
+            doc = parsed.object();
     }
-    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    document_ = doc.isObject() ? doc.object() : QJsonObject();
+    applySettingsMigrations(doc);
+    document_ = doc;
 }
 
 bool SettingsHandler::saveDocument() const
@@ -218,7 +276,9 @@ bool SettingsHandler::importSettingsFrom(const QString& path)
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject())
         return false;
-    document_ = doc.object();
+    QJsonObject obj = doc.object();
+    applySettingsMigrations(obj);
+    document_ = obj;
     return saveDocument();
 }
 

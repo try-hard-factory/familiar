@@ -16,6 +16,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QMap>
 #include <QPointF>
 #include <QRectF>
 #include <QSaveFile>
@@ -24,6 +25,7 @@
 #include <QVariantMap>
 
 #include <cstring>
+#include <functional>
 #include <optional>
 
 #include "log/log.h"
@@ -43,6 +45,46 @@ namespace {
 constexpr int kFormatVersion = 1;
 const char kFormatMagic[] = "familiar";
 const unsigned char kZipMagic[4] = {'P', 'K', 0x03, 0x04};
+
+// ── Format versioning ────────────────────────────────────────────────
+// Documented in docs/fml_format_design.md §6 but never implemented until
+// now - mirrors settings.json's analogous mechanism in
+// core/settingshandler.cpp (applySettingsMigrations()/
+// settingsMigrations()), applied here to manifest.json instead. A
+// formatVersion newer than kFormatVersion is still a hard load refusal
+// (see the check in parse_manifest() below, unchanged) - unlike
+// settings.json, this is a user's actual artwork, not just preferences,
+// so silently best-effort-loading a schema we don't fully understand is
+// the wrong tradeoff here.
+//
+// {fromVersion: transform} - migrations[N] rewrites `root` (the parsed
+// manifest.json object, before any of its fields are read into Manifest/
+// ManifestItem) from formatVersion N to N+1 in place; applyFormatMigrations()
+// below runs every migration from the document's own formatVersion up to
+// kFormatVersion in ascending order. Empty for now - kFormatVersion has
+// never been bumped, so there's nothing real to migrate from yet. Only
+// bump kFormatVersion, and add an entry here, for a change that breaks
+// reading old data (a renamed/restructured/reinterpreted field) - purely
+// additive fields don't need one, since unknown fields are already
+// ignored on read (§6, "Незнакомое поле JSON — молча игнорировать").
+const QMap<int, std::function<void(QJsonObject&)>>& formatMigrations()
+{
+    static const QMap<int, std::function<void(QJsonObject&)>> migrations = {
+        // {1, [](QJsonObject& root) { ... }},
+    };
+    return migrations;
+}
+
+void applyFormatMigrations(QJsonObject& root, int fromVersion)
+{
+    const auto& migrations = formatMigrations();
+    for (int v = fromVersion; v < kFormatVersion; ++v) {
+        auto it = migrations.find(v);
+        if (it != migrations.end())
+            it.value()(root);
+    }
+    root[QStringLiteral("formatVersion")] = kFormatVersion;
+}
 
 struct ManifestItem
 {
@@ -143,9 +185,14 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
                     .arg(formatVersion);
         return std::nullopt;
     }
+    // No-op today (formatVersion is always already kFormatVersion, since
+    // it's never been bumped) - see applyFormatMigrations() above for why
+    // this is here regardless.
+    if (formatVersion < kFormatVersion)
+        applyFormatMigrations(root, formatVersion);
 
     Manifest manifest;
-    manifest.formatVersion = formatVersion;
+    manifest.formatVersion = kFormatVersion;
     manifest.appVersion = root.value(QStringLiteral("appVersion")).toString();
 
     QJsonArray boundingRect = root.value(QStringLiteral("scene"))
