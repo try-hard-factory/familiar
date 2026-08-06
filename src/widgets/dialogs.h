@@ -349,6 +349,12 @@ private:
 private slots:
     void restoreAndDiscardUnchecked()
     {
+        // Captured BEFORE any restore starts - see FileActions::
+        // closeTab()'s comment for why this can't just be re-found by
+        // scanning "untitled && unmodified" again after the fact.
+        CanvasView* blankTab = fileActions_.findBlankTab();
+
+        bool restoredAny = false;
         for (int i = 0; i < list_->count(); ++i) {
             const familiar::recovery::Entry& e = entries_[i];
             if (list_->item(i)->checkState() == Qt::Checked) {
@@ -361,12 +367,17 @@ private slots:
                 fileActions_.restoreFromRecovery(e.fmlPath,
                                                  e.originalPath,
                                                  e.id);
+                restoredAny = true;
             } else {
                 // Unchecked is a real "no" here, not "leave for later" -
                 // see the class comment above.
                 familiar::recovery::remove(e.id);
             }
         }
+        // Only if something was actually restored - otherwise this is
+        // the only tab left open, and closing it would leave zero.
+        if (restoredAny && blankTab)
+            fileActions_.closeTab(blankTab);
         close();
     }
 

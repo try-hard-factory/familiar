@@ -161,6 +161,26 @@ void FileActions::restoreFromRecovery(const QString& recoveryFmlPath,
                           recoveryId);
 }
 
+CanvasView* FileActions::findBlankTab()
+{
+    TabPane& tp = mainwindow_.tabPane();
+    for (int i = 0; i < tp.count(); ++i) {
+        CanvasView* cv = tp.widgetAt(i);
+        if (cv->isUntitled() && !cv->isModified())
+            return cv;
+    }
+    return nullptr;
+}
+
+void FileActions::closeTab(CanvasView* cv)
+{
+    // Same direct `delete` TabPane::onTabClosed() uses for its own
+    // "nothing to lose" branch - Qt's QTabWidget notices the child
+    // widget being destroyed and removes its tab entry on its own, no
+    // separate closeTabByIndex() call needed.
+    delete cv;
+}
+
 void FileActions::processOpenFile(const QString& file)
 {
     // Already open in some tab - switch to it instead of opening a
