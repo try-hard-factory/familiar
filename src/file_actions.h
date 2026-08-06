@@ -48,6 +48,27 @@ public:
                              const QString& originalPath,
                              const QUuid& recoveryId);
 
+    // Returns the first still-blank ("untitled", unmodified) tab, or
+    // nullptr - meant to be called BEFORE restoring anything (see
+    // closeTab() below for why), to identify the pointless empty tab
+    // every session starts with, so it can be closed once real recovered
+    // content has replaced the need for it.
+    CanvasView* findBlankTab();
+
+    // Deletes `cv` outright - same direct approach TabPane::onTabClosed()
+    // uses for its own "nothing to lose" branch. Only ever called on a
+    // CanvasView already known safe to discard (findBlankTab()'s
+    // result, captured BEFORE any restores started) - NOT re-derived by
+    // scanning for "untitled && unmodified" again afterward, since a
+    // freshly restored-but-still-untitled tab also briefly matches that
+    // same description while its own background load is still in
+    // flight (setModified(true) only happens once that load finishes) -
+    // a real, previously-shipped bug where this deleted the very
+    // CanvasScene an in-flight ThreadedIO worker still held a pointer
+    // to, crashing inside QGraphicsScene::addItem once that load
+    // finished.
+    void closeTab(CanvasView* cv);
+
 private:
     // Loads `path` into whatever tab is currently active, in the
     // background (see fml_archive.h). Shared by processOpenFile(),

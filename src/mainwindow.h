@@ -57,6 +57,18 @@ public:
     TabPane& tabPane();
     FileActions& fileActions();
 
+    // Call once from main() INSTEAD OF a bare show() - if
+    // familiar::recovery::scan() finds anything left over from a session
+    // that didn't exit cleanly, this shows only RecoveryDialog first
+    // (parented to nullptr, since this window isn't visible yet) and
+    // defers actually show()'ing this window until that dialog is
+    // dismissed, however the user dismissed it - otherwise the main
+    // window (with its pointless default blank tab) would flash up
+    // behind the recovery prompt before the user has even decided
+    // anything. Shows immediately, same as a plain show(), if there's
+    // nothing to recover.
+    void showOrOfferRecovery();
+
     void clipboardItems(QVector<QGraphicsItem*> ci) noexcept
     {
         clipboardItems_ = ci;
@@ -288,14 +300,11 @@ private slots:
     // NOT gated by Save/autosave_enabled: it writes into its own
     // recovery/ folder, not the tab's real file, so it's always-on
     // regardless of whether the user wants their real files overwritten
-    // periodically. onRecoveryTimeout_() snapshots every modified tab
-    // (titled or not - see recovery.h); checkForRecoverableFiles_() runs
-    // once at startup (via QTimer::singleShot(0, ...) in the
-    // constructor, so it fires after the window is actually shown/
-    // painted, not before) and pops RecoveryDialog if anything's left
-    // over from a session that didn't exit cleanly.
+    // periodically. Snapshots every modified tab (titled or not - see
+    // recovery.h). The startup check itself is showOrOfferRecovery()
+    // above, called explicitly from main() rather than from in here -
+    // see its own comment for why.
     void onRecoveryTimeout_();
-    void checkForRecoverableFiles_();
     void saveAll();
     void newFile();
     void settingsWindow();

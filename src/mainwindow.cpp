@@ -131,11 +131,11 @@ MainWindow::MainWindow(QWidget* parent)
             &MainWindow::restartAutosaveTimer_);
     restartAutosaveTimer_();
 
-    // Crash recovery (roadmap step 18) - see onRecoveryTimeout_()/
-    // checkForRecoverableFiles_() in mainwindow.h. Always-on (unlike
-    // autosaveTimer_ above, not gated by Save/autosave_enabled): it
-    // writes into its own recovery/ folder, never the tab's real file,
-    // so there's no user-facing reason to ever disable it.
+    // Crash recovery (roadmap step 18) - see onRecoveryTimeout_() in
+    // mainwindow.h. Always-on (unlike autosaveTimer_ above, not gated by
+    // Save/autosave_enabled): it writes into its own recovery/ folder,
+    // never the tab's real file, so there's no user-facing reason to
+    // ever disable it.
     recoveryTimer_ = new QTimer(this);
     connect(recoveryTimer_,
             &QTimer::timeout,
@@ -154,10 +154,10 @@ MainWindow::MainWindow(QWidget* parent)
         familiar::recovery::clear();
     });
 
-    // Deferred to the next event-loop turn so the window is actually
-    // shown/painted before a modal-feeling recovery prompt pops up over
-    // it, rather than appearing mid-construction.
-    QTimer::singleShot(0, this, &MainWindow::checkForRecoverableFiles_);
+    // The startup recovery CHECK itself deliberately does NOT happen
+    // here - see showOrOfferRecovery()'s comment (mainwindow.h): it has
+    // to run before this window is ever shown, which main() controls,
+    // not this constructor.
 }
 
 
@@ -229,12 +229,17 @@ void MainWindow::onRecoveryTimeout_()
     }
 }
 
-void MainWindow::checkForRecoverableFiles_()
+void MainWindow::showOrOfferRecovery()
 {
     const QList<familiar::recovery::Entry> entries = familiar::recovery::scan();
-    if (entries.isEmpty())
+    if (entries.isEmpty()) {
+        show();
         return;
-    new RecoveryDialog(*fileactions_, entries, this);
+    }
+    // Parented to nullptr, not `this` - this window isn't shown yet, and
+    // shouldn't be implied as this dialog's owner while it's invisible.
+    auto* dlg = new RecoveryDialog(*fileactions_, entries, nullptr);
+    connect(dlg, &QObject::destroyed, this, &MainWindow::show);
 }
 
 void MainWindow::newFile()
