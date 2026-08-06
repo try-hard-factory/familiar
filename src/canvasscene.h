@@ -20,6 +20,7 @@ class TextItem;
 class PixmapItem;
 class RubberbandItem;
 class MultiSelectItem;
+class GroupItem;
 class QUndoStack;
 class IBaseItem;
 
@@ -97,6 +98,18 @@ public:
     bool has_single_selection();
     bool has_multi_selection();
     bool has_single_image_selection();
+    // True if the selection is a single GroupItem, or a single item
+    // that's currently a member of one (see find_owning_group()) - either
+    // way, "Ungroup" has something to do (roadmap step 10).
+    bool has_group_selected();
+
+    // Wraps the current selection (2+ items) in a new GroupItem, pushed
+    // as an undoable GroupCommand. No-op if fewer than 2 are selected.
+    void group_selection();
+    // Dissolves the selected GroupItem back into loose items, or - if a
+    // single group MEMBER is selected instead - detaches just that one
+    // item from its group, leaving the rest intact. No-op otherwise.
+    void ungroup_selection();
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
@@ -140,10 +153,24 @@ public:
     // Getter for active_mode_ (Python code just reads self.active_mode
     // directly; used e.g. by ItemMixin::on_selected_change()).
     ESceneMode active_mode() const;
-    // Whether an item is a real user-facing one (pixmap/text) rather than
-    // a helper item (MultiSelectItem, RubberbandItem, ErrorItem), based on
-    // IBaseItem::get_type()'s string tag rather than a numeric type().
+    // Whether an item is a real user-facing one (pixmap/text/gif/group)
+    // rather than a helper item (MultiSelectItem, RubberbandItem,
+    // ErrorItem), based on IBaseItem::get_type()'s string tag rather
+    // than a numeric type().
     bool itemAddByUser(QGraphicsItem* item) const;
+
+    // Linear scan over items() for the one whose IBaseItem::uid()
+    // matches - GroupItem::resolve_children() is the main caller (group
+    // membership is tracked by uid, not a live pointer list - see
+    // GroupItem's class comment in moveitem.h). No index/cache: fine at
+    // the scale this app's boards actually run at, and avoids having to
+    // keep a second data structure in sync with addItem()/removeItem().
+    QGraphicsItem* find_by_uid(const QUuid& uid) const;
+    // Scans every GroupItem in the scene for one whose child_ids()
+    // contains memberUid - the only direction group membership is
+    // tracked (group -> children), so "which group (if any) owns this
+    // item" has no shortcut besides asking every group.
+    GroupItem* find_owning_group(const QUuid& memberUid) const;
 
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;

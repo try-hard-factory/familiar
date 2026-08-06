@@ -926,6 +926,16 @@ void MainWindow::on_action_lower_to_bottom()
     if (auto* cv = tabpane_->currentWidget())
         cv->on_action_lower_to_bottom();
 }
+void MainWindow::on_action_group()
+{
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_group();
+}
+void MainWindow::on_action_ungroup()
+{
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_ungroup();
+}
 
 // View
 void MainWindow::on_action_fit_scene()
@@ -1116,6 +1126,10 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
                             cv->scene()->has_selection());
     actiongroup_set_enabled("active_when_single_image",
                             cv->scene()->has_single_image_selection());
+    actiongroup_set_enabled("active_when_multi_selection",
+                            cv->scene()->has_multi_selection());
+    actiongroup_set_enabled("active_when_group_selected",
+                            cv->scene()->has_group_selected());
     actiongroup_set_enabled("active_when_can_undo", cv->undoStack()->canUndo());
     actiongroup_set_enabled("active_when_can_redo", cv->undoStack()->canRedo());
 }
@@ -1137,6 +1151,10 @@ void MainWindow::on_active_selection_changed()
                             hookedScene_->has_selection());
     actiongroup_set_enabled("active_when_single_image",
                             hookedScene_->has_single_image_selection());
+    actiongroup_set_enabled("active_when_multi_selection",
+                            hookedScene_->has_multi_selection());
+    actiongroup_set_enabled("active_when_group_selected",
+                            hookedScene_->has_group_selected());
 }
 
 void MainWindow::on_active_can_undo_changed(bool canUndo)

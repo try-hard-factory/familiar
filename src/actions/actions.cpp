@@ -283,6 +283,20 @@ static ActionRegistry buildRegistry()
                   false,
                   false,
                   "active_when_selection"));
+    r.add(A::make("group",
+                  "Group",
+                  "on_action_group",
+                  {"Ctrl+G"},
+                  false,
+                  false,
+                  "active_when_multi_selection"));
+    r.add(A::make("ungroup",
+                  "Ungroup",
+                  "on_action_ungroup",
+                  {"Ctrl+Shift+G"},
+                  false,
+                  false,
+                  "active_when_group_selected"));
 
     // ── View ──────────────────────────────────────────────────────────────────
     r.add(A::make("fit_scene", "Fit Scene", "on_action_fit_scene", {"1"}));

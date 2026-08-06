@@ -150,6 +150,8 @@ public:
     void on_action_delete_items();
     void on_action_raise_to_top();
     void on_action_lower_to_bottom();
+    void on_action_group();
+    void on_action_ungroup();
 
     // View
     void on_action_fit_scene();

@@ -1291,6 +1291,16 @@ void CanvasView::on_action_lower_to_bottom()
     scene_->lower_to_bottom();
 }
 
+void CanvasView::on_action_group()
+{
+    scene_->group_selection();
+}
+
+void CanvasView::on_action_ungroup()
+{
+    scene_->ungroup_selection();
+}
+
 // ─── View actions ─────────────────────────────────────────────────────────────
 
 void CanvasView::on_action_fit_scene()

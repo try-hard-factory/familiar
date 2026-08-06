@@ -624,3 +624,84 @@ void ToggleGrayscaleCommand::undo()
     // undoes it, like FlipItemsCommand.
     redo();
 }
+
+// ============================================================================
+// GroupCommand
+// ============================================================================
+GroupCommand::GroupCommand(CanvasScene* scene,
+                           GroupItem* group,
+                           const QList<QGraphicsItem*>& members)
+    : QUndoCommand(QObject::tr("Group items"))
+    , scene_(scene)
+    , group_(group)
+    , members_(members)
+    , groupRef_(group->acquireShared())
+{}
+
+void GroupCommand::redo()
+{
+    scene_->deselect_all_items();
+    // Sits BEHIND every member it contains - set below their current z,
+    // not bring_to_front() (InsertItemsCommand's usual move for newly
+    // inserted content): a group is a background, not new content on top.
+    qreal minZ = members_.isEmpty() ? 0 : members_.first()->zValue();
+    for (auto* item : members_)
+        minZ = qMin(minZ, item->zValue());
+    scene_->addItem(group_);
+    group_->set_z_value(minZ - scene_->Z_STEP);
+    group_->setSelected(true);
+}
+
+void GroupCommand::undo()
+{
+    scene_->deselect_all_items();
+    scene_->removeItem(group_);
+    for (auto* item : members_)
+        item->setSelected(true);
+}
+
+// ============================================================================
+// UngroupCommand
+// ============================================================================
+UngroupCommand::UngroupCommand(CanvasScene* scene, GroupItem* group)
+    : QUndoCommand(QObject::tr("Ungroup"))
+    , scene_(scene)
+    , group_(group)
+    , members_(group->resolve_children())
+    , groupRef_(group->acquireShared())
+{}
+
+void UngroupCommand::redo()
+{
+    scene_->deselect_all_items();
+    scene_->removeItem(group_);
+    for (auto* item : members_)
+        item->setSelected(true);
+}
+
+void UngroupCommand::undo()
+{
+    scene_->deselect_all_items();
+    scene_->addItem(group_);
+    group_->setSelected(true);
+}
+
+// ============================================================================
+// RemoveFromGroupCommand
+// ============================================================================
+RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
+                                               const QUuid& memberUid)
+    : QUndoCommand(QObject::tr("Remove from group"))
+    , group_(group)
+    , memberUid_(memberUid)
+{}
+
+void RemoveFromGroupCommand::redo()
+{
+    group_->remove_child_id(memberUid_);
+}
+
+void RemoveFromGroupCommand::undo()
+{
+    group_->add_child_id(memberUid_);
+}

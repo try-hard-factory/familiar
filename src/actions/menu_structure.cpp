@@ -35,6 +35,9 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::sep(),
                               MenuNode::action("raise_to_top"),
                               MenuNode::action("lower_to_bottom"),
+                              MenuNode::sep(),
+                              MenuNode::action("group"),
+                              MenuNode::action("ungroup"),
                           }),
         MenuNode::submenu("View",
                           {
