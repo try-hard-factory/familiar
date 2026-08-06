@@ -3,6 +3,7 @@
 #include "fileio.h"
 #include "fml_archive.h"
 #include "mainwindow.h"
+#include "recovery.h"
 #include "tabpane.h"
 #include "widgets/dialogs.h"
 #include <canvasview.h>
@@ -86,7 +87,9 @@ void FileActions::openFile()
     delete fileDialog;
 }
 
-void FileActions::loadFmlIntoCurrentTab(const QString& path)
+void FileActions::loadFmlIntoCurrentTab(const QString& path,
+                                        bool markModifiedAfterLoad,
+                                        const QUuid& recoveryIdToClear)
 {
     CanvasView* canvasView = mainwindow_.tabPane().currentWidget();
     CanvasScene* scene = canvasView->scene();
@@ -98,8 +101,8 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
         worker,
         &ThreadedIO::finished,
         &mainwindow_,
-        [this, canvasView, scene](const QString& error,
-                                  const QStringList& itemErrors) {
+        [this, canvasView, scene, markModifiedAfterLoad, recoveryIdToClear](
+            const QString& error, const QStringList& itemErrors) {
             scene->add_queued_items();
             // Before fit_scene(): seeds canvasRect_ from what
             // FmlArchive::load() stashed on the scene, so fit_scene()
@@ -108,7 +111,15 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
             // rememberedBoundingRect()).
             canvasView->restoreCanvasRect(scene->rememberedBoundingRect());
             canvasView->on_action_fit_scene();
-            canvasView->setModified(false);
+            canvasView->setModified(markModifiedAfterLoad);
+
+            // Only now - after the background read has actually
+            // succeeded - is it safe to delete the recovery file it was
+            // just read from. Also only on success: if loading failed,
+            // keep the recovery snapshot around rather than silently
+            // losing the only copy of that data.
+            if (error.isEmpty() && !recoveryIdToClear.isNull())
+                familiar::recovery::remove(recoveryIdToClear);
 
             if (!error.isEmpty()) {
                 showMessageBox(QMessageBox::Critical,
@@ -135,6 +146,19 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path)
 
     new ProgressDialog(QObject::tr("Opening project"), worker, 0, &mainwindow_);
     worker->start();
+}
+
+void FileActions::restoreFromRecovery(const QString& recoveryFmlPath,
+                                      const QString& originalPath,
+                                      const QUuid& recoveryId)
+{
+    if (originalPath.isEmpty())
+        mainwindow_.tabPane().addNewUntitledTab();
+    else
+        mainwindow_.tabPane().addNewTab(originalPath);
+    loadFmlIntoCurrentTab(recoveryFmlPath,
+                          /*markModifiedAfterLoad=*/true,
+                          recoveryId);
 }
 
 void FileActions::processOpenFile(const QString& file)

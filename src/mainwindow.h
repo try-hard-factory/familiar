@@ -283,6 +283,19 @@ private slots:
     // SettingsEvents::autosaveSettingsChanged).
     void onAutosaveTimeout_();
     void restartAutosaveTimer_();
+
+    // Crash recovery (roadmap step 18) - independent of the above and
+    // NOT gated by Save/autosave_enabled: it writes into its own
+    // recovery/ folder, not the tab's real file, so it's always-on
+    // regardless of whether the user wants their real files overwritten
+    // periodically. onRecoveryTimeout_() snapshots every modified tab
+    // (titled or not - see recovery.h); checkForRecoverableFiles_() runs
+    // once at startup (via QTimer::singleShot(0, ...) in the
+    // constructor, so it fires after the window is actually shown/
+    // painted, not before) and pops RecoveryDialog if anything's left
+    // over from a session that didn't exit cleanly.
+    void onRecoveryTimeout_();
+    void checkForRecoverableFiles_();
     void saveAll();
     void newFile();
     void settingsWindow();
@@ -361,6 +374,7 @@ private:
     FileActions* fileactions_ = nullptr;
     TabPane* tabpane_ = nullptr;
     QTimer* autosaveTimer_ = nullptr;
+    QTimer* recoveryTimer_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
 
     int currentOpacity_;

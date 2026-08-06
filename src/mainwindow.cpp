@@ -16,6 +16,7 @@
 
 #include "canvasscene.h"
 #include "project_settings.h"
+#include "recovery.h"
 #include "saveallwindow.h"
 #include "tabpane.h"
 #include "widgets/dialogs.h"
@@ -129,6 +130,34 @@ MainWindow::MainWindow(QWidget* parent)
             this,
             &MainWindow::restartAutosaveTimer_);
     restartAutosaveTimer_();
+
+    // Crash recovery (roadmap step 18) - see onRecoveryTimeout_()/
+    // checkForRecoverableFiles_() in mainwindow.h. Always-on (unlike
+    // autosaveTimer_ above, not gated by Save/autosave_enabled): it
+    // writes into its own recovery/ folder, never the tab's real file,
+    // so there's no user-facing reason to ever disable it.
+    recoveryTimer_ = new QTimer(this);
+    connect(recoveryTimer_,
+            &QTimer::timeout,
+            this,
+            &MainWindow::onRecoveryTimeout_);
+    recoveryTimer_->start(30000);
+
+    // A clean exit means every tab's fate (saved or explicitly discarded)
+    // has already been decided - nothing left in the recovery folder at
+    // this point still needs recovering next launch. aboutToQuit() fires
+    // exactly once on any normal shutdown path (qApp->exit() from
+    // exitProject(), or the default quitOnLastWindowClosed after
+    // closeEvent() accepts) - a real crash never reaches it, which is
+    // exactly the point.
+    connect(qApp, &QApplication::aboutToQuit, this, [] {
+        familiar::recovery::clear();
+    });
+
+    // Deferred to the next event-loop turn so the window is actually
+    // shown/painted before a modal-feeling recovery prompt pops up over
+    // it, rather than appearing mid-construction.
+    QTimer::singleShot(0, this, &MainWindow::checkForRecoverableFiles_);
 }
 
 
@@ -185,6 +214,27 @@ void MainWindow::restartAutosaveTimer_()
               .toInt();
     if (enabled)
         autosaveTimer_->start(seconds * 1000);
+}
+
+void MainWindow::onRecoveryTimeout_()
+{
+    const int count = tabpane_->count();
+    for (int i = 0; i < count; ++i) {
+        CanvasView* cv = tabpane_->widgetAt(i);
+        // Unlike onAutosaveTimeout_() above, untitled tabs are NOT
+        // skipped here - they're exactly the highest-risk data (never
+        // written anywhere else) that this feature exists to protect.
+        if (cv->isModified())
+            familiar::recovery::save(cv);
+    }
+}
+
+void MainWindow::checkForRecoverableFiles_()
+{
+    const QList<familiar::recovery::Entry> entries = familiar::recovery::scan();
+    if (entries.isEmpty())
+        return;
+    new RecoveryDialog(*fileactions_, entries, this);
 }
 
 void MainWindow::newFile()

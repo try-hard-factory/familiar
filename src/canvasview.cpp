@@ -1687,3 +1687,7 @@ bool CanvasView::isUntitled()
 {
     return scene_->isUntitled();
 }
+QUuid CanvasView::recoveryId()
+{
+    return scene_->recoveryId();
+}

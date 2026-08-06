@@ -13,6 +13,7 @@
 #include <QScrollBar>
 #include <QTransform>
 #include <QUrl>
+#include <QUuid>
 #include <QWheelEvent>
 
 class MainWindow;
@@ -93,6 +94,7 @@ public:
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
+    QUuid recoveryId();
 
     // The drawn canvas frame's extent - see canvasRect_ and
     // CanvasScene::rememberedBoundingRect().
