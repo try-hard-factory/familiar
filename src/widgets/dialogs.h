@@ -11,7 +11,9 @@
 #include <QFile>
 #include <QGraphicsItem>
 #include <QGridLayout>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QListWidget>
 #include <QLoggingCategory>
 #include <QMap>
 #include <QMessageBox>
@@ -39,8 +41,10 @@
 #include <QVariantMap>
 
 #include "commands.h"
+#include "file_actions.h"
 #include "fileio.h"
 #include "log/log.h"
+#include "recovery.h"
 
 // Replacement for the QMessageBox::warning/critical/information/question
 // static convenience overloads: those build/exec/destroy the box
@@ -262,6 +266,125 @@ private slots:
     {
         QClipboard* clipboard = QApplication::clipboard();
         clipboard->setText(log->toPlainText());
+    }
+};
+
+
+// Crash-recovery prompt (roadmap step 18) - shown once at startup if
+// familiar::recovery::scan() finds leftover snapshots from a session
+// that didn't exit cleanly. Each entry gets its own checkbox, which
+// decides its fate when Restore is clicked: checked entries are opened
+// in a fresh tab (FileActions::restoreFromRecovery()), unchecked ones
+// are discarded - there's no third "leave it as-is" state, so a
+// checkbox is a real yes/no decision, not just a restore-shortlist.
+// Discard (with a confirmation, since it's irreversible) wipes
+// everything regardless of check state, for "none of this, thanks".
+// Closing the dialog without clicking either (X, Escape) is the actual
+// "decide later" path - nothing is touched, so scan() finds the same
+// entries again next launch.
+class RecoveryDialog : public QDialog
+{
+    Q_OBJECT
+
+public:
+    RecoveryDialog(FileActions& fileActions,
+                   const QList<familiar::recovery::Entry>& entries,
+                   QWidget* parent)
+        : QDialog(parent)
+        , fileActions_(fileActions)
+        , entries_(entries)
+    {
+        // See ChangeOpacityDialog: shown non-modally via show() below and
+        // never explicitly deleted by whoever calls "new RecoveryDialog(...)".
+        setAttribute(Qt::WA_DeleteOnClose);
+        // See FileActions::openFile(): MainWindow's translucent/frameless
+        // stylesheet cascades into this otherwise-unstyled top-level
+        // dialog, painting it solid black.
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setStyleSheet("* { background-color: palette(window); color: "
+                      "palette(window-text); }");
+        setWindowTitle(tr("Autosave Recovery"));
+
+        auto* layout = new QVBoxLayout(this);
+        auto* label = new QLabel(
+            tr("The following files can be recovered from the autosave "
+               "folder. Uncheck any you don't want, then Restore - or "
+               "Discard all of them."));
+        label->setWordWrap(true);
+        layout->addWidget(label);
+
+        list_ = new QListWidget(this);
+        for (const familiar::recovery::Entry& e : entries_) {
+            auto* item = new QListWidgetItem(e.label, list_);
+            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+            item->setCheckState(Qt::Checked);
+        }
+        layout->addWidget(list_);
+
+        auto* buttonsRow = new QHBoxLayout();
+        auto* restoreBtn = new QPushButton(tr("Restore"));
+        auto* discardBtn = new QPushButton(tr("Discard"));
+        buttonsRow->addWidget(restoreBtn);
+        buttonsRow->addWidget(discardBtn);
+        buttonsRow->addStretch();
+        layout->addLayout(buttonsRow);
+
+        connect(restoreBtn,
+                &QPushButton::clicked,
+                this,
+                &RecoveryDialog::restoreAndDiscardUnchecked);
+        connect(discardBtn,
+                &QPushButton::clicked,
+                this,
+                &RecoveryDialog::discardAll);
+
+        show();
+    }
+
+private:
+    FileActions& fileActions_;
+    QList<familiar::recovery::Entry> entries_;
+    QListWidget* list_ = nullptr;
+
+private slots:
+    void restoreAndDiscardUnchecked()
+    {
+        for (int i = 0; i < list_->count(); ++i) {
+            const familiar::recovery::Entry& e = entries_[i];
+            if (list_->item(i)->checkState() == Qt::Checked) {
+                // restoreFromRecovery() loads in the background and
+                // deletes this entry's recovery file itself, only once
+                // that load actually succeeds - NOT deleted here, since
+                // the load hasn't necessarily opened the file yet by the
+                // time this call returns (see FileActions::
+                // loadFmlIntoCurrentTab()).
+                fileActions_.restoreFromRecovery(e.fmlPath,
+                                                 e.originalPath,
+                                                 e.id);
+            } else {
+                // Unchecked is a real "no" here, not "leave for later" -
+                // see the class comment above.
+                familiar::recovery::remove(e.id);
+            }
+        }
+        close();
+    }
+
+    void discardAll()
+    {
+        const auto reply = QMessageBox::question(
+            this,
+            tr("Discard all recoverable files?"),
+            tr("This deletes all %1 recoverable file(s) permanently, "
+               "regardless of their checkboxes. This can't be undone.")
+                .arg(entries_.size()),
+            QMessageBox::Discard | QMessageBox::Cancel,
+            QMessageBox::Cancel);
+        if (reply != QMessageBox::Discard)
+            return;
+        for (const familiar::recovery::Entry& e : entries_)
+            familiar::recovery::remove(e.id);
+        close();
     }
 };
 

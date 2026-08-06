@@ -2,6 +2,7 @@
 #include "canvasview.h"
 #include "mainwindow.h"
 #include "project_settings.h"
+#include "recovery.h"
 #include <QFileInfo>
 #include <QMessageBox>
 
@@ -93,6 +94,12 @@ QString TabPane::getCurrentTabPath()
 void TabPane::onTabClosed(int index)
 {
     CanvasView* canvasview = widgetAt(index);
+    // This tab's fate (saved or explicitly discarded) is being decided
+    // right now by the branches below - whatever they choose, a stale
+    // recovery snapshot from earlier in this session shouldn't linger
+    // and falsely offer to "recover" an already-closed tab after some
+    // later crash in the same run (see recovery.h).
+    familiar::recovery::remove(canvasview->recoveryId());
     if (canvasview->isModified()) {
         // Can't use the QMessageBox::warning(...) convenience overload
         // here: it builds/execs/destroys the box internally, with no

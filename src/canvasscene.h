@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QMutex>
 #include <QRubberBand>
+#include <QUuid>
 #include <QVariantMap>
 
 #include <memory>
@@ -182,6 +183,7 @@ public:
     bool isModified();
     void setModified(bool mod);
     bool isUntitled();
+    QUuid recoveryId();
 
 public slots:
     void settingsChangedSlot();

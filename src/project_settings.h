@@ -2,6 +2,7 @@
 #define PROJECT_SETTINGS_H
 
 #include <QString>
+#include <QUuid>
 
 class TabPane;
 class CanvasView;
@@ -28,6 +29,12 @@ public:
         return (0 == projectName_.compare("untitled"));
     }
 
+    // Stable for this tab's whole lifetime, regardless of path changes
+    // via Save As - identifies this tab's own file(s) in the crash-
+    // recovery folder (see recovery.h), which needs an identity that
+    // doesn't depend on ever having a real save path.
+    QUuid recoveryId() const noexcept { return recoveryId_; }
+
 private:
     TabPane* tp_;
     CanvasView* view_;
@@ -35,6 +42,7 @@ private:
     QString title_ = "untitled";
     QString path_ = "untitled";
     bool changed_ = false;
+    QUuid recoveryId_ = QUuid::createUuid();
 };
 
 #endif // PROJECT_SETTINGS_H

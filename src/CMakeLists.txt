@@ -58,6 +58,8 @@ set(PROJECT_SOURCES
         log/ring_sink.cpp
         fml_archive.cpp
         fml_archive.h
+        recovery.cpp
+        recovery.h
         export.cpp
         export.h
         project_settings.cpp

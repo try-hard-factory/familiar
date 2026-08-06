@@ -1157,6 +1157,11 @@ bool CanvasScene::isUntitled()
     return projectSettings_->isDefaultProjectName();
 }
 
+QUuid CanvasScene::recoveryId()
+{
+    return projectSettings_->recoveryId();
+}
+
 void CanvasScene::settingsChangedSlot()
 {
     auto settings = SettingsHandler::getInstance();
