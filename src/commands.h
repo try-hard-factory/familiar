@@ -9,11 +9,13 @@
 #include <QRectF>
 #include <QString>
 #include <QUndoCommand>
+#include <QUuid>
 
 class CanvasScene;
 class IBaseItem;
 class PixmapItem;
 class TextItem;
+class GroupItem;
 
 // ============================================================================
 // InsertItemsCommand - Вставка элементов на сцену
@@ -408,4 +410,74 @@ public:
 
 private:
     QList<PixmapItem*> items_;
+};
+
+// ============================================================================
+// GroupCommand - оборачивает текущее выделение (2+ items) в новый
+// GroupItem (roadmap step 10). `group` приходит уже полностью
+// сконструированным (fill/rect/child_ids уже выставлены вызывающей
+// стороной, CanvasScene::group_selection()) - эта команда только
+// добавляет/убирает его со сцены и владеет им, как InsertItemsCommand,
+// но НЕ переиспользует InsertItemsCommand напрямую: тот делает
+// bring_to_front() на добавленном айтеме, а группа должна вставать НИЖЕ
+// своих участников (фон), не поверх всего.
+// ============================================================================
+class GroupCommand : public QUndoCommand
+{
+public:
+    GroupCommand(CanvasScene* scene,
+                GroupItem* group,
+                const QList<QGraphicsItem*>& members);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    CanvasScene* scene_;
+    GroupItem* group_;
+    QList<QGraphicsItem*> members_;
+    // See InsertItemsCommand::ownedRefs_ - keeps `group_` alive across
+    // undo/redo regardless of scene attachment.
+    std::shared_ptr<IBaseItem> groupRef_;
+};
+
+// ============================================================================
+// UngroupCommand - распускает GroupItem целиком: сам GroupItem убирается
+// со сцены, участники остаются как есть (это уже независимые
+// top-level-айтемы сцены, ничего специального с ними делать не нужно -
+// см. class-комментарий GroupItem в moveitem.h).
+// ============================================================================
+class UngroupCommand : public QUndoCommand
+{
+public:
+    UngroupCommand(CanvasScene* scene, GroupItem* group);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    CanvasScene* scene_;
+    GroupItem* group_;
+    QList<QGraphicsItem*> members_;
+    std::shared_ptr<IBaseItem> groupRef_;
+};
+
+// ============================================================================
+// RemoveFromGroupCommand - убирает ОДИН элемент из группы (Ungroup,
+// применённый к одиночному выделенному участнику группы, а не к самой
+// группе) - сама группа и остальные участники не трогаются, meняется
+// только её child_ids(). Не владеет ни группой, ни элементом - оба уже
+// присутствуют на сцене независимо от этой команды.
+// ============================================================================
+class RemoveFromGroupCommand : public QUndoCommand
+{
+public:
+    RemoveFromGroupCommand(GroupItem* group, const QUuid& memberUid);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    GroupItem* group_;
+    QUuid memberUid_;
 };

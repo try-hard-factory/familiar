@@ -1406,6 +1406,266 @@ private:
     qreal manualHeight_{-1};
 };
 
+// A persistent container (roadmap step 10) - unlike MultiSelectItem (an
+// ephemeral overlay over CanvasScene::selectedItems(), owns nothing,
+// never saved), a GroupItem is a real, saved item whose membership
+// survives deselection and save/load. Members stay independent
+// top-level scene items - nothing in this codebase uses real Qt
+// scene-graph parenting (see MultiSelectItem/RubberbandItem, the same
+// QGraphicsRectItem base this uses) - membership is tracked purely by
+// uid, exactly as docs/fml_format_design.md's "future grouping" note
+// anticipated. Stage 1 (this class): create/dissolve, move/resize/
+// rotate as a unit. NOT yet done here: persistence (stage 2), lock and
+// click-through-to-child dispatch (stage 3), the floating toolbar/fill
+// picker (stage 4), drag-to-add and auto-expand (stage 5).
+class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
+{
+public:
+    const std::string TYPE = "group"; // static constexpr
+
+    static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
+
+    GroupItem(QGraphicsRectItem* parent = nullptr)
+        : ItemMixin<GroupItem, QGraphicsRectItem>(parent)
+        , fill_color_(default_fill_color())
+    {
+        init_selectable();
+        // ItemPositionChange/ItemPositionHasChanged notifications are
+        // OFF by default since Qt 4.6 (a performance opt-out most items
+        // in this app never needed, since nothing else here overrides
+        // itemChange() for geometry) - GroupItem is the first thing that
+        // actually needs them, to drag its members along with it (see
+        // itemChange() below). Only set here, not in the shared
+        // init_selectable(), so every other item type's behavior/
+        // performance stays exactly as before.
+        this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+    }
+
+    QString toString() const
+    {
+        return QString("Group (%1 items)").arg(childIds_.size());
+    }
+
+    bool is_image() const override { return false; }
+    std::string get_type() const override { return TYPE; }
+    bool is_editable() override { return false; }
+    void enter_crop_mode() override
+    {
+        Q_ASSERT_X(false, "GroupItem::enter_crop_mode", "Should not be called");
+    }
+
+    IBaseItem* create_copy() override
+    {
+        // TODOLATER: copy/paste of a group doesn't yet duplicate its
+        // members - pasting one produces an empty group with the same
+        // fill/size/transform. Revisit once copy-paste of groups is
+        // actually asked for; not implementing it here is deliberate,
+        // not an oversight - groups are new enough (step 10) that this
+        // gap is narrow (only reachable via Ctrl+C/V on a selected
+        // group) and not worth guessing the right semantics for yet.
+        auto* new_item = new GroupItem();
+        new_item->set_local_rect(localRect_);
+        new_item->fill_color_ = fill_color_;
+        new_item->setPos(this->pos());
+        new_item->setZValue(this->zValue());
+        new_item->setScale(this->scale());
+        new_item->setRotation(this->rotation());
+        if (this->flip() == -1)
+            new_item->do_flip();
+        return new_item;
+    }
+
+    QColor fill_color() const { return fill_color_; }
+    void set_fill_color(const QColor& color)
+    {
+        fill_color_ = color;
+        update();
+    }
+
+    QRectF bounding_rect_unselected() const override { return localRect_; }
+
+    // Sets the group's own local footprint - called once at creation
+    // (fit to the union of the items being grouped, see
+    // CanvasScene::group_selection()) and later by auto-expand (step 10
+    // stage 5) when a member is dragged outside it.
+    void set_local_rect(const QRectF& rect)
+    {
+        this->prepareGeometryChange();
+        localRect_ = rect;
+        this->setRect(rect);
+    }
+
+    // Grows (never shrinks) the group's footprint to keep containing
+    // every member, called from CanvasScene::on_change() - same hook
+    // MultiSelectItem's own live refit already uses, so this responds
+    // during an active drag, not just after release. No-op if members
+    // already fit (the common case - avoids an infinite setPos()/
+    // set_local_rect() -> changed() -> on_change() loop; it only
+    // recurses the one extra time needed to notice "already settled").
+    // TODOLATER: computed via plain sceneBoundingRect() union, which
+    // doesn't account for the GROUP's own rotation (fine for now - axis-
+    // aligned groups are the only case exercised so far); a rotated
+    // group would need the same corner-projection approach
+    // CanvasScene::itemsBoundingRect() uses.
+    void grow_to_contain_children()
+    {
+        const QList<QGraphicsItem*> children = resolve_children();
+        if (children.isEmpty())
+            return;
+
+        // mapRectToScene(localRect_), NOT sceneBoundingRect() - the
+        // latter goes through SelectableMixin's boundingRect() override,
+        // which pads in extra room for the selection handles whenever
+        // the group is selected (practically always, right after
+        // creating or interacting with one). Using it here would bake
+        // that transient decoration margin into localRect_ permanently
+        // on every single growth event.
+        const QRectF ownSceneRect = this->mapRectToScene(localRect_);
+        QRectF unionRect = ownSceneRect;
+        for (QGraphicsItem* child : children)
+            unionRect = unionRect.united(child->sceneBoundingRect());
+
+        if (unionRect == ownSceneRect)
+            return;
+
+        // autoExpanding_ tells itemChange() below not to treat this
+        // setPos() as a body drag needing to carry members along - the
+        // members are exactly why we're repositioning in the first
+        // place (one of them moved outside the old rect); shifting them
+        // AGAIN by the group's own repositioning delta would compound
+        // that move instead of just visually catching up to it.
+        autoExpanding_ = true;
+        this->setPos(unionRect.topLeft());
+        autoExpanding_ = false;
+        set_local_rect(QRectF(0, 0, unionRect.width(), unionRect.height()));
+    }
+
+    // ── Membership (uid-based - see class comment) ─────────────────────
+    const QList<QUuid>& child_ids() const { return childIds_; }
+    void set_child_ids(const QList<QUuid>& ids)
+    {
+        childIds_ = ids;
+        resolvedChildrenDirty_ = true;
+    }
+    void add_child_id(const QUuid& id)
+    {
+        if (!childIds_.contains(id))
+            childIds_.append(id);
+        resolvedChildrenDirty_ = true;
+    }
+    void remove_child_id(const QUuid& id)
+    {
+        childIds_.removeAll(id);
+        resolvedChildrenDirty_ = true;
+    }
+
+    // Live QGraphicsItem*s for child_ids(), resolved against the scene
+    // and cached until membership changes - re-resolving via a linear
+    // scan on every mouse-move of an active drag would be wasteful. A
+    // member that's been deleted out from under the group (dangling
+    // uid) is silently skipped, not treated as an error - TODOLATER:
+    // groups don't yet react to a member's own deletion by pruning
+    // child_ids(), so a deleted member's uid lingers (harmlessly - this
+    // already skips it) until the group is next saved and reloaded.
+    QList<QGraphicsItem*> resolve_children()
+    {
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        if (!scene)
+            return {};
+        if (resolvedChildrenDirty_) {
+            resolvedChildren_.clear();
+            for (const QUuid& id : childIds_) {
+                if (QGraphicsItem* item = scene->find_by_uid(id))
+                    resolvedChildren_.append(item);
+            }
+            resolvedChildrenDirty_ = false;
+        }
+        return resolvedChildren_;
+    }
+
+    // Drives the standard resize/rotate handles (SelectableMixin,
+    // selector.h) to scale/rotate the group's own fill rect AND every
+    // member together, each independently anchored - the same mechanism
+    // MultiSelectItem's own selection_action_items() already uses for an
+    // ephemeral multi-selection, just with the fill rect itself (`this`)
+    // included this time, since GroupItem (unlike MultiSelectItem) is
+    // the persistent, always-visible container - see itemChange() below
+    // for why including `this` here doesn't double-move members during
+    // an active handle drag.
+    QList<QGraphicsItem*> selection_action_items() override
+    {
+        QList<QGraphicsItem*> items;
+        items << this;
+        items << resolve_children();
+        return items;
+    }
+
+    void paint(QPainter* painter,
+               const QStyleOptionGraphicsItem* option,
+               QWidget* widget = nullptr) override
+    {
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QBrush(fill_color_));
+        painter->drawRect(bounding_rect_unselected());
+        this->paint_selectable(painter, option, widget);
+    }
+
+    // A group must always sit BEHIND its members (it's a background
+    // fill, see GroupCommand's z-value handling in commands.cpp) -
+    // letting the stock bring-to-front-on-select behavior
+    // (ItemMixin::on_selected_change()) run for a GroupItem the same as
+    // for any other item would cover its own children with the fill the
+    // instant it's clicked. Groups simply don't participate in that
+    // z-reordering, same reasoning as MultiSelectItem's identical no-op
+    // override (selector.h) - just for a persistent item instead of an
+    // ephemeral one.
+    void on_selected_change(bool value) override { Q_UNUSED(value) }
+
+protected:
+    QVariant itemChange(GraphicsItemChange change,
+                        const QVariant& value) override
+    {
+        // Only for a plain Qt-native body drag (ItemIsMovable) - during
+        // an active resize/rotate handle drag, active_mode_ is already
+        // kScaleMode/kRotateMode and every member already gets its OWN
+        // independent set_scale()/set_rotation() call in the very same
+        // loop (see selection_action_items() above feeding
+        // SelectableMixin's handle code, selector.h). Shifting members
+        // again here off this item's own incidental setPos() (part of
+        // that same anchor-compensation math) would double-apply the
+        // movement - active_mode_ == kNone is exactly "not mid-handle-
+        // drag", i.e. a real independent body drag of the group.
+        // !autoExpanding_ - see grow_to_contain_children() above: that
+        // method's own setPos() is repositioning the group TO catch up
+        // with a member that already moved, not a body drag that should
+        // carry members along.
+        if (change == QGraphicsItem::ItemPositionChange && this->scene()
+            && active_mode_ == kNone && !autoExpanding_) {
+            const QPointF delta = value.toPointF() - this->pos();
+            if (!delta.isNull()) {
+                for (QGraphicsItem* child : resolve_children())
+                    child->moveBy(delta.x(), delta.y());
+            }
+        }
+        // NOT QGraphicsRectItem::itemChange() directly - SelectableMixin
+        // has its own itemChange() override (selector.h) that reacts to
+        // ItemSelectedChange (bring-to-front-on-select/push-behind-on-
+        // deselect, via ItemMixin::on_selected_change()); calling the Qt
+        // base directly here would silently skip that for every group.
+        return SelectableMixin<GroupItem, QGraphicsRectItem>::itemChange(
+            change, value);
+    }
+
+private:
+    QRectF localRect_;
+    QColor fill_color_;
+    QList<QUuid> childIds_;
+    QList<QGraphicsItem*> resolvedChildren_;
+    bool resolvedChildrenDirty_ = true;
+    bool autoExpanding_ = false;
+};
+
 // Displayed instead of an item that couldn't be loaded from a save file.
 // Won't itself be saved; the original item's data is preserved unless this
 // stand-in gets deleted or the file is saved again.

@@ -266,6 +266,59 @@ void CanvasScene::lower_to_bottom()
     }
 }
 
+namespace {
+// Visual breathing room between a freshly-grouped selection's own
+// bounding box and the group's fill rect, in scene units - a group that
+// hugs its members flush would be hard to distinguish from a plain
+// multi-selection at a glance.
+constexpr qreal kGroupPadding = 20.0;
+} // namespace
+
+void CanvasScene::group_selection()
+{
+    QList<QGraphicsItem*> selected = selectedItems(true);
+    if (selected.size() < 2)
+        return;
+
+    QList<QUuid> ids;
+    for (QGraphicsItem* item : selected) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+            ids.append(baseItem->uid());
+    }
+
+    const QRectF bounds = itemsBoundingRect(false, selected);
+    const QRectF padded = bounds.adjusted(-kGroupPadding,
+                                          -kGroupPadding,
+                                          kGroupPadding,
+                                          kGroupPadding);
+
+    auto* group = new GroupItem();
+    group->setPos(padded.topLeft());
+    group->set_local_rect(QRectF(0, 0, padded.width(), padded.height()));
+    group->set_child_ids(ids);
+
+    undo_stack_->push(new GroupCommand(this, group, selected));
+}
+
+void CanvasScene::ungroup_selection()
+{
+    QList<QGraphicsItem*> selected = selectedItems(true);
+    if (selected.size() != 1)
+        return;
+
+    if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
+        undo_stack_->push(new UngroupCommand(this, group));
+        return;
+    }
+
+    auto* baseItem = dynamic_cast<IBaseItem*>(selected.first());
+    if (!baseItem)
+        return;
+    if (GroupItem* owner = find_owning_group(baseItem->uid())) {
+        undo_stack_->push(new RemoveFromGroupCommand(owner, baseItem->uid()));
+    }
+}
+
 void CanvasScene::normalize_width_or_height(const QString& mode)
 {
     cancel_active_modes();
@@ -678,6 +731,38 @@ bool CanvasScene::has_single_image_selection()
     return false;
 }
 
+bool CanvasScene::has_group_selected()
+{
+    if (!has_single_selection())
+        return false;
+    QGraphicsItem* item = selectedItems(true).first();
+    if (dynamic_cast<GroupItem*>(item))
+        return true;
+    auto* baseItem = dynamic_cast<IBaseItem*>(item);
+    return baseItem && find_owning_group(baseItem->uid()) != nullptr;
+}
+
+QGraphicsItem* CanvasScene::find_by_uid(const QUuid& uid) const
+{
+    for (QGraphicsItem* item : items()) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (baseItem && baseItem->uid() == uid)
+            return item;
+    }
+    return nullptr;
+}
+
+GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
+{
+    for (QGraphicsItem* item : items()) {
+        if (auto* group = dynamic_cast<GroupItem*>(item)) {
+            if (group->child_ids().contains(memberUid))
+                return group;
+        }
+    }
+    return nullptr;
+}
+
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (event->button() == Qt::RightButton) {
@@ -923,6 +1008,17 @@ void CanvasScene::on_change()
     if (multiselect_item_->scene() && !multiselect_item_->is_action_active()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
+
+    // Auto-expand (roadmap step 10): grows any group whose fill no
+    // longer contains all its members - e.g. one was just dragged
+    // outside it. Same live-during-drag hook as multiselect's own refit
+    // above; grow_to_contain_children() itself is a no-op once a group
+    // already fits, so this is cheap on the (common) frame where nothing
+    // changed.
+    for (QGraphicsItem* item : items()) {
+        if (auto* group = dynamic_cast<GroupItem*>(item))
+            group->grow_to_contain_children();
+    }
 }
 
 void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
@@ -1098,7 +1194,8 @@ bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
         return false;
     }
     const std::string type = baseItem->get_type();
-    return type == "pixmap" || type == "text" || type == "gif";
+    return type == "pixmap" || type == "text" || type == "gif"
+           || type == "group";
 }
 
 // ============================================================================
