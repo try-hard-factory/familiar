@@ -1540,6 +1540,8 @@ public:
         data[QStringLiteral("rect_height")] = localRect_.height();
         if (locked_)
             data[QStringLiteral("locked")] = true;
+        if (!dragDropEnabled_)
+            data[QStringLiteral("drag_drop_enabled")] = false;
         return data;
     }
 
@@ -1585,6 +1587,12 @@ public:
         // invalidate_children_cache() also calls apply_lock_to_children()
         // once every item in the batch actually exists.
         locked_ = data.value(QStringLiteral("locked"), false).toBool();
+        // Raw field too, same reasoning as locked_ above. Default true
+        // (drag-and-drop-to-add-a-member is the expected default
+        // behavior; the checkbox is an opt-OUT per group, not opt-in).
+        dragDropEnabled_ = data.value(QStringLiteral("drag_drop_enabled"),
+                                      true)
+                              .toBool();
     }
 
     // See apply_extra_save_data()'s comment - the safety net
@@ -1820,6 +1828,14 @@ public:
         locked_ = locked;
         apply_lock_to_children();
     }
+
+    // ── Drag-and-drop-to-add (roadmap step 10 stage 5) ─────────────────
+    // Per-group opt-out (default on) for CanvasScene's drag-a-loose-item-
+    // onto-this-group-to-add-it-as-a-member behavior - unlike locked(),
+    // this doesn't touch child flags at all, it's read directly by
+    // whatever handles the drop.
+    bool drag_drop_enabled() const { return dragDropEnabled_; }
+    void set_drag_drop_enabled(bool enabled) { dragDropEnabled_ = enabled; }
 
     // Applies the CURRENT locked() state to every resolved member's
     // ItemIsSelectable/ItemIsMovable flags - called after set_locked()
@@ -2142,6 +2158,7 @@ private:
     bool autoExpanding_ = false;
     bool scalingOrRotating_ = false;
     bool locked_ = false;
+    bool dragDropEnabled_ = true;
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.

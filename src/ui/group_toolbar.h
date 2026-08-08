@@ -5,10 +5,10 @@
  *  @file   group_toolbar.h
  *  \~russian @brief  Плавающая панель управления группой (roadmap step
  *                    10, этап 4) - по образцу gif_playback_toolbar.h.
- *                    Сейчас только кнопка Lock (этап 3); заливка +
- *                    chevron-попап "drag and drop into groups" -
- *                    следующий заход. Показывается CanvasView'ом, когда
- *                    выделен ровно один GroupItem.
+ *                    Lock (этап 3) + выбор цвета заливки + chevron-попап
+ *                    с чекбоксом "Drag and drop items into groups".
+ *                    Показывается CanvasView'ом, когда выделен ровно
+ *                    один GroupItem.
  */
 
 #include <QWidget>
@@ -44,7 +44,15 @@ protected:
 private:
     GroupItem* item_ = nullptr;
     QToolButton* lockBtn_ = nullptr;
+    QToolButton* fillColorBtn_ = nullptr;
+    QToolButton* chevronBtn_ = nullptr;
     QColor iconGlyphColor_;
+
+    // Reused across clicks (see GifPlaybackToolbar::speedPopup_) rather
+    // than recreated every time, so repeated clicks don't stack popups.
+    QWidget* settingsPopup_ = nullptr;
+    void showSettingsPopup_();
+    void updateFillColorIcon_();
 
 private slots:
     void onLockToggled_(bool checked);

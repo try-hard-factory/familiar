@@ -604,6 +604,28 @@ void ChangeTextCommand::undo()
 }
 
 // ============================================================================
+// ChangeGroupFillColorCommand
+// ============================================================================
+ChangeGroupFillColorCommand::ChangeGroupFillColorCommand(GroupItem* item,
+                                                         const QColor& newColor,
+                                                         const QColor& oldColor)
+    : QUndoCommand(QObject::tr("Change group fill color"))
+    , item_(item)
+    , newColor_(newColor)
+    , oldColor_(oldColor)
+{}
+
+void ChangeGroupFillColorCommand::redo()
+{
+    item_->set_fill_color(newColor_);
+}
+
+void ChangeGroupFillColorCommand::undo()
+{
+    item_->set_fill_color(oldColor_);
+}
+
+// ============================================================================
 // ToggleGrayscaleCommand
 // ============================================================================
 ToggleGrayscaleCommand::ToggleGrayscaleCommand(const QList<PixmapItem*>& items)

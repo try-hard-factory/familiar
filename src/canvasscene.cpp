@@ -26,6 +26,7 @@ using namespace familiar::log;
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 
 namespace {
 
@@ -250,27 +251,6 @@ void CanvasScene::raise_to_top()
     }
 }
 
-void CanvasScene::raise_items_to_front(const QList<QGraphicsItem*>& itemsIn)
-{
-    if (itemsIn.isEmpty())
-        return;
-
-    QList<QGraphicsItem*> sorted = itemsIn;
-    std::sort(sorted.begin(),
-             sorted.end(),
-             [](QGraphicsItem* a, QGraphicsItem* b) {
-                 return a->zValue() < b->zValue();
-             });
-
-    qreal z = max_z + Z_STEP;
-    for (QGraphicsItem* item : sorted) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
-            baseItem->set_z_value(z);
-            z += Z_STEP;
-        }
-    }
-}
-
 void CanvasScene::raise_selection_to_front()
 {
     // A selected GroupItem's children are NOT individually Qt-selected
@@ -279,24 +259,64 @@ void CanvasScene::raise_selection_to_front()
     // (group + members) here, or this would raise the group ALONE,
     // above its own (untouched) members, breaking the "group always
     // sits behind its members" invariant the instant it's clicked.
-    // Recursive (not just one level), so a nested group (a group whose
-    // members are themselves GroupItems) also carries every grandchild
-    // along - otherwise a sub-group's own members would keep their old z
-    // while only the sub-group's shell got raised with the rest of the
-    // cluster, burying them behind it.
-    QList<QGraphicsItem*> items;
+    //
+    // Order matters as much as membership here, not just "which items
+    // are included": an earlier version collected items via a flat BFS,
+    // then sorted the WHOLE flat list by current z in one pass - that
+    // does NOT guarantee a nested subgroup's members stay together as
+    // one contiguous block. If a sibling subgroup's OWN member happened
+    // to have an in-between z value from some earlier, unrelated
+    // interaction, that stale z survived the flat sort and interleaved
+    // it between the OTHER subgroup and ITS members, splitting a
+    // subgroup's cluster in two (confirmed with Max via a debug capture:
+    // one sibling's member ended up sorted below the other subgroup's
+    // whole cluster, another ended up above it). Building the list via
+    // pre-order DFS instead - each group immediately followed by all of
+    // its own descendants, direct children sorted among themselves by
+    // their current z the same way top-level roots are - keeps every
+    // subgroup's cluster contiguous no matter what stale z values were
+    // lying around; z is then assigned directly in that DFS order, no
+    // further re-sort (a second flat sort would just undo the ordering
+    // this exists to establish).
     QSet<QGraphicsItem*> seen;
-    QList<QGraphicsItem*> queue = selectedItems(true);
-    while (!queue.isEmpty()) {
-        QGraphicsItem* item = queue.takeFirst();
-        if (seen.contains(item))
-            continue;
-        seen.insert(item);
-        items.append(item);
-        if (auto* group = dynamic_cast<GroupItem*>(item))
-            queue.append(group->resolve_children());
+    QList<QGraphicsItem*> ordered;
+    std::function<void(QGraphicsItem*)> appendCluster =
+        [&](QGraphicsItem* item) {
+            if (seen.contains(item))
+                return;
+            seen.insert(item);
+            ordered.append(item);
+            if (auto* group = dynamic_cast<GroupItem*>(item)) {
+                QList<QGraphicsItem*> children = group->resolve_children();
+                std::sort(children.begin(),
+                         children.end(),
+                         [](QGraphicsItem* a, QGraphicsItem* b) {
+                             return a->zValue() < b->zValue();
+                         });
+                for (QGraphicsItem* child : children)
+                    appendCluster(child);
+            }
+        };
+
+    QList<QGraphicsItem*> roots = selectedItems(true);
+    std::sort(roots.begin(),
+             roots.end(),
+             [](QGraphicsItem* a, QGraphicsItem* b) {
+                 return a->zValue() < b->zValue();
+             });
+    for (QGraphicsItem* root : roots)
+        appendCluster(root);
+
+    if (ordered.isEmpty())
+        return;
+
+    qreal z = max_z + Z_STEP;
+    for (QGraphicsItem* item : ordered) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            baseItem->set_z_value(z);
+            z += Z_STEP;
+        }
     }
-    raise_items_to_front(items);
 }
 
 void CanvasScene::lower_to_bottom()
@@ -1103,6 +1123,11 @@ void CanvasScene::on_selection_change()
     // change, only for an actual user click (kMoveMode) or rubber-band
     // sweep (kRubberbandMode, so a multi-select-by-dragging ends up on
     // top too, not just ctrl+click accumulation).
+    FLOG_DEBUG(Ch::Scene,
+              "CanvasScene::on_selection_change() active_mode_={} "
+              "selectedCount={}",
+              int(active_mode_),
+              selectedItems(true).size());
     if (active_mode_ == kMoveMode || active_mode_ == kRubberbandMode) {
         raise_selection_to_front();
     }
