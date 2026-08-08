@@ -1828,12 +1828,49 @@ public:
     // locked too), and once after a full load batch (CanvasScene::
     // add_queued_items(), alongside invalidate_children_cache() - a
     // freshly-loaded group's children need their flags synced to its
-    // loaded locked() state).
+    // loaded locked() state). Recurses into nested subgroups (Max: a
+    // locked OUTER group only disabled its DIRECT children - the
+    // subgroups themselves - leaving their own grandchildren (the actual
+    // leaf images) still individually clickable via a single plain
+    // click, bypassing the whole point of locking). First walks UP to
+    // fold in whatever an ANCESTOR's own lock state already requires -
+    // this group can be reached directly (set_locked() on ME) or
+    // indirectly (a membership change on some ancestor recursing down
+    // into me), so this always computes the correct combined state
+    // regardless of which one triggered it.
     void apply_lock_to_children()
     {
+        bool ancestorLocked = false;
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            for (GroupItem* owner = scene->find_owning_group(this->uid());
+                 owner;
+                 owner = scene->find_owning_group(owner->uid())) {
+                if (owner->locked()) {
+                    ancestorLocked = true;
+                    break;
+                }
+            }
+        }
+        apply_effective_lock(ancestorLocked);
+    }
+
+    // Applies `ancestorLocked || locked_` (the COMBINED effective lock -
+    // true if this group OR any ancestor up the chain is locked) to
+    // every direct child, then recurses into nested subgroups with that
+    // same combined state as THEIR ancestor context - so a grandchild
+    // ends up locked if ANY group above it in the chain is locked,
+    // regardless of depth, while a subgroup's OWN independent lock()
+    // still protects ITS children even after an unlocked ancestor's own
+    // pass would otherwise re-enable them (see set_locked()'s class
+    // comment).
+    void apply_effective_lock(bool ancestorLocked)
+    {
+        const bool effective = ancestorLocked || locked_;
         for (QGraphicsItem* child : resolve_children()) {
-            child->setFlag(QGraphicsItem::ItemIsSelectable, !locked_);
-            child->setFlag(QGraphicsItem::ItemIsMovable, !locked_);
+            child->setFlag(QGraphicsItem::ItemIsSelectable, !effective);
+            child->setFlag(QGraphicsItem::ItemIsMovable, !effective);
+            if (auto* childGroup = dynamic_cast<GroupItem*>(child))
+                childGroup->apply_effective_lock(effective);
         }
     }
 
