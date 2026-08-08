@@ -705,3 +705,69 @@ void RemoveFromGroupCommand::undo()
 {
     group_->add_child_id(memberUid_);
 }
+
+// ============================================================================
+// AddToGroupCommand
+// ============================================================================
+AddToGroupCommand::AddToGroupCommand(CanvasScene* scene,
+                                     GroupItem* group,
+                                     const QList<QGraphicsItem*>& members)
+    : QUndoCommand(QObject::tr("Add to group"))
+    , scene_(scene)
+    , group_(group)
+    , members_(members)
+{
+    for (auto* item : members_) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+            memberUids_.append(baseItem->uid());
+    }
+}
+
+void AddToGroupCommand::redo()
+{
+    scene_->deselect_all_items();
+    for (int i = 0; i < memberUids_.size(); ++i) {
+        group_->add_child_id(memberUids_[i]);
+        // A group's fill always sits BEHIND its members (see
+        // GroupCommand::redo()) - a loose item folded into an ALREADY
+        // EXISTING group keeps whatever z it already had, which can
+        // easily be below the group's own z (e.g. it's an older item
+        // than the group, or the group got raised since), making it
+        // render under the fill and effectively vanish the instant it
+        // joins. Bump it just above the group if it isn't already -
+        // same +Z_STEP convention GroupCommand::redo() uses in reverse.
+        QGraphicsItem* item = members_[i];
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            if (item->zValue() <= group_->zValue())
+                baseItem->set_z_value(group_->zValue() + scene_->Z_STEP);
+        }
+    }
+    // fit_to_contain_children() (moveitem.h) otherwise only runs
+    // reactively from CanvasScene::on_change() (the scene's changed()
+    // signal) - without an explicit call here, the group's rect stays
+    // stale (not yet grown around the newly joined member) until some
+    // LATER, unrelated scene change happens to trigger a refit. If the
+    // joined item is far from the group's existing members, that refit
+    // can then look like the group randomly exploding in size on some
+    // later click that has nothing to do with grouping. Fit immediately
+    // so the new, real footprint is visible right away instead.
+    group_->fit_to_contain_children();
+    group_->setSelected(true);
+}
+
+void AddToGroupCommand::undo()
+{
+    scene_->deselect_all_items();
+    for (const QUuid& uid : memberUids_)
+        group_->remove_child_id(uid);
+    // Same reasoning as redo() above - shrink back down immediately
+    // instead of leaving a stale, too-large rect until something else
+    // happens to trigger the next refit.
+    group_->fit_to_contain_children();
+    // Restore the exact pre-Group() selection (group + the loose items),
+    // not just the group alone - matches GroupCommand::undo()/
+    // UngroupCommand::redo() both reselecting the members they touched.
+    group_->setSelected(true);
+    for (auto* item : members_)
+        item->setSelected(true);
+}

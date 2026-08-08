@@ -271,6 +271,15 @@ private:
     // trimmed off the undo stack by setUndoLimit() while the item is
     // still visible) would have nothing left to keep it alive.
     QHash<QGraphicsItem*, std::shared_ptr<IBaseItem>> attachedItems_;
+
+    // Members of a locked group that a double-click drilled into (see
+    // mouseDoubleClickEvent()) - their ItemIsSelectable/ItemIsMovable
+    // flags were forced back on so they behave as ordinary items while
+    // this lasts. Re-locked (flags turned back off) by
+    // restore_drilled_in_members_() once they're no longer selected, so
+    // re-selecting them again requires another explicit double-click.
+    QList<QGraphicsItem*> drilledInMembers_;
+    void restore_drilled_in_members_();
 };
 
 #endif // CANVASSCENE_H

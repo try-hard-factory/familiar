@@ -11,6 +11,7 @@
 #include <QMutexLocker>
 #include <QPainter>
 #include <QPen>
+#include <QSet>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -278,11 +279,22 @@ void CanvasScene::raise_selection_to_front()
     // (group + members) here, or this would raise the group ALONE,
     // above its own (untouched) members, breaking the "group always
     // sits behind its members" invariant the instant it's clicked.
+    // Recursive (not just one level), so a nested group (a group whose
+    // members are themselves GroupItems) also carries every grandchild
+    // along - otherwise a sub-group's own members would keep their old z
+    // while only the sub-group's shell got raised with the rest of the
+    // cluster, burying them behind it.
     QList<QGraphicsItem*> items;
-    for (QGraphicsItem* item : selectedItems(true)) {
+    QSet<QGraphicsItem*> seen;
+    QList<QGraphicsItem*> queue = selectedItems(true);
+    while (!queue.isEmpty()) {
+        QGraphicsItem* item = queue.takeFirst();
+        if (seen.contains(item))
+            continue;
+        seen.insert(item);
         items.append(item);
         if (auto* group = dynamic_cast<GroupItem*>(item))
-            items.append(group->resolve_children());
+            queue.append(group->resolve_children());
     }
     raise_items_to_front(items);
 }
@@ -309,6 +321,36 @@ void CanvasScene::group_selection()
     QList<QGraphicsItem*> selected = selectedItems(true);
     if (selected.size() < 2)
         return;
+
+    // If exactly one of the selected items is already a group, and every
+    // other selected item is a loose (not-yet-grouped) item, "Group"
+    // should just fold those loose items into the existing group instead
+    // of wrapping everything (group included) in a brand new outer group
+    // - a redundant extra nesting level for a case that isn't actually
+    // nesting anything new. Selecting 2+ groups together (or a group
+    // plus an item that's already a member of a DIFFERENT group) still
+    // falls through to the generic wrap-in-a-new-group path below -
+    // that's exactly how a group-of-groups gets created.
+    GroupItem* existingGroup = nullptr;
+    int groupCount = 0;
+    QList<QGraphicsItem*> loose;
+    bool looseAlreadyGrouped = false;
+    for (QGraphicsItem* item : selected) {
+        if (auto* group = dynamic_cast<GroupItem*>(item)) {
+            existingGroup = group;
+            ++groupCount;
+        } else {
+            loose.append(item);
+            auto* baseItem = dynamic_cast<IBaseItem*>(item);
+            if (baseItem && find_owning_group(baseItem->uid()))
+                looseAlreadyGrouped = true;
+        }
+    }
+
+    if (groupCount == 1 && !loose.isEmpty() && !looseAlreadyGrouped) {
+        undo_stack_->push(new AddToGroupCommand(this, existingGroup, loose));
+        return;
+    }
 
     QList<QUuid> ids;
     for (QGraphicsItem* item : selected) {
@@ -840,8 +882,43 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
     cancel_active_modes();
     auto* item = itemAt(event->scenePos(), views().first()->transform());
     if (item) {
+        // A locked group's member has ItemIsSelectable/ItemIsMovable
+        // turned OFF (see GroupItem::set_locked(), moveitem.h) so a
+        // plain click falls through to the group underneath instead of
+        // selecting the member directly - but a double-click is an
+        // explicit "drill into this specific item" request (PureRef-
+        // style), so force those flags back on right here, before
+        // selecting it (setSelected() on a non-ItemIsSelectable item is
+        // a silent no-op). Left on only while the item stays selected -
+        // restore_drilled_in_members_() (called from on_selection_change())
+        // turns them back off the moment it's deselected, so re-selecting
+        // it again requires another explicit double-click.
+        const bool wasLockedGroupMember =
+            !(item->flags() & QGraphicsItem::ItemIsSelectable);
+        item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+        item->setFlag(QGraphicsItem::ItemIsMovable, true);
+        if (wasLockedGroupMember) {
+            // The group underneath already grabbed the first press of
+            // this double-click (the child was still non-selectable at
+            // that point, so the click fell through to it - see the
+            // comment above) and got itself selected. A plain
+            // setSelected(true) here would only add the member on top of
+            // that, leaving both selected at once instead of drilling in
+            // exclusively - so clear the stale group selection first.
+            clearSelection();
+        }
         if (!item->isSelected()) {
             item->setSelected(true);
+        }
+        // This double-click was consumed just drilling past the lock -
+        // it's not the usual "double-click this item" gesture, so don't
+        // also fit/enter-edit-mode on it. A follow-up double-click (now
+        // that the item is selectable again) behaves normally.
+        if (wasLockedGroupMember) {
+            if (!drilledInMembers_.contains(item)) {
+                drilledInMembers_.append(item);
+            }
+            return;
         }
         if (dynamic_cast<IBaseItem*>(item)->is_editable()) {
             ((TextItem*) item)->enter_edit_mode();
@@ -1040,6 +1117,25 @@ void CanvasScene::on_selection_change()
 
     if (!has_multi_selection() && multiselect_item_->scene()) {
         removeItem(multiselect_item_);
+    }
+
+    restore_drilled_in_members_();
+}
+
+void CanvasScene::restore_drilled_in_members_()
+{
+    for (int i = drilledInMembers_.size() - 1; i >= 0; --i) {
+        QGraphicsItem* item = drilledInMembers_[i];
+        if (item->isSelected()) {
+            continue;
+        }
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        GroupItem* owner = baseItem ? find_owning_group(baseItem->uid()) : nullptr;
+        if (owner && owner->locked()) {
+            item->setFlag(QGraphicsItem::ItemIsSelectable, false);
+            item->setFlag(QGraphicsItem::ItemIsMovable, false);
+        }
+        drilledInMembers_.removeAt(i);
     }
 }
 
@@ -1250,8 +1346,14 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
     // between a group and its own children (see the "group" branch
     // above).
     for (IBaseItem* addedItem : addedItems) {
-        if (auto* group = dynamic_cast<GroupItem*>(addedItem))
+        if (auto* group = dynamic_cast<GroupItem*>(addedItem)) {
             group->invalidate_children_cache();
+            // Loaded locked() state (GroupItem::apply_extra_save_data())
+            // couldn't be applied to members yet - the group wasn't
+            // attached to a scene at that point in the load, so
+            // resolve_children() had nothing to resolve against.
+            group->apply_lock_to_children();
+        }
     }
 
     return addedItems;
