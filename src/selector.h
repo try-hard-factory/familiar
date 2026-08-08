@@ -490,8 +490,28 @@ public:
         // Draw the main selection rectangle
         painter->drawRect(this->bounding_rect_unselected());
 
+        // Hide the handle dots (not the outline itself) while this item
+        // is actively being scaled/rotated via one of its OWN handles,
+        // or moved as a plain body drag - Max found them distracting
+        // mid-operation. active_mode_ covers the scale/rotate case
+        // directly; a plain body drag doesn't set THIS item's own
+        // active_mode_ (see GroupItem::itemChange()'s own comment on
+        // why - kNone is what lets the position cascade run), so that
+        // case is instead read off the SCENE's active_mode() - true for
+        // every currently-selected item during a drag, not just whichever
+        // one Qt happens to be dragging directly.
+        bool suppressHandles = active_mode_ == kScaleMode
+            || active_mode_ == kRotateMode || active_mode_ == kFieldResizeMode;
+        if (!suppressHandles && this->isSelected() && this->scene()) {
+            if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+                suppressHandles = scene->active_mode()
+                    == CanvasScene::ESceneMode::kMoveMode;
+            }
+        }
+
         // If it's a single selection, draw the handles:
-        if (static_cast<Mixin*>(this)->has_selection_handles() == true) {
+        if (static_cast<Mixin*>(this)->has_selection_handles() == true
+            && !suppressHandles) {
             // Edit mode (TextItem, mid-typing): square caps - the visual
             // cue (matching PureRef) that a corner only resizes now, it
             // won't rotate (see hoverMoveEvent()/mousePressEvent() below).
