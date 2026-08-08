@@ -81,6 +81,33 @@ public:
     void paste_from_internal_clipboard(QPointF position);
     void raise_to_top();
     void lower_to_bottom();
+    // Reassigns `items`' z-values to a fresh consecutive band starting
+    // just above the scene's current max_z, in ascending order of their
+    // OWN current z - i.e. raises the whole set above everything else in
+    // the scene while preserving their relative order among themselves.
+    // NOT a single shared delta (add the same amount to every item):
+    // that only guarantees the HIGHEST-z item in the set clears the old
+    // max_z - one that started much lower (e.g. added to the scene long
+    // ago, now selected alongside something recent) would land barely
+    // above its own old z, still buried under unrelated content in
+    // between. Used by raise_selection_to_front() below - the sole
+    // caller, but kept as its own entry point taking an explicit list
+    // rather than folded directly into it, since it's a plain geometric
+    // operation independent of "what's currently selected".
+    void raise_items_to_front(const QList<QGraphicsItem*>& items);
+    // Raises the CURRENT selection (however it was built - single
+    // click, ctrl+click accumulation, rubber-band sweep) - see
+    // raise_items_to_front() above. A selected GroupItem is expanded
+    // into its own cluster (group + members, none of which are
+    // individually Qt-selected - see GroupItem's class comment,
+    // moveitem.h) before raising, or the group's fill would end up
+    // ABOVE its own members instead of staying behind them. Called from
+    // on_selection_change() - pre-existing per-item bring-to-front
+    // (ItemMixin::on_selected_change()) only ever raised the FIRST item
+    // of a new selection (guarded on "nothing was already selected"), so
+    // a second/third ctrl-clicked or rubber-banded item stayed at its
+    // old z, potentially still buried under unrelated content.
+    void raise_selection_to_front();
     void normalize_width_or_height(const QString& mode);
     void normalize_height();
     void normalize_width();

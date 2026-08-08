@@ -249,6 +249,44 @@ void CanvasScene::raise_to_top()
     }
 }
 
+void CanvasScene::raise_items_to_front(const QList<QGraphicsItem*>& itemsIn)
+{
+    if (itemsIn.isEmpty())
+        return;
+
+    QList<QGraphicsItem*> sorted = itemsIn;
+    std::sort(sorted.begin(),
+             sorted.end(),
+             [](QGraphicsItem* a, QGraphicsItem* b) {
+                 return a->zValue() < b->zValue();
+             });
+
+    qreal z = max_z + Z_STEP;
+    for (QGraphicsItem* item : sorted) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            baseItem->set_z_value(z);
+            z += Z_STEP;
+        }
+    }
+}
+
+void CanvasScene::raise_selection_to_front()
+{
+    // A selected GroupItem's children are NOT individually Qt-selected
+    // (only the group itself is - see GroupItem's class comment,
+    // moveitem.h) - expand each selected group into its own cluster
+    // (group + members) here, or this would raise the group ALONE,
+    // above its own (untouched) members, breaking the "group always
+    // sits behind its members" invariant the instant it's clicked.
+    QList<QGraphicsItem*> items;
+    for (QGraphicsItem* item : selectedItems(true)) {
+        items.append(item);
+        if (auto* group = dynamic_cast<GroupItem*>(item))
+            items.append(group->resolve_children());
+    }
+    raise_items_to_front(items);
+}
+
 void CanvasScene::lower_to_bottom()
 {
     cancel_active_modes();
@@ -266,14 +304,6 @@ void CanvasScene::lower_to_bottom()
     }
 }
 
-namespace {
-// Visual breathing room between a freshly-grouped selection's own
-// bounding box and the group's fill rect, in scene units - a group that
-// hugs its members flush would be hard to distinguish from a plain
-// multi-selection at a glance.
-constexpr qreal kGroupPadding = 20.0;
-} // namespace
-
 void CanvasScene::group_selection()
 {
     QList<QGraphicsItem*> selected = selectedItems(true);
@@ -286,11 +316,15 @@ void CanvasScene::group_selection()
             ids.append(baseItem->uid());
     }
 
+    // GroupItem::kPadding, not a local constant - fit_to_contain_children()
+    // (moveitem.h) uses the same padding for every later refit, and both
+    // need to agree or the group would visibly jump in size the first
+    // time it re-fits after creation.
     const QRectF bounds = itemsBoundingRect(false, selected);
-    const QRectF padded = bounds.adjusted(-kGroupPadding,
-                                          -kGroupPadding,
-                                          kGroupPadding,
-                                          kGroupPadding);
+    const QRectF padded = bounds.adjusted(-GroupItem::kPadding,
+                                          -GroupItem::kPadding,
+                                          GroupItem::kPadding,
+                                          GroupItem::kPadding);
 
     auto* group = new GroupItem();
     group->setPos(padded.topLeft());
@@ -983,6 +1017,18 @@ void CanvasScene::on_selection_change()
         return;
     }
 
+    // Same mode guard ItemMixin::on_selected_change() (moveitem.h) uses
+    // for its own (single-item, first-of-a-fresh-selection-only)
+    // bring-to-front - keeps this from firing during a file load
+    // restoring a saved selection (active_mode_ is kNone then, no mouse
+    // interaction in progress) or any other non-click-driven selection
+    // change, only for an actual user click (kMoveMode) or rubber-band
+    // sweep (kRubberbandMode, so a multi-select-by-dragging ends up on
+    // top too, not just ctrl+click accumulation).
+    if (active_mode_ == kMoveMode || active_mode_ == kRubberbandMode) {
+        raise_selection_to_front();
+    }
+
     if (has_multi_selection()) {
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
@@ -1009,15 +1055,16 @@ void CanvasScene::on_change()
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 
-    // Auto-expand (roadmap step 10): grows any group whose fill no
-    // longer contains all its members - e.g. one was just dragged
-    // outside it. Same live-during-drag hook as multiselect's own refit
-    // above; grow_to_contain_children() itself is a no-op once a group
+    // Auto-fit (roadmap step 10): grows OR shrinks every group's fill to
+    // tightly contain its members - e.g. one was just dragged outside
+    // it (grows), or back in after having been outside (shrinks back
+    // down). Same live-during-drag hook as multiselect's own refit
+    // above; fit_to_contain_children() itself is a no-op once a group
     // already fits, so this is cheap on the (common) frame where nothing
     // changed.
     for (QGraphicsItem* item : items()) {
         if (auto* group = dynamic_cast<GroupItem*>(item))
-            group->grow_to_contain_children();
+            group->fit_to_contain_children();
     }
 }
 
@@ -1119,6 +1166,16 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             // the plain-text fallback when present.
             textItem->apply_extra_save_data(extraMap);
             item = textItem;
+        } else if (typ == "group") {
+            GroupItem* groupItem = new GroupItem();
+            // child_ids/fill_color/rect size - see GroupItem::
+            // apply_extra_save_data() (moveitem.h). Membership resolves
+            // lazily against the scene on first actual use, not here -
+            // other members may not exist yet at this point in the load
+            // (no ordering guarantee between a group and its children in
+            // manifest.json's flat item list).
+            groupItem->apply_extra_save_data(data.value("data").toMap());
+            item = groupItem;
         } else {
             FLOG_WARN(Ch::Scene, "Encountered item of unknown type: {}", typ);
             item = new ErrorItem(QString("Item of unknown type: %1").arg(typ));
@@ -1171,12 +1228,30 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
 
                 if (selected) {
                     item->setSelected(true);
-                    baseItem->bring_to_front();
+                    // A saved-as-selected group must NOT jump in front
+                    // of its own members - see GroupItem's class comment
+                    // (moveitem.h) on why it never bring_to_front()s.
+                    if (typ != "group")
+                        baseItem->bring_to_front();
                 }
 
                 addedItems.append(baseItem);
             }
         }
+    }
+
+    // Belt-and-suspenders: force every group added in this batch to
+    // re-resolve its members fresh now that every item in the batch
+    // exists. QGraphicsScene::changed() (which on_change()/
+    // GroupItem::fit_to_contain_children() react to) is batched/
+    // deferred by Qt, so nothing should have resolved children mid-loop
+    // with an incomplete set already - but this costs nothing and
+    // removes any doubt, given manifest.json has no ordering guarantee
+    // between a group and its own children (see the "group" branch
+    // above).
+    for (IBaseItem* addedItem : addedItems) {
+        if (auto* group = dynamic_cast<GroupItem*>(addedItem))
+            group->invalidate_children_cache();
     }
 
     return addedItems;
