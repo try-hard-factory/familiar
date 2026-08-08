@@ -1500,6 +1500,8 @@ public:
                 QColor::HexArgb);
         data[QStringLiteral("rect_width")] = localRect_.width();
         data[QStringLiteral("rect_height")] = localRect_.height();
+        if (locked_)
+            data[QStringLiteral("locked")] = true;
         return data;
     }
 
@@ -1536,6 +1538,15 @@ public:
                             .toReal();
         if (w > 0 && h > 0)
             set_local_rect(QRectF(0, 0, w, h));
+
+        // Raw field, not set_locked() - this item isn't attached to a
+        // scene yet at this point in the load (see
+        // CanvasScene::add_queued_items()), so apply_lock_to_children()
+        // (which set_locked() would trigger) couldn't resolve any
+        // members yet anyway; the same post-load pass that calls
+        // invalidate_children_cache() also calls apply_lock_to_children()
+        // once every item in the batch actually exists.
+        locked_ = data.value(QStringLiteral("locked"), false).toBool();
     }
 
     // See apply_extra_save_data()'s comment - the safety net
@@ -1580,11 +1591,70 @@ public:
     // aligned groups are the only case exercised so far); a rotated
     // group would need the same corner-projection approach
     // CanvasScene::itemsBoundingRect() uses.
+    // Repairs "a group always sits behind its own members" if it's ever
+    // gotten out of sync - e.g. a member got sent to the very back
+    // individually via CanvasScene::lower_to_bottom(), which has no idea
+    // it's part of a group and can push it below the group's own z. Left
+    // unrepaired, that member's own group fill (or, for a nested group,
+    // a grandparent's fill - each level checks only its OWN direct
+    // children, but since this runs for every group on every tick, a fix
+    // at one level keeps the invariant transitively correct at every
+    // level above it too) can end up rendering ON TOP of it. Called
+    // alongside fit_to_contain_children() below - same on_change() tick,
+    // same "children" list, so this doesn't add its own resolve_children()
+    // pass.
+    void keep_below_children(const QList<QGraphicsItem*>& children)
+    {
+        if (children.isEmpty())
+            return;
+        qreal minChildZ = children.first()->zValue();
+        for (QGraphicsItem* child : children)
+            minChildZ = qMin(minChildZ, child->zValue());
+        if (this->zValue() >= minChildZ) {
+            if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+                FLOG_DEBUG(familiar::log::Ch::Items,
+                           "GroupItem::keep_below_children() {} uid={} was "
+                           "AT OR ABOVE its own children (z={}, min child "
+                           "z={}) - correcting",
+                           toString(),
+                           uid().toString(QUuid::WithoutBraces).toStdString(),
+                           this->zValue(),
+                           minChildZ);
+                this->set_z_value(minChildZ - scene->Z_STEP);
+            }
+        }
+    }
+
     void fit_to_contain_children()
     {
+        // While this group (or any ancestor it's nested inside) is
+        // CURRENTLY the mouse grabber - i.e. its own body is being
+        // rigidly dragged right now - every member is already moving in
+        // perfect lockstep via itemChange()'s cascade, so this group's
+        // footprint relative to them hasn't actually changed and a
+        // refit is a no-op at best. At worst (confirmed via a live
+        // debug capture with Max), this setPos() call still perturbs
+        // this SAME item's position mid-drag, which fights with Qt's
+        // own native drag-delta bookkeeping for whichever item is
+        // currently grabbed and produces visible jitter (the delta
+        // logged in itemChange() oscillating between the real per-frame
+        // drag delta and roughly double/negative versions of it).
+        // Nested groups need the walk-up-to-root check, not just a
+        // self-check - dragging an OUTER group cascades down to an INNER
+        // one too, and the inner one isn't itself the grabber.
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            for (GroupItem* ancestor = this; ancestor;
+                 ancestor = scene->find_owning_group(ancestor->uid())) {
+                if (scene->mouseGrabberItem() == ancestor)
+                    return;
+            }
+        }
+
         const QList<QGraphicsItem*> children = resolve_children();
         if (children.isEmpty())
             return;
+
+        keep_below_children(children);
 
         QRectF unionRect = children.first()->sceneBoundingRect();
         for (QGraphicsItem* child : children)
@@ -1602,6 +1672,35 @@ public:
         if (unionRect == ownSceneRect)
             return;
 
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "GroupItem::fit_to_contain_children() {} uid={} z={} "
+                   "refitting {},{} {}x{} -> {},{} {}x{} ({} children)",
+                   toString(),
+                   uid().toString(QUuid::WithoutBraces).toStdString(),
+                   this->zValue(),
+                   ownSceneRect.x(),
+                   ownSceneRect.y(),
+                   ownSceneRect.width(),
+                   ownSceneRect.height(),
+                   unionRect.x(),
+                   unionRect.y(),
+                   unionRect.width(),
+                   unionRect.height(),
+                   children.size());
+        for (QGraphicsItem* child : children) {
+            auto* baseItem = dynamic_cast<IBaseItem*>(child);
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "  child uid={} type={} scenePos=({},{}) z={}",
+                       baseItem ? baseItem->uid()
+                                      .toString(QUuid::WithoutBraces)
+                                      .toStdString()
+                                : "?",
+                       baseItem ? baseItem->get_type() : "?",
+                       child->scenePos().x(),
+                       child->scenePos().y(),
+                       child->zValue());
+        }
+
         // autoExpanding_ tells itemChange() below not to treat this
         // setPos() as a body drag needing to carry members along - the
         // members are exactly why we're repositioning in the first
@@ -1615,21 +1714,106 @@ public:
         set_local_rect(QRectF(0, 0, unionRect.width(), unionRect.height()));
     }
 
+    // ── Lock (roadmap step 10 stage 3) ──────────────────────────────────
+    // Locked: clicking any member selects the GROUP instead (see
+    // CanvasScene::getFirstItemUnderCursor()) - implemented by turning
+    // OFF the members' own ItemIsSelectable/ItemIsMovable, so Qt's
+    // normal hit-testing/event dispatch falls through to whatever's
+    // underneath (the group's own fill) on its own, rather than this
+    // class reimplementing Qt's press/selection/drag-arming machinery by
+    // hand. Double-click still drills in and selects the actual member -
+    // CanvasScene::mouseDoubleClickEvent() forces that one item's flags
+    // back on right before selecting it (see its own comment for the one
+    // known, accepted rough edge: that item stays individually
+    // selectable until the group's lock state next changes, not
+    // re-disabled immediately after).
+    bool locked() const { return locked_; }
+    void set_locked(bool locked)
+    {
+        if (locked_ == locked)
+            return;
+        locked_ = locked;
+        apply_lock_to_children();
+    }
+
+    // Applies the CURRENT locked() state to every resolved member's
+    // ItemIsSelectable/ItemIsMovable flags - called after set_locked()
+    // itself, after membership changes (set_child_ids()/add_child_id()
+    // below - a member added to an already-locked group should start
+    // locked too), and once after a full load batch (CanvasScene::
+    // add_queued_items(), alongside invalidate_children_cache() - a
+    // freshly-loaded group's children need their flags synced to its
+    // loaded locked() state).
+    void apply_lock_to_children()
+    {
+        for (QGraphicsItem* child : resolve_children()) {
+            child->setFlag(QGraphicsItem::ItemIsSelectable, !locked_);
+            child->setFlag(QGraphicsItem::ItemIsMovable, !locked_);
+        }
+    }
+
     // ── Membership (uid-based - see class comment) ─────────────────────
     const QList<QUuid>& child_ids() const { return childIds_; }
     void set_child_ids(const QList<QUuid>& ids)
     {
         childIds_ = ids;
         resolvedChildrenDirty_ = true;
+        apply_lock_to_children();
     }
     void add_child_id(const QUuid& id)
     {
-        if (!childIds_.contains(id))
+        if (!childIds_.contains(id)) {
+            // Diagnostic (see conversation with Max about the "clicking
+            // an unrelated item turns everything black" report) - if
+            // this uid is ALREADY listed by some OTHER group, it's about
+            // to be a member of two groups at once, which nothing else
+            // in this codebase expects or handles (fit_to_contain_children()
+            // would pull that group's rect toward wherever this item
+            // ends up, however far that is). Nothing currently in this
+            // class prevents that from happening; this just makes it
+            // visible in the log if it does.
+            if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+                for (QGraphicsItem* other : scene->items()) {
+                    if (other == this)
+                        continue;
+                    auto* otherGroup = dynamic_cast<GroupItem*>(other);
+                    if (otherGroup && otherGroup->child_ids().contains(id)) {
+                        FLOG_DEBUG(
+                            familiar::log::Ch::Items,
+                            "GroupItem::add_child_id() WARNING: {} is "
+                            "already a member of ANOTHER group ({}, "
+                            "uid={}) - {} is about to become a SECOND "
+                            "owner of it",
+                            id.toString(QUuid::WithoutBraces).toStdString(),
+                            otherGroup->toString(),
+                            otherGroup->uid()
+                                .toString(QUuid::WithoutBraces)
+                                .toStdString(),
+                            toString());
+                    }
+                }
+            }
             childIds_.append(id);
+        }
         resolvedChildrenDirty_ = true;
+        apply_lock_to_children();
     }
     void remove_child_id(const QUuid& id)
     {
+        // Restore the departing item's own selectability/movability
+        // BEFORE it stops being tracked as a member - see set_locked()
+        // above for why those get disabled on a locked group's members
+        // in the first place; once it's no longer a member, being stuck
+        // unable to select/move it at all would be a real (and
+        // confusing) regression, not just a cosmetic leftover.
+        if (locked_) {
+            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+            if (QGraphicsItem* item = scene ? scene->find_by_uid(id)
+                                            : nullptr) {
+                item->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                item->setFlag(QGraphicsItem::ItemIsMovable, true);
+            }
+        }
         childIds_.removeAll(id);
         resolvedChildrenDirty_ = true;
     }
@@ -1682,6 +1866,32 @@ public:
         painter->setPen(Qt::NoPen);
         painter->setBrush(QBrush(fill_color_));
         painter->drawRect(bounding_rect_unselected());
+
+        // Nested groups: while THIS (outer) group is selected, outline
+        // every direct child that's itself a GroupItem with a thin
+        // border, so the sub-groups' boundaries read clearly without
+        // having to select each one individually. Only while selected -
+        // an always-on outline would clutter a merged group's normal,
+        // unselected appearance for no benefit.
+        if (this->isSelected()) {
+            const QList<QGraphicsItem*> children = resolve_children();
+            if (!children.isEmpty()) {
+                painter->save();
+                QPen thinPen(QColor(255, 255, 255, 160));
+                thinPen.setWidthF(1.0);
+                thinPen.setCosmetic(true);
+                painter->setPen(thinPen);
+                painter->setBrush(Qt::NoBrush);
+                for (QGraphicsItem* child : children) {
+                    if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
+                        painter->drawRect(this->mapRectFromItem(
+                            childGroup, childGroup->bounding_rect_unselected()));
+                    }
+                }
+                painter->restore();
+            }
+        }
+
         this->paint_selectable(painter, option, widget);
     }
 
@@ -1721,8 +1931,46 @@ protected:
             && active_mode_ == kNone && !autoExpanding_) {
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
-                for (QGraphicsItem* child : resolve_children())
+                FLOG_DEBUG(familiar::log::Ch::Items,
+                           "GroupItem::itemChange() {} uid={} ItemPositionChange "
+                           "delta=({},{}) selected={} - cascading to {} "
+                           "children",
+                           toString(),
+                           uid().toString(QUuid::WithoutBraces).toStdString(),
+                           delta.x(),
+                           delta.y(),
+                           this->isSelected(),
+                           resolve_children().size());
+                for (QGraphicsItem* child : resolve_children()) {
+                    // A rubber-band sweep (or ctrl+click accumulation)
+                    // can select this group AND, independently, one of
+                    // its own members at the same time - Qt has no
+                    // notion of group membership, it just tests each
+                    // item's shape on its own. A child in that state is
+                    // ALREADY being carried along by Qt's own native
+                    // "move every selected+movable item together" body-
+                    // drag behavior; shifting it again here would double-
+                    // apply the same delta and make the drag jitter. Only
+                    // explicitly move children that aren't independently
+                    // selected - Qt is already handling those.
+                    auto* baseItem = dynamic_cast<IBaseItem*>(child);
+                    const bool skip = child->isSelected()
+                        && (child->flags() & QGraphicsItem::ItemIsMovable);
+                    FLOG_DEBUG(
+                        familiar::log::Ch::Items,
+                        "  child uid={} type={} selected={} movable={} -> {}",
+                        baseItem ? baseItem->uid()
+                                       .toString(QUuid::WithoutBraces)
+                                       .toStdString()
+                                 : "?",
+                        baseItem ? baseItem->get_type() : "?",
+                        child->isSelected(),
+                        bool(child->flags() & QGraphicsItem::ItemIsMovable),
+                        skip ? "SKIP (Qt native)" : "moveBy (explicit)");
+                    if (skip)
+                        continue;
                     child->moveBy(delta.x(), delta.y());
+                }
             }
         }
         // NOT QGraphicsRectItem::itemChange() directly - SelectableMixin
@@ -1741,6 +1989,7 @@ private:
     QList<QGraphicsItem*> resolvedChildren_;
     bool resolvedChildrenDirty_ = true;
     bool autoExpanding_ = false;
+    bool locked_ = false;
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.

@@ -82,6 +82,8 @@ set(PROJECT_SOURCES
         ui/text_edit_toolbar.h
         ui/gif_playback_toolbar.cpp
         ui/gif_playback_toolbar.h
+        ui/group_toolbar.cpp
+        ui/group_toolbar.h
         actions/actions.cpp
         actions/actions.h
         actions/menu_structure.cpp

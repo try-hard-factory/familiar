@@ -481,3 +481,28 @@ private:
     GroupItem* group_;
     QUuid memberUid_;
 };
+
+// ============================================================================
+// AddToGroupCommand - добавляет одну или несколько уже существующих
+// top-level айтемов (не в группе) в УЖЕ существующую GroupItem: результат
+// CanvasScene::group_selection(), когда среди выделения ровно одна группа
+// и остальное - свободные элементы (не в другой группе). В отличие от
+// GroupCommand, новую GroupItem не создаёт и не владеет ни группой, ни
+// добавляемыми айтемами - все они уже независимо присутствуют на сцене.
+// ============================================================================
+class AddToGroupCommand : public QUndoCommand
+{
+public:
+    AddToGroupCommand(CanvasScene* scene,
+                      GroupItem* group,
+                      const QList<QGraphicsItem*>& members);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    CanvasScene* scene_;
+    GroupItem* group_;
+    QList<QGraphicsItem*> members_;
+    QList<QUuid> memberUids_;
+};

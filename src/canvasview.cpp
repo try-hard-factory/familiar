@@ -7,6 +7,7 @@
 #include "moveitem.h"
 #include "project_settings.h"
 #include "ui/gif_playback_toolbar.h"
+#include "ui/group_toolbar.h"
 #include "ui/text_edit_toolbar.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
@@ -99,13 +100,25 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
             this,
             &CanvasView::updateGifToolbarPos_);
 
+    // Floating group toolbar (roadmap step 10 stage 4); hidden until a
+    // GroupItem is selected - same "applies as soon as simply selected,
+    // no dedicated mode-entered signal" reasoning as the GIF toolbar.
+    groupToolbar_ = new GroupToolbar(viewport());
+    groupToolbar_->hide();
+    connect(groupToolbar_,
+            &GroupToolbar::geometryChanged,
+            this,
+            &CanvasView::updateGroupToolbarPos_);
+
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         updateTextToolbarPos_();
         updateGifToolbarPos_();
+        updateGroupToolbarPos_();
     });
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         updateTextToolbarPos_();
         updateGifToolbarPos_();
+        updateGroupToolbarPos_();
     });
 
     connect(SettingsHandler::getInstance(),
@@ -213,11 +226,12 @@ void CanvasView::on_scene_changed()
         welcomeOverlay_->hide();
     }
     recalcSceneRect();
-    // Keeps the GIF toolbar glued to its item while it's being dragged
-    // (this fires on every scene change, animation ticks included, but
-    // repositioning to an unchanged position is cheap - simpler than
-    // hooking drag-specific events separately).
+    // Keeps the GIF/group toolbars glued to their item while it's being
+    // dragged (this fires on every scene change, animation ticks
+    // included, but repositioning to an unchanged position is cheap -
+    // simpler than hooking drag-specific events separately).
     updateGifToolbarPos_();
+    updateGroupToolbarPos_();
 }
 
 void CanvasView::on_selection_changed()
@@ -240,6 +254,20 @@ void CanvasView::on_selection_changed()
         updateGifToolbarPos_();
     } else {
         gifToolbar_->hide();
+    }
+
+    // Group toolbar - same "single selected item is enough" shape.
+    GroupItem* groupItem = nullptr;
+    if (selected.size() == 1)
+        groupItem = dynamic_cast<GroupItem*>(selected.first());
+
+    groupToolbar_->attach(groupItem);
+    if (groupItem) {
+        groupToolbar_->show();
+        groupToolbar_->raise();
+        updateGroupToolbarPos_();
+    } else {
+        groupToolbar_->hide();
     }
 }
 
@@ -276,6 +304,8 @@ void CanvasView::settingsChangedSlot()
         textToolbar_->restyleFromPreset();
     if (gifToolbar_)
         gifToolbar_->restyleFromPreset();
+    if (groupToolbar_)
+        groupToolbar_->restyleFromPreset();
 }
 
 // ─── Active modes ─────────────────────────────────────────────────────────────
@@ -373,6 +403,7 @@ void CanvasView::doScale(qreal sx, qreal sy)
     recalcSceneRect();
     updateTextToolbarPos_();
     updateGifToolbarPos_();
+    updateGroupToolbarPos_();
 }
 
 void CanvasView::on_edit_item_changed(TextItem* item)
@@ -428,6 +459,26 @@ void CanvasView::updateGifToolbarPos_()
     // the item's, and a row simply centered within the toolbar would
     // drift away from the item towards the middle of the filmstrip.
     gifToolbar_->positionControlsRow(itemCenterView - x);
+}
+
+void CanvasView::updateGroupToolbarPos_()
+{
+    if (!groupToolbar_ || !groupToolbar_->isVisible()
+        || !groupToolbar_->item())
+        return;
+    // Same bottom-center placement (with edge clamp) as the GIF toolbar
+    // above - no left-snap/positionControlsRow complexity needed here,
+    // this toolbar has no filmstrip-like element that can outgrow the
+    // item it's attached to.
+    const QRectF itemRect = groupToolbar_->item()->sceneBoundingRect();
+    const int leftView = mapFromScene(itemRect.bottomLeft()).x();
+    const int rightView = mapFromScene(itemRect.bottomRight()).x();
+    const int itemCenterView = (leftView + rightView) / 2;
+    int x = itemCenterView - groupToolbar_->width() / 2;
+    int y = mapFromScene(itemRect.bottomLeft()).y() + 8;
+    x = qBound(0, x, qMax(0, viewport()->width() - groupToolbar_->width()));
+    y = qMin(y, qMax(0, viewport()->height() - groupToolbar_->height()));
+    groupToolbar_->move(x, y);
 }
 
 double CanvasView::getZoomSize(std::function<double(double, double)> func) const
@@ -570,13 +621,15 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         }
     }
 
-    // Hide the GIF playback toolbar for whatever's about to happen below
+    // Hide the GIF/group toolbars for whatever's about to happen below
     // (resize/move/click-elsewhere) - see mouseReleaseEvent(), which
-    // re-shows it once the interaction is over. Left visible, it stays
-    // anchored to the item's PRE-drag bounding rect and visibly
-    // lags/overlaps the resize handles while dragging.
+    // re-shows them once the interaction is over. Left visible, they
+    // stay anchored to the item's PRE-drag bounding rect and visibly
+    // lag/overlap the resize handles while dragging.
     if (gifToolbar_->isVisible())
         gifToolbar_->hide();
+    if (groupToolbar_->isVisible())
+        groupToolbar_->hide();
 
     QGraphicsView::mousePressEvent(event);
 }
@@ -616,14 +669,18 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
 
     // Covers the case mousePressEvent()'s own hide can't: pressing on a
-    // not-yet-selected GIF selects it (synchronously, inside
+    // not-yet-selected GIF/group selects it (synchronously, inside
     // QGraphicsView::mousePressEvent() below) and that selection change
     // shows the toolbar via on_selection_changed() - AFTER
     // mousePressEvent()'s hide line already ran. Without this, that
     // select-and-drag-in-one-motion case leaves the toolbar visible and
     // lagging behind the item for the whole drag.
-    if ((event->buttons() & Qt::LeftButton) && gifToolbar_->isVisible())
-        gifToolbar_->hide();
+    if (event->buttons() & Qt::LeftButton) {
+        if (gifToolbar_->isVisible())
+            gifToolbar_->hide();
+        if (groupToolbar_->isVisible())
+            groupToolbar_->hide();
+    }
 
     QGraphicsView::mouseMoveEvent(event);
 }
@@ -649,17 +706,26 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
         return;
     QGraphicsView::mouseReleaseEvent(event);
 
-    // Re-show the GIF toolbar hidden in mousePressEvent(), but only if
-    // its item is still the sole selection - a click that deselected it
-    // (or selected something else) already got it hidden/detached via
-    // on_selection_changed(), and re-showing it here too would undo that.
+    // Re-show the GIF/group toolbars hidden in mousePressEvent(), but
+    // only if their item is still the sole selection - a click that
+    // deselected it (or selected something else) already got it hidden/
+    // detached via on_selection_changed(), and re-showing it here too
+    // would undo that.
+    QList<QGraphicsItem*> selected = scene_->selectedItems(true);
     if (GifItem* item = gifToolbar_->item()) {
-        QList<QGraphicsItem*> selected = scene_->selectedItems(true);
         if (!gifToolbar_->isVisible() && selected.size() == 1
             && selected.first() == item) {
             gifToolbar_->show();
             gifToolbar_->raise();
             updateGifToolbarPos_();
+        }
+    }
+    if (GroupItem* item = groupToolbar_->item()) {
+        if (!groupToolbar_->isVisible() && selected.size() == 1
+            && selected.first() == item) {
+            groupToolbar_->show();
+            groupToolbar_->raise();
+            updateGroupToolbarPos_();
         }
     }
 }
@@ -745,6 +811,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
     welcomeOverlay_->resize(size());
     updateTextToolbarPos_();
     updateGifToolbarPos_();
+    updateGroupToolbarPos_();
 }
 
 

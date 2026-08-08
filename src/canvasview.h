@@ -31,6 +31,8 @@ class ImagesToDirectoryExporter;
 class QVariantAnimation;
 class TextEditToolbar;
 class GifPlaybackToolbar;
+class GroupItem;
+class GroupToolbar;
 
 struct PreviousTransform
 {
@@ -244,12 +246,16 @@ private:
     // dedicated signal: unlike text editing, GIF playback controls apply
     // as soon as the item is simply selected.
     void updateGifToolbarPos_();
+    // Same idea again, for the group toolbar (roadmap step 10 stage 4) -
+    // shown/hidden from on_selection_changed() same as the GIF one.
+    void updateGroupToolbarPos_();
 
     qreal selectionOutlineOpacity_ = 1.0;
     bool selectionOutlineHover_ = false;
     QVariantAnimation* selectionFadeAnim_ = nullptr;
     TextEditToolbar* textToolbar_ = nullptr;
     GifPlaybackToolbar* gifToolbar_ = nullptr;
+    GroupToolbar* groupToolbar_ = nullptr;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;
