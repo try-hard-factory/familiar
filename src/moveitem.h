@@ -2075,29 +2075,42 @@ public:
         painter->setBrush(QBrush(fill_color_));
         painter->drawRect(bounding_rect_unselected());
 
-        // Nested groups: if MY OWN owning group is currently selected,
-        // draw a thin border around MYSELF, right here, as part of MY
-        // OWN paint() call - so it sits at MY OWN z, always below my own
-        // members (the group-behind-its-members invariant), never
-        // covering my own images. Two things were tried and rejected
-        // first (Max): drawing it from the OUTER group's paint() instead
-        // (sits at the outer's z, so a sibling subgroup's opaque fill
-        // can cover it where their rects overlap) and a separate always-
-        // on-top overlay item (paints over literally everything,
-        // including this group's own member images, which looks worse
-        // than the sibling-overlap case it was meant to fix).
+        // Nested groups: if ANY ancestor of mine (direct parent, or
+        // however many levels further up - walking the whole ownership
+        // chain, not just one hop) is currently selected, draw a thin
+        // border around MYSELF, right here, as part of MY OWN paint()
+        // call - so it sits at MY OWN z, always below my own members
+        // (the group-behind-its-members invariant), never covering my
+        // own images. Two things were tried and rejected first (Max):
+        // drawing it from the OUTER group's paint() instead (sits at
+        // the outer's z, so a sibling subgroup's opaque fill can cover
+        // it where their rects overlap) and a separate always-on-top
+        // overlay item (paints over literally everything, including
+        // this group's own member images, which looks worse than the
+        // sibling-overlap case it was meant to fix). Checking only the
+        // DIRECT owner (one hop) missed a subgroup nested 2+ levels
+        // below whichever ancestor was actually selected - confirmed
+        // with Max: selecting the outermost group didn't outline a
+        // deeply-nested subgroup's boundary at all.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            if (GroupItem* owner = scene->find_owning_group(this->uid())) {
+            bool ancestorSelected = false;
+            for (GroupItem* owner = scene->find_owning_group(this->uid());
+                 owner;
+                 owner = scene->find_owning_group(owner->uid())) {
                 if (owner->isSelected()) {
-                    painter->save();
-                    QPen thinPen(QColor(255, 255, 255, 160));
-                    thinPen.setWidthF(1.0);
-                    thinPen.setCosmetic(true);
-                    painter->setPen(thinPen);
-                    painter->setBrush(Qt::NoBrush);
-                    painter->drawRect(bounding_rect_unselected());
-                    painter->restore();
+                    ancestorSelected = true;
+                    break;
                 }
+            }
+            if (ancestorSelected) {
+                painter->save();
+                QPen thinPen(QColor(255, 255, 255, 160));
+                thinPen.setWidthF(1.0);
+                thinPen.setCosmetic(true);
+                painter->setPen(thinPen);
+                painter->setBrush(Qt::NoBrush);
+                painter->drawRect(bounding_rect_unselected());
+                painter->restore();
             }
         }
 
