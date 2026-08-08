@@ -1427,8 +1427,21 @@ public:
     // Visual breathing room kept between the members' own tight bounding
     // box and the group's fill rect - single source of truth for both
     // CanvasScene::group_selection() (initial fit, on creation) and
-    // fit_to_contain_children() below (continuous refit).
-    static constexpr qreal kPadding = 20.0;
+    // fit_to_contain_children() below (continuous refit). A flat scene-
+    // unit constant looked fine for small test images but was
+    // effectively invisible against multi-thousand-unit photos (confirmed
+    // with Max - PureRef-style content wants the margin to always read
+    // as a small but visible border, regardless of how big the grouped
+    // images actually are) - so this is proportional to the group's own
+    // content size, with a floor for tiny groups.
+    static constexpr qreal kMinPadding = 20.0;
+    static constexpr qreal kPaddingRatio = 0.03;
+    static qreal compute_padding(const QRectF& contentRect)
+    {
+        return qMax(kMinPadding,
+                    (contentRect.width() + contentRect.height()) / 2.0
+                        * kPaddingRatio);
+    }
 
     GroupItem(QGraphicsRectItem* parent = nullptr)
         : ItemMixin<GroupItem, QGraphicsRectItem>(parent)
@@ -1574,7 +1587,7 @@ public:
     }
 
     // Fits (grows OR shrinks) the group's footprint to tightly contain
-    // every member plus kPadding, called from CanvasScene::on_change() -
+    // every member plus compute_padding(), called from CanvasScene::on_change() -
     // same hook MultiSelectItem's own live refit already uses, so this
     // responds during an active drag, not just after release. Recomputed
     // from the members' OWN current positions every time (not seeded
@@ -1586,11 +1599,6 @@ public:
     // infinite setPos()/set_local_rect() -> changed() -> on_change()
     // loop; it only recurses the one extra time needed to notice
     // "already settled").
-    // TODOLATER: computed via plain sceneBoundingRect() union, which
-    // doesn't account for the GROUP's own rotation (fine for now - axis-
-    // aligned groups are the only case exercised so far); a rotated
-    // group would need the same corner-projection approach
-    // CanvasScene::itemsBoundingRect() uses.
     // Repairs "a group always sits behind its own members" if it's ever
     // gotten out of sync - e.g. a member got sent to the very back
     // individually via CanvasScene::lower_to_bottom(), which has no idea
@@ -1656,10 +1664,46 @@ public:
 
         keep_below_children(children);
 
-        QRectF unionRect = children.first()->sceneBoundingRect();
-        for (QGraphicsItem* child : children)
-            unionRect = unionRect.united(child->sceneBoundingRect());
-        unionRect = unionRect.adjusted(-kPadding, -kPadding, kPadding, kPadding);
+        // corners_scene_coords() (IBaseItem), NOT sceneBoundingRect() -
+        // the latter goes through SelectableMixin's boundingRect()
+        // override too, same as the group's own rect below, padding in
+        // extra room for selection handles whenever a MEMBER happens to
+        // be individually selected (design point 1: unlocked group +
+        // click on a member selects the member directly). That
+        // temporary padding was leaking into the union, showing up as
+        // an oversized fill on whichever edge the selected member's
+        // handles stuck out past, which then "collapsed" back down the
+        // next time the member got deselected (confirmed with Max).
+        // corners_scene_coords() is built from bounding_rect_unselected()
+        // and already projects rotated items' corners correctly, so this
+        // also covers the TODOLATER this replaced (fit not accounting
+        // for a member's own rotation).
+        QRectF unionRect;
+        bool haveRect = false;
+        for (QGraphicsItem* child : children) {
+            auto* baseItem = dynamic_cast<IBaseItem*>(child);
+            if (!baseItem)
+                continue;
+            for (const QPointF& corner : baseItem->corners_scene_coords()) {
+                if (!haveRect) {
+                    unionRect = QRectF(corner, corner);
+                    haveRect = true;
+                    continue;
+                }
+                if (corner.x() < unionRect.left())
+                    unionRect.setLeft(corner.x());
+                if (corner.x() > unionRect.right())
+                    unionRect.setRight(corner.x());
+                if (corner.y() < unionRect.top())
+                    unionRect.setTop(corner.y());
+                if (corner.y() > unionRect.bottom())
+                    unionRect.setBottom(corner.y());
+            }
+        }
+        if (!haveRect)
+            return;
+        const qreal padding = compute_padding(unionRect);
+        unionRect = unionRect.adjusted(-padding, -padding, padding, padding);
 
         // mapRectToScene(localRect_), NOT sceneBoundingRect() - the
         // latter goes through SelectableMixin's boundingRect() override,

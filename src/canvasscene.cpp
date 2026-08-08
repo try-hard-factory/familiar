@@ -358,15 +358,16 @@ void CanvasScene::group_selection()
             ids.append(baseItem->uid());
     }
 
-    // GroupItem::kPadding, not a local constant - fit_to_contain_children()
-    // (moveitem.h) uses the same padding for every later refit, and both
-    // need to agree or the group would visibly jump in size the first
-    // time it re-fits after creation.
+    // GroupItem::compute_padding(), not a local calculation -
+    // fit_to_contain_children() (moveitem.h) uses the exact same formula
+    // for every later refit, and both need to agree or the group would
+    // visibly jump in size the first time it re-fits after creation.
     const QRectF bounds = itemsBoundingRect(false, selected);
-    const QRectF padded = bounds.adjusted(-GroupItem::kPadding,
-                                          -GroupItem::kPadding,
-                                          GroupItem::kPadding,
-                                          GroupItem::kPadding);
+    const qreal padding = GroupItem::compute_padding(bounds);
+    const QRectF padded = bounds.adjusted(-padding,
+                                          -padding,
+                                          padding,
+                                          padding);
 
     auto* group = new GroupItem();
     group->setPos(padded.topLeft());
