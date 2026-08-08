@@ -1837,6 +1837,24 @@ public:
     bool drag_drop_enabled() const { return dragDropEnabled_; }
     void set_drag_drop_enabled(bool enabled) { dragDropEnabled_ = enabled; }
 
+    // Live "you're about to drop here" indicator while dragging a loose/
+    // already-grouped item over this group's area (CanvasView's
+    // mouseMoveEvent, mirroring CanvasScene::maybe_add_dropped_items_to_group()'s
+    // own target-finding, but evaluated every move instead of just on
+    // release). Deliberately separate from isSelected() - selection
+    // drives the resize/rotate corner handles too (paint_selectable()
+    // below), which shouldn't appear just because the cursor is
+    // hovering over a potential drop target while dragging something
+    // else (Max: "не отображать корнеры").
+    bool highlighted() const { return highlighted_; }
+    void set_highlighted(bool value)
+    {
+        if (highlighted_ == value)
+            return;
+        highlighted_ = value;
+        update();
+    }
+
     // Applies the CURRENT locked() state to every resolved member's
     // ItemIsSelectable/ItemIsMovable flags - called after set_locked()
     // itself, after membership changes (set_child_ids()/add_child_id()
@@ -2063,6 +2081,28 @@ public:
             }
         }
 
+        // Drop-target highlight - a thick accent border, independent of
+        // isSelected() (see highlighted()'s own comment for why: no
+        // corner handles just from hovering a potential drop target).
+        // Same color as RubberbandItem's own selection-color fill
+        // (selector.h) - Max wanted the two to visually match, full
+        // opacity here since this is a border, not a translucent fill.
+        if (highlighted_) {
+            auto colorPreset
+                = SettingsHandler::getInstance()->getCurrentColorPreset();
+            QColor highlightColor
+                = colorPreset[EPresetsColorIdx::kSelectionColor];
+            highlightColor.setAlpha(230);
+            painter->save();
+            QPen highlightPen(highlightColor);
+            highlightPen.setWidthF(4.0);
+            highlightPen.setCosmetic(true);
+            painter->setPen(highlightPen);
+            painter->setBrush(Qt::NoBrush);
+            painter->drawRect(bounding_rect_unselected());
+            painter->restore();
+        }
+
         this->paint_selectable(painter, option, widget);
     }
 
@@ -2173,6 +2213,7 @@ private:
     bool scalingOrRotating_ = false;
     bool locked_ = false;
     bool dragDropEnabled_ = true;
+    bool highlighted_ = false;
 };
 
 // Displayed instead of an item that couldn't be loaded from a save file.
