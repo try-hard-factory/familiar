@@ -1911,28 +1911,29 @@ public:
         painter->setBrush(QBrush(fill_color_));
         painter->drawRect(bounding_rect_unselected());
 
-        // Nested groups: while THIS (outer) group is selected, outline
-        // every direct child that's itself a GroupItem with a thin
-        // border, so the sub-groups' boundaries read clearly without
-        // having to select each one individually. Only while selected -
-        // an always-on outline would clutter a merged group's normal,
-        // unselected appearance for no benefit.
-        if (this->isSelected()) {
-            const QList<QGraphicsItem*> children = resolve_children();
-            if (!children.isEmpty()) {
-                painter->save();
-                QPen thinPen(QColor(255, 255, 255, 160));
-                thinPen.setWidthF(1.0);
-                thinPen.setCosmetic(true);
-                painter->setPen(thinPen);
-                painter->setBrush(Qt::NoBrush);
-                for (QGraphicsItem* child : children) {
-                    if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
-                        painter->drawRect(this->mapRectFromItem(
-                            childGroup, childGroup->bounding_rect_unselected()));
-                    }
+        // Nested groups: if MY OWN owning group is currently selected,
+        // draw a thin border around MYSELF, right here, as part of MY
+        // OWN paint() call - so it sits at MY OWN z, always below my own
+        // members (the group-behind-its-members invariant), never
+        // covering my own images. Two things were tried and rejected
+        // first (Max): drawing it from the OUTER group's paint() instead
+        // (sits at the outer's z, so a sibling subgroup's opaque fill
+        // can cover it where their rects overlap) and a separate always-
+        // on-top overlay item (paints over literally everything,
+        // including this group's own member images, which looks worse
+        // than the sibling-overlap case it was meant to fix).
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            if (GroupItem* owner = scene->find_owning_group(this->uid())) {
+                if (owner->isSelected()) {
+                    painter->save();
+                    QPen thinPen(QColor(255, 255, 255, 160));
+                    thinPen.setWidthF(1.0);
+                    thinPen.setCosmetic(true);
+                    painter->setPen(thinPen);
+                    painter->setBrush(Qt::NoBrush);
+                    painter->drawRect(bounding_rect_unselected());
+                    painter->restore();
                 }
-                painter->restore();
             }
         }
 
