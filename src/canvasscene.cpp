@@ -454,6 +454,40 @@ void CanvasScene::ungroup_selection()
     }
 }
 
+GroupItem* CanvasScene::find_drop_target_group(const QPointF& scenePos) const
+{
+    // Topmost by z wins if scenePos lands somewhere multiple groups'
+    // areas overlap (e.g. a subgroup nested inside an outer group that
+    // also contains that point) - a subgroup always has higher z than
+    // its own outer parent (the group-behind-its-members invariant), so
+    // this naturally prefers the subgroup there without needing to
+    // reason about area/nesting explicitly.
+    GroupItem* target = nullptr;
+    qreal targetZ = 0;
+    for (QGraphicsItem* other : items()) {
+        auto* group = dynamic_cast<GroupItem*>(other);
+        if (!group || !group->drag_drop_enabled() || group->locked())
+            continue;
+        const QRectF groupSceneRect = group->mapRectToScene(
+            group->bounding_rect_unselected());
+        if (!groupSceneRect.contains(scenePos))
+            continue;
+        if (!target || group->zValue() > targetZ) {
+            target = group;
+            targetZ = group->zValue();
+        }
+    }
+    return target;
+}
+
+void CanvasScene::clear_drop_target_highlight()
+{
+    if (highlightedGroup_) {
+        highlightedGroup_->set_highlighted(false);
+        highlightedGroup_ = nullptr;
+    }
+}
+
 void CanvasScene::maybe_add_dropped_items_to_group(
     const QList<QGraphicsItem*>& movedItems,
     const QPointF& cursorScenePos)
@@ -471,27 +505,8 @@ void CanvasScene::maybe_add_dropped_items_to_group(
         return;
 
     // One target for the whole drag, chosen by the CURSOR alone - not
-    // per item. Topmost by z wins if the cursor lands somewhere multiple
-    // groups' areas overlap (e.g. a subgroup nested inside an outer
-    // group that also contains that point) - a subgroup always has
-    // higher z than its own outer parent (the group-behind-its-members
-    // invariant), so this naturally prefers the subgroup there without
-    // needing to reason about area/nesting explicitly.
-    GroupItem* target = nullptr;
-    qreal targetZ = 0;
-    for (QGraphicsItem* other : items()) {
-        auto* group = dynamic_cast<GroupItem*>(other);
-        if (!group || !group->drag_drop_enabled() || group->locked())
-            continue;
-        const QRectF groupSceneRect = group->mapRectToScene(
-            group->bounding_rect_unselected());
-        if (!groupSceneRect.contains(cursorScenePos))
-            continue;
-        if (!target || group->zValue() > targetZ) {
-            target = group;
-            targetZ = group->zValue();
-        }
-    }
+    // per item.
+    GroupItem* target = find_drop_target_group(cursorScenePos);
     if (!target)
         return;
 
@@ -1114,6 +1129,40 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         view->resetPreviousTransform();
     }
 
+    // Live drop-target highlight while body-dragging something that
+    // could actually land in a group on release - same guard
+    // mouseReleaseEvent() uses to decide whether a real move happened,
+    // minus the "already moved" delta check (this runs every frame, not
+    // just at the end). is_action_active() excludes an active resize/
+    // rotate handle drag (that's not a body drag, dropping doesn't apply
+    // there). Skipped entirely if every selected item is itself a group
+    // - dropping a group onto another is the Ctrl+G nesting flow, not
+    // this, so highlighting a candidate would be a misleading signal.
+    if (active_mode_ == kMoveMode && has_selection()
+        && !multiselect_item_->is_action_active()
+        && !dynamic_cast<IBaseItem*>(selectedItems().first())
+                ->is_action_active()) {
+        bool anyNonGroup = false;
+        for (QGraphicsItem* item : selectedItems(true)) {
+            if (!dynamic_cast<GroupItem*>(item)) {
+                anyNonGroup = true;
+                break;
+            }
+        }
+        GroupItem* target = anyNonGroup
+            ? find_drop_target_group(event->scenePos())
+            : nullptr;
+        if (target != highlightedGroup_) {
+            clear_drop_target_highlight();
+            if (target) {
+                target->set_highlighted(true);
+                highlightedGroup_ = target;
+            }
+        }
+    } else {
+        clear_drop_target_highlight();
+    }
+
     QGraphicsScene::mouseMoveEvent(event);
 }
 
@@ -1137,6 +1186,9 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                                             event->scenePos());
         }
     }
+    // The drag (if any) is over either way - don't leave a stale
+    // highlight on whatever group was last under the cursor.
+    clear_drop_target_highlight();
     // Reset after the base call, not before (unlike Python's exact
     // ordering): Qt defers a ctrl+click deselect-toggle on an
     // already-selected item to this base mouseReleaseEvent call, and

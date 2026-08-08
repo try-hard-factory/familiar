@@ -114,6 +114,13 @@ public:
     // also qualifies).
     void maybe_add_dropped_items_to_group(const QList<QGraphicsItem*>& movedItems,
                                           const QPointF& cursorScenePos);
+    // Whichever unlocked, drag_drop_enabled() group's area contains
+    // `scenePos` - topmost by z if more than one candidate overlaps
+    // there (e.g. a subgroup nested inside an outer group that also
+    // qualifies). Shared by maybe_add_dropped_items_to_group() (checked
+    // once, on release) and mouseMoveEvent()'s live drop-target
+    // highlight (checked every move, via GroupItem::set_highlighted()).
+    GroupItem* find_drop_target_group(const QPointF& scenePos) const;
     // Raises `group`'s whole cluster (itself + every descendant,
     // recursively) to a fresh z band above everything else - same
     // sequential-band math as raise_selection_to_front(), just for an
@@ -211,6 +218,12 @@ public:
     // tracked (group -> children), so "which group (if any) owns this
     // item" has no shortcut besides asking every group.
     GroupItem* find_owning_group(const QUuid& memberUid) const;
+    // Whichever group is currently showing the live drop-target
+    // highlight (mouseMoveEvent()) - tracked so the highlight can be
+    // cleared off the PREVIOUS target when the cursor moves to a new
+    // one, or off entirely on release/mode-cancel.
+    GroupItem* highlightedGroup_ = nullptr;
+    void clear_drop_target_highlight();
 
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
