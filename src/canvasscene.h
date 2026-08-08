@@ -114,6 +114,13 @@ public:
     // also qualifies).
     void maybe_add_dropped_items_to_group(const QList<QGraphicsItem*>& movedItems,
                                           const QPointF& cursorScenePos);
+    // Raises `group`'s whole cluster (itself + every descendant,
+    // recursively) to a fresh z band above everything else - same
+    // sequential-band math as raise_selection_to_front(), just for an
+    // explicit group rather than the current Qt selection. Not pushed
+    // onto undo_stack_ - z-raises are a plain side effect throughout
+    // this class, never their own undo step (see raise_selection_to_front()).
+    void raise_group_cluster_to_front(GroupItem* group);
     void normalize_width_or_height(const QString& mode);
     void normalize_height();
     void normalize_width();

@@ -458,32 +458,25 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     const QList<QGraphicsItem*>& movedItems,
     const QPointF& cursorScenePos)
 {
-    QList<QGraphicsItem*> loose;
+    // Not a group itself - dropping one group onto another is the
+    // Ctrl+G nesting flow, not this. Otherwise ANY item is a candidate,
+    // whether loose or already a member of some other group - see the
+    // transfer branch below for why membership no longer excludes it.
+    QList<QGraphicsItem*> candidates;
     for (QGraphicsItem* item : movedItems) {
-        // Not a loose item - either a group itself (dropping a group
-        // onto another is the Ctrl+G nesting flow, not this) or already
-        // someone's member (moving it around WITHIN its own group, or
-        // dragging it over some OTHER group without meaning to join it,
-        // shouldn't silently re-parent it - that's what explicit
-        // Ungroup + drag would be for).
-        if (dynamic_cast<GroupItem*>(item))
-            continue;
-        auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (!baseItem || find_owning_group(baseItem->uid()))
-            continue;
-        loose.append(item);
+        if (!dynamic_cast<GroupItem*>(item))
+            candidates.append(item);
     }
-    if (loose.isEmpty())
+    if (candidates.isEmpty())
         return;
 
     // One target for the whole drag, chosen by the CURSOR alone - not
-    // per item, and not by which candidate's area is smaller/bigger.
-    // Topmost by z wins if the cursor lands somewhere multiple groups'
-    // areas overlap (e.g. a subgroup nested inside an outer group that
-    // also contains that point) - a subgroup always has higher z than
-    // its own outer parent (the group-behind-its-members invariant), so
-    // this naturally prefers the subgroup there without needing to
-    // reason about area/nesting explicitly.
+    // per item. Topmost by z wins if the cursor lands somewhere multiple
+    // groups' areas overlap (e.g. a subgroup nested inside an outer
+    // group that also contains that point) - a subgroup always has
+    // higher z than its own outer parent (the group-behind-its-members
+    // invariant), so this naturally prefers the subgroup there without
+    // needing to reason about area/nesting explicitly.
     GroupItem* target = nullptr;
     qreal targetZ = 0;
     for (QGraphicsItem* other : items()) {
@@ -499,8 +492,66 @@ void CanvasScene::maybe_add_dropped_items_to_group(
             targetZ = group->zValue();
         }
     }
-    if (target)
-        undo_stack_->push(new AddToGroupCommand(this, target, loose));
+    if (!target)
+        return;
+
+    // Loose (ungrouped) candidates all get batched into one
+    // AddToGroupCommand, same as before. A candidate that's ALREADY a
+    // member of some OTHER group (e.g. it was dropped into the outer
+    // group earlier, and is now being dragged further, INTO one of the
+    // outer's own subgroups that has drag_drop_enabled() on) gets
+    // TRANSFERRED instead - remove from its old group, add to the new
+    // one, bundled as one undo step (Max: "перемещая эту картинку
+    // дальше внутри группы, можно добавить её в те группы где галочка
+    // стоит"). Already being a member of the TARGET itself is a no-op -
+    // dropping it back where it already lives shouldn't push a command.
+    QList<QGraphicsItem*> toAdd;
+    bool changed = false;
+    for (QGraphicsItem* item : candidates) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (!baseItem)
+            continue;
+        GroupItem* currentOwner = find_owning_group(baseItem->uid());
+        if (currentOwner == target)
+            continue;
+        if (currentOwner) {
+            undo_stack_->beginMacro(tr("Move to group"));
+            undo_stack_->push(
+                new RemoveFromGroupCommand(currentOwner, baseItem->uid()));
+            undo_stack_->push(
+                new AddToGroupCommand(this, target, {item}));
+            undo_stack_->endMacro();
+            changed = true;
+        } else {
+            toAdd.append(item);
+        }
+    }
+    if (!toAdd.isEmpty()) {
+        undo_stack_->push(new AddToGroupCommand(this, target, toAdd));
+        changed = true;
+    }
+
+    // Whatever just got added/transferred should visually land on top -
+    // same reasoning as raise_selection_to_front() elsewhere (Max).
+    if (changed)
+        raise_group_cluster_to_front(target);
+}
+
+void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
+{
+    QList<QGraphicsItem*> cluster = group->selection_action_items();
+    std::sort(cluster.begin(),
+             cluster.end(),
+             [](QGraphicsItem* a, QGraphicsItem* b) {
+                 return a->zValue() < b->zValue();
+             });
+    qreal z = max_z + Z_STEP;
+    for (QGraphicsItem* item : cluster) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            baseItem->set_z_value(z);
+            z += Z_STEP;
+        }
+    }
 }
 
 void CanvasScene::normalize_width_or_height(const QString& mode)
