@@ -1424,6 +1424,11 @@ public:
     const std::string TYPE = "group"; // static constexpr
 
     static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
+    // Visual breathing room kept between the members' own tight bounding
+    // box and the group's fill rect - single source of truth for both
+    // CanvasScene::group_selection() (initial fit, on creation) and
+    // fit_to_contain_children() below (continuous refit).
+    static constexpr qreal kPadding = 20.0;
 
     GroupItem(QGraphicsRectItem* parent = nullptr)
         : ItemMixin<GroupItem, QGraphicsRectItem>(parent)
@@ -1476,6 +1481,67 @@ public:
         return new_item;
     }
 
+    // Membership (child_ids) + fill color + the group's own local
+    // footprint - everything x/y/z/scale/rotation/flip already covers
+    // generically (CanvasScene::add_queued_items()) for every item type.
+    // Put straight into manifest.json's per-item "data" object, the same
+    // spot TextItem/GifItem stash their own type-specific payload in -
+    // needs zero changes to ManifestItem/write_manifest()/parse_manifest()
+    // (fml_archive.cpp), which already round-trip "data" as an opaque map.
+    QVariantMap get_extra_save_data() const override
+    {
+        QVariantMap data;
+        QVariantList idList;
+        for (const QUuid& id : childIds_)
+            idList.append(id.toString(QUuid::WithoutBraces));
+        data[QStringLiteral("child_ids")] = idList;
+        if (fill_color_ != default_fill_color())
+            data[QStringLiteral("fill_color")] = fill_color_.name(
+                QColor::HexArgb);
+        data[QStringLiteral("rect_width")] = localRect_.width();
+        data[QStringLiteral("rect_height")] = localRect_.height();
+        return data;
+    }
+
+    // Counterpart of get_extra_save_data() - child_ids are set as-is
+    // (raw uids, not yet resolved to live pointers); resolve_children()
+    // resolves them lazily against the scene on first actual use, by
+    // which point every item in this load batch already exists (see
+    // CanvasScene::add_queued_items()'s own belt-and-suspenders
+    // invalidate_children_cache() pass, for why "lazily" is safe here
+    // despite manifest.json having no parent-before/after-child
+    // ordering guarantee).
+    void apply_extra_save_data(const QVariantMap& data)
+    {
+        QList<QUuid> ids;
+        for (const QVariant& v :
+             data.value(QStringLiteral("child_ids")).toList()) {
+            const QUuid id = QUuid::fromString(v.toString());
+            if (!id.isNull())
+                ids.append(id);
+        }
+        set_child_ids(ids);
+
+        const QString fill = data.value(QStringLiteral("fill_color"))
+                                 .toString();
+        if (!fill.isEmpty()) {
+            QColor c(fill);
+            if (c.isValid())
+                fill_color_ = c;
+        }
+
+        const qreal w = data.value(QStringLiteral("rect_width"), 0.0)
+                            .toReal();
+        const qreal h = data.value(QStringLiteral("rect_height"), 0.0)
+                            .toReal();
+        if (w > 0 && h > 0)
+            set_local_rect(QRectF(0, 0, w, h));
+    }
+
+    // See apply_extra_save_data()'s comment - the safety net
+    // CanvasScene::add_queued_items() invokes after a whole load batch.
+    void invalidate_children_cache() { resolvedChildrenDirty_ = true; }
+
     QColor fill_color() const { return fill_color_; }
     void set_fill_color(const QColor& color)
     {
@@ -1496,45 +1562,53 @@ public:
         this->setRect(rect);
     }
 
-    // Grows (never shrinks) the group's footprint to keep containing
-    // every member, called from CanvasScene::on_change() - same hook
-    // MultiSelectItem's own live refit already uses, so this responds
-    // during an active drag, not just after release. No-op if members
-    // already fit (the common case - avoids an infinite setPos()/
-    // set_local_rect() -> changed() -> on_change() loop; it only
-    // recurses the one extra time needed to notice "already settled").
+    // Fits (grows OR shrinks) the group's footprint to tightly contain
+    // every member plus kPadding, called from CanvasScene::on_change() -
+    // same hook MultiSelectItem's own live refit already uses, so this
+    // responds during an active drag, not just after release. Recomputed
+    // from the members' OWN current positions every time (not seeded
+    // from the group's existing rect) - seeding from the existing rect
+    // would only ever let it grow, since united() can't shrink past
+    // whatever it started from; a member dragged back toward the others
+    // should let the group shrink back down too, not stay stretched from
+    // wherever it had been. No-op if already an exact fit (avoids an
+    // infinite setPos()/set_local_rect() -> changed() -> on_change()
+    // loop; it only recurses the one extra time needed to notice
+    // "already settled").
     // TODOLATER: computed via plain sceneBoundingRect() union, which
     // doesn't account for the GROUP's own rotation (fine for now - axis-
     // aligned groups are the only case exercised so far); a rotated
     // group would need the same corner-projection approach
     // CanvasScene::itemsBoundingRect() uses.
-    void grow_to_contain_children()
+    void fit_to_contain_children()
     {
         const QList<QGraphicsItem*> children = resolve_children();
         if (children.isEmpty())
             return;
 
+        QRectF unionRect = children.first()->sceneBoundingRect();
+        for (QGraphicsItem* child : children)
+            unionRect = unionRect.united(child->sceneBoundingRect());
+        unionRect = unionRect.adjusted(-kPadding, -kPadding, kPadding, kPadding);
+
         // mapRectToScene(localRect_), NOT sceneBoundingRect() - the
         // latter goes through SelectableMixin's boundingRect() override,
         // which pads in extra room for the selection handles whenever
         // the group is selected (practically always, right after
-        // creating or interacting with one). Using it here would bake
-        // that transient decoration margin into localRect_ permanently
-        // on every single growth event.
+        // creating or interacting with one). Comparing against it would
+        // bake that transient decoration margin into localRect_
+        // permanently on every single refit.
         const QRectF ownSceneRect = this->mapRectToScene(localRect_);
-        QRectF unionRect = ownSceneRect;
-        for (QGraphicsItem* child : children)
-            unionRect = unionRect.united(child->sceneBoundingRect());
-
         if (unionRect == ownSceneRect)
             return;
 
         // autoExpanding_ tells itemChange() below not to treat this
         // setPos() as a body drag needing to carry members along - the
         // members are exactly why we're repositioning in the first
-        // place (one of them moved outside the old rect); shifting them
-        // AGAIN by the group's own repositioning delta would compound
-        // that move instead of just visually catching up to it.
+        // place (one of them moved outside/back-inside the old rect);
+        // shifting them AGAIN by the group's own repositioning delta
+        // would compound that move instead of just visually catching up
+        // to it.
         autoExpanding_ = true;
         this->setPos(unionRect.topLeft());
         autoExpanding_ = false;
@@ -1616,10 +1690,13 @@ public:
     // letting the stock bring-to-front-on-select behavior
     // (ItemMixin::on_selected_change()) run for a GroupItem the same as
     // for any other item would cover its own children with the fill the
-    // instant it's clicked. Groups simply don't participate in that
-    // z-reordering, same reasoning as MultiSelectItem's identical no-op
-    // override (selector.h) - just for a persistent item instead of an
-    // ephemeral one.
+    // instant it's clicked. Groups don't participate in that per-item
+    // z-reordering at all (same reasoning as MultiSelectItem's identical
+    // no-op override, selector.h) - raising a selected group's whole
+    // cluster (fill + members) together is instead handled ONE level up,
+    // generically, by CanvasScene::raise_selection_to_front() (which
+    // expands a selected GroupItem into group+members specifically so
+    // this doesn't need its own copy of that logic here).
     void on_selected_change(bool value) override { Q_UNUSED(value) }
 
 protected:
@@ -1636,7 +1713,7 @@ protected:
         // that same anchor-compensation math) would double-apply the
         // movement - active_mode_ == kNone is exactly "not mid-handle-
         // drag", i.e. a real independent body drag of the group.
-        // !autoExpanding_ - see grow_to_contain_children() above: that
+        // !autoExpanding_ - see fit_to_contain_children() above: that
         // method's own setPos() is repositioning the group TO catch up
         // with a member that already moved, not a body drag that should
         // carry members along.
