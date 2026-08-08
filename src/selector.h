@@ -16,6 +16,7 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QPainter>
 #include <QPen>
+#include <QSet>
 #include <QUuid>
 #include <QVariantMap>
 #include <qnamespace.h>
@@ -75,6 +76,27 @@ public:
     virtual void set_scale_orig_factor(qreal value) = 0;
     virtual qreal rotate_orig_degrees() const = 0;
     virtual void set_rotate_orig_degrees(qreal value) = 0;
+
+    // Additional items that should participate in the SAME handle-driven
+    // scale/rotate operation as this one, beyond itself - e.g. GroupItem
+    // (moveitem.h) overrides this to return every one of its own
+    // descendants recursively, so each gets its own independently-
+    // anchored transform call too. Default: nothing extra (a plain item
+    // has no descendants). Used by MultiSelectItem::selection_action_items()
+    // below to expand a flat multi-selection when it includes a
+    // GroupItem - without this, a group nested inside a multi-selection
+    // (rather than being the sole selected item) would leave its own
+    // un-selected members behind with only a crude position-cascade via
+    // itemChange() (which never applies scale/rotation, only a plain
+    // translate), visibly shearing/misaligning them relative to the rest
+    // of the rotated/scaled selection (confirmed with Max). Not pure -
+    // deliberately has a safe default body rather than requiring every
+    // IBaseItem implementor to define it, since only GroupItem actually
+    // needs non-trivial behavior here.
+    virtual QList<QGraphicsItem*> nested_selection_action_items()
+    {
+        return {};
+    }
 };
 
 template<typename T>
@@ -1176,12 +1198,30 @@ public:
     // items, which don't.
     virtual bool fades_with_window_focus() const { return true; }
 
+    // Recursive - a flat scene()->selectedItems() alone misses a
+    // GroupItem's own un-selected descendants (see IBaseItem::
+    // nested_selection_action_items()'s own comment for why that
+    // matters: without expanding into them here too, a group caught in
+    // a multi-selection alongside other items gets its own members left
+    // behind with only a crude position-cascade during a handle drag,
+    // never actually scaled/rotated).
     virtual QVector<QGraphicsItem*> selection_action_items()
     {
-        if (this->scene()) {
-            return this->scene()->selectedItems();
+        QVector<QGraphicsItem*> items;
+        if (!this->scene())
+            return items;
+        QSet<QGraphicsItem*> seen;
+        QList<QGraphicsItem*> queue = this->scene()->selectedItems();
+        while (!queue.isEmpty()) {
+            QGraphicsItem* item = queue.takeFirst();
+            if (seen.contains(item))
+                continue;
+            seen.insert(item);
+            items.append(item);
+            if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+                queue.append(baseItem->nested_selection_action_items());
         }
-        return {};
+        return items;
     }
 
     // Temporarily sends the multi-select rectangle behind the current

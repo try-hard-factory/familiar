@@ -256,9 +256,17 @@ void GroupToolbar::showSettingsPopup_()
         return;
     }
 
-    // Qt::Tool, not Qt::Popup - see GifPlaybackToolbar::showSpeedPopup_()/
-    // TextEditToolbar::showLinkPopup() for why.
-    auto* popup = new QWidget(nullptr, Qt::Tool | Qt::FramelessWindowHint);
+    // Qt::Popup, NOT Qt::Tool like GifPlaybackToolbar::showSpeedPopup_()/
+    // TextEditToolbar::showLinkPopup() use - those avoid Qt::Popup
+    // because it auto-closes (and, with WA_DeleteOnClose, destroys)
+    // itself the instant it loses activation, which breaks if the popup
+    // ever opens a further NESTED dialog of its own. This popup never
+    // does (just a checkbox), so that caveat doesn't apply, and Qt::Popup
+    // gives click-outside-to-dismiss for free - a manual WindowDeactivate
+    // eventFilter was tried first and didn't actually fire reliably
+    // (Qt::Tool windows don't get independent activation from every
+    // window manager - confirmed with Max it silently did nothing).
+    auto* popup = new QWidget(nullptr, Qt::Popup);
     popup->setAttribute(Qt::WA_DeleteOnClose);
     popup->setAttribute(Qt::WA_TranslucentBackground, false);
     settingsPopup_ = popup;
@@ -296,6 +304,8 @@ void GroupToolbar::showSettingsPopup_()
     });
     lay->addWidget(dragDropCheck);
 
+    // Qt::Popup already closes on Escape natively, but an explicit
+    // shortcut doesn't hurt and matches every other popup in this app.
     auto* escShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), popup);
     connect(escShortcut, &QShortcut::activated, popup, &QWidget::close);
 
