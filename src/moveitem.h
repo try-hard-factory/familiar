@@ -1484,18 +1484,38 @@ public:
     // already-correct, independent transform. scalingOrRotating_ tells
     // itemChange() to skip that cascade specifically while one of these
     // is in progress.
+    // Save/restore, NOT a blind set-true-then-false - do_flip()'s own
+    // vertical-flip path calls set_rotation() INTERNALLY (see below), so
+    // a blind reset-to-false in set_rotation() would clear the flag
+    // while the OUTER do_flip() call is still in progress and about to
+    // do its own setPos(), leaving THAT one unprotected and cascading
+    // an extra, incorrect moveBy() to every child (confirmed with Max:
+    // vertical flip specifically, not horizontal, since only vertical
+    // takes this nested path - the group visibly drifted from its own
+    // members). Restoring to whatever it was before (not unconditionally
+    // false) makes this safe to nest.
     void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
     {
+        const bool wasFlagged = scalingOrRotating_;
         scalingOrRotating_ = true;
         BaseItemMixin<QGraphicsRectItem>::set_scale(value, anchor);
-        scalingOrRotating_ = false;
+        scalingOrRotating_ = wasFlagged;
     }
     void set_rotation(qreal value,
                       const QPointF& anchor = QPointF(0, 0)) override
     {
+        const bool wasFlagged = scalingOrRotating_;
         scalingOrRotating_ = true;
         BaseItemMixin<QGraphicsRectItem>::set_rotation(value, anchor);
-        scalingOrRotating_ = false;
+        scalingOrRotating_ = wasFlagged;
+    }
+    void do_flip(bool vertical = false,
+                const QPointF& anchor = QPointF(0, 0)) override
+    {
+        const bool wasFlagged = scalingOrRotating_;
+        scalingOrRotating_ = true;
+        BaseItemMixin<QGraphicsRectItem>::do_flip(vertical, anchor);
+        scalingOrRotating_ = wasFlagged;
     }
 
     IBaseItem* create_copy() override

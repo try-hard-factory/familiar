@@ -911,9 +911,30 @@ void CanvasScene::arrange_square()
 void CanvasScene::flip_items(bool vertical)
 {
     cancel_active_modes();
-    undo_stack_->push(new FlipItemsCommand(selectedItems(true),
-                                           get_selection_center(),
-                                           vertical));
+    // Expand any selected GroupItem into itself + every descendant
+    // recursively (GroupItem::selection_action_items(), moveitem.h) -
+    // same reasoning as raise_selection_to_front()/the resize-handle
+    // path: FlipItemsCommand flips each item in the list independently
+    // around the SAME shared anchor, so without expanding here, only
+    // the group's own fill rect would flip and its members would stay
+    // exactly where they were (Max).
+    QList<QGraphicsItem*> items;
+    QSet<QGraphicsItem*> seen;
+    for (QGraphicsItem* item : selectedItems(true)) {
+        QList<QGraphicsItem*> expanded;
+        if (auto* group = dynamic_cast<GroupItem*>(item))
+            expanded = group->selection_action_items();
+        else
+            expanded = {item};
+        for (QGraphicsItem* member : expanded) {
+            if (!seen.contains(member)) {
+                seen.insert(member);
+                items.append(member);
+            }
+        }
+    }
+    undo_stack_->push(
+        new FlipItemsCommand(items, get_selection_center(), vertical));
 }
 
 void CanvasScene::crop_items()
