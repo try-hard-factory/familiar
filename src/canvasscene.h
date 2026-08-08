@@ -100,6 +100,20 @@ public:
     // a second/third ctrl-clicked or rubber-banded item stayed at its
     // old z, potentially still buried under unrelated content.
     void raise_selection_to_front();
+    // Drag-and-drop-to-add (roadmap step 10 stage 5) - called from
+    // mouseReleaseEvent() after committing a body drag, with the
+    // cursor's OWN scene position (not any dragged item's center/bounds
+    // - matches normal drag-and-drop expectations: wherever you're
+    // actually pointing at release is the target, Max's explicit spec).
+    // Every LOOSE item among movedItems (not already a member of any
+    // group, and not a group itself - dropping one group onto another is
+    // the "select both + Ctrl+G" nesting flow, not this) becomes a new
+    // member of whichever unlocked, drag_drop_enabled() group's area
+    // contains the cursor - topmost by z if more than one candidate
+    // overlaps there (e.g. a subgroup nested inside an outer group that
+    // also qualifies).
+    void maybe_add_dropped_items_to_group(const QList<QGraphicsItem*>& movedItems,
+                                          const QPointF& cursorScenePos);
     void normalize_width_or_height(const QString& mode);
     void normalize_height();
     void normalize_width();

@@ -2015,6 +2015,20 @@ public:
         return items;
     }
 
+    // IBaseItem::nested_selection_action_items() override - reached when
+    // this group is ONE ITEM within a flat multi-selection (MultiSelectItem,
+    // selector.h) rather than being the sole selected item driving its
+    // own handle drag directly. Same descendants selection_action_items()
+    // above already computes, minus `this` itself (MultiSelectItem's own
+    // scene()->selectedItems() call already includes this group directly,
+    // no need to duplicate it).
+    QList<QGraphicsItem*> nested_selection_action_items() override
+    {
+        QList<QGraphicsItem*> items = selection_action_items();
+        items.removeAll(this);
+        return items;
+    }
+
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override

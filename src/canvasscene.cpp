@@ -298,7 +298,26 @@ void CanvasScene::raise_selection_to_front()
             }
         };
 
+    // A plain (non-group) selected item that's a group's member - e.g.
+    // clicking directly on one image inside a subgroup, per design point
+    // 1 (unlocked group + click on a member selects the member, not the
+    // group) - also brings its OWNING group's whole cluster along, not
+    // just the clicked image alone. Without this, only that one image
+    // reached global max z while its own group's fill and sibling
+    // members stayed behind at their old z, which looks exactly like the
+    // original "unrelated content stays on top" bug this function exists
+    // to fix, just one level removed (Max: "если кликнем по картинке
+    // подгруппы - то подгруппа тоже должна стать выше всех остальных").
     QList<QGraphicsItem*> roots = selectedItems(true);
+    for (QGraphicsItem* item : selectedItems(true)) {
+        if (dynamic_cast<GroupItem*>(item))
+            continue;
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (!baseItem)
+            continue;
+        if (GroupItem* owner = find_owning_group(baseItem->uid()))
+            roots.append(owner);
+    }
     std::sort(roots.begin(),
              roots.end(),
              [](QGraphicsItem* a, QGraphicsItem* b) {
@@ -374,9 +393,28 @@ void CanvasScene::group_selection()
 
     QList<QUuid> ids;
     for (QGraphicsItem* item : selected) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
-            ids.append(baseItem->uid());
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (!baseItem)
+            continue;
+        // Skip an item whose OWNING group is ALSO part of this same
+        // selection - a rubber-band sweep can catch both an unlocked
+        // group AND (redundantly) its own individual members at once,
+        // since members of an unlocked group stay individually
+        // selectable. Adding it directly here too would make it a
+        // member of BOTH its existing group and the new outer one
+        // simultaneously - two independent cascades (itemChange()/
+        // fit_to_contain_children()) then fight over its position,
+        // visibly desyncing it from the rest during a drag (confirmed
+        // with Max). It's already covered transitively through its own
+        // group's membership, which IS in `ids` below.
+        if (auto* owner = find_owning_group(baseItem->uid())) {
+            if (selected.contains(owner))
+                continue;
+        }
+        ids.append(baseItem->uid());
     }
+    if (ids.size() < 2)
+        return;
 
     // GroupItem::compute_padding(), not a local calculation -
     // fit_to_contain_children() (moveitem.h) uses the exact same formula
@@ -414,6 +452,55 @@ void CanvasScene::ungroup_selection()
     if (GroupItem* owner = find_owning_group(baseItem->uid())) {
         undo_stack_->push(new RemoveFromGroupCommand(owner, baseItem->uid()));
     }
+}
+
+void CanvasScene::maybe_add_dropped_items_to_group(
+    const QList<QGraphicsItem*>& movedItems,
+    const QPointF& cursorScenePos)
+{
+    QList<QGraphicsItem*> loose;
+    for (QGraphicsItem* item : movedItems) {
+        // Not a loose item - either a group itself (dropping a group
+        // onto another is the Ctrl+G nesting flow, not this) or already
+        // someone's member (moving it around WITHIN its own group, or
+        // dragging it over some OTHER group without meaning to join it,
+        // shouldn't silently re-parent it - that's what explicit
+        // Ungroup + drag would be for).
+        if (dynamic_cast<GroupItem*>(item))
+            continue;
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (!baseItem || find_owning_group(baseItem->uid()))
+            continue;
+        loose.append(item);
+    }
+    if (loose.isEmpty())
+        return;
+
+    // One target for the whole drag, chosen by the CURSOR alone - not
+    // per item, and not by which candidate's area is smaller/bigger.
+    // Topmost by z wins if the cursor lands somewhere multiple groups'
+    // areas overlap (e.g. a subgroup nested inside an outer group that
+    // also contains that point) - a subgroup always has higher z than
+    // its own outer parent (the group-behind-its-members invariant), so
+    // this naturally prefers the subgroup there without needing to
+    // reason about area/nesting explicitly.
+    GroupItem* target = nullptr;
+    qreal targetZ = 0;
+    for (QGraphicsItem* other : items()) {
+        auto* group = dynamic_cast<GroupItem*>(other);
+        if (!group || !group->drag_drop_enabled() || group->locked())
+            continue;
+        const QRectF groupSceneRect = group->mapRectToScene(
+            group->bounding_rect_unselected());
+        if (!groupSceneRect.contains(cursorScenePos))
+            continue;
+        if (!target || group->zValue() > targetZ) {
+            target = group;
+            targetZ = group->zValue();
+        }
+    }
+    if (target)
+        undo_stack_->push(new AddToGroupCommand(this, target, loose));
 }
 
 void CanvasScene::normalize_width_or_height(const QString& mode)
@@ -995,6 +1082,8 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         if (!delta.isNull()) {
             undo_stack_->push(
                 new MoveItemsByCommand(selectedItems(), delta, true));
+            maybe_add_dropped_items_to_group(selectedItems(true),
+                                            event->scenePos());
         }
     }
     // Reset after the base call, not before (unlike Python's exact
