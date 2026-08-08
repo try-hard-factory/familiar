@@ -21,6 +21,7 @@
 #include <QObject>
 #include <QPainter>
 #include <QPair>
+#include <QSet>
 #include <QStyle>
 #include <QStyleOptionGraphicsItem>
 #include <QTextCursor>
@@ -1473,6 +1474,30 @@ public:
         Q_ASSERT_X(false, "GroupItem::enter_crop_mode", "Should not be called");
     }
 
+    // selection_action_items() above is recursive - a deeply nested
+    // grandchild gets its OWN independent, anchor-relative set_scale()/
+    // set_rotation() call from the SAME handle drag that's calling this
+    // one. The setPos() anchor-compensation inside these (BaseItemMixin)
+    // ALSO fires ItemPositionChange, which itemChange() below would
+    // otherwise treat as a genuine standalone move and cascade to MY
+    // children via moveBy() - double-applying on top of their own
+    // already-correct, independent transform. scalingOrRotating_ tells
+    // itemChange() to skip that cascade specifically while one of these
+    // is in progress.
+    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    {
+        scalingOrRotating_ = true;
+        BaseItemMixin<QGraphicsRectItem>::set_scale(value, anchor);
+        scalingOrRotating_ = false;
+    }
+    void set_rotation(qreal value,
+                      const QPointF& anchor = QPointF(0, 0)) override
+    {
+        scalingOrRotating_ = true;
+        BaseItemMixin<QGraphicsRectItem>::set_rotation(value, anchor);
+        scalingOrRotating_ = false;
+    }
+
     IBaseItem* create_copy() override
     {
         // TODOLATER: copy/paste of a group doesn't yet duplicate its
@@ -1664,20 +1689,23 @@ public:
 
         keep_below_children(children);
 
-        // corners_scene_coords() (IBaseItem), NOT sceneBoundingRect() -
-        // the latter goes through SelectableMixin's boundingRect()
-        // override too, same as the group's own rect below, padding in
-        // extra room for selection handles whenever a MEMBER happens to
-        // be individually selected (design point 1: unlocked group +
-        // click on a member selects the member directly). That
-        // temporary padding was leaking into the union, showing up as
-        // an oversized fill on whichever edge the selected member's
-        // handles stuck out past, which then "collapsed" back down the
-        // next time the member got deselected (confirmed with Max).
-        // corners_scene_coords() is built from bounding_rect_unselected()
-        // and already projects rotated items' corners correctly, so this
-        // also covers the TODOLATER this replaced (fit not accounting
-        // for a member's own rotation).
+        // Computed entirely in THIS group's OWN local coordinate frame
+        // (mapFromScene()), not scene space - a prior version computed
+        // the union in scene space and wrote the raw width/height
+        // straight into set_local_rect() (which takes LOCAL
+        // dimensions), only round-tripping correctly while scale() == 1
+        // and rotation() == 0. The moment this (or an ancestor) group
+        // was actually resized via its handle, that produced a
+        // non-converging refit loop (confirmed with Max: identical
+        // before/after values repeating forever, spamming/hanging the
+        // app) - and would have been simply WRONG for a rotated group
+        // regardless (the axis-aligned bounding box of a rotated
+        // rectangle isn't the rectangle's own width/height, there's no
+        // single correct answer working backward from scene-space AABB
+        // alone). Working in local coordinates from the start sidesteps
+        // both problems at once: mapFromScene() already divides out
+        // scale and un-rotates, so the resulting unionRect direcly IS
+        // the correct local footprint, no separate conversion needed.
         QRectF unionRect;
         bool haveRect = false;
         for (QGraphicsItem* child : children) {
@@ -1685,19 +1713,20 @@ public:
             if (!baseItem)
                 continue;
             for (const QPointF& corner : baseItem->corners_scene_coords()) {
+                const QPointF localCorner = this->mapFromScene(corner);
                 if (!haveRect) {
-                    unionRect = QRectF(corner, corner);
+                    unionRect = QRectF(localCorner, localCorner);
                     haveRect = true;
                     continue;
                 }
-                if (corner.x() < unionRect.left())
-                    unionRect.setLeft(corner.x());
-                if (corner.x() > unionRect.right())
-                    unionRect.setRight(corner.x());
-                if (corner.y() < unionRect.top())
-                    unionRect.setTop(corner.y());
-                if (corner.y() > unionRect.bottom())
-                    unionRect.setBottom(corner.y());
+                if (localCorner.x() < unionRect.left())
+                    unionRect.setLeft(localCorner.x());
+                if (localCorner.x() > unionRect.right())
+                    unionRect.setRight(localCorner.x());
+                if (localCorner.y() < unionRect.top())
+                    unionRect.setTop(localCorner.y());
+                if (localCorner.y() > unionRect.bottom())
+                    unionRect.setBottom(localCorner.y());
             }
         }
         if (!haveRect)
@@ -1705,27 +1734,35 @@ public:
         const qreal padding = compute_padding(unionRect);
         unionRect = unionRect.adjusted(-padding, -padding, padding, padding);
 
-        // mapRectToScene(localRect_), NOT sceneBoundingRect() - the
-        // latter goes through SelectableMixin's boundingRect() override,
-        // which pads in extra room for the selection handles whenever
-        // the group is selected (practically always, right after
-        // creating or interacting with one). Comparing against it would
-        // bake that transient decoration margin into localRect_
-        // permanently on every single refit.
-        const QRectF ownSceneRect = this->mapRectToScene(localRect_);
-        if (unionRect == ownSceneRect)
+        // Tolerance, not exact ==. mapFromScene() then, once this
+        // completes, mapToScene() again (below) is a round-trip through
+        // the group's transform matrix - unionRect and localRect_ can
+        // come out differing by ~1e-12 purely from floating-point noise
+        // even when nothing meaningfully changed, which an exact
+        // comparison never resolves to "equal", looping forever
+        // (confirmed with Max: width/height already identical, only the
+        // position differing at the 1e-12 level). 1e-6 is far above that
+        // noise floor and far below anything visually meaningful at any
+        // sane zoom level.
+        constexpr qreal kEps = 1e-6;
+        const bool unchanged = qAbs(unionRect.x() - localRect_.x()) < kEps
+            && qAbs(unionRect.y() - localRect_.y()) < kEps
+            && qAbs(unionRect.width() - localRect_.width()) < kEps
+            && qAbs(unionRect.height() - localRect_.height()) < kEps;
+        if (unchanged)
             return;
 
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "GroupItem::fit_to_contain_children() {} uid={} z={} "
-                   "refitting {},{} {}x{} -> {},{} {}x{} ({} children)",
+                   "refitting (local) {},{} {}x{} -> {},{} {}x{} ({} "
+                   "children)",
                    toString(),
                    uid().toString(QUuid::WithoutBraces).toStdString(),
                    this->zValue(),
-                   ownSceneRect.x(),
-                   ownSceneRect.y(),
-                   ownSceneRect.width(),
-                   ownSceneRect.height(),
+                   localRect_.x(),
+                   localRect_.y(),
+                   localRect_.width(),
+                   localRect_.height(),
                    unionRect.x(),
                    unionRect.y(),
                    unionRect.width(),
@@ -1745,15 +1782,19 @@ public:
                        child->zValue());
         }
 
-        // autoExpanding_ tells itemChange() below not to treat this
-        // setPos() as a body drag needing to carry members along - the
-        // members are exactly why we're repositioning in the first
-        // place (one of them moved outside/back-inside the old rect);
-        // shifting them AGAIN by the group's own repositioning delta
-        // would compound that move instead of just visually catching up
-        // to it.
+        // Shift MY OWN origin (in scene space, using the CURRENT
+        // transform - computed before setPos() changes it) so that
+        // unionRect's local top-left becomes the new local (0,0), same
+        // as set_local_rect() always assumes. autoExpanding_ tells
+        // itemChange() below not to treat this setPos() as a body drag
+        // needing to carry members along - the members are exactly why
+        // we're repositioning in the first place (one of them moved
+        // outside/back-inside the old rect); shifting them AGAIN by the
+        // group's own repositioning delta would compound that move
+        // instead of just visually catching up to it.
+        const QPointF newOriginScene = this->mapToScene(unionRect.topLeft());
         autoExpanding_ = true;
-        this->setPos(unionRect.topLeft());
+        this->setPos(newOriginScene);
         autoExpanding_ = false;
         set_local_rect(QRectF(0, 0, unionRect.width(), unionRect.height()));
     }
@@ -1894,12 +1935,30 @@ public:
     // included this time, since GroupItem (unlike MultiSelectItem) is
     // the persistent, always-visible container - see itemChange() below
     // for why including `this` here doesn't double-move members during
-    // an active handle drag.
+    // an active handle drag. Recursive (not just direct children) - a
+    // NESTED group's own grandchildren (leaf images two or more levels
+    // down) need their OWN independent, anchor-relative set_scale()/
+    // set_rotation() call too, same as every other entry in this list;
+    // without recursing, resizing an outer group only rescaled its
+    // direct subgroup children and left the actual leaf images at their
+    // old size, just shifted in position by the subgroup's own
+    // itemChange() cascade (confirmed with Max - visibly broken/
+    // mismatched sizing after a nested-group resize).
     QList<QGraphicsItem*> selection_action_items() override
     {
         QList<QGraphicsItem*> items;
-        items << this;
-        items << resolve_children();
+        QSet<QGraphicsItem*> seen;
+        QList<QGraphicsItem*> queue;
+        queue << this;
+        while (!queue.isEmpty()) {
+            QGraphicsItem* item = queue.takeFirst();
+            if (seen.contains(item))
+                continue;
+            seen.insert(item);
+            items << item;
+            if (auto* group = dynamic_cast<GroupItem*>(item))
+                queue << group->resolve_children();
+        }
         return items;
     }
 
@@ -1959,21 +2018,31 @@ protected:
                         const QVariant& value) override
     {
         // Only for a plain Qt-native body drag (ItemIsMovable) - during
-        // an active resize/rotate handle drag, active_mode_ is already
-        // kScaleMode/kRotateMode and every member already gets its OWN
-        // independent set_scale()/set_rotation() call in the very same
-        // loop (see selection_action_items() above feeding
-        // SelectableMixin's handle code, selector.h). Shifting members
-        // again here off this item's own incidental setPos() (part of
-        // that same anchor-compensation math) would double-apply the
-        // movement - active_mode_ == kNone is exactly "not mid-handle-
-        // drag", i.e. a real independent body drag of the group.
-        // !autoExpanding_ - see fit_to_contain_children() above: that
-        // method's own setPos() is repositioning the group TO catch up
-        // with a member that already moved, not a body drag that should
-        // carry members along.
+        // an active resize/rotate handle drag of THIS item directly,
+        // active_mode_ is already kScaleMode/kRotateMode and every
+        // member already gets its OWN independent set_scale()/
+        // set_rotation() call in the very same loop (see
+        // selection_action_items() above feeding SelectableMixin's
+        // handle code, selector.h) - active_mode_ == kNone is exactly
+        // "not mid-handle-drag of ME", i.e. a real independent body drag.
+        // !scalingOrRotating_ covers the OTHER case: THIS group being
+        // scaled/rotated not as the directly-grabbed item but as a
+        // nested descendant of one (selection_action_items() is
+        // recursive - my own set_scale()/set_rotation() override sets
+        // this flag around the same anchor-compensating setPos() that
+        // would otherwise look like a plain move here). Without it, my
+        // children would get double-transformed: once correctly via
+        // their OWN entry in that same recursive list, and again via
+        // this cascade's plain moveBy() (which doesn't even apply the
+        // scale/rotation, just a position delta - confirmed with Max as
+        // "resized fine but children didn't resize, everything's
+        // wrong"). !autoExpanding_ - see fit_to_contain_children() above:
+        // that method's own setPos() is repositioning the group TO catch
+        // up with a member that already moved, not a body drag that
+        // should carry members along.
         if (change == QGraphicsItem::ItemPositionChange && this->scene()
-            && active_mode_ == kNone && !autoExpanding_) {
+            && active_mode_ == kNone && !autoExpanding_
+            && !scalingOrRotating_) {
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
                 FLOG_DEBUG(familiar::log::Ch::Items,
@@ -2034,6 +2103,7 @@ private:
     QList<QGraphicsItem*> resolvedChildren_;
     bool resolvedChildrenDirty_ = true;
     bool autoExpanding_ = false;
+    bool scalingOrRotating_ = false;
     bool locked_ = false;
 };
 
