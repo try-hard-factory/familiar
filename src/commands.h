@@ -393,6 +393,28 @@ private:
 };
 
 // ============================================================================
+// ChangeGroupFillColorCommand - immediate (not edit-session-bundled like
+// ChangeTextCommand above) undo/redo for GroupToolbar's fill-color picker -
+// one push per pick, since a group has no "edit mode" to batch changes
+// into.
+// ============================================================================
+class ChangeGroupFillColorCommand : public QUndoCommand
+{
+public:
+    ChangeGroupFillColorCommand(GroupItem* item,
+                                const QColor& newColor,
+                                const QColor& oldColor);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    GroupItem* item_;
+    QColor newColor_;
+    QColor oldColor_;
+};
+
+// ============================================================================
 // ToggleGrayscaleCommand - Переключение режима оттенков серого для изображений
 // ============================================================================
 class ToggleGrayscaleCommand : public QUndoCommand

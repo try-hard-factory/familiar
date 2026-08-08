@@ -81,27 +81,19 @@ public:
     void paste_from_internal_clipboard(QPointF position);
     void raise_to_top();
     void lower_to_bottom();
-    // Reassigns `items`' z-values to a fresh consecutive band starting
-    // just above the scene's current max_z, in ascending order of their
-    // OWN current z - i.e. raises the whole set above everything else in
-    // the scene while preserving their relative order among themselves.
-    // NOT a single shared delta (add the same amount to every item):
-    // that only guarantees the HIGHEST-z item in the set clears the old
-    // max_z - one that started much lower (e.g. added to the scene long
-    // ago, now selected alongside something recent) would land barely
-    // above its own old z, still buried under unrelated content in
-    // between. Used by raise_selection_to_front() below - the sole
-    // caller, but kept as its own entry point taking an explicit list
-    // rather than folded directly into it, since it's a plain geometric
-    // operation independent of "what's currently selected".
-    void raise_items_to_front(const QList<QGraphicsItem*>& items);
     // Raises the CURRENT selection (however it was built - single
-    // click, ctrl+click accumulation, rubber-band sweep) - see
-    // raise_items_to_front() above. A selected GroupItem is expanded
-    // into its own cluster (group + members, none of which are
-    // individually Qt-selected - see GroupItem's class comment,
-    // moveitem.h) before raising, or the group's fill would end up
-    // ABOVE its own members instead of staying behind them. Called from
+    // click, ctrl+click accumulation, rubber-band sweep) to a fresh
+    // consecutive z band above everything else in the scene. A selected
+    // GroupItem is expanded into its own cluster (group + members, none
+    // of which are individually Qt-selected - see GroupItem's class
+    // comment, moveitem.h) before raising, recursively, via pre-order
+    // DFS - direct children sorted among themselves by their own current
+    // z, same as the top-level selection roots - so each nested
+    // subgroup's whole cluster stays one contiguous block instead of
+    // interleaving with a sibling subgroup's (a flat sort-by-z of
+    // everything at once doesn't guarantee that if stale z values from
+    // an earlier interaction left a subgroup's members not already
+    // contiguous - confirmed with Max via a debug capture). Called from
     // on_selection_change() - pre-existing per-item bring-to-front
     // (ItemMixin::on_selected_change()) only ever raised the FIRST item
     // of a new selection (guarded on "nothing was already selected"), so

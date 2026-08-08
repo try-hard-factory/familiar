@@ -1172,6 +1172,13 @@ void CanvasView::on_action_undo()
         suppressNextEmptySceneReset_ = true;
     }
     undoStack_->undo();
+    // ChangeGroupFillColorCommand (and anything else touching the
+    // attached group's properties) changes the item directly, not
+    // through GroupToolbar - re-attach to re-sync the toolbar's own
+    // displayed state (fill swatch, lock checkbox) with whatever undo
+    // just reverted it to.
+    if (groupToolbar_->item())
+        groupToolbar_->attach(groupToolbar_->item());
 }
 
 void CanvasView::on_action_redo()
@@ -1188,6 +1195,9 @@ void CanvasView::on_action_redo()
         suppressNextEmptySceneReset_ = true;
     }
     undoStack_->redo();
+    // See on_action_undo() above - same re-sync, needed after redo too.
+    if (groupToolbar_->item())
+        groupToolbar_->attach(groupToolbar_->item());
 }
 
 void CanvasView::on_action_select_all()
