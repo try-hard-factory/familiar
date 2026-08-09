@@ -308,8 +308,17 @@ void CanvasScene::raise_selection_to_front()
     // original "unrelated content stays on top" bug this function exists
     // to fix, just one level removed (Max: "если кликнем по картинке
     // подгруппы - то подгруппа тоже должна стать выше всех остальных").
-    QList<QGraphicsItem*> roots = selectedItems(true);
-    for (QGraphicsItem* item : selectedItems(true)) {
+    // with_attached_notes(): a selected picture's attached notes
+    // (roadmap step 25) aren't Qt-selected themselves, so plain
+    // selectedItems() misses them - without this a selected LOOSE
+    // picture (not in any group, where its notes already ride along as
+    // actual group members instead - see group_selection()/
+    // AddToGroupCommand) raised itself to the top while its own notes
+    // stayed behind at their old z (Max: "у приаттаченных текстовых
+    // полей... при выборе картинки поля тоже должны... быть наверху").
+    const QList<QGraphicsItem*> initialSelected = selectedItems(true);
+    QList<QGraphicsItem*> roots = with_attached_notes(initialSelected);
+    for (QGraphicsItem* item : initialSelected) {
         if (dynamic_cast<GroupItem*>(item))
             continue;
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
