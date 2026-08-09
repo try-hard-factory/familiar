@@ -90,14 +90,11 @@ int main(int argc, char* argv[])
     MainWindow w;
     // Not a bare show() - if there's anything left over from a session
     // that didn't exit cleanly, this shows the recovery prompt first and
-    // defers actually showing the main window until it's dismissed (see
-    // MainWindow::showOrOfferRecovery()).
-    w.showOrOfferRecovery();
-
-    const QString startupFile = CommandlineArgs::instance().filename();
-    if (!startupFile.isEmpty()) {
-        w.fileActions().processOpenFile(startupFile);
-    }
+    // defers actually showing the main window (and opening startupFile
+    // below, if any) until it's dismissed - see
+    // MainWindow::showOrOfferRecovery()'s own comment for why that
+    // ordering matters.
+    w.showOrOfferRecovery(CommandlineArgs::instance().filename());
 
     const int result = a.exec();
 
