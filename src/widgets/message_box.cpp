@@ -168,15 +168,8 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     setStyleSheet(
         familiar::dialog_style::panelStyleSheet(
             "CustomMessageBox", background, border, textColor)
-        + QStringLiteral("#cmbCloseBtn {"
-                        "  background: transparent;"
-                        "  color: %1;"
-                        "  border: none;"
-                        "  border-radius: 11px;"
-                        "  font-size: 14px;"
-                        "}"
-                        "#cmbCloseBtn:hover { background-color: rgba(255,255,255,24); }")
-              .arg(textColor.name()));
+        + familiar::dialog_style::closeButtonStyleSheet(
+            "cmbCloseBtn", textColor, accent));
 }
 
 void CustomMessageBox::setIconPixmap(const QPixmap& pixmap)
