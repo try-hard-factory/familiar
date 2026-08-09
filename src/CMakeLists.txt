@@ -124,6 +124,8 @@ set(PROJECT_SOURCES
         widgets/welcome_overlay.h
         widgets/dialogs.cpp
         widgets/dialogs.h
+        widgets/message_box.cpp
+        widgets/message_box.h
         widgets/settings_dialog.cpp
         widgets/settings_dialog.h
         widgets/color_gamut.cpp

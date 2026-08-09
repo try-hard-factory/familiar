@@ -44,31 +44,8 @@
 #include "file_actions.h"
 #include "fileio.h"
 #include "log/log.h"
+#include "message_box.h"
 #include "recovery.h"
-
-// Replacement for the QMessageBox::warning/critical/information/question
-// static convenience overloads: those build/exec/destroy the box
-// internally, with no chance to apply the fix below before it's shown.
-// MainWindow's translucent/frameless stylesheet ("background: transparent",
-// no selector) cascades into any child top-level widget without its own
-// stylesheet - including a QMessageBox - painting it solid black otherwise.
-inline QMessageBox::StandardButton showMessageBox(
-    QMessageBox::Icon icon,
-    QWidget* parent,
-    const QString& title,
-    const QString& text,
-    QMessageBox::StandardButtons buttons = QMessageBox::Ok,
-    QMessageBox::StandardButton defaultButton = QMessageBox::NoButton)
-{
-    QMessageBox box(icon, title, text, buttons, parent);
-    if (defaultButton != QMessageBox::NoButton) {
-        box.setDefaultButton(defaultButton);
-    }
-    box.setAttribute(Qt::WA_TranslucentBackground, false);
-    box.setStyleSheet("* { background-color: palette(window); color: "
-                      "palette(window-text); }");
-    return static_cast<QMessageBox::StandardButton>(box.exec());
-}
 
 class ProgressDialog : public QProgressDialog
 {
@@ -383,7 +360,8 @@ private slots:
 
     void discardAll()
     {
-        const auto reply = QMessageBox::question(
+        const auto reply = showMessageBox(
+            QMessageBox::Question,
             this,
             tr("Discard all recoverable files?"),
             tr("This deletes all %1 recoverable file(s) permanently, "
