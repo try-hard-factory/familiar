@@ -779,12 +779,20 @@ void RemoveFromGroupCommand::redo()
 {
     for (const QUuid& uid : memberUids_)
         group_->remove_child_id(uid);
+    // Immediate refit, same reasoning as AddToGroupCommand::redo() (in
+    // reverse) - otherwise the group's rect stays stale (too large,
+    // still including the just-departed member's old footprint) until
+    // some later, unrelated scene change happens to trigger one. Matters
+    // most for a nested subgroup leaving its outer group (Max) - the
+    // outer's boundary needs to shrink right away, not lag behind.
+    group_->fit_to_contain_children();
 }
 
 void RemoveFromGroupCommand::undo()
 {
     for (const QUuid& uid : memberUids_)
         group_->add_child_id(uid);
+    group_->fit_to_contain_children();
 }
 
 // ============================================================================

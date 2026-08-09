@@ -460,16 +460,25 @@ void CanvasScene::ungroup_selection()
     if (selected.size() != 1)
         return;
 
-    if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
-        undo_stack_->push(new UngroupCommand(this, group));
-        return;
-    }
-
     auto* baseItem = dynamic_cast<IBaseItem*>(selected.first());
     if (!baseItem)
         return;
+
+    // Ownership (leaving whatever outer group this item is a member of,
+    // if any) takes priority over dissolving - a nested subgroup that's
+    // itself a member of an outer group should just LEAVE that outer
+    // group and stay intact as a group, the exact same "same logic as
+    // ungrouping a single element" Max asked for: a plain member leaving
+    // its group doesn't get dissolved either, it just stops being a
+    // member. Only a TOP-LEVEL group (no owner) actually dissolves via
+    // UngroupCommand.
     if (GroupItem* owner = find_owning_group(baseItem->uid())) {
         undo_stack_->push(new RemoveFromGroupCommand(owner, baseItem->uid()));
+        return;
+    }
+
+    if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
+        undo_stack_->push(new UngroupCommand(this, group));
     }
 }
 
