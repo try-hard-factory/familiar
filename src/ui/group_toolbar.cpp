@@ -1,10 +1,10 @@
 #include "group_toolbar.h"
+#include "widgets/color_picker_dialog.h"
 
 #include <core/settingshandler.h>
 #include <moveitem.h>
 
 #include <QCheckBox>
-#include <QColorDialog>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QIcon>
@@ -122,25 +122,6 @@ QIcon makeChevronIcon(const QColor& glyphColor, qreal dpr)
     return icon;
 }
 
-// Same pattern/gotchas as ui/text_edit_toolbar.cpp's own pickColor() -
-// ShowAlphaChannel must be set BEFORE setCurrentColor() (Qt quirk,
-// enabling it afterward resets alpha to 0), DontUseNativeDialog (native
-// hangs on this build), explicit stylesheet so it doesn't inherit
-// MainWindow's transparent QSS as solid black.
-QColor pickColor(QWidget* parent, const QColor& initial, const QString& title)
-{
-    QColorDialog dialog(parent);
-    dialog.setWindowTitle(title);
-    dialog.setOption(QColorDialog::DontUseNativeDialog);
-    dialog.setOption(QColorDialog::ShowAlphaChannel);
-    dialog.setCurrentColor(initial);
-    dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-    dialog.setStyleSheet("* { background-color: palette(window); color: "
-                         "palette(window-text); }");
-    if (dialog.exec() != QDialog::Accepted)
-        return QColor();
-    return dialog.currentColor();
-}
 
 } // namespace
 
@@ -197,16 +178,35 @@ GroupToolbar::GroupToolbar(QWidget* parent)
         const QColor oldColor = item_->fill_color();
         QColor initial = oldColor;
         initial.setAlpha(255);
-        const QColor color = pickColor(this, initial, tr("Group fill color"));
-        if (color.isValid()) {
+        // Live preview while dragging (Max: "цвет в реалтайме
+        // изменяется при изменении ползунков") - applies straight to
+        // the item, bypassing the undo stack, exactly like the item
+        // would look if the color really were already committed;
+        // reverted below on cancel, or folded into ONE real undo
+        // command on accept.
+        ColorPickerDialog dialog(this, initial, tr("Group fill color"));
+        connect(&dialog, &ColorPickerDialog::colorChanged, this, [this](QColor c) {
+            if (item_) {
+                item_->set_fill_color(c);
+                updateFillColorIcon_();
+            }
+        });
+        if (dialog.exec() == QDialog::Accepted) {
+            const QColor color = dialog.selectedColor();
             if (auto* scene = dynamic_cast<CanvasScene*>(item_->scene())) {
+                // Undo the live preview first so the undo command's own
+                // redo() (which runs immediately on push()) is the only
+                // thing that actually sets fill_color to `color`.
+                item_->set_fill_color(oldColor);
                 scene->undo_stack_->push(
                     new ChangeGroupFillColorCommand(item_, color, oldColor));
             } else {
                 item_->set_fill_color(color);
             }
-            updateFillColorIcon_();
+        } else {
+            item_->set_fill_color(oldColor);
         }
+        updateFillColorIcon_();
     });
     connect(chevronBtn_,
             &QToolButton::clicked,

@@ -35,12 +35,23 @@ QString panelStyleSheet(const char* className,
                         const QColor& border,
                         const QColor& text)
 {
+    // The QToolTip rule is here for the same reason every other
+    // tooltip-capable control in this app needs one explicitly
+    // (MainWindow::updateWindowControlsStyle_(), the tab close button):
+    // the window-wide "background: transparent" cascade strips native
+    // tooltip rendering, painting it as a solid black plate otherwise.
+    // Tooltips have no alpha channel - keep the color fully opaque.
     return QStringLiteral("%1 {"
                          "  background-color: %2;"
                          "  border: 1px solid %3;"
                          "  border-radius: 10px;"
                          "}"
-                         "QLabel { background: transparent; color: %4; }")
+                         "QLabel { background: transparent; color: %4; }"
+                         "QToolTip {"
+                         "  background-color: %2;"
+                         "  color: %4;"
+                         "  border: 1px solid %3;"
+                         "}")
         .arg(QString::fromUtf8(className), background.name(), border.name(), text.name());
 }
 

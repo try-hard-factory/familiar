@@ -126,6 +126,8 @@ set(PROJECT_SOURCES
         widgets/dialog_style.h
         widgets/flat_checkbox.cpp
         widgets/flat_checkbox.h
+        widgets/color_picker_dialog.cpp
+        widgets/color_picker_dialog.h
         widgets/save_all_dialog.cpp
         widgets/save_all_dialog.h
         widgets/settings_dialog.cpp
