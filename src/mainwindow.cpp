@@ -229,17 +229,38 @@ void MainWindow::onRecoveryTimeout_()
     }
 }
 
-void MainWindow::showOrOfferRecovery()
+void MainWindow::showOrOfferRecovery(const QString& startupFile)
 {
     const QList<familiar::recovery::Entry> entries = familiar::recovery::scan();
+
     if (entries.isEmpty()) {
         show();
+        if (!startupFile.isEmpty())
+            fileactions_->processOpenFile(startupFile);
         return;
     }
     // Parented to nullptr, not `this` - this window isn't shown yet, and
     // shouldn't be implied as this dialog's owner while it's invisible.
     auto* dlg = new RecoveryDialog(*fileactions_, entries, nullptr);
-    connect(dlg, &QObject::destroyed, this, &MainWindow::show);
+    // Both show() and the startupFile load wait for the dialog to
+    // actually close now - previously processOpenFile(startupFile) ran
+    // synchronously in main() right after this function returned, i.e.
+    // BEFORE the (non-modal) dialog had a chance to process a Restore
+    // click, so a recovery snapshot for that exact file raced its own
+    // restore: whichever tab processOpenFile() had already claimed for
+    // it was no longer "blank" by the time Restore ran, so restoring
+    // landed in a SECOND, duplicate tab instead (Max). Deferring here
+    // instead lets processOpenFile()'s own existing "already open ->
+    // switch to that tab" dedup (see its top) do the right thing
+    // either way: if the user restored it, that tab already exists and
+    // this just switches to it; if they declined/unchecked it, no such
+    // tab exists yet and this loads it fresh from disk exactly as
+    // before.
+    connect(dlg, &QObject::destroyed, this, [this, startupFile]() {
+        show();
+        if (!startupFile.isEmpty())
+            fileactions_->processOpenFile(startupFile);
+    });
 }
 
 void MainWindow::newFile()

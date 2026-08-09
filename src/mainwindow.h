@@ -67,7 +67,18 @@ public:
     // behind the recovery prompt before the user has even decided
     // anything. Shows immediately, same as a plain show(), if there's
     // nothing to recover.
-    void showOrOfferRecovery();
+    //
+    // startupFile: the -f/positional CLI path (main.cpp), if any -
+    // opened via FileActions::processOpenFile() only AFTER the recovery
+    // dialog (if any) has actually been dismissed, not immediately.
+    // processOpenFile() itself already no-ops/switches-tab if that path
+    // is already open under an existing tab - so if the user restores a
+    // recovery snapshot for that same file from the dialog, this
+    // naturally lands on the restored tab instead of ALSO loading a
+    // stale duplicate straight from disk (Max: the recovery dialog
+    // should still show up as normal, just without ending up with two
+    // tabs for the same file afterward).
+    void showOrOfferRecovery(const QString& startupFile = QString());
 
     void clipboardItems(QVector<QGraphicsItem*> ci) noexcept
     {
