@@ -1025,12 +1025,24 @@ protected:
 
         if (active_mode_ == kScaleMode) {
             qreal factor = get_scale_factor(event);
+            // begin/end_group_batch(): a group's own scale drags every
+            // one of selection_action_items()'s flat entries
+            // independently, each already correctly anchored - an
+            // attached note (roadmap step 25) in that same list must
+            // NOT also get PixmapItem::itemChange()'s plain position
+            // cascade from its picture's own entry in this same loop
+            // (see that method's comment).
+            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+            if (scene)
+                scene->begin_group_batch();
             for (auto& item :
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* baseItem = dynamic_cast<IBaseItem*>(item);
                 baseItem->set_scale(baseItem->scale_orig_factor() * factor,
                                     item->mapFromScene(eventAnchor_));
             }
+            if (scene)
+                scene->end_group_batch();
             event->accept();
             return;
         } else if (active_mode_ == kRotateMode) {
@@ -1040,6 +1052,10 @@ protected:
                                 == Qt::KeyboardModifier::ControlModifier);
 
             qreal delta = get_rotate_delta(event->scenePos(), snap);
+            // Same reasoning as kScaleMode above.
+            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+            if (scene)
+                scene->begin_group_batch();
             for (auto& item :
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -1047,6 +1063,8 @@ protected:
                                            + delta * baseItem->flip(),
                                        item->mapFromScene(eventAnchor_));
             }
+            if (scene)
+                scene->end_group_batch();
             event->accept();
             return;
         } else if (active_mode_ == kFieldResizeMode) {

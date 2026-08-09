@@ -1223,8 +1223,11 @@ void CanvasView::on_action_delete_items()
     // stays armed until the scene is non-empty again (on_scene_changed()),
     // however that happens, so this covers undo just as well as paste.
     suppressNextEmptySceneReset_ = true;
-    undoStack_->push(
-        new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
+    // with_attached_notes() (roadmap step 25) - deleting a picture also
+    // deletes any notes pinned to it (Max's explicit spec), bundled into
+    // this same DeleteItemsCommand so one undo restores both.
+    undoStack_->push(new DeleteItemsCommand(
+        scene_, scene_->with_attached_notes(scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_cut()
@@ -1232,8 +1235,8 @@ void CanvasView::on_action_cut()
     on_action_copy();
     suppressNextEmptySceneReset_ = true;
     resetPreviousTransform();
-    undoStack_->push(
-        new DeleteItemsCommand(scene_, scene_->selectedItems(true)));
+    undoStack_->push(new DeleteItemsCommand(
+        scene_, scene_->with_attached_notes(scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_copy()
@@ -1462,8 +1465,32 @@ void CanvasView::on_action_insert_text()
     auto* item = new TextItem();
     QPointF pos = mapToScene(mapFromGlobal(cursor().pos()));
     item->setScale(1.0 / get_scale());
-    undoStack_->push(
-        new InsertItemsCommand(scene_, QList<IBaseItem*>{item}, pos));
+    // Auto-attach (roadmap step 25) - if exactly one picture/gif is
+    // currently selected, the new note pins to it (Max: "выделил
+    // картинку -> обычное добавить текст"). GifItem IS-A PixmapItem,
+    // covered by the same dynamic_cast.
+    QList<QGraphicsItem*> selected = scene_->selectedItems(true);
+    GroupItem* targetGroup = nullptr;
+    if (selected.size() == 1) {
+        if (auto* picture = dynamic_cast<PixmapItem*>(selected.first()))
+            item->set_attached_to(picture->uid());
+        else if (auto* group = dynamic_cast<GroupItem*>(selected.first()))
+            targetGroup = group;
+    }
+    if (targetGroup) {
+        // Same "add text with a group selected -> lands inside it"
+        // expectation as the picture-attach case above (Max). Bundled
+        // as one undo step, same pattern as the drag-drop-transfer
+        // macro in CanvasScene::maybe_add_dropped_items_to_group().
+        undoStack_->beginMacro(tr("Insert text"));
+        undoStack_->push(
+            new InsertItemsCommand(scene_, QList<IBaseItem*>{item}, pos));
+        undoStack_->push(new AddToGroupCommand(scene_, targetGroup, {item}));
+        undoStack_->endMacro();
+    } else {
+        undoStack_->push(
+            new InsertItemsCommand(scene_, QList<IBaseItem*>{item}, pos));
+    }
 }
 
 // ─── Transform actions ────────────────────────────────────────────────────────

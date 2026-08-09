@@ -51,6 +51,13 @@ private slots:
     void onTabClosed(int index);
 
 private:
+    // Qt's native close-button tooltip just says "Close Tab", which is
+    // misleading here - a tab is a whole loaded .fml project, not a
+    // lightweight document tab. Overridden per-tab since QTabBar has no
+    // single stylesheet/property for it.
+    void setCloseButtonTooltip_(int index);
+
+
     MainWindow& mainwindow_;
     QVBoxLayout* layout_;
     QTabWidget* tabs_;

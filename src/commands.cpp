@@ -99,10 +99,16 @@ void DeleteItemsCommand::redo()
 
 void DeleteItemsCommand::undo()
 {
+    // addItem() BEFORE setSelected(), not after - setSelected(true)
+    // fires itemChange(ItemSelectedChange) synchronously, which reaches
+    // ItemMixin::on_selected_change() (moveitem.h) and asserts this->
+    // scene() is non-null. Selecting an item that isn't attached to any
+    // scene yet crashed (Q_ASSERT abort in a debug build) - confirmed by
+    // Max via a real stack trace, undoing a delete.
     scene_->clearSelection();
     for (auto* item : items_) {
-        item->setSelected(true);
         scene_->addItem(item);
+        item->setSelected(true);
     }
 }
 
@@ -156,20 +162,39 @@ void ScaleItemsByCommand::redo()
         ignoreFirstRedo_ = false;
         return;
     }
+    // begin/end_group_batch(): undo/redo replays the exact same flat
+    // selection_action_items() list the live drag used - an attached
+    // note (roadmap step 25) sharing a group with its picture in this
+    // list needs the same double-apply guard here as the live drag gets
+    // in selector.h (see PixmapItem::itemChange()'s comment).
+    auto* scene = items_.isEmpty()
+        ? nullptr
+        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+    if (scene)
+        scene->begin_group_batch();
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_scale(item->scale() * factor_,
                             item->mapFromScene(anchor_));
     }
+    if (scene)
+        scene->end_group_batch();
 }
 
 void ScaleItemsByCommand::undo()
 {
+    auto* scene = items_.isEmpty()
+        ? nullptr
+        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+    if (scene)
+        scene->begin_group_batch();
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_scale(item->scale() / factor_,
                             item->mapFromScene(anchor_));
     }
+    if (scene)
+        scene->end_group_batch();
 }
 
 // ============================================================================
@@ -192,20 +217,35 @@ void RotateItemsByCommand::redo()
         ignoreFirstRedo_ = false;
         return;
     }
+    // Same reasoning as ScaleItemsByCommand::redo() above.
+    auto* scene = items_.isEmpty()
+        ? nullptr
+        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+    if (scene)
+        scene->begin_group_batch();
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_rotation(item->rotation() + delta_ * baseItem->flip(),
                                item->mapFromScene(anchor_));
     }
+    if (scene)
+        scene->end_group_batch();
 }
 
 void RotateItemsByCommand::undo()
 {
+    auto* scene = items_.isEmpty()
+        ? nullptr
+        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+    if (scene)
+        scene->begin_group_batch();
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_rotation(item->rotation() - delta_ * baseItem->flip(),
                                item->mapFromScene(anchor_));
     }
+    if (scene)
+        scene->end_group_batch();
 }
 
 // ============================================================================
@@ -715,17 +755,36 @@ RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
                                                const QUuid& memberUid)
     : QUndoCommand(QObject::tr("Remove from group"))
     , group_(group)
-    , memberUid_(memberUid)
-{}
+{
+    memberUids_.append(memberUid);
+    // A picture's attached notes (roadmap step 25) ride along as actual
+    // group members now (AddToGroupCommand/group_selection() both fold
+    // them in whenever the picture joins) - taking the picture back out
+    // has to take them too, or they'd linger as orphaned members of a
+    // group their picture no longer belongs to (Max: "аттаченые
+    // текстовые поля тоже должны стать частью группы").
+    if (auto* scene = dynamic_cast<CanvasScene*>(group_->scene())) {
+        if (auto* picture
+            = dynamic_cast<PixmapItem*>(scene->find_by_uid(memberUid))) {
+            for (QGraphicsItem* note :
+                 scene->find_attached_notes(picture->uid())) {
+                if (auto* noteBase = dynamic_cast<IBaseItem*>(note))
+                    memberUids_.append(noteBase->uid());
+            }
+        }
+    }
+}
 
 void RemoveFromGroupCommand::redo()
 {
-    group_->remove_child_id(memberUid_);
+    for (const QUuid& uid : memberUids_)
+        group_->remove_child_id(uid);
 }
 
 void RemoveFromGroupCommand::undo()
 {
-    group_->add_child_id(memberUid_);
+    for (const QUuid& uid : memberUids_)
+        group_->add_child_id(uid);
 }
 
 // ============================================================================
@@ -733,11 +792,20 @@ void RemoveFromGroupCommand::undo()
 // ============================================================================
 AddToGroupCommand::AddToGroupCommand(CanvasScene* scene,
                                      GroupItem* group,
-                                     const QList<QGraphicsItem*>& members)
+                                     const QList<QGraphicsItem*>& members,
+                                     bool reselectOnUndo)
     : QUndoCommand(QObject::tr("Add to group"))
     , scene_(scene)
     , group_(group)
-    , members_(members)
+    // with_attached_notes(): any picture among `members` brings its
+    // attached notes (roadmap step 25) in as actual group members too,
+    // not just a position/z cascade (Max: "аттаченые текстовые поля
+    // тоже должны стать частью группы") - covers the "Group" button's
+    // fold-into-existing-group path AND drag-drop add/transfer, both of
+    // which construct this command.
+    , members_(scene->with_attached_notes(members))
+    , primaryMembers_(members)
+    , reselectOnUndo_(reselectOnUndo)
 {
     for (auto* item : members_) {
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
@@ -758,6 +826,10 @@ void AddToGroupCommand::redo()
         // render under the fill and effectively vanish the instant it
         // joins. Bump it just above the group if it isn't already -
         // same +Z_STEP convention GroupCommand::redo() uses in reverse.
+        // An attached note (roadmap step 25) is now folded into
+        // members_ too (see constructor's with_attached_notes()), so it
+        // gets the exact same bump as any other member here - no
+        // separate case needed.
         QGraphicsItem* item = members_[i];
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             if (item->zValue() <= group_->zValue())
@@ -786,10 +858,19 @@ void AddToGroupCommand::undo()
     // instead of leaving a stale, too-large rect until something else
     // happens to trigger the next refit.
     group_->fit_to_contain_children();
-    // Restore the exact pre-Group() selection (group + the loose items),
-    // not just the group alone - matches GroupCommand::undo()/
-    // UngroupCommand::redo() both reselecting the members they touched.
-    group_->setSelected(true);
-    for (auto* item : members_)
-        item->setSelected(true);
+    if (reselectOnUndo_) {
+        // Restore the exact pre-Group() selection (group + the loose
+        // items), not just the group alone - matches GroupCommand::undo()/
+        // UngroupCommand::redo() both reselecting the members they
+        // touched.
+        group_->setSelected(true);
+        for (auto* item : members_)
+            item->setSelected(true);
+    } else {
+        // Drag-drop path: just the dragged item(s), not the group and
+        // not any attached notes with_attached_notes() folded into
+        // members_ - see constructor comment.
+        for (auto* item : primaryMembers_)
+            item->setSelected(true);
+    }
 }

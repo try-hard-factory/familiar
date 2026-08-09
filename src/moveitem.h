@@ -186,6 +186,12 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
         crop_mode = false;
         init_selectable();
+        // ItemPositionChange/ItemPositionHasChanged notifications are
+        // OFF by default since Qt 4.6 - needed here (like GroupItem,
+        // moveitem.h) to carry along any attached notes (roadmap step
+        // 25, TextItem::attachedToUid_) when this picture moves. See
+        // itemChange() below.
+        this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     }
 
     bool is_image() const override { return is_image_; }
@@ -655,7 +661,91 @@ public:
         scene->crop_item = nullptr;
     }
 
+    // Attached notes (roadmap step 25) draw their own selection-color
+    // outline in TextItem::paint() while THIS picture is selected, so
+    // they need repainting the instant that flag flips - Qt only
+    // schedules a repaint for the item whose own state actually changed,
+    // not for other items merely watching it.
+    void on_selected_change(bool value) override
+    {
+        ItemMixin<PixmapItem, QGraphicsPixmapItem>::on_selected_change(value);
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            for (QGraphicsItem* note : scene->find_attached_notes(this->uid()))
+                note->update();
+        }
+    }
+
 protected:
+    // Carries any TextItem notes attached to THIS picture (roadmap step
+    // 25) along by the same position delta - a one-directional cascade
+    // (anchor moves notes; the reverse never happens, dragging a note is
+    // always its own independent, ordinary body drag - Max's explicit
+    // spec). Skips a note that's ALSO individually Qt-selected+movable
+    // right now (e.g. a rubber-band sweep caught both the picture and
+    // its note at once) - Qt's own native "move every selected+movable
+    // item together" body-drag behavior already carries that one along,
+    // same double-move pitfall already found and fixed for GroupItem's
+    // own member cascade.
+    QVariant itemChange(GraphicsItemChange change,
+                        const QVariant& value) override
+    {
+        if (change == QGraphicsItem::ItemPositionChange && this->scene()) {
+            const QPointF delta = value.toPointF() - this->pos();
+            if (!delta.isNull()) {
+                if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+                    // A note that's ALSO a member of the same group this
+                    // picture belongs to (both fold in together now -
+                    // see AddToGroupCommand/group_selection(), roadmap
+                    // step 25's group-membership follow-up) gets its OWN
+                    // independent, correctly-anchored move/scale/rotate
+                    // whenever that GROUP is what's actually being
+                    // transformed right now (in_group_batch(), set by
+                    // GroupItem::itemChange()'s own cascade for a plain
+                    // group drag, or by the scale/rotate handle-drag/
+                    // undo-redo loops driven off selection_action_items()
+                    // - see CanvasScene::begin_group_batch()'s own
+                    // comment). Cascading here TOO in that case would
+                    // double-apply on top of that (Max: "поедут куда-то"
+                    // on group drag/resize/rotate). But if the GROUP
+                    // ISN'T what's moving - just this picture, dragged on
+                    // its own while merely happening to live in a group
+                    // (members of an unlocked group stay individually
+                    // draggable) - in_group_batch() is false and the
+                    // cascade below is exactly what's needed (Max: "в
+                    // группе при перемещении картинки - текстовые поля
+                    // не двигаются" was this same check firing on
+                    // group-membership ALONE, without also requiring an
+                    // actual group batch to be in progress).
+                    GroupItem* myGroup = scene->find_owning_group(this->uid());
+                    const bool coveredByGroupBatch
+                        = myGroup && scene->in_group_batch();
+                    for (QGraphicsItem* note :
+                         scene->find_attached_notes(this->uid())) {
+                        if (note->isSelected()
+                            && (note->flags() & QGraphicsItem::ItemIsMovable))
+                            continue;
+                        if (coveredByGroupBatch) {
+                            if (auto* noteBase
+                                = dynamic_cast<IBaseItem*>(note)) {
+                                if (scene->find_owning_group(noteBase->uid())
+                                    == myGroup)
+                                    continue;
+                            }
+                        }
+                        note->moveBy(delta.x(), delta.y());
+                    }
+                }
+            }
+        }
+        // SelectableMixin, not QGraphicsPixmapItem directly - same
+        // reasoning as GroupItem::itemChange()'s own base-class call
+        // (moveitem.h): SelectableMixin has its own itemChange()
+        // override reacting to ItemSelectedChange, which a direct Qt
+        // base class call would silently skip.
+        return SelectableMixin<PixmapItem, QGraphicsPixmapItem>::itemChange(
+            change, value);
+    }
+
     void keyPressEvent(QKeyEvent* event) override
     {
         if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
@@ -1055,6 +1145,9 @@ public:
             data[QStringLiteral("field_width")] = this->document()->textWidth();
         if (manualHeight_ >= 0)
             data[QStringLiteral("field_height")] = manualHeight_;
+        if (!attachedToUid_.isNull())
+            data[QStringLiteral("attached_to")] = attachedToUid_.toString(
+                QUuid::WithoutBraces);
         return data;
     }
 
@@ -1076,6 +1169,10 @@ public:
                 data.value(QStringLiteral("field_width")).toReal());
         if (data.contains(QStringLiteral("field_height")))
             manualHeight_ = data.value(QStringLiteral("field_height")).toReal();
+        const QString attachedTo = data.value(QStringLiteral("attached_to"))
+                                       .toString();
+        if (!attachedTo.isEmpty())
+            attachedToUid_ = QUuid::fromString(attachedTo);
     }
 
     QColor fill_color() const { return fill_color_; }
@@ -1256,6 +1353,34 @@ public:
         QStyleOptionGraphicsItem updatedOption(*option);
         updatedOption.state = QStyle::State_Enabled;
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
+
+        // Attached-note indicator (step 25, Max): while the picture this
+        // note is attached to is selected, outline the note itself too,
+        // so it reads as "belongs to that picture" even though the note
+        // isn't part of the selection. Same color/alpha/width convention
+        // as GroupItem's drop-target highlight (highlighted_ above) -
+        // both source from RubberbandItem's own selection-color fill.
+        if (!attachedToUid_.isNull()) {
+            if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+                if (QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
+                    picture && picture->isSelected()) {
+                    auto colorPreset = SettingsHandler::getInstance()
+                                            ->getCurrentColorPreset();
+                    QColor highlightColor
+                        = colorPreset[EPresetsColorIdx::kSelectionColor];
+                    highlightColor.setAlpha(230);
+                    painter->save();
+                    QPen highlightPen(highlightColor);
+                    highlightPen.setWidthF(1.0);
+                    highlightPen.setCosmetic(true);
+                    painter->setPen(highlightPen);
+                    painter->setBrush(Qt::NoBrush);
+                    painter->drawRect(this->bounding_rect_unselected());
+                    painter->restore();
+                }
+            }
+        }
+
         this->paint_selectable(painter, option, widget);
     }
 
@@ -1396,6 +1521,23 @@ protected:
         QGraphicsTextItem::keyPressEvent(event);
     }
 
+public:
+    // ── Attached-to-a-picture (roadmap step 25) ────────────────────────
+    // Optional uid of a PixmapItem/GifItem this note is pinned to - null
+    // if this is a plain, unattached note (the common case; every
+    // TextItem starts this way). Purely a note→picture reference, not a
+    // group: the picture doesn't know how many notes point at it, and
+    // has no visible container/fill of its own - PixmapItem::itemChange()
+    // (moveitem.h) looks these up via CanvasScene::find_attached_notes()
+    // and carries them along by position delta only when the PICTURE
+    // moves; dragging the note itself is always independent (its own
+    // ordinary body drag, untouched), matching Max's explicit spec
+    // ("по отдельности перемещать можно тоже"). Several notes may share
+    // the same attachedToUid_ (Max: "несколько заметок на одну
+    // картинку").
+    QUuid attachedToUid() const { return attachedToUid_; }
+    void set_attached_to(const QUuid& uid) { attachedToUid_ = uid; }
+
 private:
     QColor fill_color_;
     QColor old_fill_color_;
@@ -1405,6 +1547,7 @@ private:
     // textWidth()'s own -1-means-auto convention - see
     // bounding_rect_unselected()/resize_field()/reset_manual_size().
     qreal manualHeight_{-1};
+    QUuid attachedToUid_;
 };
 
 // A persistent container (roadmap step 10) - unlike MultiSelectItem (an
@@ -2195,6 +2338,15 @@ protected:
                            delta.y(),
                            this->isSelected(),
                            resolve_children().size());
+                // begin/end_group_batch(): tells PixmapItem::itemChange()
+                // (roadmap step 25) that an attached note sharing this
+                // group's membership is ALREADY being carried along by
+                // THIS cascade (or, several stack frames up, by an
+                // ancestor group's own cascade in the nested case) - its
+                // own separate attach-cascade must not ALSO move it.
+                auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+                if (scene)
+                    scene->begin_group_batch();
                 for (QGraphicsItem* child : resolve_children()) {
                     // A rubber-band sweep (or ctrl+click accumulation)
                     // can select this group AND, independently, one of
@@ -2225,6 +2377,8 @@ protected:
                         continue;
                     child->moveBy(delta.x(), delta.y());
                 }
+                if (scene)
+                    scene->end_group_batch();
             }
         }
         // NOT QGraphicsRectItem::itemChange() directly - SelectableMixin
