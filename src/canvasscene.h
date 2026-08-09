@@ -7,6 +7,7 @@
 #include <QHash>
 #include <QMutex>
 #include <QRubberBand>
+#include <QSet>
 #include <QUuid>
 #include <QVariantMap>
 
@@ -106,21 +107,35 @@ public:
     // - matches normal drag-and-drop expectations: wherever you're
     // actually pointing at release is the target, Max's explicit spec).
     // Every LOOSE item among movedItems (not already a member of any
-    // group, and not a group itself - dropping one group onto another is
-    // the "select both + Ctrl+G" nesting flow, not this) becomes a new
-    // member of whichever unlocked, drag_drop_enabled() group's area
-    // contains the cursor - topmost by z if more than one candidate
-    // overlaps there (e.g. a subgroup nested inside an outer group that
-    // also qualifies).
+    // group) becomes a new member of whichever unlocked,
+    // drag_drop_enabled() group's area contains the cursor - topmost by
+    // z if more than one candidate overlaps there (e.g. a subgroup
+    // nested inside an outer group that also qualifies). A GroupItem
+    // itself is a valid candidate too (Max: "надо сделать туже
+    // подсветку если мы перетаскиваем группу внутри группы") - dragging
+    // a whole subgroup onto another group nests it exactly like the
+    // "select both + Ctrl+G" flow would, just via drag instead. Never a
+    // candidate for itself or one of its OWN descendants though (see
+    // forbidden_drop_targets()) - that would be a membership cycle.
     void maybe_add_dropped_items_to_group(const QList<QGraphicsItem*>& movedItems,
                                           const QPointF& cursorScenePos);
     // Whichever unlocked, drag_drop_enabled() group's area contains
     // `scenePos` - topmost by z if more than one candidate overlaps
     // there (e.g. a subgroup nested inside an outer group that also
-    // qualifies). Shared by maybe_add_dropped_items_to_group() (checked
-    // once, on release) and mouseMoveEvent()'s live drop-target
-    // highlight (checked every move, via GroupItem::set_highlighted()).
-    GroupItem* find_drop_target_group(const QPointF& scenePos) const;
+    // qualifies), skipping anything in `excluded`. Shared by
+    // maybe_add_dropped_items_to_group() (checked once, on release) and
+    // mouseMoveEvent()'s live drop-target highlight (checked every
+    // move, via GroupItem::set_highlighted()).
+    GroupItem* find_drop_target_group(
+        const QPointF& scenePos,
+        const QSet<GroupItem*>& excluded = {}) const;
+    // `draggedItems` plus, for every GroupItem among them, that group's
+    // whole own subtree (itself + every nested descendant group,
+    // recursively) - the set of groups that must NOT be offered as a
+    // drop target for this drag, since accepting one would nest a group
+    // inside itself or one of its own children.
+    QSet<GroupItem*> forbidden_drop_targets(
+        const QList<QGraphicsItem*>& draggedItems) const;
     // Raises `group`'s whole cluster (itself + every descendant,
     // recursively) to a fresh z band above everything else - same
     // sequential-band math as raise_selection_to_front(), just for an
@@ -218,6 +233,42 @@ public:
     // tracked (group -> children), so "which group (if any) owns this
     // item" has no shortcut besides asking every group.
     GroupItem* find_owning_group(const QUuid& memberUid) const;
+    // Every TextItem note (roadmap step 25) whose attachedToUid() is
+    // pictureUid - a picture can have any number of notes pinned to it
+    // (Max), so this returns a list, not a single match like
+    // find_owning_group(). Used by PixmapItem::itemChange() (moveitem.h)
+    // to carry notes along when the picture moves, and by deletion to
+    // cascade-remove them along with their anchor.
+    QList<QGraphicsItem*> find_attached_notes(const QUuid& pictureUid) const;
+    // `items` plus every note attached to any picture already in
+    // `items` (deduplicated) - CanvasView::on_action_delete_items()/
+    // on_action_cut() use this so deleting a picture cascades to its
+    // notes too (Max's explicit spec), all as one DeleteItemsCommand -
+    // one undo step restores both.
+    QList<QGraphicsItem*> with_attached_notes(
+        const QList<QGraphicsItem*>& items) const;
+    // Reentrant depth counter marking "a GroupItem batch member
+    // transform is currently applying" - a plain group drag
+    // (GroupItem::itemChange()'s own children-moveBy loop) or a group
+    // scale/rotate (selector.h's mouseMoveEvent loop and
+    // Scale/RotateItemsByCommand's redo()/undo(), both driven off
+    // GroupItem::selection_action_items()'s flat expanded list) both
+    // give an attached note (roadmap step 25) that's ALSO a group
+    // member its own independent, correctly-anchored transform as a
+    // separate list entry - PixmapItem::itemChange()'s simple
+    // position-delta cascade to that SAME note would double-apply (or,
+    // for scale/rotate, apply the wrong kind of change entirely) on top
+    // of that. Depth (not a bool) because nested groups cascade into
+    // their own itemChange() recursively - each level's begin/end pair
+    // nests correctly. NOT set for an individual picture dragged alone
+    // within its group (no group-level batch runs at all then) -
+    // that's exactly when the note DOES still need the plain cascade
+    // (Max: "в группе при перемещении картинки - текстовые поля не
+    // двигаются").
+    void begin_group_batch() { ++groupBatchDepth_; }
+    void end_group_batch() { --groupBatchDepth_; }
+    bool in_group_batch() const { return groupBatchDepth_ > 0; }
+    int groupBatchDepth_ = 0;
     // Whichever group is currently showing the live drop-target
     // highlight (mouseMoveEvent()) - tracked so the highlight can be
     // cleared off the PREVIOUS target when the cursor moves to a new

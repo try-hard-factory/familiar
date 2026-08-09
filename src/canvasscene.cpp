@@ -416,11 +416,30 @@ void CanvasScene::group_selection()
     if (ids.size() < 2)
         return;
 
+    // Fold in any attached notes (roadmap step 25) of a picture that's
+    // becoming a member here - they aren't independently selected in
+    // the normal case, so without this they'd stay loose top-level
+    // items outside a group that visually contains their picture (Max:
+    // "аттаченые текстовые поля тоже должны стать частью группы").
+    QList<QGraphicsItem*> members = selected;
+    for (const QUuid& uid : ids) {
+        auto* picture = dynamic_cast<PixmapItem*>(find_by_uid(uid));
+        if (!picture)
+            continue;
+        for (QGraphicsItem* note : find_attached_notes(picture->uid())) {
+            auto* noteBase = dynamic_cast<IBaseItem*>(note);
+            if (noteBase && !ids.contains(noteBase->uid()))
+                ids.append(noteBase->uid());
+            if (!members.contains(note))
+                members.append(note);
+        }
+    }
+
     // GroupItem::compute_padding(), not a local calculation -
     // fit_to_contain_children() (moveitem.h) uses the exact same formula
     // for every later refit, and both need to agree or the group would
     // visibly jump in size the first time it re-fits after creation.
-    const QRectF bounds = itemsBoundingRect(false, selected);
+    const QRectF bounds = itemsBoundingRect(false, members);
     const qreal padding = GroupItem::compute_padding(bounds);
     const QRectF padded = bounds.adjusted(-padding,
                                           -padding,
@@ -432,7 +451,7 @@ void CanvasScene::group_selection()
     group->set_local_rect(QRectF(0, 0, padded.width(), padded.height()));
     group->set_child_ids(ids);
 
-    undo_stack_->push(new GroupCommand(this, group, selected));
+    undo_stack_->push(new GroupCommand(this, group, members));
 }
 
 void CanvasScene::ungroup_selection()
@@ -454,7 +473,9 @@ void CanvasScene::ungroup_selection()
     }
 }
 
-GroupItem* CanvasScene::find_drop_target_group(const QPointF& scenePos) const
+GroupItem* CanvasScene::find_drop_target_group(
+    const QPointF& scenePos,
+    const QSet<GroupItem*>& excluded) const
 {
     // Topmost by z wins if scenePos lands somewhere multiple groups'
     // areas overlap (e.g. a subgroup nested inside an outer group that
@@ -468,6 +489,8 @@ GroupItem* CanvasScene::find_drop_target_group(const QPointF& scenePos) const
         auto* group = dynamic_cast<GroupItem*>(other);
         if (!group || !group->drag_drop_enabled() || group->locked())
             continue;
+        if (excluded.contains(group))
+            continue;
         const QRectF groupSceneRect = group->mapRectToScene(
             group->bounding_rect_unselected());
         if (!groupSceneRect.contains(scenePos))
@@ -478,6 +501,25 @@ GroupItem* CanvasScene::find_drop_target_group(const QPointF& scenePos) const
         }
     }
     return target;
+}
+
+QSet<GroupItem*> CanvasScene::forbidden_drop_targets(
+    const QList<QGraphicsItem*>& draggedItems) const
+{
+    QSet<GroupItem*> forbidden;
+    for (QGraphicsItem* item : draggedItems) {
+        auto* group = dynamic_cast<GroupItem*>(item);
+        if (!group)
+            continue;
+        // selection_action_items() is `this` + every descendant,
+        // recursively (moveitem.h) - exactly the subtree that would
+        // become a cycle if offered back as a drop target.
+        for (QGraphicsItem* nested : group->selection_action_items()) {
+            if (auto* nestedGroup = dynamic_cast<GroupItem*>(nested))
+                forbidden.insert(nestedGroup);
+        }
+    }
+    return forbidden;
 }
 
 void CanvasScene::clear_drop_target_highlight()
@@ -492,21 +534,21 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     const QList<QGraphicsItem*>& movedItems,
     const QPointF& cursorScenePos)
 {
-    // Not a group itself - dropping one group onto another is the
-    // Ctrl+G nesting flow, not this. Otherwise ANY item is a candidate,
-    // whether loose or already a member of some other group - see the
-    // transfer branch below for why membership no longer excludes it.
-    QList<QGraphicsItem*> candidates;
-    for (QGraphicsItem* item : movedItems) {
-        if (!dynamic_cast<GroupItem*>(item))
-            candidates.append(item);
-    }
+    // ANY item is a candidate, whether loose, already a member of some
+    // other group (see the transfer branch below), or a GroupItem
+    // itself - dragging a whole subgroup onto another group nests it
+    // the same way "select both + Ctrl+G" would (Max: same drop-target
+    // highlight/behavior for dragging a group into a group).
+    QList<QGraphicsItem*> candidates = movedItems;
     if (candidates.isEmpty())
         return;
 
     // One target for the whole drag, chosen by the CURSOR alone - not
-    // per item.
-    GroupItem* target = find_drop_target_group(cursorScenePos);
+    // per item. forbidden_drop_targets(): never offer a dragged group
+    // itself, or one of its own descendants, as its own target - that
+    // would be a membership cycle.
+    GroupItem* target = find_drop_target_group(
+        cursorScenePos, forbidden_drop_targets(candidates));
     if (!target)
         return;
 
@@ -533,8 +575,15 @@ void CanvasScene::maybe_add_dropped_items_to_group(
             undo_stack_->beginMacro(tr("Move to group"));
             undo_stack_->push(
                 new RemoveFromGroupCommand(currentOwner, baseItem->uid()));
+            // reselectOnUndo=false: this whole call is itself already
+            // nested inside the drag's own undo macro
+            // (CanvasScene::mouseReleaseEvent) - forcing a
+            // group+item selection here would just get immediately
+            // overwritten by whatever ran before it in that macro's
+            // undo anyway, and is exactly the "everything lights up
+            // like a rubber-band" Max reported.
             undo_stack_->push(
-                new AddToGroupCommand(this, target, {item}));
+                new AddToGroupCommand(this, target, {item}, false));
             undo_stack_->endMacro();
             changed = true;
         } else {
@@ -542,7 +591,7 @@ void CanvasScene::maybe_add_dropped_items_to_group(
         }
     }
     if (!toAdd.isEmpty()) {
-        undo_stack_->push(new AddToGroupCommand(this, target, toAdd));
+        undo_stack_->push(new AddToGroupCommand(this, target, toAdd, false));
         changed = true;
     }
 
@@ -554,7 +603,15 @@ void CanvasScene::maybe_add_dropped_items_to_group(
 
 void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
 {
-    QList<QGraphicsItem*> cluster = group->selection_action_items();
+    // with_attached_notes(): a note attached to one of the group's
+    // pictures isn't itself a group child (attachment is a uid
+    // reference, not membership), so selection_action_items() alone
+    // misses it - without this it stayed behind at whatever z
+    // AddToGroupCommand::redo() had just bumped it to while the picture
+    // itself got raised way above it here, visibly landing the note
+    // under the picture it's supposed to be pinned to.
+    QList<QGraphicsItem*> cluster
+        = with_attached_notes(group->selection_action_items());
     std::sort(cluster.begin(),
              cluster.end(),
              [](QGraphicsItem* a, QGraphicsItem* b) {
@@ -1034,6 +1091,35 @@ GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
     return nullptr;
 }
 
+QList<QGraphicsItem*> CanvasScene::find_attached_notes(
+    const QUuid& pictureUid) const
+{
+    QList<QGraphicsItem*> notes;
+    for (QGraphicsItem* item : items()) {
+        if (auto* text = dynamic_cast<TextItem*>(item)) {
+            if (text->attachedToUid() == pictureUid)
+                notes.append(item);
+        }
+    }
+    return notes;
+}
+
+QList<QGraphicsItem*> CanvasScene::with_attached_notes(
+    const QList<QGraphicsItem*>& items) const
+{
+    QList<QGraphicsItem*> expanded = items;
+    for (QGraphicsItem* item : items) {
+        auto* picture = dynamic_cast<PixmapItem*>(item);
+        if (!picture)
+            continue;
+        for (QGraphicsItem* note : find_attached_notes(picture->uid())) {
+            if (!expanded.contains(note))
+                expanded.append(note);
+        }
+    }
+    return expanded;
+}
+
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     if (event->button() == Qt::RightButton) {
@@ -1156,23 +1242,17 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     // minus the "already moved" delta check (this runs every frame, not
     // just at the end). is_action_active() excludes an active resize/
     // rotate handle drag (that's not a body drag, dropping doesn't apply
-    // there). Skipped entirely if every selected item is itself a group
-    // - dropping a group onto another is the Ctrl+G nesting flow, not
-    // this, so highlighting a candidate would be a misleading signal.
+    // there). A group being dragged is itself a valid candidate now too
+    // (Max: same highlight for dragging a group into a group) -
+    // forbidden_drop_targets() keeps it from ever highlighting itself
+    // or one of its own descendants.
     if (active_mode_ == kMoveMode && has_selection()
         && !multiselect_item_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
-        bool anyNonGroup = false;
-        for (QGraphicsItem* item : selectedItems(true)) {
-            if (!dynamic_cast<GroupItem*>(item)) {
-                anyNonGroup = true;
-                break;
-            }
-        }
-        GroupItem* target = anyNonGroup
-            ? find_drop_target_group(event->scenePos())
-            : nullptr;
+        QList<QGraphicsItem*> dragged = selectedItems(true);
+        GroupItem* target = find_drop_target_group(
+            event->scenePos(), forbidden_drop_targets(dragged));
         if (target != highlightedGroup_) {
             clear_drop_target_highlight();
             if (target) {
@@ -1201,10 +1281,19 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 ->is_action_active()) {
         auto delta = event->scenePos() - event_start;
         if (!delta.isNull()) {
+            // One undo step for the whole drag, not two - a drag that
+            // happens to end over a group both moves the item AND joins
+            // it (maybe_add_dropped_items_to_group() below, itself
+            // pushing an AddToGroupCommand/RemoveFromGroupCommand pair
+            // on a transfer). Without the macro, Ctrl+Z only unwound the
+            // group join and left the item wherever it was dropped
+            // instead of back where the drag started (Max).
+            undo_stack_->beginMacro(tr("Move"));
             undo_stack_->push(
                 new MoveItemsByCommand(selectedItems(), delta, true));
             maybe_add_dropped_items_to_group(selectedItems(true),
                                             event->scenePos());
+            undo_stack_->endMacro();
         }
     }
     // The drag (if any) is over either way - don't leave a stale

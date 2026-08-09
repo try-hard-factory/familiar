@@ -489,7 +489,9 @@ private:
 // применённый к одиночному выделенному участнику группы, а не к самой
 // группе) - сама группа и остальные участники не трогаются, meняется
 // только её child_ids(). Не владеет ни группой, ни элементом - оба уже
-// присутствуют на сцене независимо от этой команды.
+// присутствуют на сцене независимо от этой команды. Конструктор сам
+// расширяет удаление на attached-заметки (шаг 25) убираемой картинки,
+// если они тоже сейчас числятся членами этой группы - см. .cpp.
 // ============================================================================
 class RemoveFromGroupCommand : public QUndoCommand
 {
@@ -501,7 +503,7 @@ public:
 
 private:
     GroupItem* group_;
-    QUuid memberUid_;
+    QList<QUuid> memberUids_;
 };
 
 // ============================================================================
@@ -515,9 +517,19 @@ private:
 class AddToGroupCommand : public QUndoCommand
 {
 public:
+    // reselectOnUndo: the "Group" button's fold-into-existing-group
+    // flow (CanvasScene::group_selection()) wants group+members
+    // reselected after undo, matching GroupCommand/UngroupCommand's own
+    // reselect-what-you-touched convention. The drag-drop path
+    // (maybe_add_dropped_items_to_group(), always bundled into the same
+    // undo macro as the drag's own MoveItemsByCommand) wants just the
+    // dragged item(s) reselected instead - not the group, not any
+    // attached notes folded in by with_attached_notes() (Max: "картинку
+    // надо выделить", plainly, not the group lit up alongside it).
     AddToGroupCommand(CanvasScene* scene,
                       GroupItem* group,
-                      const QList<QGraphicsItem*>& members);
+                      const QList<QGraphicsItem*>& members,
+                      bool reselectOnUndo = true);
 
     void redo() override;
     void undo() override;
@@ -526,5 +538,10 @@ private:
     CanvasScene* scene_;
     GroupItem* group_;
     QList<QGraphicsItem*> members_;
+    // The `members` argument as given, before with_attached_notes()
+    // expanded it into members_ - what reselectOnUndo_==false restores
+    // selection to (see constructor comment).
+    QList<QGraphicsItem*> primaryMembers_;
+    bool reselectOnUndo_;
     QList<QUuid> memberUids_;
 };

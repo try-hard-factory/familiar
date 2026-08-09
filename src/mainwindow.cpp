@@ -309,20 +309,28 @@ void MainWindow::settingsChangedSlot()
     // the selection changes.
     const QColor& selectionColor
         = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& borderColor = colorPreset[EPresetsColorIdx::kBorderColor];
     auto rgb = [](const QColor& c) {
         return QString("rgb(%1, %2, %3)")
             .arg(c.red())
             .arg(c.green())
             .arg(c.blue());
     };
+    // Same unstyled-tooltip-over-translucent-window issue as
+    // updateWindowControlsStyle_(): without an explicit QToolTip rule,
+    // hovering the tab close button shows a solid black plate. Tooltips
+    // have no alpha channel - keep the color fully opaque.
     tabpane_->setStyleSheet(
         QString("QTabBar::tab { background: %1; color: %2; "
                 "border-bottom: 2px solid transparent; "
                 "padding: 6px 14px; } "
                 "QTabBar::tab:selected { border-bottom: 2px solid %3; } "
                 "QTabWidget::pane { border: 1px solid lightgray; top:-1px; "
-                "background: transparent; }")
-            .arg(rgb(backGroundColor_), rgb(textColor), rgb(selectionColor)));
+                "background: transparent; } "
+                "QToolTip { background-color: %1; color: %2; "
+                "border: 1px solid %4; }")
+            .arg(rgb(backGroundColor_), rgb(textColor), rgb(selectionColor),
+                 rgb(borderColor)));
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
     updateWindowControlsStyle_();

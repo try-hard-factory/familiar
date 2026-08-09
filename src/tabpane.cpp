@@ -60,6 +60,7 @@ void TabPane::addNewTab(const QString& path)
     canvasView->show();
 
     tabs_->addTab(canvasView, QFileInfo(path).fileName());
+    setCloseButtonTooltip_(count);
     tabs_->setCurrentIndex(count);
 }
 
@@ -78,7 +79,18 @@ void TabPane::addNewUntitledTab()
     canvasWidget->show();
 
     tabs_->addTab(canvasWidget, "untitled");
+    setCloseButtonTooltip_(count);
     tabs_->setCurrentIndex(count);
+}
+
+void TabPane::setCloseButtonTooltip_(int index)
+{
+    // The close button can be docked on either side depending on the
+    // active style, so try both rather than assuming RightSide.
+    if (QWidget* btn = tabs_->tabBar()->tabButton(index, QTabBar::RightSide))
+        btn->setToolTip(tr("Close project"));
+    if (QWidget* btn = tabs_->tabBar()->tabButton(index, QTabBar::LeftSide))
+        btn->setToolTip(tr("Close project"));
 }
 
 void TabPane::setCurrentTabPath(const QString& path)
