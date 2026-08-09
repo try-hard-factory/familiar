@@ -31,6 +31,7 @@ class QMenuBar;
 class QGraphicsOpacityEffect;
 class QVariantAnimation;
 class QTimer;
+class HierarchyPanel;
 
 constexpr QPoint kInvalidPoint(-1, -1);
 
@@ -56,6 +57,13 @@ public:
     void exitProject();
     TabPane& tabPane();
     FileActions& fileActions();
+
+    // Call after any scene mutation that bypasses the undo stack (e.g. a
+    // background file load's add_queued_items() - see hierarchy_panel.h's
+    // own comment) so the Hierarchy panel picks it up. Normal
+    // command-driven mutations don't need this - they're already covered
+    // by hookedUndoStack_'s indexChanged, hooked in resyncActionsForTab().
+    void notifyStructuralChange();
 
     // Call once from main() INSTEAD OF a bare show() - if
     // familiar::recovery::scan() finds anything left over from a session
@@ -106,6 +114,7 @@ public slots:
     void on_action_always_on_top(bool checked);
     void on_action_show_menubar(bool checked);
     void on_action_auto_hide_ui(bool checked);
+    void on_action_hierarchy(bool checked);
 
     // Settings / Help
     void on_action_settings();
@@ -356,6 +365,11 @@ private:
     // the moment the tracked QObject's destructor runs.
     QPointer<CanvasScene> hookedScene_;
     QPointer<QUndoStack> hookedUndoStack_;
+
+    // Scene outliner dock (ui/hierarchy_panel.h) - one long-lived
+    // instance, rebound to whichever tab is active from within
+    // resyncActionsForTab() rather than one per CanvasView.
+    HierarchyPanel* hierarchyPanel_ = nullptr;
 
     // ── Menu bar overlay (see mainwindow.cpp, "Menu bar" section) ─────────
     // The menu bar is a long-lived direct child laid at the top of the

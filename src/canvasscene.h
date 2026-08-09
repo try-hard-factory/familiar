@@ -247,24 +247,32 @@ public:
     // one undo step restores both.
     QList<QGraphicsItem*> with_attached_notes(
         const QList<QGraphicsItem*>& items) const;
-    // Reentrant depth counter marking "a GroupItem batch member
-    // transform is currently applying" - a plain group drag
-    // (GroupItem::itemChange()'s own children-moveBy loop) or a group
-    // scale/rotate (selector.h's mouseMoveEvent loop and
-    // Scale/RotateItemsByCommand's redo()/undo(), both driven off
-    // GroupItem::selection_action_items()'s flat expanded list) both
-    // give an attached note (roadmap step 25) that's ALSO a group
-    // member its own independent, correctly-anchored transform as a
-    // separate list entry - PixmapItem::itemChange()'s simple
+    // Reentrant depth counter marking "some batch transform that
+    // already gives its own attached notes (roadmap step 25) an
+    // independent, correctly-anchored move/rotate/scale is currently
+    // applying" - covers two distinct sources: a group-level batch (a
+    // plain group drag via GroupItem::itemChange()'s own children-
+    // moveBy loop, or a group scale/rotate via selector.h's
+    // mouseMoveEvent loop / Scale-RotateItemsByCommand's redo()/undo(),
+    // both driven off GroupItem::selection_action_items()'s flat
+    // expanded list - each member, including an attached note that's
+    // ALSO a group member, gets its own list entry), and a LONE
+    // picture's own set_rotation()/set_scale() (PixmapItem's own
+    // overrides, moveitem.h - loop explicitly over that picture's
+    // attached notes with the same delta/factor, group membership not
+    // required). In both cases, PixmapItem::itemChange()'s simple
     // position-delta cascade to that SAME note would double-apply (or,
     // for scale/rotate, apply the wrong kind of change entirely) on top
-    // of that. Depth (not a bool) because nested groups cascade into
+    // of the already-correct transform - confirmed by Max both for
+    // group drag/resize ("поедут куда-то") and for a lone picture's own
+    // rotate ("баг при повороте картинки и приаттаченных текстовых
+    // полей"). Depth (not a bool) because nested groups cascade into
     // their own itemChange() recursively - each level's begin/end pair
     // nests correctly. NOT set for an individual picture dragged alone
-    // within its group (no group-level batch runs at all then) -
-    // that's exactly when the note DOES still need the plain cascade
-    // (Max: "в группе при перемещении картинки - текстовые поля не
-    // двигаются").
+    // within its group (no batch of any kind runs for a plain drag,
+    // only itemChange()'s own moveBy chain) - that's exactly when the
+    // note DOES still need the plain position cascade (Max: "в группе
+    // при перемещении картинки - текстовые поля не двигаются").
     void begin_group_batch() { ++groupBatchDepth_; }
     void end_group_batch() { --groupBatchDepth_; }
     bool in_group_batch() const { return groupBatchDepth_ > 0; }

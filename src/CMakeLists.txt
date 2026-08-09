@@ -80,6 +80,8 @@ set(PROJECT_SOURCES
         ui/gif_playback_toolbar.h
         ui/group_toolbar.cpp
         ui/group_toolbar.h
+        ui/hierarchy_panel.cpp
+        ui/hierarchy_panel.h
         actions/actions.cpp
         actions/actions.h
         actions/menu_structure.cpp

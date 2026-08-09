@@ -675,6 +675,70 @@ public:
         }
     }
 
+    // Rotating/scaling THIS picture around its own anchor pulls the
+    // anchor-compensating setPos() BaseItemMixin's default implementation
+    // does through the itemChange() cascade above - which, on its own,
+    // only applies the raw resulting delta as if it were a plain drag,
+    // landing an attached note (roadmap step 25) in the wrong spot
+    // instead of swinging around with the picture (Max: "баг при
+    // повороте картинки и приаттаченных текстовых полей"). PixmapItem
+    // never overrode these before; overriding them here gives each
+    // attached note its own independently-anchored set_rotation()/
+    // set_scale() call too, by the SAME delta/factor this picture just
+    // got - matching exactly how a real group member transforms
+    // (GroupItem::selection_action_items()'s own loop, selector.h).
+    // begin/end_group_batch() (same reentrancy guard GroupItem's own
+    // set_scale()/set_rotation() overrides use, moveitem.h) suppresses
+    // the itemChange() cascade above for the duration, so the note isn't
+    // ALSO nudged by the raw anchor-compensation delta on top of this.
+    void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    {
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        const qreal delta = value - this->rotation();
+        const QPointF sceneAnchor = this->mapToScene(anchor);
+        if (scene)
+            scene->begin_group_batch();
+        BaseItemMixin<QGraphicsPixmapItem>::set_rotation(value, anchor);
+        if (scene) {
+            for (QGraphicsItem* note : scene->find_attached_notes(this->uid())) {
+                // Same "already independently handled" skip the position
+                // cascade above uses.
+                if (note->isSelected()
+                    && (note->flags() & QGraphicsItem::ItemIsMovable))
+                    continue;
+                if (auto* noteBase = dynamic_cast<IBaseItem*>(note)) {
+                    noteBase->set_rotation(note->rotation() + delta,
+                                          note->mapFromScene(sceneAnchor));
+                }
+            }
+            scene->end_group_batch();
+        }
+    }
+
+    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    {
+        if (value <= 0)
+            return; // same validation BaseItemMixin::set_scale() itself does
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        const qreal factor = value / this->scale();
+        const QPointF sceneAnchor = this->mapToScene(anchor);
+        if (scene)
+            scene->begin_group_batch();
+        BaseItemMixin<QGraphicsPixmapItem>::set_scale(value, anchor);
+        if (scene) {
+            for (QGraphicsItem* note : scene->find_attached_notes(this->uid())) {
+                if (note->isSelected()
+                    && (note->flags() & QGraphicsItem::ItemIsMovable))
+                    continue;
+                if (auto* noteBase = dynamic_cast<IBaseItem*>(note)) {
+                    noteBase->set_scale(note->scale() * factor,
+                                       note->mapFromScene(sceneAnchor));
+                }
+            }
+            scene->end_group_batch();
+        }
+    }
+
 protected:
     // Carries any TextItem notes attached to THIS picture (roadmap step
     // 25) along by the same position delta - a one-directional cascade
@@ -693,46 +757,41 @@ protected:
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
                 if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                    // A note that's ALSO a member of the same group this
-                    // picture belongs to (both fold in together now -
-                    // see AddToGroupCommand/group_selection(), roadmap
-                    // step 25's group-membership follow-up) gets its OWN
-                    // independent, correctly-anchored move/scale/rotate
-                    // whenever that GROUP is what's actually being
-                    // transformed right now (in_group_batch(), set by
-                    // GroupItem::itemChange()'s own cascade for a plain
-                    // group drag, or by the scale/rotate handle-drag/
-                    // undo-redo loops driven off selection_action_items()
-                    // - see CanvasScene::begin_group_batch()'s own
-                    // comment). Cascading here TOO in that case would
-                    // double-apply on top of that (Max: "поедут куда-то"
-                    // on group drag/resize/rotate). But if the GROUP
-                    // ISN'T what's moving - just this picture, dragged on
-                    // its own while merely happening to live in a group
-                    // (members of an unlocked group stay individually
-                    // draggable) - in_group_batch() is false and the
-                    // cascade below is exactly what's needed (Max: "в
-                    // группе при перемещении картинки - текстовые поля
-                    // не двигаются" was this same check firing on
-                    // group-membership ALONE, without also requiring an
-                    // actual group batch to be in progress).
-                    GroupItem* myGroup = scene->find_owning_group(this->uid());
-                    const bool coveredByGroupBatch
-                        = myGroup && scene->in_group_batch();
-                    for (QGraphicsItem* note :
-                         scene->find_attached_notes(this->uid())) {
-                        if (note->isSelected()
-                            && (note->flags() & QGraphicsItem::ItemIsMovable))
-                            continue;
-                        if (coveredByGroupBatch) {
-                            if (auto* noteBase
-                                = dynamic_cast<IBaseItem*>(note)) {
-                                if (scene->find_owning_group(noteBase->uid())
-                                    == myGroup)
-                                    continue;
-                            }
+                    // Skipped entirely while ANY batch transform is in
+                    // progress (in_group_batch()) - a plain group drag
+                    // (GroupItem::itemChange()'s own cascade) or this
+                    // picture's OWN set_rotation()/set_scale() (below)
+                    // ALREADY give every attached note its own correct,
+                    // independently-anchored move/rotate/scale in that
+                    // case; cascading a raw position delta here TOO
+                    // would double-apply on top of that (Max: "поедут
+                    // куда-то" on group drag/resize, and separately "баг
+                    // при повороте картинки и приаттаченных текстовых
+                    // полей" for a LONE picture's own rotate/scale - the
+                    // note got the anchor-compensation delta from
+                    // set_rotation()'s own setPos() as if it were a
+                    // plain drag, landing it in the wrong place instead
+                    // of swinging around with the picture). Not gated on
+                    // sharing a group with this picture anymore (like it
+                    // used to be) - only ONE batch can possibly be
+                    // active at a time (single mouse, single active
+                    // drag/handle), so in_group_batch() alone already
+                    // means "whatever triggered this IS the batch that
+                    // owns my notes too". If NO batch is active - just
+                    // this picture, dragged/rotated/scaled on its own,
+                    // in or out of a group - the cascade below is
+                    // exactly what's needed (Max: "в группе при
+                    // перемещении картинки - текстовые поля не
+                    // двигаются" was this same check firing too
+                    // broadly, off group-membership alone).
+                    if (!scene->in_group_batch()) {
+                        for (QGraphicsItem* note :
+                             scene->find_attached_notes(this->uid())) {
+                            if (note->isSelected()
+                                && (note->flags() & QGraphicsItem::ItemIsMovable))
+                                continue;
+                            note->moveBy(delta.x(), delta.y());
                         }
-                        note->moveBy(delta.x(), delta.y());
                     }
                 }
             }
