@@ -1491,6 +1491,30 @@ void CanvasView::on_action_insert_text()
         undoStack_->push(
             new InsertItemsCommand(scene_, QList<IBaseItem*>{item}, pos));
     }
+    // Drop straight into edit mode (Max: "когда создаётся текст - надо
+    // сразу делать чтобы он был в состоянии редактирования") - same
+    // enter_edit_mode() a double-click on an existing note triggers
+    // (CanvasScene::mousePressEvent()). item is already on the scene by
+    // now (both branches above pushed InsertItemsCommand, whose redo()
+    // ran synchronously).
+    //
+    // Re-select it explicitly first: the targetGroup branch's
+    // AddToGroupCommand::redo() ends by deselecting everything and
+    // selecting the GROUP instead (matches the "Group" button's own
+    // convention) - has_selection_outline()/has_selection_handles()
+    // (moveitem.h) both key off isSelected(), so without this the new
+    // note would enter edit mode with no selection rectangle or square
+    // handles at all (Max: "квадратные хэндлы... при создании текста -
+    // нет"). Select-all over the "Text" placeholder so the first
+    // keystroke replaces it outright, instead of inserting into the
+    // middle of it.
+    scene_->deselect_all_items();
+    item->setSelected(true);
+    item->enter_edit_mode();
+    item->setFocus();
+    QTextCursor cursor = item->textCursor();
+    cursor.select(QTextCursor::Document);
+    item->setTextCursor(cursor);
 }
 
 // ─── Transform actions ────────────────────────────────────────────────────────
