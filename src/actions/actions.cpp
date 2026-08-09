@@ -339,6 +339,16 @@ static ActionRegistry buildRegistry()
                   false,
                   {},
                   "View/auto_hide_ui"));
+    // Scene outliner dock (ui/hierarchy_panel.h) - persisted like
+    // show_menubar/auto_hide_ui above, not just a one-shot toggle.
+    r.add(A::make("hierarchy",
+                  "Hierarchy",
+                  "on_action_hierarchy",
+                  {"Ctrl+J"},
+                  true,
+                  false,
+                  {},
+                  "View/hierarchy_panel"));
 
     // ── Insert ────────────────────────────────────────────────────────────────
     r.add(A::make("insert_images",

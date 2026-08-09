@@ -24,6 +24,7 @@
 #include <core/settings.h>
 #include <core/settingshandler.h>
 #include <map>
+#include <ui/hierarchy_panel.h>
 #include <ui/new_settings_window.h>
 #include <ui/settings_window.h>
 #include <QUndoStack>
@@ -57,6 +58,15 @@ MainWindow::MainWindow(QWidget* parent)
     // moot since setupUi() is gone, but the ordering still matters for
     // build_menu_and_actions() below).
     tabpane_ = new TabPane(this, *this);
+
+    hierarchyPanel_ = new HierarchyPanel(this);
+    addDockWidget(Qt::LeftDockWidgetArea, hierarchyPanel_);
+    // Actual initial visibility comes from the persisted "hierarchy"
+    // action state via fireInitialCheckableCallbacks_() below (same
+    // mechanism show_menubar/auto_hide_ui/always_on_top already use) -
+    // this hide() is just so it isn't briefly visible before that fires.
+    hierarchyPanel_->hide();
+
     build_menu_and_actions();
     connect(tabpane_,
             &TabPane::currentTabChanged,
@@ -510,6 +520,11 @@ void MainWindow::on_action_show_menubar(bool /*checked*/)
 void MainWindow::on_action_auto_hide_ui(bool /*checked*/)
 {
     applyMenubarState_();
+}
+
+void MainWindow::on_action_hierarchy(bool checked)
+{
+    hierarchyPanel_->setVisible(checked);
 }
 
 void MainWindow::ensureMenubar_()
@@ -1111,6 +1126,7 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
         // Transient zero-tab moment (TabPane::onTabClosed replacing the
         // last closed tab); the very next currentTabChanged call, still
         // in the same call stack, corrects this.
+        hierarchyPanel_->setScene(nullptr, nullptr);
         return;
     }
 
@@ -1133,6 +1149,29 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
             &QUndoStack::canRedoChanged,
             this,
             &MainWindow::on_active_can_redo_changed);
+    // Hierarchy panel rebuild trigger. NOT CanvasScene::changed() (used
+    // to be - see hierarchy_panel.h's own history comment): that signal
+    // also fires continuously for as long as any GifItem is animating,
+    // which starved a debounce forever and, even throttled, meant a
+    // pointless rebuild every ~150ms just from a gif playing (Max:
+    // "может не ребилдить на обновлении гифки"). indexChanged only
+    // fires for real command-driven mutations - animation doesn't push
+    // undo commands. The one gap this leaves (background file loads,
+    // which bypass the undo stack via add_queued_items()) is covered by
+    // an explicit notifyStructuralChange() call from that call site
+    // instead.
+    // Receiver is `this`, not hierarchyPanel_ directly: the disconnect()
+    // calls at the top of this function only tear down connections whose
+    // receiver is `this` (that's what makes switching tabs clean), so
+    // routing through a MainWindow slot keeps that guarantee instead of
+    // silently leaking a stale connection from the previous tab's
+    // QUndoStack straight into the (still shared) hierarchy panel.
+    connect(hookedUndoStack_,
+            &QUndoStack::indexChanged,
+            this,
+            &MainWindow::notifyStructuralChange);
+
+    hierarchyPanel_->setScene(cv->scene(), cv);
 
     // Push current values immediately: the four signals above are
     // edge-triggered and don't replay the current state on connect.
@@ -1161,6 +1200,11 @@ void MainWindow::on_active_scene_changed()
                             !hookedScene_->items().isEmpty());
 }
 
+void MainWindow::notifyStructuralChange()
+{
+    hierarchyPanel_->scheduleRefresh();
+}
+
 void MainWindow::on_active_selection_changed()
 {
     actiongroup_set_enabled("active_when_selection",
@@ -1171,6 +1215,7 @@ void MainWindow::on_active_selection_changed()
                             hookedScene_->has_multi_selection());
     actiongroup_set_enabled("active_when_group_selected",
                             hookedScene_->has_group_selected());
+    hierarchyPanel_->syncSelectionFromScene();
 }
 
 void MainWindow::on_active_can_undo_changed(bool canUndo)

@@ -55,6 +55,12 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
         [this, canvasView, scene, markModifiedAfterLoad, recoveryIdToClear](
             const QString& error, const QStringList& itemErrors) {
             scene->add_queued_items();
+            // add_queued_items() populates the scene directly, bypassing
+            // the undo stack entirely - the Hierarchy panel's rebuild
+            // trigger is QUndoStack::indexChanged (see
+            // resyncActionsForTab()), which won't fire for this, so it
+            // needs an explicit nudge here.
+            mainwindow_.notifyStructuralChange();
             // Before fit_scene(): seeds canvasRect_ from what
             // FmlArchive::load() stashed on the scene, so fit_scene()
             // has something to fall back to even if this project was

@@ -50,6 +50,8 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::action("always_on_top"),
                               MenuNode::action("show_menubar"),
                               MenuNode::action("auto_hide_ui"),
+                              MenuNode::sep(),
+                              MenuNode::action("hierarchy"),
                           }),
         MenuNode::submenu("Insert",
                           {
