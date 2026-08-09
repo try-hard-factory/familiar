@@ -128,6 +128,8 @@ set(PROJECT_SOURCES
         widgets/flat_checkbox.h
         widgets/color_picker_dialog.cpp
         widgets/color_picker_dialog.h
+        widgets/file_browser_dialog.cpp
+        widgets/file_browser_dialog.h
         widgets/save_all_dialog.cpp
         widgets/save_all_dialog.h
         widgets/settings_dialog.cpp

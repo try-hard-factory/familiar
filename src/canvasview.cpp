@@ -11,6 +11,7 @@
 #include "ui/text_edit_toolbar.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
+#include "widgets/file_browser_dialog.h"
 #include <cmath>
 #include <QApplication>
 #include <QClipboard>
@@ -18,7 +19,6 @@
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
-#include <QFileDialog>
 #include <QImage>
 #include <QImageReader>
 #include <QKeyEvent>
@@ -996,37 +996,20 @@ void CanvasView::on_action_export_scene()
         return;
     }
 
-    QFileDialog* fileDialog = new QFileDialog(this);
-    // See FileActions::openFile(): MainWindow's translucent/frameless
-    // stylesheet cascades into this otherwise-unstyled top-level dialog,
-    // painting it solid black instead.
-    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
-                              "palette(window-text); }");
-    fileDialog->setWindowTitle(tr("Export Scene to Image"));
-    fileDialog->setNameFilter(tr("Image Files (*.png *.jpg *.jpeg *.svg)"
-                                 ";;PNG (*.png)"
-                                 ";;JPEG (*.jpg *.jpeg)"
-                                 ";;SVG (*.svg)"));
-    fileDialog->setDirectory(
-        path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
-    // Native file dialogs have hung on this Qt build in the past - see
-    // FileActions' dialogs for the same workaround.
-    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
-    fileDialog->setAcceptMode(QFileDialog::AcceptSave);
-    fileDialog->setFileMode(QFileDialog::AnyFile);
-
-    if (fileDialog->exec() != QDialog::Accepted
-        || fileDialog->selectedFiles().isEmpty()) {
-        delete fileDialog;
+    // showSaveFileDialog() already appends the right extension for
+    // whichever filter is selected (its primaryExt) if the typed name
+    // doesn't have one, so the old manual ".png" fallback isn't needed
+    // separately.
+    const QString filename = showSaveFileDialog(
+        this,
+        tr("Export Scene to Image"),
+        path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath(),
+        tr("Image Files (*.png *.jpg *.jpeg *.svg)"
+           ";;PNG (*.png)"
+           ";;JPEG (*.jpg *.jpeg)"
+           ";;SVG (*.svg)"));
+    if (filename.isEmpty())
         return;
-    }
-    QString filename = fileDialog->selectedFiles().first();
-    delete fileDialog;
-
-    if (QFileInfo(filename).suffix().isEmpty()) {
-        filename += QStringLiteral(".png");
-    }
 
     sceneExporter_ = createSceneExporter(QFileInfo(filename).suffix(), scene_);
     if (!sceneExporter_->getUserInput(this)) {
@@ -1072,29 +1055,12 @@ void CanvasView::on_action_export_images()
         return;
     }
 
-    QFileDialog* fileDialog = new QFileDialog(this);
-    // See FileActions::openFile(): MainWindow's translucent/frameless
-    // stylesheet cascades into this otherwise-unstyled top-level dialog,
-    // painting it solid black instead.
-    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
-                              "palette(window-text); }");
-    fileDialog->setWindowTitle(tr("Export Images"));
-    fileDialog->setDirectory(
+    const QString directory = showSelectFolderDialog(
+        this,
+        tr("Export Images"),
         path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
-    // Native file dialogs have hung on this Qt build in the past - see
-    // FileActions' dialogs for the same workaround.
-    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
-    fileDialog->setFileMode(QFileDialog::Directory);
-    fileDialog->setOption(QFileDialog::ShowDirsOnly, true);
-
-    if (fileDialog->exec() != QDialog::Accepted
-        || fileDialog->selectedFiles().isEmpty()) {
-        delete fileDialog;
+    if (directory.isEmpty())
         return;
-    }
-    QString directory = fileDialog->selectedFiles().first();
-    delete fileDialog;
 
     imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(scene_,
                                                                   directory);
@@ -1428,28 +1394,11 @@ void CanvasView::on_action_insert_images()
     const QString formats = getSupportedImageFormats();
     FLOG_DEBUG(Ch::View, "Supported image types for reading: {}", formats);
 
-    QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
-    // See FileActions::openFile()/saveFileAs() for why this is needed:
-    // MainWindow is a translucent/frameless overlay (transparent
-    // stylesheet + WA_TranslucentBackground); as a separate top-level
-    // window without its own alpha channel, this dialog would otherwise
-    // inherit "background: transparent" and paint solid black, with an
-    // empty competing stylesheet not being enough to cancel it out.
-    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
-                              "palette(window-text); }");
-    fileDialog->setWindowTitle(tr("Select one or more images to open"));
-    fileDialog->setNameFilter(tr("Images (%1)").arg(formats));
-    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
-    fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
-    fileDialog->setFileMode(QFileDialog::ExistingFiles);
-    fileDialog->resize(800, 500);
-
-    QStringList filenames;
-    if (fileDialog->exec()) {
-        filenames = fileDialog->selectedFiles();
-    }
-    delete fileDialog;
+    const QStringList filenames = showOpenFilesDialog(
+        &mainwindow_,
+        tr("Select one or more images to open"),
+        QString(),
+        tr("Images (%1)").arg(formats));
     if (filenames.isEmpty())
         return;
     QList<QUrl> urls;

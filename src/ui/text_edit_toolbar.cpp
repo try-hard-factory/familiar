@@ -1,5 +1,6 @@
 #include "text_edit_toolbar.h"
 #include "widgets/color_picker_dialog.h"
+#include "widgets/file_browser_dialog.h"
 
 #include <core/settingshandler.h>
 #include <moveitem.h>
@@ -8,7 +9,6 @@
 using namespace familiar::log;
 
 #include <QComboBox>
-#include <QFileDialog>
 #include <QFontComboBox>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
@@ -579,22 +579,9 @@ void TextEditToolbar::showLinkPopup()
     lay->addWidget(applyBtn);
 
     connect(browseBtn, &QToolButton::clicked, popup, [popup, edit] {
-        // Stack-allocated, exec()'d inline - same DontUseNativeDialog +
-        // translucency fix as every other file dialog in this project
-        // (see file_actions.cpp/canvasview.cpp), the native one hangs on
-        // this Qt build.
-        QFileDialog dialog(popup);
-        dialog.setWindowTitle(tr("Select a file to link to"));
-        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-        dialog.setAcceptMode(QFileDialog::AcceptOpen);
-        dialog.setFileMode(QFileDialog::ExistingFile);
-        dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-        dialog.setStyleSheet("* { background-color: palette(window); color: "
-                             "palette(window-text); }");
-        if (dialog.exec() == QDialog::Accepted
-            && !dialog.selectedFiles().isEmpty())
-            edit->setText(
-                QUrl::fromLocalFile(dialog.selectedFiles().first()).toString());
+        const QString file = showOpenFileDialog(popup, tr("Select a file to link to"));
+        if (!file.isEmpty())
+            edit->setText(QUrl::fromLocalFile(file).toString());
     });
 
     connect(applyBtn, &QToolButton::clicked, this, [this, edit, popup] {

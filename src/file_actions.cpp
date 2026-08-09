@@ -6,43 +6,15 @@
 #include "recovery.h"
 #include "tabpane.h"
 #include "widgets/dialogs.h"
+#include "widgets/file_browser_dialog.h"
 #include <canvasview.h>
 #include <core/settingshandler.h>
-#include <QFileDialog>
-#include <QFileIconProvider>
 #include <QMessageBox>
 #include <QString>
 
-namespace {
-
-// Shows the familiar mark for .fml files in the (non-native) open/save
-// dialogs below, since the platform has no icon association for the
-// extension registered (that's OS packaging, kept out of scope here -
-// see docs/fml_format_design.en.md).
-class FmlIconProvider : public QFileIconProvider
-{
-public:
-    QIcon icon(const QFileInfo& info) const override
-    {
-        if (info.suffix().compare(QStringLiteral("fml"), Qt::CaseInsensitive)
-            == 0) {
-            static const QIcon fmlIcon(
-                QStringLiteral(":/img/app/familiar_256.png"));
-            return fmlIcon;
-        }
-        return QFileIconProvider::icon(info);
-    }
-};
-
-} // namespace
-
 FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
-{
-    fileExt_["Familiar (*.fml)"] = ".fml";
-    fileExt_["SVG (*.svg)"] = ".svg";
-    fileExt_["Adobe (*.psd)"] = ".psd";
-}
+{}
 
 FileActions::~FileActions() {}
 
@@ -53,38 +25,17 @@ void FileActions::newFile()
 
 void FileActions::openFile()
 {
-    QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
-    // MainWindow is a translucent/frameless overlay (transparent
-    // stylesheet + WA_TranslucentBackground); as a separate top-level
-    // window without its own alpha channel, this dialog would otherwise
-    // inherit "background: transparent" and paint solid black instead.
-    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    // Clearing our own stylesheet isn't enough - Qt's QSS cascades from
-    // MainWindow's "background: transparent" rule regardless, since an
-    // empty child stylesheet doesn't cancel an inherited one. Define an
-    // explicit competing rule here instead.
-    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
-                              "palette(window-text); }");
-    fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
-    fileDialog->setDirectory(QDir::homePath());
-    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
-    fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptOpen);
-    fileDialog->setFileMode(QFileDialog::ExistingFiles);
-    // Static: setIconProvider() doesn't take ownership, must outlive fileDialog.
-    static FmlIconProvider iconProvider;
-    fileDialog->setIconProvider(&iconProvider);
-
-    if (fileDialog->exec()) {
-        if (fileDialog->selectedFiles().size() == 0) {
-            return;
-        }
-
-        for (const QString& file : fileDialog->selectedFiles()) {
-            processOpenFile(file);
-        }
-    }
-
-    delete fileDialog;
+    // SVG/Adobe filter entries used to be listed here too (pre-existing,
+    // not something this refactor added) but loadFmlIntoCurrentTab()
+    // only ever knows how to parse the .fml zip+manifest archive - a
+    // raw .svg/.psd file just fails to open as one, so those filters
+    // were pure misdirection (Max: "зачем там svg и psd?").
+    const QStringList files = showOpenFilesDialog(&mainwindow_,
+                                                  QObject::tr("Open"),
+                                                  QDir::homePath(),
+                                                  QStringLiteral("Familiar (*.fml)"));
+    for (const QString& file : files)
+        processOpenFile(file);
 }
 
 void FileActions::loadFmlIntoCurrentTab(const QString& path,
@@ -279,31 +230,18 @@ int FileActions::saveFile()
 int FileActions::saveFileAs()
 {
     int retval = QDialog::Rejected;
-    QFileDialog* fileDialog = new QFileDialog(&mainwindow_);
-    fileDialog->setAttribute(Qt::WA_TranslucentBackground, false);
-    // Clearing our own stylesheet isn't enough - Qt's QSS cascades from
-    // MainWindow's "background: transparent" rule regardless, since an
-    // empty child stylesheet doesn't cancel an inherited one. Define an
-    // explicit competing rule here instead.
-    fileDialog->setStyleSheet("* { background-color: palette(window); color: "
-                              "palette(window-text); }");
-    fileDialog->setNameFilter("Familiar (*.fml);; SVG (*.svg);; Adobe (*.psd)");
-    fileDialog->setDirectory(QDir::homePath());
-    fileDialog->setOption(QFileDialog::DontUseNativeDialog, true);
-    fileDialog->setAcceptMode(QFileDialog::AcceptMode::AcceptSave);
-    fileDialog->setFileMode(QFileDialog::AnyFile);
-    // Static: setIconProvider() doesn't take ownership, must outlive fileDialog.
-    static FmlIconProvider iconProvider;
-    fileDialog->setIconProvider(&iconProvider);
-    auto retdialog = fileDialog->exec();
+    // showSaveFileDialog() already appends the right extension for
+    // whichever filter is selected (same job fileExt_ used to do here
+    // manually) and confirms overwrite internally. SVG/Adobe filter
+    // entries removed - saveFile()/FmlArchive only ever write the .fml
+    // zip+manifest format, there's no actual SVG/PSD export path here
+    // (Max: "зачем там svg и psd?").
+    const QString selected = showSaveFileDialog(&mainwindow_,
+                                                QObject::tr("Save As"),
+                                                QDir::homePath(),
+                                                QStringLiteral("Familiar (*.fml)"));
 
-    if (retdialog == QDialog::Accepted) {
-        QString selected = fileDialog->selectedFiles().at(0);
-        if (!selected.contains(fileExt_.at(fileDialog->selectedNameFilter()),
-                               Qt::CaseInsensitive)) {
-            selected.append(fileExt_.at(fileDialog->selectedNameFilter()));
-        }
-
+    if (!selected.isEmpty()) {
         if (!mainwindow_.tabPane().currentWidget()->isUntitled()
             && mainwindow_.tabPane().getCurrentTabProjectName()
                    != QFileInfo(selected).fileName()) {
@@ -325,6 +263,5 @@ int FileActions::saveFileAs()
         retval = QDialog::Accepted;
     }
 
-    delete fileDialog;
     return retval;
 }
