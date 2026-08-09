@@ -1,4 +1,5 @@
 #include "text_edit_toolbar.h"
+#include "widgets/color_picker_dialog.h"
 
 #include <core/settingshandler.h>
 #include <moveitem.h>
@@ -6,7 +7,6 @@
 #include "log/log.h"
 using namespace familiar::log;
 
-#include <QColorDialog>
 #include <QComboBox>
 #include <QFileDialog>
 #include <QFontComboBox>
@@ -198,55 +198,6 @@ QIcon makeAutosizeIcon(const QColor& glyphColor, qreal dpr)
     return icon;
 }
 
-// Not QColorDialog::getColor(): that static convenience builds/execs/
-// destroys the dialog internally, with no chance to apply the fix below
-// before it's shown - same reasoning as showMessageBox() in
-// widgets/dialogs.h. DontUseNativeDialog because the native one hangs on
-// this Qt build (see widgets/dialogs.h); WA_TranslucentBackground(false)
-// + an explicit stylesheet because MainWindow's translucent/frameless
-// stylesheet ("background: transparent", no selector) cascades into any
-// child top-level widget without its own stylesheet, painting it solid
-// black otherwise.
-QColor pickColor(QWidget* parent,
-                 const QColor& initial,
-                 const QString& title,
-                 bool withAlpha)
-{
-    // ShowAlphaChannel must be set BEFORE the color (not passed to the
-    // constructor together with `initial`, and not set afterwards
-    // either): QColorDialog(initial, parent) applies `initial` during
-    // construction, before this option would take effect, and enabling
-    // the option afterwards resets the stored alpha to 0 - a known Qt
-    // quirk. Constructing without a color, enabling the option, then
-    // calling setCurrentColor() is the order that actually keeps alpha.
-    QColorDialog dialog(parent);
-    dialog.setWindowTitle(title);
-    dialog.setOption(QColorDialog::DontUseNativeDialog);
-    if (withAlpha)
-        dialog.setOption(QColorDialog::ShowAlphaChannel);
-    dialog.setCurrentColor(initial);
-    dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-    dialog.setStyleSheet("* { background-color: palette(window); color: "
-                         "palette(window-text); }");
-    // TEMPORARY debug logging (roadmap step 9 fill-color investigation) -
-    // remove once the BG/H no-op bug is confirmed fixed.
-    const int result = dialog.exec();
-    FLOG_DEBUG(Ch::UI,
-               "pickColor(\"{}\"): dialog.exec() = {}",
-               title.toStdString(),
-               result == QDialog::Accepted ? "Accepted" : "Rejected/other");
-    if (result != QDialog::Accepted)
-        return QColor();
-    const QColor picked = dialog.currentColor();
-    FLOG_DEBUG(Ch::UI,
-               "pickColor(\"{}\"): currentColor() = {},{},{},{}",
-               title.toStdString(),
-               picked.red(),
-               picked.green(),
-               picked.blue(),
-               picked.alpha());
-    return picked;
-}
 
 } // namespace
 
@@ -357,24 +308,32 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     connect(textColorBtn_, &QToolButton::clicked, this, [this] {
         if (!item_)
             return;
-        const QColor initial
+        const QColor original
             = item_->textCursor().charFormat().foreground().color();
-        const QColor color = pickColor(this,
-                                       initial,
-                                       tr("Text color"),
-                                       /*withAlpha=*/false);
-        if (!color.isValid())
-            return;
-        QTextCharFormat format;
-        format.setForeground(color);
-        applyCharFormat(format);
-        updateColorButtonIcons();
+        auto applyForeground = [this](const QColor& c) {
+            QTextCharFormat format;
+            format.setForeground(c);
+            applyCharFormat(format);
+            updateColorButtonIcons();
+        };
+        // Live preview while dragging (Max: "цвет в реалтайме
+        // изменяется при изменении ползунков") - text/highlight/fill
+        // color already apply directly with no per-click undo push of
+        // their own (undo is bundled at edit-session-exit, see
+        // ChangeTextCommand), so repeatedly re-applying here is safe;
+        // reverted to `original` below if the dialog is cancelled.
+        ColorPickerDialog dialog(this, original, tr("Text color"), /*withAlpha=*/false);
+        connect(&dialog, &ColorPickerDialog::colorChanged, this, applyForeground);
+        if (dialog.exec() != QDialog::Accepted)
+            applyForeground(original);
     });
 
     connect(highlightColorBtn_, &QToolButton::clicked, this, [this] {
         if (!item_)
             return;
-        QColor initial = item_->textCursor().charFormat().background().color();
+        const QColor original
+            = item_->textCursor().charFormat().background().color();
+        QColor initial = original;
         if (!initial.isValid())
             initial = Qt::yellow; // typical highlighter default
         // Default the alpha slider to fully opaque - a transparent
@@ -382,16 +341,16 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         // newly picked hue invisible until the user separately remembers
         // to also raise the alpha slider.
         initial.setAlpha(255);
-        const QColor color = pickColor(this,
-                                       initial,
-                                       tr("Text highlight color"),
-                                       /*withAlpha=*/true);
-        if (!color.isValid())
-            return;
-        QTextCharFormat format;
-        format.setBackground(color);
-        applyCharFormat(format);
-        updateColorButtonIcons();
+        auto applyBackground = [this](const QColor& c) {
+            QTextCharFormat format;
+            format.setBackground(c);
+            applyCharFormat(format);
+            updateColorButtonIcons();
+        };
+        ColorPickerDialog dialog(this, initial, tr("Text highlight color"), /*withAlpha=*/true);
+        connect(&dialog, &ColorPickerDialog::colorChanged, this, applyBackground);
+        if (dialog.exec() != QDialog::Accepted)
+            applyBackground(original);
     });
 
     connect(fillColorBtn_, &QToolButton::clicked, this, [this] {
@@ -399,21 +358,21 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
             FLOG_DEBUG(Ch::UI, "fillColorBtn_ clicked but item_ is null");
             return;
         }
+        const QColor original = item_->fill_color();
         // Same reasoning as highlightColorBtn_ above: default the alpha
         // slider to fully opaque rather than whatever low/zero alpha the
         // note's current fill happens to have.
-        QColor initial = item_->fill_color();
+        QColor initial = original;
         initial.setAlpha(255);
-        const QColor color = pickColor(this,
-                                       initial,
-                                       tr("Note fill color"),
-                                       /*withAlpha=*/true);
-        FLOG_DEBUG(
-            Ch::UI,
-            "fillColorBtn_: picked color valid={} -> calling set_fill_color",
-            color.isValid());
-        if (color.isValid()) {
-            item_->set_fill_color(color);
+        ColorPickerDialog dialog(this, initial, tr("Note fill color"), /*withAlpha=*/true);
+        connect(&dialog, &ColorPickerDialog::colorChanged, this, [this](const QColor& c) {
+            if (item_) {
+                item_->set_fill_color(c);
+                updateColorButtonIcons();
+            }
+        });
+        if (dialog.exec() != QDialog::Accepted && item_) {
+            item_->set_fill_color(original);
             updateColorButtonIcons();
         }
     });
