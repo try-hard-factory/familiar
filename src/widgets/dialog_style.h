@@ -41,6 +41,17 @@ void styleSecondaryButton(QPushButton* button,
                           const QColor& text,
                           const QColor& border);
 
+// QSS for the small round "×" close glyph every custom dialog puts in
+// its own top-right corner (there's no native title bar/X to provide
+// one) - `objectName` must match setObjectName() on that QPushButton.
+// Hover fill is the preset's accent color (same one the rubberband/
+// selection outline uses) at the same alpha this app's other hover
+// states already use (MainWindow::updateWindowControlsStyle_()) - was
+// a flat white tint before, Max wanted it to match the accent instead.
+QString closeButtonStyleSheet(const char* objectName,
+                              const QColor& text,
+                              const QColor& accent);
+
 // Same drawn-icon approach as every other icon in this app
 // (group_toolbar.cpp, gif_playback_toolbar.cpp) - no external asset,
 // always matches the current DPI exactly. Warning is a triangle

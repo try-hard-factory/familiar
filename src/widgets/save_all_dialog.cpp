@@ -151,15 +151,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     setStyleSheet(
         familiar::dialog_style::panelStyleSheet(
             "SaveAllDialog", background, border, textColor)
-        + QStringLiteral("#sadCloseBtn {"
-                        "  background: transparent;"
-                        "  color: %1;"
-                        "  border: none;"
-                        "  border-radius: 11px;"
-                        "  font-size: 14px;"
-                        "}"
-                        "#sadCloseBtn:hover { background-color: rgba(255,255,255,24); }")
-              .arg(textColor.name()));
+        + familiar::dialog_style::closeButtonStyleSheet(
+            "sadCloseBtn", textColor, accent));
 
     centered_widget(window_, this);
     show();

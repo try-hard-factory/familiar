@@ -83,6 +83,28 @@ void styleSecondaryButton(QPushButton* button,
             .arg(text.name(), border.name()));
 }
 
+QString closeButtonStyleSheet(const char* objectName,
+                              const QColor& text,
+                              const QColor& accent)
+{
+    QColor hover = accent;
+    hover.setAlpha(90);
+    return QStringLiteral("#%1 {"
+                         "  background: transparent;"
+                         "  color: %2;"
+                         "  border: none;"
+                         "  border-radius: 11px;"
+                         "  font-size: 14px;"
+                         "}"
+                         "#%1:hover { background-color: rgba(%3, %4, %5, %6); }")
+        .arg(QString::fromUtf8(objectName),
+             text.name(),
+             QString::number(hover.red()),
+             QString::number(hover.green()),
+             QString::number(hover.blue()),
+             QString::number(hover.alpha()));
+}
+
 QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
 {
     QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
