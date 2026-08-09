@@ -25,7 +25,7 @@
 #include <QWindow>
 class project_settings;
 class QFileDialog;
-class SaveAllWindow;
+class SaveAllDialog;
 class QShortcut;
 class QMenuBar;
 class QGraphicsOpacityEffect;
@@ -51,7 +51,7 @@ public:
     ~MainWindow();
 
     void quitProject();
-    void saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m);
+    void saveAllWindowSaveCB(SaveAllDialog* w, std::map<int, bool>&& m);
     void cleanupWorkplace();
     void exitProject();
     TabPane& tabPane();

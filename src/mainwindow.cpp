@@ -17,7 +17,7 @@
 #include "canvasscene.h"
 #include "project_settings.h"
 #include "recovery.h"
-#include "saveallwindow.h"
+#include "widgets/save_all_dialog.h"
 #include "tabpane.h"
 #include "widgets/dialogs.h"
 #include <actions/action_mouse_dispatch.h>
@@ -372,20 +372,15 @@ bool MainWindow::checkSave()
     }
 
     if (found) {
-        QString details = "";
-        for (auto& [_, p] : items) {
-            details += p + "\n";
-        }
-        SaveAllWindow* widget = new SaveAllWindow(this, items);
-        widget->setAttribute(Qt::WA_DeleteOnClose);
-        widget->show();
-
+        // Fire-and-forget, same as RecoveryDialog - SaveAllDialog shows
+        // and self-deletes (WA_DeleteOnClose) on its own.
+        new SaveAllDialog(this, items);
         return false;
     }
     return true;
 }
 
-void MainWindow::saveAllWindowSaveCB(SaveAllWindow* w, std::map<int, bool>&& m)
+void MainWindow::saveAllWindowSaveCB(SaveAllDialog* w, std::map<int, bool>&& m)
 {
     w->close();
 
