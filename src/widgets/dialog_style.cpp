@@ -4,6 +4,8 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QRegion>
+#include <QWidget>
 
 namespace familiar::dialog_style {
 
@@ -135,6 +137,13 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
 
     p.end();
     return pm;
+}
+
+void applyRoundedMask(QWidget* widget, int radiusPx)
+{
+    QPainterPath path;
+    path.addRoundedRect(widget->rect(), radiusPx, radiusPx);
+    widget->setMask(QRegion(path.toFillPolygon().toPolygon()));
 }
 
 } // namespace familiar::dialog_style

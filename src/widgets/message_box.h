@@ -6,6 +6,7 @@
 
 class QLabel;
 class QMouseEvent;
+class QResizeEvent;
 
 // Fully custom, frameless replacement for the native QMessageBox
 // (roadmap step 24 - Max: "кастомные виджеты для всего подряд ...
@@ -49,6 +50,7 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
     void reject() override;
 
 private:

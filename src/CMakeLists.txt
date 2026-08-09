@@ -68,10 +68,6 @@ set(PROJECT_SOURCES
         tabpane.h
         file_actions.cpp
         file_actions.h
-        saveallwindow.cpp
-        saveallwindow.h
-        savecheckbox.cpp
-        savecheckbox.h
         ui/settings_window.cpp
         ui/settings_window.h
         ui/new_settings_window.cpp
@@ -126,6 +122,12 @@ set(PROJECT_SOURCES
         widgets/dialogs.h
         widgets/message_box.cpp
         widgets/message_box.h
+        widgets/dialog_style.cpp
+        widgets/dialog_style.h
+        widgets/flat_checkbox.cpp
+        widgets/flat_checkbox.h
+        widgets/save_all_dialog.cpp
+        widgets/save_all_dialog.h
         widgets/settings_dialog.cpp
         widgets/settings_dialog.h
         widgets/color_gamut.cpp

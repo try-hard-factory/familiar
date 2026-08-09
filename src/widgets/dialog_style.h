@@ -6,6 +6,7 @@
 #include <QString>
 
 class QPushButton;
+class QWidget;
 
 // Shared building blocks for this app's custom-chrome dialogs
 // (CustomMessageBox, SaveAllDialog, and whatever QFileDialog/
@@ -50,5 +51,18 @@ void styleSecondaryButton(QPushButton* button,
 // `accent` is only used for QMessageBox::Question, which has no real
 // "severity" of its own.
 QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr);
+
+// Clips `widget`'s actual OS-level window shape to a rounded rect
+// matching its current size - QSS border-radius alone only PAINTS
+// within the rounded outline, it doesn't reshape the window itself, so
+// an opaque (non-translucent - see panelStyleSheet()'s comment) window
+// still has real, visible square corners of raw window canvas poking
+// out past the rounded panel (confirmed by Max via screenshot: solid
+// black triangles under the rounded corners). setMask() works without
+// any compositor/alpha-channel support, unlike WA_TranslucentBackground
+// - call from the dialog's own resizeEvent() override so the mask
+// tracks its actual size (word-wrap/content can change it after
+// construction).
+void applyRoundedMask(QWidget* widget, int radiusPx);
 
 } // namespace familiar::dialog_style
