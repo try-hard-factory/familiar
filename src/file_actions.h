@@ -1,8 +1,6 @@
 #ifndef FILEACTIONS_H
 #define FILEACTIONS_H
 
-#include <unordered_map>
-#include <QFileDialog>
 #include <QString>
 #include <QUuid>
 
@@ -89,8 +87,6 @@ private:
                                const QUuid& recoveryIdToClear = QUuid());
 
     MainWindow& mainwindow_;
-    std::unordered_map<QString, QString>
-        fileExt_; ///< \~english table with file extention
 };
 
 #endif // FILEACTIONS_H

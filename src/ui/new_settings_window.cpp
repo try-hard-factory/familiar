@@ -7,10 +7,10 @@
 #include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/controls/search_highlight.h>
 #include <widgets/dialogs.h>
+#include <widgets/file_browser_dialog.h>
 #include <widgets/settings_dialog.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
-#include <QFileDialog>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
@@ -225,22 +225,10 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     auto* importBtn = new QToolButton(this);
     importBtn->setText(tr("Import"));
     connect(importBtn, &QToolButton::clicked, this, [this]() {
-        // Plain QFileDialog::getOpenFileName() uses the native dialog by
-        // default, which hangs on this Qt build - every other file
-        // dialog in the app (file_actions.cpp, canvasview.cpp) already
-        // works around this the same way.
-        QFileDialog dialog(this, tr("Import Settings"));
-        dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-        dialog.setStyleSheet("* { background-color: palette(window); color: "
-                             "palette(window-text); }");
-        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-        dialog.setAcceptMode(QFileDialog::AcceptOpen);
-        dialog.setFileMode(QFileDialog::ExistingFile);
-        dialog.setNameFilter(tr("JSON files (*.json)"));
-        if (dialog.exec() != QDialog::Accepted
-            || dialog.selectedFiles().isEmpty())
+        const QString path = showOpenFileDialog(
+            this, tr("Import Settings"), QString(), tr("JSON files (*.json)"));
+        if (path.isEmpty())
             return;
-        const QString path = dialog.selectedFiles().first();
         if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
@@ -262,19 +250,13 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     auto* exportBtn = new QToolButton(this);
     exportBtn->setText(tr("Export"));
     connect(exportBtn, &QToolButton::clicked, this, [this]() {
-        QFileDialog dialog(this, tr("Export Settings"));
-        dialog.setAttribute(Qt::WA_TranslucentBackground, false);
-        dialog.setStyleSheet("* { background-color: palette(window); color: "
-                             "palette(window-text); }");
-        dialog.setOption(QFileDialog::DontUseNativeDialog, true);
-        dialog.setAcceptMode(QFileDialog::AcceptSave);
-        dialog.setFileMode(QFileDialog::AnyFile);
-        dialog.selectFile(QStringLiteral("familiar-settings.json"));
-        dialog.setNameFilter(tr("JSON files (*.json)"));
-        if (dialog.exec() != QDialog::Accepted
-            || dialog.selectedFiles().isEmpty())
+        const QString path = showSaveFileDialog(this,
+                                                tr("Export Settings"),
+                                                QString(),
+                                                tr("JSON files (*.json)"),
+                                                QStringLiteral("familiar-settings.json"));
+        if (path.isEmpty())
             return;
-        const QString path = dialog.selectedFiles().first();
         if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,

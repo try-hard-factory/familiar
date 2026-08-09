@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include <QDesktopServices>
-#include <QFileDialog>
 #include <QGraphicsOpacityEffect>
 #include <QLabel>
 #include <QLayout>
