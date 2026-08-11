@@ -37,7 +37,8 @@ QIcon makeTriangleIcon(const QColor& glyphColor, qreal dpr, bool pointLeft)
 
     QPolygonF tri;
     if (pointLeft) {
-        tri << QPointF(kIconSize - 4, 3) << QPointF(kIconSize - 4, kIconSize - 3)
+        tri << QPointF(kIconSize - 4, 3)
+            << QPointF(kIconSize - 4, kIconSize - 3)
             << QPointF(4, kIconSize / 2.0);
     } else {
         tri << QPointF(4, 3) << QPointF(4, kIconSize - 3)
@@ -67,7 +68,8 @@ QIcon makeStepIcon(const QColor& glyphColor, qreal dpr, bool prev)
     QPolygonF tri;
     QRectF bar;
     if (prev) {
-        tri << QPointF(kIconSize - 5, 3) << QPointF(kIconSize - 5, kIconSize - 3)
+        tri << QPointF(kIconSize - 5, 3)
+            << QPointF(kIconSize - 5, kIconSize - 3)
             << QPointF(7, kIconSize / 2.0);
         bar = QRectF(3, 3, 2, kIconSize - 6);
     } else {
@@ -167,10 +169,10 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     // "x1.75"/"x0.25" don't fit in that width and Qt elides the label to
     // "...". Size for the widest speed label instead, height still
     // matching the row.
-    speedBtn_->setFixedSize(
-        speedBtn_->fontMetrics().horizontalAdvance(QStringLiteral("x0.25"))
-            + 16,
-        kButtonSize);
+    speedBtn_->setFixedSize(speedBtn_->fontMetrics().horizontalAdvance(
+                                QStringLiteral("x0.25"))
+                                + 16,
+                            kButtonSize);
     speedBtn_->setText(QStringLiteral("x1"));
 
     prevBtn_ = makeButton(tr("Previous frame"), false);
@@ -213,8 +215,14 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
             item_->toggle_play_pause();
         updatePlayPauseIcon_();
     });
-    connect(speedBtn_, &QToolButton::clicked, this, &GifPlaybackToolbar::showSpeedPopup_);
-    connect(framesBtn_, &QToolButton::clicked, this, &GifPlaybackToolbar::toggleFilmstrip_);
+    connect(speedBtn_,
+            &QToolButton::clicked,
+            this,
+            &GifPlaybackToolbar::showSpeedPopup_);
+    connect(framesBtn_,
+            &QToolButton::clicked,
+            this,
+            &GifPlaybackToolbar::toggleFilmstrip_);
 
     restyleFromPreset();
 }
@@ -290,7 +298,9 @@ void GifPlaybackToolbar::showSpeedPopup_()
     popup->setAttribute(Qt::WA_DeleteOnClose);
     popup->setAttribute(Qt::WA_TranslucentBackground, false);
     speedPopup_ = popup;
-    connect(popup, &QObject::destroyed, this, [this] { this->speedPopup_ = nullptr; });
+    connect(popup, &QObject::destroyed, this, [this] {
+        this->speedPopup_ = nullptr;
+    });
 
     auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
@@ -424,32 +434,31 @@ void GifPlaybackToolbar::restyleFromPreset()
             .arg(alpha);
     };
 
-    setStyleSheet(
-        QStringLiteral("GifPlaybackToolbar > QWidget {"
-                       "  background-color: %1;"
-                       "  border: 1px solid %2;"
-                       "  border-radius: 8px;"
-                       "}"
-                       "QToolButton {"
-                       "  background: transparent;"
-                       "  color: %3;"
-                       "  border: none;"
-                       "  border-radius: 5px;"
-                       "}"
-                       "QToolButton:hover { background-color: %4; }"
-                       "QToolButton:pressed { background-color: %5; }"
-                       "QToolButton:checked { background-color: %5; }"
-                       "QToolTip {"
-                       "  background-color: %6;"
-                       "  color: %3;"
-                       "  border: 1px solid %2;"
-                       "}")
-            .arg(rgba(background, 245),
-                 border.name(),
-                 text.name(),
-                 rgba(selection, 90),
-                 rgba(selection, 170),
-                 background.name()));
+    setStyleSheet(QStringLiteral("GifPlaybackToolbar > QWidget {"
+                                 "  background-color: %1;"
+                                 "  border: 1px solid %2;"
+                                 "  border-radius: 8px;"
+                                 "}"
+                                 "QToolButton {"
+                                 "  background: transparent;"
+                                 "  color: %3;"
+                                 "  border: none;"
+                                 "  border-radius: 5px;"
+                                 "}"
+                                 "QToolButton:hover { background-color: %4; }"
+                                 "QToolButton:pressed { background-color: %5; }"
+                                 "QToolButton:checked { background-color: %5; }"
+                                 "QToolTip {"
+                                 "  background-color: %6;"
+                                 "  color: %3;"
+                                 "  border: 1px solid %2;"
+                                 "}")
+                      .arg(rgba(background, 245),
+                           border.name(),
+                           text.name(),
+                           rgba(selection, 90),
+                           rgba(selection, 170),
+                           background.name()));
 
     const qreal dpr = devicePixelRatioF();
     prevBtn_->setIcon(makeStepIcon(iconGlyphColor_, dpr, /*prev=*/true));

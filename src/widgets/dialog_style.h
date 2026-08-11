@@ -8,13 +8,6 @@
 class QPushButton;
 class QWidget;
 
-// Shared building blocks for this app's custom-chrome dialogs
-// (CustomMessageBox, SaveAllDialog, and whatever QFileDialog/
-// QColorDialog replacements come next - roadmap step 24, Max:
-// "кастомные виджеты для всего подряд ... полностью свой дизайн").
-// Keeps every custom dialog visually consistent (same rounded panel,
-// same pill-button look, same severity icon set) without copy-pasting
-// the same QPainter/QSS code into each one.
 namespace familiar::dialog_style {
 
 // Rounded, OPAQUE preset-colored panel QSS for a top-level, frameless,

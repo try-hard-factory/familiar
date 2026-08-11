@@ -79,8 +79,10 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
 
     iconLabel_ = new QLabel(this);
     iconLabel_->setFixedSize(kIconSize, kIconSize);
-    iconLabel_->setPixmap(familiar::dialog_style::severityIcon(
-        icon_, accent, devicePixelRatioF()));
+    iconLabel_->setPixmap(
+        familiar::dialog_style::severityIcon(icon_,
+                                             accent,
+                                             devicePixelRatioF()));
     topRow->addWidget(iconLabel_, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -165,11 +167,13 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     else
         escapeButton_ = defaultButton;
 
-    setStyleSheet(
-        familiar::dialog_style::panelStyleSheet(
-            "CustomMessageBox", background, border, textColor)
-        + familiar::dialog_style::closeButtonStyleSheet(
-            "cmbCloseBtn", textColor, accent));
+    setStyleSheet(familiar::dialog_style::panelStyleSheet("CustomMessageBox",
+                                                          background,
+                                                          border,
+                                                          textColor)
+                  + familiar::dialog_style::closeButtonStyleSheet("cmbCloseBtn",
+                                                                  textColor,
+                                                                  accent));
 }
 
 void CustomMessageBox::setIconPixmap(const QPixmap& pixmap)
@@ -207,12 +211,13 @@ void CustomMessageBox::reject()
     done(int(escapeButton_));
 }
 
-QMessageBox::StandardButton showMessageBox(QMessageBox::Icon icon,
-                                           QWidget* parent,
-                                           const QString& title,
-                                           const QString& text,
-                                           QMessageBox::StandardButtons buttons,
-                                           QMessageBox::StandardButton defaultButton)
+QMessageBox::StandardButton showMessageBox(
+    QMessageBox::Icon icon,
+    QWidget* parent,
+    const QString& title,
+    const QString& text,
+    QMessageBox::StandardButtons buttons,
+    QMessageBox::StandardButton defaultButton)
 {
     CustomMessageBox box(icon, parent, title, text, buttons, defaultButton);
     return static_cast<QMessageBox::StandardButton>(box.exec());

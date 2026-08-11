@@ -79,14 +79,14 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
             &CanvasView::on_edit_item_changed);
     setScene(scene_);
 
-    // Floating text-format toolbar (roadmap step 9); hidden until a
+    // Floating text-format toolbar; hidden until a
     // TextItem enters edit mode. Pans move the view via the (hidden)
     // scrollbars, so their valueChanged covers repositioning; zoom is
     // handled in doScale(), resizes in resizeEvent().
     textToolbar_ = new TextEditToolbar(viewport());
     textToolbar_->hide();
 
-    // Floating GIF-playback toolbar (roadmap step 11); hidden until a
+    // Floating GIF-playback toolbar; hidden until a
     // GifItem is selected (see on_selection_changed()) - unlike the text
     // toolbar, this doesn't need a dedicated "entered edit mode" signal.
     gifToolbar_ = new GifPlaybackToolbar(viewport());
@@ -100,7 +100,7 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
             this,
             &CanvasView::updateGifToolbarPos_);
 
-    // Floating group toolbar (roadmap step 10 stage 4); hidden until a
+    // Floating group toolbar; hidden until a
     // GroupItem is selected - same "applies as soon as simply selected,
     // no dedicated mode-entered signal" reasoning as the GIF toolbar.
     groupToolbar_ = new GroupToolbar(viewport());
@@ -463,8 +463,7 @@ void CanvasView::updateGifToolbarPos_()
 
 void CanvasView::updateGroupToolbarPos_()
 {
-    if (!groupToolbar_ || !groupToolbar_->isVisible()
-        || !groupToolbar_->item())
+    if (!groupToolbar_ || !groupToolbar_->isVisible() || !groupToolbar_->item())
         return;
     // Same bottom-center placement (with edge clamp) as the GIF toolbar
     // above - no left-snap/positionControlsRow complexity needed here,
@@ -1000,14 +999,16 @@ void CanvasView::on_action_export_scene()
     // whichever filter is selected (its primaryExt) if the typed name
     // doesn't have one, so the old manual ".png" fallback isn't needed
     // separately.
-    const QString filename = showSaveFileDialog(
-        this,
-        tr("Export Scene to Image"),
-        path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath(),
-        tr("Image Files (*.png *.jpg *.jpeg *.svg)"
-           ";;PNG (*.png)"
-           ";;JPEG (*.jpg *.jpeg)"
-           ";;SVG (*.svg)"));
+    const QString filename
+        = showSaveFileDialog(this,
+                             tr("Export Scene to Image"),
+                             path().isEmpty()
+                                 ? QDir::homePath()
+                                 : QFileInfo(path()).absolutePath(),
+                             tr("Image Files (*.png *.jpg *.jpeg *.svg)"
+                                ";;PNG (*.png)"
+                                ";;JPEG (*.jpg *.jpeg)"
+                                ";;SVG (*.svg)"));
     if (filename.isEmpty())
         return;
 
@@ -1055,10 +1056,12 @@ void CanvasView::on_action_export_images()
         return;
     }
 
-    const QString directory = showSelectFolderDialog(
-        this,
-        tr("Export Images"),
-        path().isEmpty() ? QDir::homePath() : QFileInfo(path()).absolutePath());
+    const QString directory
+        = showSelectFolderDialog(this,
+                                 tr("Export Images"),
+                                 path().isEmpty()
+                                     ? QDir::homePath()
+                                     : QFileInfo(path()).absolutePath());
     if (directory.isEmpty())
         return;
 
@@ -1189,11 +1192,12 @@ void CanvasView::on_action_delete_items()
     // stays armed until the scene is non-empty again (on_scene_changed()),
     // however that happens, so this covers undo just as well as paste.
     suppressNextEmptySceneReset_ = true;
-    // with_attached_items() (roadmap step 25) - deleting a picture also
-    // deletes any notes pinned to it (Max's explicit spec), bundled into
+    // with_attached_items() - deleting a picture also
+    // deletes any notes pinned to it, bundled into
     // this same DeleteItemsCommand so one undo restores both.
-    undoStack_->push(new DeleteItemsCommand(
-        scene_, scene_->with_attached_items(scene_->selectedItems(true))));
+    undoStack_->push(new DeleteItemsCommand(scene_,
+                                            scene_->with_attached_items(
+                                                scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_cut()
@@ -1201,8 +1205,9 @@ void CanvasView::on_action_cut()
     on_action_copy();
     suppressNextEmptySceneReset_ = true;
     resetPreviousTransform();
-    undoStack_->push(new DeleteItemsCommand(
-        scene_, scene_->with_attached_items(scene_->selectedItems(true))));
+    undoStack_->push(new DeleteItemsCommand(scene_,
+                                            scene_->with_attached_items(
+                                                scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_copy()
@@ -1394,11 +1399,11 @@ void CanvasView::on_action_insert_images()
     const QString formats = getSupportedImageFormats();
     FLOG_DEBUG(Ch::View, "Supported image types for reading: {}", formats);
 
-    const QStringList filenames = showOpenFilesDialog(
-        &mainwindow_,
-        tr("Select one or more images to open"),
-        QString(),
-        tr("Images (%1)").arg(formats));
+    const QStringList filenames
+        = showOpenFilesDialog(&mainwindow_,
+                              tr("Select one or more images to open"),
+                              QString(),
+                              tr("Images (%1)").arg(formats));
     if (filenames.isEmpty())
         return;
     QList<QUrl> urls;
@@ -1414,10 +1419,9 @@ void CanvasView::on_action_insert_text()
     auto* item = new TextItem();
     QPointF pos = mapToScene(mapFromGlobal(cursor().pos()));
     item->setScale(1.0 / get_scale());
-    // Auto-attach (roadmap step 25) - if exactly one picture/gif is
-    // currently selected, the new note pins to it (Max: "выделил
-    // картинку -> обычное добавить текст"). GifItem IS-A PixmapItem,
-    // covered by the same dynamic_cast.
+    // Auto-attach - if exactly one picture/gif is
+    // currently selected, the new note pins to it. GifItem IS-A
+    // PixmapItem, covered by the same dynamic_cast.
     QList<QGraphicsItem*> selected = scene_->selectedItems(true);
     GroupItem* targetGroup = nullptr;
     if (selected.size() == 1) {
@@ -1428,7 +1432,7 @@ void CanvasView::on_action_insert_text()
     }
     if (targetGroup) {
         // Same "add text with a group selected -> lands inside it"
-        // expectation as the picture-attach case above (Max). Bundled
+        // expectation as the picture-attach case above. Bundled
         // as one undo step, same pattern as the drag-drop-transfer
         // macro in CanvasScene::maybe_add_dropped_items_to_group().
         undoStack_->beginMacro(tr("Insert text"));
@@ -1440,9 +1444,8 @@ void CanvasView::on_action_insert_text()
         undoStack_->push(
             new InsertItemsCommand(scene_, QList<IBaseItem*>{item}, pos));
     }
-    // Drop straight into edit mode (Max: "когда создаётся текст - надо
-    // сразу делать чтобы он был в состоянии редактирования") - same
-    // enter_edit_mode() a double-click on an existing note triggers
+    // Drop straight into edit mode - same enter_edit_mode() a
+    // double-click on an existing note triggers
     // (CanvasScene::mousePressEvent()). item is already on the scene by
     // now (both branches above pushed InsertItemsCommand, whose redo()
     // ran synchronously).
@@ -1453,8 +1456,7 @@ void CanvasView::on_action_insert_text()
     // convention) - has_selection_outline()/has_selection_handles()
     // (moveitem.h) both key off isSelected(), so without this the new
     // note would enter edit mode with no selection rectangle or square
-    // handles at all (Max: "квадратные хэндлы... при создании текста -
-    // нет"). Select-all over the "Text" placeholder so the first
+    // handles at all. Select-all over the "Text" placeholder so the first
     // keystroke replaces it outright, instead of inserting into the
     // middle of it.
     scene_->deselect_all_items();

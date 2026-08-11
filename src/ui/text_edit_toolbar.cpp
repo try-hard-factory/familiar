@@ -316,14 +316,15 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
             applyCharFormat(format);
             updateColorButtonIcons();
         };
-        // Live preview while dragging (Max: "цвет в реалтайме
-        // изменяется при изменении ползунков") - text/highlight/fill
-        // color already apply directly with no per-click undo push of
-        // their own (undo is bundled at edit-session-exit, see
-        // ChangeTextCommand), so repeatedly re-applying here is safe;
-        // reverted to `original` below if the dialog is cancelled.
-        ColorPickerDialog dialog(this, original, tr("Text color"), /*withAlpha=*/false);
-        connect(&dialog, &ColorPickerDialog::colorChanged, this, applyForeground);
+
+        ColorPickerDialog dialog(this,
+                                 original,
+                                 tr("Text color"),
+                                 /*withAlpha=*/false);
+        connect(&dialog,
+                &ColorPickerDialog::colorChanged,
+                this,
+                applyForeground);
         if (dialog.exec() != QDialog::Accepted)
             applyForeground(original);
     });
@@ -347,8 +348,14 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
             applyCharFormat(format);
             updateColorButtonIcons();
         };
-        ColorPickerDialog dialog(this, initial, tr("Text highlight color"), /*withAlpha=*/true);
-        connect(&dialog, &ColorPickerDialog::colorChanged, this, applyBackground);
+        ColorPickerDialog dialog(this,
+                                 initial,
+                                 tr("Text highlight color"),
+                                 /*withAlpha=*/true);
+        connect(&dialog,
+                &ColorPickerDialog::colorChanged,
+                this,
+                applyBackground);
         if (dialog.exec() != QDialog::Accepted)
             applyBackground(original);
     });
@@ -364,13 +371,19 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         // note's current fill happens to have.
         QColor initial = original;
         initial.setAlpha(255);
-        ColorPickerDialog dialog(this, initial, tr("Note fill color"), /*withAlpha=*/true);
-        connect(&dialog, &ColorPickerDialog::colorChanged, this, [this](const QColor& c) {
-            if (item_) {
-                item_->set_fill_color(c);
-                updateColorButtonIcons();
-            }
-        });
+        ColorPickerDialog dialog(this,
+                                 initial,
+                                 tr("Note fill color"),
+                                 /*withAlpha=*/true);
+        connect(&dialog,
+                &ColorPickerDialog::colorChanged,
+                this,
+                [this](const QColor& c) {
+                    if (item_) {
+                        item_->set_fill_color(c);
+                        updateColorButtonIcons();
+                    }
+                });
         if (dialog.exec() != QDialog::Accepted && item_) {
             item_->set_fill_color(original);
             updateColorButtonIcons();
@@ -579,7 +592,8 @@ void TextEditToolbar::showLinkPopup()
     lay->addWidget(applyBtn);
 
     connect(browseBtn, &QToolButton::clicked, popup, [popup, edit] {
-        const QString file = showOpenFileDialog(popup, tr("Select a file to link to"));
+        const QString file = showOpenFileDialog(popup,
+                                                tr("Select a file to link to"));
         if (!file.isEmpty())
             edit->setText(QUrl::fromLocalFile(file).toString());
     });

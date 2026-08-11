@@ -101,24 +101,23 @@ public:
     // a second/third ctrl-clicked or rubber-banded item stayed at its
     // old z, potentially still buried under unrelated content.
     void raise_selection_to_front();
-    // Drag-and-drop-to-add (roadmap step 10 stage 5) - called from
+    // Drag-and-drop-to-add - called from
     // mouseReleaseEvent() after committing a body drag, with the
     // cursor's OWN scene position (not any dragged item's center/bounds
     // - matches normal drag-and-drop expectations: wherever you're
-    // actually pointing at release is the target, Max's explicit spec).
+    // actually pointing at release is the target).
     // Every LOOSE item among movedItems (not already a member of any
     // group) becomes a new member of whichever unlocked,
     // drag_drop_enabled() group's area contains the cursor - topmost by
     // z if more than one candidate overlaps there (e.g. a subgroup
     // nested inside an outer group that also qualifies). A GroupItem
-    // itself is a valid candidate too (Max: "надо сделать туже
-    // подсветку если мы перетаскиваем группу внутри группы") - dragging
-    // a whole subgroup onto another group nests it exactly like the
+    // itself is a valid candidate too - dragging a whole subgroup onto
+    // another group nests it exactly like the
     // "select both + Ctrl+G" flow would, just via drag instead. Never a
     // candidate for itself or one of its OWN descendants though (see
     // forbidden_drop_targets()) - that would be a membership cycle.
-    void maybe_add_dropped_items_to_group(const QList<QGraphicsItem*>& movedItems,
-                                          const QPointF& cursorScenePos);
+    void maybe_add_dropped_items_to_group(
+        const QList<QGraphicsItem*>& movedItems, const QPointF& cursorScenePos);
     // Hierarchy panel drag-and-drop (current) - explicit-target
     // counterpart of maybe_add_dropped_items_to_group() above: that one
     // picks its target group by CURSOR POSITION (a canvas drag has no
@@ -137,8 +136,7 @@ public:
     // mouseMoveEvent()'s live drop-target highlight (checked every
     // move, via GroupItem::set_highlighted()).
     GroupItem* find_drop_target_group(
-        const QPointF& scenePos,
-        const QSet<GroupItem*>& excluded = {}) const;
+        const QPointF& scenePos, const QSet<GroupItem*>& excluded = {}) const;
     // `draggedItems` plus, for every GroupItem among them, that group's
     // whole own subtree (itself + every nested descendant group,
     // recursively) - the set of groups that must NOT be offered as a
@@ -172,7 +170,7 @@ public:
     bool has_single_image_selection();
     // True if the selection is a single GroupItem, or a single item
     // that's currently a member of one (see find_owning_group()) - either
-    // way, "Ungroup" has something to do (roadmap step 10).
+    // way, "Ungroup" has something to do.
     bool has_group_selected();
 
     // Wraps the current selection (2+ items) in a new GroupItem, pushed
@@ -243,11 +241,11 @@ public:
     // tracked (group -> children), so "which group (if any) owns this
     // item" has no shortcut besides asking every group.
     GroupItem* find_owning_group(const QUuid& memberUid) const;
-    // Every item (TextItem note, roadmap step 25, OR another PixmapItem/
-    // GifItem, current - Max: "аттачить картинку к картинке") whose
-    // attachedToUid() is pictureUid - a picture can have any number of
-    // things pinned to it (Max), so this returns a list, not a single
-    // match like find_owning_group(). Used by PixmapItem::itemChange()
+    // Every item (TextItem note, OR another PixmapItem/
+    // GifItem) whose attachedToUid() is pictureUid - a picture
+    // can have any number of things pinned to it, so this returns a
+    // list, not a single match like find_owning_group(). Used by
+    // PixmapItem::itemChange()
     // (moveitem.h) to carry them along when the picture moves, and by
     // deletion to cascade-remove them along with their anchor.
     QList<QGraphicsItem*> find_attached_items(const QUuid& pictureUid) const;
@@ -255,7 +253,7 @@ public:
     // C attached to B attached to A) to any picture already in `items`
     // (deduplicated) - CanvasView::on_action_delete_items()/
     // on_action_cut() use this so deleting a picture cascades to
-    // whatever's pinned to it too (Max's explicit spec), all as one
+    // whatever's pinned to it too, all as one
     // DeleteItemsCommand - one undo step restores everything.
     QList<QGraphicsItem*> with_attached_items(
         const QList<QGraphicsItem*>& items) const;
@@ -275,29 +273,26 @@ public:
     // construction, which this is the one gate that guarantees.
     bool wouldCreateAttachCycle(const QUuid& itemUid,
                                 const QUuid& targetUid) const;
-    // Hierarchy panel drag-and-drop (current, Max: PureRef-style
-    // interactive tree - "можно перемещать элементы... приаттачивать
-    // текст к картинке, или добавлять в группу... аттачить картинку к
-    // картинке"): re-anchors item to targetUid (a PixmapItem/GifItem
-    // uid) as one undo step, syncing item's group membership to match
-    // the target's group so "an attached item always lives in the same
-    // group as its anchor" keeps holding (Max: "как с текстом"). No-op
-    // if targetUid doesn't resolve to a picture, attaching would create
-    // a cycle (wouldCreateAttachCycle()), or item is already attached
-    // there - the tree UI is expected to not even offer an invalid drop
-    // in the first place, this is just the defensive floor.
+    // Hierarchy panel drag-and-drop (current, PureRef-style interactive
+    // tree): re-anchors item to targetUid (a PixmapItem/GifItem uid) as
+    // one undo step, syncing item's group membership to match the
+    // target's group so "an attached item always lives in the same
+    // group as its anchor" keeps holding. No-op if targetUid doesn't
+    // resolve to a picture, attaching would create a cycle
+    // (wouldCreateAttachCycle()), or item is already attached there -
+    // the tree UI is expected to not even offer an invalid drop in the
+    // first place, this is just the defensive floor.
     void attach_item_to(QGraphicsItem* item, const QUuid& targetUid);
     // Hierarchy panel drag-and-drop (current) - the reverse: clears any
     // attachment AND leaves whatever group that attachment had folded
-    // item into, landing it fully top-level (Max: "деаттачить...
-    // элементы... становятся на самом нижнем верхнем уровне"). Also the
+    // item into, landing it fully top-level. Also the
     // right call for dragging a plain (never-attached) grouped item, or
     // a nested subgroup, out to the tree's empty root area -
     // RemoveFromGroupCommand alone if there was no attachment to clear.
     // No-op if item is already fully top-level.
     void detach_item(QGraphicsItem* item);
     // Reentrant depth counter marking "some batch transform that
-    // already gives its own attached notes (roadmap step 25) an
+    // already gives its own attached notes an
     // independent, correctly-anchored move/rotate/scale is currently
     // applying" - covers two distinct sources: a group-level batch (a
     // plain group drag via GroupItem::itemChange()'s own children-
@@ -312,16 +307,14 @@ public:
     // required). In both cases, PixmapItem::itemChange()'s simple
     // position-delta cascade to that SAME note would double-apply (or,
     // for scale/rotate, apply the wrong kind of change entirely) on top
-    // of the already-correct transform - confirmed by Max both for
-    // group drag/resize ("поедут куда-то") and for a lone picture's own
-    // rotate ("баг при повороте картинки и приаттаченных текстовых
-    // полей"). Depth (not a bool) because nested groups cascade into
-    // their own itemChange() recursively - each level's begin/end pair
-    // nests correctly. NOT set for an individual picture dragged alone
-    // within its group (no batch of any kind runs for a plain drag,
-    // only itemChange()'s own moveBy chain) - that's exactly when the
-    // note DOES still need the plain position cascade (Max: "в группе
-    // при перемещении картинки - текстовые поля не двигаются").
+    // of the already-correct transform - confirmed both for group
+    // drag/resize and for a lone picture's own rotate. Depth (not a
+    // bool) because nested groups cascade into their own itemChange()
+    // recursively - each level's begin/end pair nests correctly. NOT
+    // set for an individual picture dragged alone within its group (no
+    // batch of any kind runs for a plain drag, only itemChange()'s own
+    // moveBy chain) - that's exactly when the note DOES still need the
+    // plain position cascade.
     void begin_group_batch() { ++groupBatchDepth_; }
     void end_group_batch() { --groupBatchDepth_; }
     bool in_group_batch() const { return groupBatchDepth_ > 0; }

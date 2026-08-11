@@ -93,20 +93,17 @@ public:
     // deliberately has a safe default body rather than requiring every
     // IBaseItem implementor to define it, since only GroupItem actually
     // needs non-trivial behavior here.
-    virtual QList<QGraphicsItem*> nested_selection_action_items()
-    {
-        return {};
-    }
+    virtual QList<QGraphicsItem*> nested_selection_action_items() { return {}; }
 
     // Optional uid of another item this one is "attached to" - riding
     // along on that anchor's position/rotation/scale and joining
     // whichever group the anchor belongs to (see PixmapItem::
     // itemChange()/set_rotation()/set_scale() in moveitem.h for the
     // actual cascade, and CanvasScene::find_attached_items()). Started
-    // as TextItem-only (roadmap step 25, "note attached to a picture"),
+    // as TextItem-only ("note attached to a picture"),
     // generalized here so a PixmapItem can attach to another PixmapItem
-    // too (Max: "я понял что можно аттачить картинку к картинке...
-    // как с текстом"). Null (default) = not attached. Default no-op
+    // too, same semantics as a note attaching to a picture. Null
+    // (default) = not attached. Default no-op
     // pair, same pattern as nested_selection_action_items() above - only
     // TextItem/PixmapItem actually store anything; a type that can never
     // be attached (GroupItem, ErrorItem, MultiSelectItem) just keeps
@@ -517,11 +514,12 @@ public:
         // every currently-selected item during a drag, not just whichever
         // one Qt happens to be dragging directly.
         bool suppressHandles = active_mode_ == kScaleMode
-            || active_mode_ == kRotateMode || active_mode_ == kFieldResizeMode;
+                               || active_mode_ == kRotateMode
+                               || active_mode_ == kFieldResizeMode;
         if (!suppressHandles && this->isSelected() && this->scene()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 suppressHandles = scene->active_mode()
-                    == CanvasScene::ESceneMode::kMoveMode;
+                                  == CanvasScene::ESceneMode::kMoveMode;
             }
         }
 
@@ -1044,7 +1042,7 @@ protected:
             // begin/end_group_batch(): a group's own scale drags every
             // one of selection_action_items()'s flat entries
             // independently, each already correctly anchored - an
-            // attached note (roadmap step 25) in that same list must
+            // attached note in that same list must
             // NOT also get PixmapItem::itemChange()'s plain position
             // cascade from its picture's own entry in this same loop
             // (see that method's comment).

@@ -225,8 +225,10 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     auto* importBtn = new QToolButton(this);
     importBtn->setText(tr("Import"));
     connect(importBtn, &QToolButton::clicked, this, [this]() {
-        const QString path = showOpenFileDialog(
-            this, tr("Import Settings"), QString(), tr("JSON files (*.json)"));
+        const QString path = showOpenFileDialog(this,
+                                                tr("Import Settings"),
+                                                QString(),
+                                                tr("JSON files (*.json)"));
         if (path.isEmpty())
             return;
         if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
@@ -254,7 +256,8 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
                                                 tr("Export Settings"),
                                                 QString(),
                                                 tr("JSON files (*.json)"),
-                                                QStringLiteral("familiar-settings.json"));
+                                                QStringLiteral(
+                                                    "familiar-settings.json"));
         if (path.isEmpty())
             return;
         if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {

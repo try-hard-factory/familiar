@@ -4,6 +4,7 @@
 
 #include <core/settingshandler.h>
 
+#include <QComboBox>
 #include <QDir>
 #include <QFileIconProvider>
 #include <QFileInfo>
@@ -11,7 +12,6 @@
 #include <QFont>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
-#include <QComboBox>
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QLabel>
@@ -40,8 +40,10 @@ class FmlIconProvider : public QFileIconProvider
 public:
     QIcon icon(const QFileInfo& info) const override
     {
-        if (info.suffix().compare(QStringLiteral("fml"), Qt::CaseInsensitive) == 0) {
-            static const QIcon fmlIcon(QStringLiteral(":/img/app/familiar_256.png"));
+        if (info.suffix().compare(QStringLiteral("fml"), Qt::CaseInsensitive)
+            == 0) {
+            static const QIcon fmlIcon(
+                QStringLiteral(":/img/app/familiar_256.png"));
             return fmlIcon;
         }
         return QFileIconProvider::icon(info);
@@ -52,8 +54,9 @@ QList<FileBrowserDialog::FilterEntry> parseNameFilter(const QString& filterStrin
 {
     QList<FileBrowserDialog::FilterEntry> entries;
     const QStringList parts = filterString.isEmpty()
-        ? QStringList{QObject::tr("All Files (*)")}
-        : filterString.split(QStringLiteral(";;"), Qt::SkipEmptyParts);
+                                  ? QStringList{QObject::tr("All Files (*)")}
+                                  : filterString.split(QStringLiteral(";;"),
+                                                       Qt::SkipEmptyParts);
 
     for (const QString& part : parts) {
         FileBrowserDialog::FilterEntry entry;
@@ -61,15 +64,11 @@ QList<FileBrowserDialog::FilterEntry> parseNameFilter(const QString& filterStrin
         const int openParen = trimmed.indexOf(QLatin1Char('('));
         const int closeParen = trimmed.lastIndexOf(QLatin1Char(')'));
         if (openParen >= 0 && closeParen > openParen) {
-            // The FULL "Label (*.ext *.ext2)" text, same as what
-            // QFileDialog's own filter combo shows - Max: "надо и типы
-            // показать. раньше показывались" - just the bare label
-            // ("Images") gave no visible confirmation of which
-            // extensions were actually in effect.
             entry.label = trimmed;
-            const QString patternsStr
-                = trimmed.mid(openParen + 1, closeParen - openParen - 1);
-            entry.patterns = patternsStr.split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            const QString patternsStr = trimmed.mid(openParen + 1,
+                                                    closeParen - openParen - 1);
+            entry.patterns = patternsStr.split(QLatin1Char(' '),
+                                               Qt::SkipEmptyParts);
         } else {
             entry.label = trimmed;
             entry.patterns = {QStringLiteral("*")};
@@ -143,7 +142,10 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     upBtn_->setFixedSize(28, 28);
     upBtn_->setCursor(Qt::PointingHandCursor);
     upBtn_->setToolTip(tr("Up one level"));
-    connect(upBtn_, &QPushButton::clicked, this, &FileBrowserDialog::navigateUp_);
+    connect(upBtn_,
+            &QPushButton::clicked,
+            this,
+            &FileBrowserDialog::navigateUp_);
     navRow->addWidget(upBtn_);
 
     pathEdit_ = new QLineEdit(this);
@@ -202,15 +204,13 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
         nameEdit_ = new QLineEdit(this);
         if (!defaultFileName.isEmpty())
             nameEdit_->setText(defaultFileName);
-        connect(nameEdit_, &QLineEdit::returnPressed, this, &FileBrowserDialog::tryAccept_);
+        connect(nameEdit_,
+                &QLineEdit::returnPressed,
+                this,
+                &FileBrowserDialog::tryAccept_);
         outer->addWidget(nameEdit_);
     }
 
-    // ── Filter dropdown - always shown (even with a single entry), not
-    // just when there's an actual choice between several: with it
-    // hidden there was no visible confirmation at all of which file
-    // types are being shown/expected (Max: "нет Supported image types
-    // for reading" - the filter WAS applied, just invisibly so).
     if (mode_ != Mode::SelectFolder) {
         filterCombo_ = new QComboBox(this);
         for (const FilterEntry& f : filters_)
@@ -232,46 +232,52 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     buttonRow->addWidget(cancelBtn);
 
     const QString actionLabel = mode_ == Mode::Save ? tr("Save")
-        : mode_ == Mode::SelectFolder                ? tr("Select Folder")
-                                                       : tr("Open");
+                                : mode_ == Mode::SelectFolder
+                                    ? tr("Select Folder")
+                                    : tr("Open");
     actionBtn_ = new QPushButton(actionLabel, this);
     familiar::dialog_style::stylePrimaryButton(actionBtn_, accent);
     actionBtn_->setDefault(true);
-    connect(actionBtn_, &QPushButton::clicked, this, &FileBrowserDialog::tryAccept_);
+    connect(actionBtn_,
+            &QPushButton::clicked,
+            this,
+            &FileBrowserDialog::tryAccept_);
     buttonRow->addWidget(actionBtn_);
     outer->addLayout(buttonRow);
 
-    setStyleSheet(
-        familiar::dialog_style::panelStyleSheet(
-            "FileBrowserDialog", background, border, textColor)
-        + familiar::dialog_style::closeButtonStyleSheet(
-            "fbdCloseBtn", textColor, accent)
-        + QStringLiteral(
-              "QLineEdit, QComboBox {"
-              "  background-color: rgba(0,0,0,20);"
-              "  color: %1;"
-              "  border: 1px solid %2;"
-              "  border-radius: 4px;"
-              "  padding: 4px 6px;"
-              "}"
-              "QTreeView, QListWidget {"
-              "  background-color: rgba(0,0,0,12);"
-              "  color: %1;"
-              "  border: 1px solid %2;"
-              "  border-radius: 4px;"
-              "}"
-              "QTreeView::item:selected, QListWidget::item:selected {"
-              "  background-color: %3;"
-              "  color: white;"
-              "}"
-              "QHeaderView::section {"
-              "  background-color: transparent;"
-              "  color: %1;"
-              "  border: none;"
-              "  border-bottom: 1px solid %2;"
-              "  padding: 4px;"
-              "}")
-              .arg(textColor.name(), border.name(), accent.name()));
+    setStyleSheet(familiar::dialog_style::panelStyleSheet("FileBrowserDialog",
+                                                          background,
+                                                          border,
+                                                          textColor)
+                  + familiar::dialog_style::closeButtonStyleSheet("fbdCloseBtn",
+                                                                  textColor,
+                                                                  accent)
+                  + QStringLiteral(
+                        "QLineEdit, QComboBox {"
+                        "  background-color: rgba(0,0,0,20);"
+                        "  color: %1;"
+                        "  border: 1px solid %2;"
+                        "  border-radius: 4px;"
+                        "  padding: 4px 6px;"
+                        "}"
+                        "QTreeView, QListWidget {"
+                        "  background-color: rgba(0,0,0,12);"
+                        "  color: %1;"
+                        "  border: 1px solid %2;"
+                        "  border-radius: 4px;"
+                        "}"
+                        "QTreeView::item:selected, QListWidget::item:selected {"
+                        "  background-color: %3;"
+                        "  color: white;"
+                        "}"
+                        "QHeaderView::section {"
+                        "  background-color: transparent;"
+                        "  color: %1;"
+                        "  border: none;"
+                        "  border-bottom: 1px solid %2;"
+                        "  padding: 4px;"
+                        "}")
+                        .arg(textColor.name(), border.name(), accent.name()));
 
     setDirectory_(startDir.isEmpty() ? QDir::homePath() : startDir);
 }
@@ -289,22 +295,28 @@ void FileBrowserDialog::buildSidebar_(const QColor& accent)
         auto* item = new QListWidgetItem(label, sidebar_);
         item->setData(Qt::UserRole, path);
     };
-    addEntry(tr("Home"), QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
+    addEntry(tr("Home"),
+             QStandardPaths::writableLocation(QStandardPaths::HomeLocation));
     addEntry(tr("Desktop"),
-            QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
+             QStandardPaths::writableLocation(QStandardPaths::DesktopLocation));
     addEntry(tr("Documents"),
-            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+             QStandardPaths::writableLocation(
+                 QStandardPaths::DocumentsLocation));
     addEntry(tr("Root"), QDir::rootPath());
 
-    connect(sidebar_, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
-        setDirectory_(item->data(Qt::UserRole).toString());
-    });
+    connect(sidebar_,
+            &QListWidget::itemClicked,
+            this,
+            [this](QListWidgetItem* item) {
+                setDirectory_(item->data(Qt::UserRole).toString());
+            });
 }
 
 void FileBrowserDialog::setDirectory_(const QString& path)
 {
     QFileInfo info(path);
-    const QString dirPath = info.isDir() ? info.absoluteFilePath() : info.absolutePath();
+    const QString dirPath = info.isDir() ? info.absoluteFilePath()
+                                         : info.absolutePath();
     QDir dir(dirPath);
     if (!dir.exists())
         return;
@@ -387,18 +399,19 @@ void FileBrowserDialog::tryAccept_()
         QString fullPath = QDir(currentDir_).filePath(name);
         const int filterIdx = filterCombo_ ? filterCombo_->currentIndex() : 0;
         if (QFileInfo(fullPath).suffix().isEmpty() && filterIdx >= 0
-            && filterIdx < filters_.size() && !filters_[filterIdx].primaryExt.isEmpty()) {
+            && filterIdx < filters_.size()
+            && !filters_[filterIdx].primaryExt.isEmpty()) {
             fullPath += QLatin1Char('.') + filters_[filterIdx].primaryExt;
         }
         if (QFileInfo::exists(fullPath)) {
-            const auto reply = showMessageBox(
-                QMessageBox::Question,
-                this,
-                tr("Overwrite file?"),
-                tr("%1 already exists. Overwrite it?")
-                    .arg(QFileInfo(fullPath).fileName()),
-                QMessageBox::Yes | QMessageBox::No,
-                QMessageBox::No);
+            const auto reply
+                = showMessageBox(QMessageBox::Question,
+                                 this,
+                                 tr("Overwrite file?"),
+                                 tr("%1 already exists. Overwrite it?")
+                                     .arg(QFileInfo(fullPath).fileName()),
+                                 QMessageBox::Yes | QMessageBox::No,
+                                 QMessageBox::No);
             if (reply != QMessageBox::Yes)
                 return;
         }
@@ -445,8 +458,11 @@ QString showOpenFileDialog(QWidget* parent,
                            const QString& startDir,
                            const QString& nameFilter)
 {
-    FileBrowserDialog dlg(
-        parent, FileBrowserDialog::Mode::OpenFile, title, startDir, nameFilter);
+    FileBrowserDialog dlg(parent,
+                          FileBrowserDialog::Mode::OpenFile,
+                          title,
+                          startDir,
+                          nameFilter);
     if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty())
         return QString();
     return dlg.selectedFiles().first();
@@ -457,8 +473,11 @@ QStringList showOpenFilesDialog(QWidget* parent,
                                 const QString& startDir,
                                 const QString& nameFilter)
 {
-    FileBrowserDialog dlg(
-        parent, FileBrowserDialog::Mode::OpenFiles, title, startDir, nameFilter);
+    FileBrowserDialog dlg(parent,
+                          FileBrowserDialog::Mode::OpenFiles,
+                          title,
+                          startDir,
+                          nameFilter);
     if (dlg.exec() != QDialog::Accepted)
         return {};
     return dlg.selectedFiles();
@@ -485,8 +504,10 @@ QString showSelectFolderDialog(QWidget* parent,
                                const QString& title,
                                const QString& startDir)
 {
-    FileBrowserDialog dlg(
-        parent, FileBrowserDialog::Mode::SelectFolder, title, startDir);
+    FileBrowserDialog dlg(parent,
+                          FileBrowserDialog::Mode::SelectFolder,
+                          title,
+                          startDir);
     if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty())
         return QString();
     return dlg.selectedFiles().first();

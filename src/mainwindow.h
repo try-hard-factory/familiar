@@ -83,9 +83,9 @@ public:
     // is already open under an existing tab - so if the user restores a
     // recovery snapshot for that same file from the dialog, this
     // naturally lands on the restored tab instead of ALSO loading a
-    // stale duplicate straight from disk (Max: the recovery dialog
-    // should still show up as normal, just without ending up with two
-    // tabs for the same file afterward).
+    // stale duplicate straight from disk (the recovery dialog should
+    // still show up as normal, just without ending up with two tabs
+    // for the same file afterward).
     void showOrOfferRecovery(const QString& startupFile = QString());
 
     void clipboardItems(QVector<QGraphicsItem*> ci) noexcept
@@ -215,7 +215,7 @@ protected:
             // menu bar drag zone. mapFromGlobal() below has no idea the
             // click wasn't meant for us; without this guard, such a click
             // gets silently reinterpreted as a resize/window-drag and the
-            // dialog underneath never sees it (see roadmap step 9 postmortem).
+            // dialog underneath never sees it.
             auto* w = qobject_cast<QWidget*>(watched);
             if (!w || w->window() != this)
                 return QMainWindow::eventFilter(watched, event);
@@ -309,7 +309,7 @@ private:
 public slots:
     void settingsChangedSlot();
 private slots:
-    // Periodic autosave (roadmap step 13). onAutosaveTimeout_() fires
+    // Periodic autosave. onAutosaveTimeout_() fires
     // every autosaveTimer_ tick; restartAutosaveTimer_() re-reads
     // Save/autosave_enabled + Save/autosave_interval_seconds fresh and
     // (re)starts or stops the timer accordingly - called once at startup
@@ -318,7 +318,7 @@ private slots:
     void onAutosaveTimeout_();
     void restartAutosaveTimer_();
 
-    // Crash recovery (roadmap step 18) - independent of the above and
+    // Crash recovery - independent of the above and
     // NOT gated by Save/autosave_enabled: it writes into its own
     // recovery/ folder, not the tab's real file, so it's always-on
     // regardless of whether the user wants their real files overwritten

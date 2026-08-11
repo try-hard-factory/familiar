@@ -26,7 +26,7 @@ struct Options
 {
     Level consoleLevel = Level::Debug;
     Level fileLevel = Level::Debug;
-    QString filePath; // default: AppLocalDataLocation/<appName>.log
+    QString filePath;    // default: AppLocalDataLocation/<appName>.log
     bool console = true; // auto-off when stdout isn't a tty
     size_t ringCapacity = 2000;
 };

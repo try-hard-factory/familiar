@@ -247,7 +247,7 @@ private slots:
 };
 
 
-// Crash-recovery prompt (roadmap step 18) - shown once at startup if
+// Crash-recovery prompt - shown once at startup if
 // familiar::recovery::scan() finds leftover snapshots from a session
 // that didn't exit cleanly. Each entry gets its own checkbox, which
 // decides its fate when Restore is clicked: checked entries are opened

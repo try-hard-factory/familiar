@@ -57,8 +57,8 @@ QString oldLogFilePath(const QString& filePath)
     const QFileInfo fi(filePath);
     const QString ext = fi.suffix();
     return ext.isEmpty() ? filePath + QStringLiteral("_old")
-                          : fi.dir().filePath(fi.completeBaseName()
-                                              + QStringLiteral("_old.") + ext);
+                         : fi.dir().filePath(fi.completeBaseName()
+                                             + QStringLiteral("_old.") + ext);
 }
 
 bool stdoutIsTty()
@@ -220,11 +220,11 @@ void init(const Options& options)
     QFile::rename(filePath, oldFilePath);
 
     auto fileSink = quill::Frontend::create_or_get_sink<quill::FileSink>(
-        filePath.toStdString(), [] () {
-        quill::FileSinkConfig cfg;
-        cfg.set_open_mode('w');
-        return cfg;
-    }());
+        filePath.toStdString(), []() {
+            quill::FileSinkConfig cfg;
+            cfg.set_open_mode('w');
+            return cfg;
+        }());
     fileSink->set_log_level_filter(detail::toQuillLevel(options.fileLevel));
     sinks.push_back(fileSink);
 

@@ -8,29 +8,6 @@ class QLabel;
 class QMouseEvent;
 class QResizeEvent;
 
-// Fully custom, frameless replacement for the native QMessageBox
-// (roadmap step 24 - Max: "кастомные виджеты для всего подряд ...
-// полностью свой дизайн/лейаут", explicitly starting with confirmations/
-// errors). Reuses QMessageBox's own Icon/StandardButton(s) enums as the
-// public interface purely because they're a good, familiar fit and
-// every existing call site already speaks them via showMessageBox()
-// below - nothing here actually constructs or shows a real QMessageBox.
-//
-// Frameless, opaque (NOT translucent - see the .cpp constructor's own
-// comment for why), rounded panel drawn via QSS (same border-radius/
-// preset-color convention as GroupToolbar's own settings popup,
-// ui/group_toolbar.cpp) - the first genuinely custom-chrome QDialog in
-// this codebase; every other one so far just falls back to the native
-// OS window frame (see showMessageBox()'s own old comment, before this
-// file existed). Draggable via the same
-// windowHandle()->startSystemMove() MainWindow itself uses for its own
-// frameless window.
-//
-// Each button's click calls done(int(thatButton)) directly (not
-// accept()/reject()) - QDialog::exec()'s return value IS then already
-// the QMessageBox::StandardButton the user picked, no separate
-// "clicked()" accessor needed, and callers can keep treating exec()'s
-// result exactly like the native QMessageBox always did.
 class CustomMessageBox : public QDialog
 {
     Q_OBJECT

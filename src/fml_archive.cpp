@@ -621,15 +621,15 @@ FmlResult FmlArchive::load(const QString& filename,
                         // stream, not just one frame.
                         itemData[QStringLiteral("gifBytes")]
                             = QByteArray(static_cast<const char*>(imgBuf),
-                                        static_cast<int>(imgSize));
+                                         static_cast<int>(imgSize));
                         itemData[QStringLiteral("filename")] = mi.data.value(
                             QStringLiteral("filename"));
                         ok = true;
                     } else {
                         QImage image;
-                        ok = image.loadFromData(
-                            static_cast<const uchar*>(imgBuf),
-                            static_cast<int>(imgSize));
+                        ok = image.loadFromData(static_cast<const uchar*>(
+                                                    imgBuf),
+                                                static_cast<int>(imgSize));
                         if (ok) {
                             itemData[QStringLiteral("image")] = image;
                             itemData[QStringLiteral("filename")]

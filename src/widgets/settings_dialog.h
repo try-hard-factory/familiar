@@ -23,7 +23,10 @@ public:
     // (e.g. an interval spinbox that does nothing unless a sibling
     // checkbox enables it) and should read as visually nested under it
     // rather than as a separate, unrelated group box.
-    void addNestedWidget(QWidget* w) { vbox_->insertWidget(vbox_->count() - 1, w); }
+    void addNestedWidget(QWidget* w)
+    {
+        vbox_->insertWidget(vbox_->count() - 1, w);
+    }
 
 protected:
     virtual void setValue(const QVariant& value) = 0;

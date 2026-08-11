@@ -103,8 +103,8 @@ void DeleteItemsCommand::undo()
     // fires itemChange(ItemSelectedChange) synchronously, which reaches
     // ItemMixin::on_selected_change() (moveitem.h) and asserts this->
     // scene() is non-null. Selecting an item that isn't attached to any
-    // scene yet crashed (Q_ASSERT abort in a debug build) - confirmed by
-    // Max via a real stack trace, undoing a delete.
+    // scene yet crashed (Q_ASSERT abort in a debug build) - confirmed
+    // via a real stack trace, undoing a delete.
     scene_->clearSelection();
     for (auto* item : items_) {
         scene_->addItem(item);
@@ -164,12 +164,12 @@ void ScaleItemsByCommand::redo()
     }
     // begin/end_group_batch(): undo/redo replays the exact same flat
     // selection_action_items() list the live drag used - an attached
-    // note (roadmap step 25) sharing a group with its picture in this
+    // note sharing a group with its picture in this
     // list needs the same double-apply guard here as the live drag gets
     // in selector.h (see PixmapItem::itemChange()'s comment).
     auto* scene = items_.isEmpty()
-        ? nullptr
-        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+                      ? nullptr
+                      : dynamic_cast<CanvasScene*>(items_.first()->scene());
     if (scene)
         scene->begin_group_batch();
     for (auto* item : items_) {
@@ -184,8 +184,8 @@ void ScaleItemsByCommand::redo()
 void ScaleItemsByCommand::undo()
 {
     auto* scene = items_.isEmpty()
-        ? nullptr
-        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+                      ? nullptr
+                      : dynamic_cast<CanvasScene*>(items_.first()->scene());
     if (scene)
         scene->begin_group_batch();
     for (auto* item : items_) {
@@ -219,8 +219,8 @@ void RotateItemsByCommand::redo()
     }
     // Same reasoning as ScaleItemsByCommand::redo() above.
     auto* scene = items_.isEmpty()
-        ? nullptr
-        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+                      ? nullptr
+                      : dynamic_cast<CanvasScene*>(items_.first()->scene());
     if (scene)
         scene->begin_group_batch();
     for (auto* item : items_) {
@@ -235,8 +235,8 @@ void RotateItemsByCommand::redo()
 void RotateItemsByCommand::undo()
 {
     auto* scene = items_.isEmpty()
-        ? nullptr
-        : dynamic_cast<CanvasScene*>(items_.first()->scene());
+                      ? nullptr
+                      : dynamic_cast<CanvasScene*>(items_.first()->scene());
     if (scene)
         scene->begin_group_batch();
     for (auto* item : items_) {
@@ -757,26 +757,25 @@ RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
     , group_(group)
 {
     memberUids_.append(memberUid);
-    // A picture's attached items (roadmap step 25) ride along as actual
+    // A picture's attached items ride along as actual
     // group members now (AddToGroupCommand/group_selection() both fold
     // them in whenever the picture joins) - taking the picture back out
     // has to take them too, or they'd linger as orphaned members of a
-    // group their picture no longer belongs to (Max: "аттаченые
-    // текстовые поля тоже должны стать частью группы"). Index-based,
-    // over memberUids_ itself as it grows - a picture can now be
-    // attached to another picture (current, Max: "аттачить картинку к
-    // картинке"), so a whole chain has to come along, not just whatever
-    // is directly attached to the picture being removed. Same pattern
-    // as CanvasScene::with_attached_items().
+    // group their picture no longer belongs to. Index-based, over
+    // memberUids_ itself as it grows - a picture can now be attached
+    // to another picture (current), so a whole chain has to come
+    // along, not just whatever is directly attached to the picture
+    // being removed. Same pattern as CanvasScene::with_attached_items().
     if (auto* scene = dynamic_cast<CanvasScene*>(group_->scene())) {
         for (int i = 0; i < memberUids_.size(); ++i) {
-            auto* picture
-                = dynamic_cast<PixmapItem*>(scene->find_by_uid(memberUids_[i]));
+            auto* picture = dynamic_cast<PixmapItem*>(
+                scene->find_by_uid(memberUids_[i]));
             if (!picture)
                 continue;
             for (QGraphicsItem* attachedItem :
                  scene->find_attached_items(picture->uid())) {
-                if (auto* attachedBase = dynamic_cast<IBaseItem*>(attachedItem)) {
+                if (auto* attachedBase = dynamic_cast<IBaseItem*>(
+                        attachedItem)) {
                     if (!memberUids_.contains(attachedBase->uid()))
                         memberUids_.append(attachedBase->uid());
                 }
@@ -793,8 +792,8 @@ void RemoveFromGroupCommand::redo()
     // reverse) - otherwise the group's rect stays stale (too large,
     // still including the just-departed member's old footprint) until
     // some later, unrelated scene change happens to trigger one. Matters
-    // most for a nested subgroup leaving its outer group (Max) - the
-    // outer's boundary needs to shrink right away, not lag behind.
+    // most for a nested subgroup leaving its outer group - the outer's
+    // boundary needs to shrink right away, not lag behind.
     group_->fit_to_contain_children();
 }
 
@@ -816,9 +815,8 @@ AddToGroupCommand::AddToGroupCommand(CanvasScene* scene,
     , scene_(scene)
     , group_(group)
     // with_attached_items(): any picture among `members` brings its
-    // attached notes (roadmap step 25) in as actual group members too,
-    // not just a position/z cascade (Max: "аттаченые текстовые поля
-    // тоже должны стать частью группы") - covers the "Group" button's
+    // attached notes in as actual group members too,
+    // not just a position/z cascade - covers the "Group" button's
     // fold-into-existing-group path AND drag-drop add/transfer, both of
     // which construct this command.
     , members_(scene->with_attached_items(members))
@@ -844,7 +842,7 @@ void AddToGroupCommand::redo()
         // render under the fill and effectively vanish the instant it
         // joins. Bump it just above the group if it isn't already -
         // same +Z_STEP convention GroupCommand::redo() uses in reverse.
-        // An attached note (roadmap step 25) is now folded into
+        // An attached note is now folded into
         // members_ too (see constructor's with_attached_items()), so it
         // gets the exact same bump as any other member here - no
         // separate case needed.

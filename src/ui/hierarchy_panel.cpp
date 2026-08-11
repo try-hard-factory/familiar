@@ -58,7 +58,9 @@ QIcon makeTextIcon(const QColor& glyphColor)
     f.setPixelSize(int(kIconSize * 0.7));
     p.setFont(f);
     p.setPen(glyphColor);
-    p.drawText(QRectF(0, 0, kIconSize, kIconSize), Qt::AlignCenter, QStringLiteral("T"));
+    p.drawText(QRectF(0, 0, kIconSize, kIconSize),
+               Qt::AlignCenter,
+               QStringLiteral("T"));
     p.end();
     return QIcon(pm);
 }
@@ -77,13 +79,19 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
         // Scaled+cropped to fill the square (KeepAspectRatioByExpanding),
         // not letterboxed - a thumbnail is more recognizable filling the
         // whole icon than shrunk down with empty borders.
-        const QPixmap scaled = source.scaled(
-            kIconSize, kIconSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+        const QPixmap scaled = source.scaled(kIconSize,
+                                             kIconSize,
+                                             Qt::KeepAspectRatioByExpanding,
+                                             Qt::SmoothTransformation);
         p.drawPixmap((kIconSize - scaled.width()) / 2,
-                    (kIconSize - scaled.height()) / 2,
-                    scaled);
+                     (kIconSize - scaled.height()) / 2,
+                     scaled);
     } else {
-        p.fillRect(pm.rect(), QColor(glyphColor.red(), glyphColor.green(), glyphColor.blue(), 60));
+        p.fillRect(pm.rect(),
+                   QColor(glyphColor.red(),
+                          glyphColor.green(),
+                          glyphColor.blue(),
+                          60));
     }
     p.setClipping(false);
     QPen border(QColor(0, 0, 0, 60));
@@ -95,10 +103,9 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
     return QIcon(pm);
 }
 
-// Interactive drag-and-drop (current, Max: "в пьюрефе эта панель
-// интерактивная... можно перемещать элементы"). Qt's own InternalMove
-// drag-drop mode is used only to get the press/drag/drop GESTURE for
-// free - the QTreeWidgetItem reparenting it would normally do on drop
+// Interactive drag-and-drop (current, PureRef-style). Qt's own
+// InternalMove drag-drop mode is used only to get the press/drag/drop
+// GESTURE for free - the QTreeWidgetItem reparenting it would normally do on drop
 // is discarded entirely (dropEvent() below never calls the base class
 // implementation): this tree is always a read-only PROJECTION of the
 // scene graph, rebuilt wholesale by HierarchyPanel::rebuild_() whenever
@@ -129,7 +136,7 @@ protected:
         // the MODEL level - it then deletes the dragged QTreeWidgetItem
         // (and its children) itself, entirely bypassing rebuild_()'s
         // own gifIconConnections_ disconnect-before-clear() ordering.
-        // Crashed exactly that way (Max: drag a picture with 2 attached
+        // Crashed exactly that way (dragging a picture with 2 attached
         // notes into a group - some UNRELATED gif's frameChanged fired
         // into a node Qt had already deleted out from under it). This
         // view's "move" is entirely on the SCENE side (via onDrop's own
@@ -151,10 +158,9 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
 {
     setObjectName(QStringLiteral("hierarchyPanel"));
     // No DockWidgetClosable/Floatable - those draw Qt's native, unstyled
-    // float/close glyphs in the title bar (Max: "а что это за
-    // кнопочки?" - they stood out against this app's own drawn-icon
-    // look). Visibility is already handled by the "hierarchy" action
-    // (Ctrl+J/View menu) and floating this into a separate top-level
+    // float/close glyphs in the title bar, which stood out against this
+    // app's own drawn-icon look. Visibility is already handled by the
+    // "hierarchy" action (Ctrl+J/View menu) and floating this into a separate top-level
     // window isn't a use case here - just keep it draggable within the
     // main window's dock areas.
     setFeatures(QDockWidget::DockWidgetMovable);
@@ -164,10 +170,9 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     tree_->setHeaderHidden(true);
     tree_->setIndentation(14);
     tree_->setUniformRowHeights(true);
-    // Interactive drag-and-drop (current, Max: "в пьюрефе эта панель
-    // интерактивная") - InternalMove for the press/drag/drop gesture
-    // only, see HierarchyTreeWidget's own comment for why the actual
-    // reparenting it would do is discarded in favor of a CanvasScene
+    // Interactive drag-and-drop (current, PureRef-style) - InternalMove
+    // for the press/drag/drop gesture only, see HierarchyTreeWidget's
+    // own comment for why the actual reparenting it would do is discarded in favor of a CanvasScene
     // call. Single-item drag only (v1) - SingleSelection keeps
     // currentItem() unambiguous.
     tree_->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -178,7 +183,10 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     tree->onDrop = [this](QTreeWidgetItem* dragged, QTreeWidgetItem* target) {
         handleTreeDrop_(dragged, target);
     };
-    connect(tree_, &QTreeWidget::itemClicked, this, &HierarchyPanel::onItemClicked_);
+    connect(tree_,
+            &QTreeWidget::itemClicked,
+            this,
+            &HierarchyPanel::onItemClicked_);
     connect(tree_,
             &QTreeWidget::itemDoubleClicked,
             this,
@@ -197,19 +205,22 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
     setStyleSheet(
         QStringLiteral("QTreeWidget {"
-                      "  background-color: %1;"
-                      "  color: %2;"
-                      "  border: none;"
-                      "}"
-                      "QTreeWidget::item { padding: 3px 2px; }"
-                      "QTreeWidget::item:selected { background-color: %3; }"
-                      "QDockWidget::title {"
-                      "  background-color: %1;"
-                      "  color: %2;"
-                      "  padding: 5px;"
-                      "  border-bottom: 1px solid %4;"
-                      "}")
-            .arg(background.name(), text.name(), selection.name(), border.name()));
+                       "  background-color: %1;"
+                       "  color: %2;"
+                       "  border: none;"
+                       "}"
+                       "QTreeWidget::item { padding: 3px 2px; }"
+                       "QTreeWidget::item:selected { background-color: %3; }"
+                       "QDockWidget::title {"
+                       "  background-color: %1;"
+                       "  color: %2;"
+                       "  padding: 5px;"
+                       "  border-bottom: 1px solid %4;"
+                       "}")
+            .arg(background.name(),
+                 text.name(),
+                 selection.name(),
+                 border.name()));
 }
 
 void HierarchyPanel::setScene(CanvasScene* scene, CanvasView* view)
@@ -269,8 +280,8 @@ void HierarchyPanel::rebuild_()
     // uid is "consumed" - it gets added as a NESTED node from its
     // owner/anchor's own recursion below, not as a second, redundant
     // top-level root. attachedToUid() is generalized to any IBaseItem
-    // now (Max: "аттачить картинку к картинке"), not just TextItem, so
-    // this checks the interface rather than dynamic_cast<TextItem*>.
+    // now, not just TextItem, so this checks the interface rather than
+    // dynamic_cast<TextItem*>.
     QSet<QUuid> consumed;
     const QList<QGraphicsItem*> allItems = scene_->items();
     for (QGraphicsItem* item : allItems) {
@@ -317,7 +328,8 @@ void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
         for (QGraphicsItem* child : group->resolve_children())
             addItemNode_(node, child, added);
     }
-    if (auto* picture = dynamic_cast<PixmapItem*>(item)) { // GifItem IS-A PixmapItem
+    if (auto* picture = dynamic_cast<PixmapItem*>(
+            item)) { // GifItem IS-A PixmapItem
         for (QGraphicsItem* note : scene_->find_attached_items(picture->uid()))
             addItemNode_(node, note, added);
     }
@@ -327,18 +339,22 @@ void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
 
 void HierarchyPanel::connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif)
 {
-    // Max: "получается теперь можно и гифку проигрывать в иерархии?" -
-    // yes, now that the panel's rebuild trigger is QUndoStack::
+    // Now that the panel's rebuild trigger is QUndoStack::
     // indexChanged rather than the animation-driven CanvasScene::
     // changed(), a per-node icon update on frameChanged is a targeted,
     // cheap operation (setIcon() on one row) instead of a full tree
     // rebuild every frame.
     auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
     const QColor glyphColor = colorPreset[EPresetsColorIdx::kTextColor];
-    QMetaObject::Connection conn =
-        QObject::connect(gif->movie(), &QMovie::frameChanged, this, [node, gif, glyphColor](int) {
-            node->setIcon(0, makePictureIcon(gif->pixmap(), glyphColor));
-        });
+    QMetaObject::Connection conn
+        = QObject::connect(gif->movie(),
+                           &QMovie::frameChanged,
+                           this,
+                           [node, gif, glyphColor](int) {
+                               node->setIcon(0,
+                                             makePictureIcon(gif->pixmap(),
+                                                             glyphColor));
+                           });
     gifIconConnections_.append(conn);
 }
 
@@ -353,8 +369,9 @@ QTreeWidgetItem* HierarchyPanel::makeNode_(QGraphicsItem* item)
         label = QObject::tr("Group");
         icon = makeGroupIcon(text);
     } else if (auto* picture = dynamic_cast<PixmapItem*>(item)) {
-        label = picture->filename_.isEmpty() ? QObject::tr("Untitled")
-                                             : QFileInfo(picture->filename_).fileName();
+        label = picture->filename_.isEmpty()
+                    ? QObject::tr("Untitled")
+                    : QFileInfo(picture->filename_).fileName();
         icon = makePictureIcon(picture->pixmap(), text);
     } else if (auto* txt = dynamic_cast<TextItem*>(item)) {
         const QString plain = txt->toPlainText().trimmed();
@@ -401,10 +418,12 @@ void HierarchyPanel::onItemDoubleClicked_(QTreeWidgetItem* node)
         text->setFocus();
         return;
     }
-    view_->fitRect(scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item}), item);
+    view_->fitRect(scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
+                   item);
 }
 
-void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged, QTreeWidgetItem* target)
+void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
+                                     QTreeWidgetItem* target)
 {
     if (!scene_ || dragged == target)
         return;
@@ -414,9 +433,8 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged, QTreeWidgetItem* 
         return;
 
     if (!target) {
-        // Dropped on empty space below the last root row - "make it
-        // top-level" (Max: "деаттачить... элементы... становятся на
-        // самом нижнем верхнем уровне"). Covers both an attached item
+        // Dropped on empty space below the last root row - makes it
+        // top-level. Covers both an attached item
         // (clears the attachment) and a plain grouped item/nested
         // subgroup (leaves its group) - detach_item() picks whichever
         // applies, no-op if already fully top-level.

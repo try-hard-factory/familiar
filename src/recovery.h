@@ -7,9 +7,9 @@
 
 class CanvasView;
 
-// Crash recovery (roadmap step 18): while the app runs, every modified
+// Crash recovery: while the app runs, every modified
 // tab - including ones never manually saved ("untitled"), which the
-// regular periodic autosave (step 13) deliberately skips since it has no
+// regular periodic autosave deliberately skips since it has no
 // real path to save to - gets periodically snapshotted into its own
 // pair of files (<id>.fml + <id>.json sidecar) under recoveryDir(). On a
 // clean exit these are wiped (see MainWindow's qApp::aboutToQuit
@@ -21,9 +21,9 @@ namespace familiar::recovery {
 struct Entry
 {
     QUuid id;
-    QString label; // display name for the recovery dialog
+    QString label;        // display name for the recovery dialog
     QString originalPath; // empty if the tab was never manually saved
-    QString fmlPath; // recovery/<id>.fml - the actual content to restore
+    QString fmlPath;      // recovery/<id>.fml - the actual content to restore
 };
 
 // AppLocalDataLocation/recovery - not guaranteed to exist yet; save()

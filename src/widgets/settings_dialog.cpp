@@ -264,11 +264,11 @@ AutosaveEnabledWidget::AutosaveEnabledWidget(QWidget* parent)
 
 AutosaveIntervalWidget::AutosaveIntervalWidget(QWidget* parent)
     : IntegerGroupWidget(QStringLiteral("Autosave Interval (seconds):"),
-                        QStringLiteral(
-                            "How often unsaved open files are automatically "
-                            "saved, while autosave is enabled above."),
-                        QStringLiteral("Save/autosave_interval_seconds"),
-                        1,
-                        3600,
-                        parent)
+                         QStringLiteral(
+                             "How often unsaved open files are automatically "
+                             "saved, while autosave is enabled above."),
+                         QStringLiteral("Save/autosave_interval_seconds"),
+                         1,
+                         3600,
+                         parent)
 {}

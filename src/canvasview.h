@@ -246,7 +246,7 @@ private:
     // dedicated signal: unlike text editing, GIF playback controls apply
     // as soon as the item is simply selected.
     void updateGifToolbarPos_();
-    // Same idea again, for the group toolbar (roadmap step 10 stage 4) -
+    // Same idea again, for the group toolbar -
     // shown/hidden from on_selection_changed() same as the GIF one.
     void updateGroupToolbarPos_();
 

@@ -436,7 +436,7 @@ private:
 
 // ============================================================================
 // GroupCommand - оборачивает текущее выделение (2+ items) в новый
-// GroupItem (roadmap step 10). `group` приходит уже полностью
+// GroupItem. `group` приходит уже полностью
 // сконструированным (fill/rect/child_ids уже выставлены вызывающей
 // стороной, CanvasScene::group_selection()) - эта команда только
 // добавляет/убирает его со сцены и владеет им, как InsertItemsCommand,
@@ -448,8 +448,8 @@ class GroupCommand : public QUndoCommand
 {
 public:
     GroupCommand(CanvasScene* scene,
-                GroupItem* group,
-                const QList<QGraphicsItem*>& members);
+                 GroupItem* group,
+                 const QList<QGraphicsItem*>& members);
 
     void redo() override;
     void undo() override;
@@ -524,8 +524,8 @@ public:
     // (maybe_add_dropped_items_to_group(), always bundled into the same
     // undo macro as the drag's own MoveItemsByCommand) wants just the
     // dragged item(s) reselected instead - not the group, not any
-    // attached notes folded in by with_attached_items() (Max: "картинку
-    // надо выделить", plainly, not the group lit up alongside it).
+    // attached notes folded in by with_attached_items() - plainly just
+    // the dragged picture, not the group lit up alongside it.
     AddToGroupCommand(CanvasScene* scene,
                       GroupItem* group,
                       const QList<QGraphicsItem*>& members,
@@ -551,8 +551,8 @@ private:
 // item to a new anchor picture, or clears the attachment entirely
 // (newUid.isNull()). Plain field set/restore, same shape as
 // ChangeGroupFillColorCommand - group-membership sync (an attached item
-// always lives in the same group as its anchor, Max: "как с текстом")
-// is a SEPARATE command bundled alongside this one by CanvasScene::
+// always lives in the same group as its anchor) is a SEPARATE command
+// bundled alongside this one by CanvasScene::
 // attach_item_to()/detach_item(), not this class's own job - mirrors
 // how MoveItemsByCommand and AddToGroupCommand are two separate commands
 // bundled into one macro by the drag-drop-to-group path, rather than

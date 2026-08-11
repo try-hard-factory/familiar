@@ -16,9 +16,9 @@
 #include "canvasscene.h"
 #include "project_settings.h"
 #include "recovery.h"
-#include "widgets/save_all_dialog.h"
 #include "tabpane.h"
 #include "widgets/dialogs.h"
+#include "widgets/save_all_dialog.h"
 #include <actions/action_mouse_dispatch.h>
 #include <core/held_buttons_tracker.h>
 #include <core/settings.h>
@@ -127,7 +127,7 @@ MainWindow::MainWindow(QWidget* parent)
     qApp->installEventFilter(&HeldButtonsTracker::instance());
     qApp->installEventFilter(new ActionMouseDispatcher(this, this));
 
-    // Periodic autosave (roadmap step 13) - see onAutosaveTimeout_()/
+    // Periodic autosave - see onAutosaveTimeout_()/
     // restartAutosaveTimer_() in mainwindow.h for the full picture.
     autosaveTimer_ = new QTimer(this);
     connect(autosaveTimer_,
@@ -140,7 +140,7 @@ MainWindow::MainWindow(QWidget* parent)
             &MainWindow::restartAutosaveTimer_);
     restartAutosaveTimer_();
 
-    // Crash recovery (roadmap step 18) - see onRecoveryTimeout_() in
+    // Crash recovery - see onRecoveryTimeout_() in
     // mainwindow.h. Always-on (unlike autosaveTimer_ above, not gated by
     // Save/autosave_enabled): it writes into its own recovery/ folder,
     // never the tab's real file, so there's no user-facing reason to
@@ -217,10 +217,10 @@ void MainWindow::restartAutosaveTimer_()
     const bool enabled
         = settings.valueOrDefault(QStringLiteral("Save/autosave_enabled"))
               .toBool();
-    const int seconds
-        = settings
-              .valueOrDefault(QStringLiteral("Save/autosave_interval_seconds"))
-              .toInt();
+    const int seconds = settings
+                            .valueOrDefault(QStringLiteral(
+                                "Save/autosave_interval_seconds"))
+                            .toInt();
     if (enabled)
         autosaveTimer_->start(seconds * 1000);
 }
@@ -359,7 +359,9 @@ void MainWindow::settingsChangedSlot()
                 "background: transparent; } "
                 "QToolTip { background-color: %1; color: %2; "
                 "border: 1px solid %4; }")
-            .arg(rgb(backGroundColor_), rgb(textColor), rgb(selectionColor),
+            .arg(rgb(backGroundColor_),
+                 rgb(textColor),
+                 rgb(selectionColor),
                  rgb(borderColor)));
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
@@ -1153,13 +1155,12 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
     // to be - see hierarchy_panel.h's own history comment): that signal
     // also fires continuously for as long as any GifItem is animating,
     // which starved a debounce forever and, even throttled, meant a
-    // pointless rebuild every ~150ms just from a gif playing (Max:
-    // "может не ребилдить на обновлении гифки"). indexChanged only
-    // fires for real command-driven mutations - animation doesn't push
-    // undo commands. The one gap this leaves (background file loads,
-    // which bypass the undo stack via add_queued_items()) is covered by
-    // an explicit notifyStructuralChange() call from that call site
-    // instead.
+    // pointless rebuild every ~150ms just from a gif playing.
+    // indexChanged only fires for real command-driven mutations -
+    // animation doesn't push undo commands. The one gap this leaves
+    // (background file loads, which bypass the undo stack via
+    // add_queued_items()) is covered by an explicit
+    // notifyStructuralChange() call from that call site instead.
     // Receiver is `this`, not hierarchyPanel_ directly: the disconnect()
     // calls at the top of this function only tear down connections whose
     // receiver is `this` (that's what makes switching tabs clean), so

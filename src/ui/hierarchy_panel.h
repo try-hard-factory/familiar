@@ -14,25 +14,21 @@ class QTimer;
 class QTreeWidget;
 class QTreeWidgetItem;
 
-// Scene outliner (Max: "фича с иерархией... слева открывается панель с
-// иерархией"), toggled via the "hierarchy" action (Ctrl+J). One
+// Scene outliner, toggled via the "hierarchy" action (Ctrl+J). One
 // long-lived instance owned by MainWindow, rebound to whichever tab is
 // currently active (see MainWindow::resyncActionsForTab()) rather than
 // one instance per CanvasView - it's chrome, not per-document state.
 //
 // The tree mixes TWO different relationships from the underlying flat
 // scene into one hierarchy: group membership (GroupItem::child_ids())
-// AND attachment (IBaseItem::attachedToUid(), roadmap step 25 - a
+// AND attachment (IBaseItem::attachedToUid() - a
 // TextItem note attached to a picture, or, current, a PixmapItem
-// attached to another one, Max: "аттачить картинку к картинке") - an
-// attached item nests under its anchor wherever that anchor itself ends
-// up (top-level or inside a group), not as a flat sibling of the
-// anchor's other group-mates.
+// attached to another one) - an attached item nests under its anchor
+// wherever that anchor itself ends up (top-level or inside a group),
+// not as a flat sibling of the anchor's other group-mates.
 //
-// Interactive (current, Max: "в пьюрефе эта панель интерактивная...
-// можно перемещать элементы... приаттачивать текст к картинке, или
-// добавлять в группу... деаттачить") - dragging a row onto a Group node
-// adds/transfers it there (CanvasScene::add_to_group()), onto a
+// Interactive (current, PureRef-style) - dragging a row onto a Group
+// node adds/transfers it there (CanvasScene::add_to_group()), onto a
 // picture node attaches it (CanvasScene::attach_item_to()), onto empty
 // space detaches AND/OR leaves its group, landing it top-level
 // (CanvasScene::detach_item()) - see handleTreeDrop_()'s own comment
@@ -49,16 +45,14 @@ class QTreeWidgetItem;
 // trigger. The one thing that DOESN'T go through the undo stack is a
 // background file load (FileActions::loadFmlIntoCurrentTab()'s
 // add_queued_items() call) - that call site explicitly calls
-// MainWindow::notifyStructuralChange() itself instead (Max: "если
-// чекбокс был поставлен на иерархии, то при повторно запуске эта панель
-// пустая"). An earlier version hooked CanvasScene::changed() instead,
-// reasoning it covers literally everything - it does, but it ALSO fires
-// continuously (every few ms) for as long as any GifItem is animating,
-// not just during a load, which either starved a debounce forever or
-// (once throttled) forced a pointless rebuild every ~150ms just from a
-// gif playing (Max: "может не ребилдить на обновлении гифки"). Dropped
-// in favor of the indexChanged + explicit-notify combo above, which
-// doesn't fire for animation at all.
+// MainWindow::notifyStructuralChange() itself instead. An earlier
+// version hooked CanvasScene::changed() instead, reasoning it covers
+// literally everything - it does, but it ALSO fires continuously
+// (every few ms) for as long as any GifItem is animating, not just
+// during a load, which either starved a debounce forever or (once
+// throttled) forced a pointless rebuild every ~150ms just from a gif
+// playing. Dropped in favor of the indexChanged + explicit-notify
+// combo above, which doesn't fire for animation at all.
 class HierarchyPanel : public QDockWidget
 {
     Q_OBJECT
@@ -98,7 +92,9 @@ protected:
 
 private:
     void rebuild_();
-    void addItemNode_(QTreeWidgetItem* parent, QGraphicsItem* item, QSet<QUuid>& added);
+    void addItemNode_(QTreeWidgetItem* parent,
+                      QGraphicsItem* item,
+                      QSet<QUuid>& added);
     QTreeWidgetItem* makeNode_(QGraphicsItem* item);
     // Live-updates node's icon on every GIF frame instead of waiting for
     // the next full rebuild_() - see its own comment for why this is
@@ -107,16 +103,6 @@ private:
     void connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif);
     void onItemClicked_(QTreeWidgetItem* node);
     void onItemDoubleClicked_(QTreeWidgetItem* node);
-    // Interactive drag-and-drop (current, Max: "в пьюрефе эта панель
-    // интерактивная... можно перемещать элементы... приаттачивать
-    // текст к картинке, или добавлять в группу... деаттачить"). target
-    // is null when dropped on empty space below the last root row
-    // (= "make it top-level" - detach and/or leave its group). Called
-    // from the tree's own dropEvent() (see the HierarchyTreeWidget
-    // subclass local to hierarchy_panel.cpp) - dispatches to a
-    // CanvasScene call based on target's type; the tree itself never
-    // reparents nodes directly, it's always a read-only projection
-    // rebuilt from the scene (see this class's own header comment).
     void handleTreeDrop_(QTreeWidgetItem* dragged, QTreeWidgetItem* target);
 
     QTreeWidget* tree_ = nullptr;

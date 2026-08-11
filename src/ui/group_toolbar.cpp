@@ -69,8 +69,8 @@ QIcon makeLockIcon(const QColor& glyphColor, qreal dpr)
 // buttons, this is the ONLY color control on this bar, nothing to
 // disambiguate).
 QIcon makeFillColorIcon(const QColor& fillColor,
-                       const QColor& borderColor,
-                       qreal dpr)
+                        const QColor& borderColor,
+                        qreal dpr)
 {
     QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
@@ -178,19 +178,21 @@ GroupToolbar::GroupToolbar(QWidget* parent)
         const QColor oldColor = item_->fill_color();
         QColor initial = oldColor;
         initial.setAlpha(255);
-        // Live preview while dragging (Max: "цвет в реалтайме
-        // изменяется при изменении ползунков") - applies straight to
-        // the item, bypassing the undo stack, exactly like the item
+        // Live preview while dragging - applies straight to the item,
+        // bypassing the undo stack, exactly like the item
         // would look if the color really were already committed;
         // reverted below on cancel, or folded into ONE real undo
         // command on accept.
         ColorPickerDialog dialog(this, initial, tr("Group fill color"));
-        connect(&dialog, &ColorPickerDialog::colorChanged, this, [this](QColor c) {
-            if (item_) {
-                item_->set_fill_color(c);
-                updateFillColorIcon_();
-            }
-        });
+        connect(&dialog,
+                &ColorPickerDialog::colorChanged,
+                this,
+                [this](QColor c) {
+                    if (item_) {
+                        item_->set_fill_color(c);
+                        updateFillColorIcon_();
+                    }
+                });
         if (dialog.exec() == QDialog::Accepted) {
             const QColor color = dialog.selectedColor();
             if (auto* scene = dynamic_cast<CanvasScene*>(item_->scene())) {
@@ -290,10 +292,6 @@ void GroupToolbar::showSettingsPopup_()
     auto* lay = new QVBoxLayout(popup);
     lay->setContentsMargins(10, 8, 10, 8);
 
-    // Per-group opt-out, GroupItem::drag_drop_enabled() - not an app-
-    // wide setting (Max's explicit answer to the original clarifying
-    // question this stage was scoped from: "локальная для каждой
-    // группы", not a shared toggle).
     auto* dragDropCheck = new QCheckBox(tr("Drag and drop items into group"),
                                         popup);
     dragDropCheck->setChecked(item_->drag_drop_enabled());
@@ -335,32 +333,31 @@ void GroupToolbar::restyleFromPreset()
             .arg(alpha);
     };
 
-    setStyleSheet(
-        QStringLiteral("GroupToolbar > QWidget {"
-                       "  background-color: %1;"
-                       "  border: 1px solid %2;"
-                       "  border-radius: 8px;"
-                       "}"
-                       "QToolButton {"
-                       "  background: transparent;"
-                       "  color: %3;"
-                       "  border: none;"
-                       "  border-radius: 5px;"
-                       "}"
-                       "QToolButton:hover { background-color: %4; }"
-                       "QToolButton:pressed { background-color: %5; }"
-                       "QToolButton:checked { background-color: %5; }"
-                       "QToolTip {"
-                       "  background-color: %6;"
-                       "  color: %3;"
-                       "  border: 1px solid %2;"
-                       "}")
-            .arg(rgba(background, 245),
-                 border.name(),
-                 text.name(),
-                 rgba(selection, 90),
-                 rgba(selection, 170),
-                 background.name()));
+    setStyleSheet(QStringLiteral("GroupToolbar > QWidget {"
+                                 "  background-color: %1;"
+                                 "  border: 1px solid %2;"
+                                 "  border-radius: 8px;"
+                                 "}"
+                                 "QToolButton {"
+                                 "  background: transparent;"
+                                 "  color: %3;"
+                                 "  border: none;"
+                                 "  border-radius: 5px;"
+                                 "}"
+                                 "QToolButton:hover { background-color: %4; }"
+                                 "QToolButton:pressed { background-color: %5; }"
+                                 "QToolButton:checked { background-color: %5; }"
+                                 "QToolTip {"
+                                 "  background-color: %6;"
+                                 "  color: %3;"
+                                 "  border: 1px solid %2;"
+                                 "}")
+                      .arg(rgba(background, 245),
+                           border.name(),
+                           text.name(),
+                           rgba(selection, 90),
+                           rgba(selection, 170),
+                           background.name()));
 
     lockBtn_->setIcon(makeLockIcon(iconGlyphColor_, devicePixelRatioF()));
     chevronBtn_->setIcon(makeChevronIcon(iconGlyphColor_, devicePixelRatioF()));

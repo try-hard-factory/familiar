@@ -49,8 +49,9 @@ void save(CanvasView* canvasView)
     const QUuid id = canvasView->recoveryId();
     const QString fmlPath = fmlPathFor(dir, id);
 
-    FmlResult result
-        = FmlArchive::save(canvasView->scene(), canvasView->canvasRect(), fmlPath);
+    FmlResult result = FmlArchive::save(canvasView->scene(),
+                                        canvasView->canvasRect(),
+                                        fmlPath);
     if (!result.error.isEmpty()) {
         FLOG_WARN(Ch::IO,
                   "Could not write recovery snapshot for {}: {}",
@@ -61,8 +62,8 @@ void save(CanvasView* canvasView)
 
     const bool untitled = canvasView->isUntitled();
     QJsonObject sidecar;
-    sidecar[QStringLiteral("originalPath")]
-        = untitled ? QString() : canvasView->path();
+    sidecar[QStringLiteral("originalPath")] = untitled ? QString()
+                                                       : canvasView->path();
     sidecar[QStringLiteral("label")]
         = untitled ? QStringLiteral("Untitled (%1)")
                          .arg(QDateTime::currentDateTime().toString(
@@ -100,11 +101,11 @@ QList<Entry> scan()
     if (!dir.exists())
         return entries;
 
-    const QStringList fmlFiles
-        = dir.entryList({QStringLiteral("*.fml")}, QDir::Files);
+    const QStringList fmlFiles = dir.entryList({QStringLiteral("*.fml")},
+                                               QDir::Files);
     for (const QString& fmlFile : fmlFiles) {
-        const QUuid id
-            = QUuid::fromString(QFileInfo(fmlFile).completeBaseName());
+        const QUuid id = QUuid::fromString(
+            QFileInfo(fmlFile).completeBaseName());
         if (id.isNull())
             continue;
 

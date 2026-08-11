@@ -3,9 +3,9 @@
 
 /**
  *  @file   group_toolbar.h
- *  \~russian @brief  Плавающая панель управления группой (roadmap step
- *                    10, этап 4) - по образцу gif_playback_toolbar.h.
- *                    Lock (этап 3) + выбор цвета заливки + chevron-попап
+ *  \~russian @brief  Плавающая панель управления группой - по образцу
+ *                    gif_playback_toolbar.h.
+ *                    Lock + выбор цвета заливки + chevron-попап
  *                    с чекбоксом "Drag and drop items into groups".
  *                    Показывается CanvasView'ом, когда выделен ровно
  *                    один GroupItem.

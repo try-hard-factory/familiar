@@ -13,9 +13,6 @@
 KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
     : QWidget(parent)
 {
-    // Keyboard-only, but conceptually belong with the other zoom/pan
-    // Controls rather than buried in the flat Actions list - shown there
-    // instead, per Max's request.
     static const QSet<QString> shownUnderControls = {
         QStringLiteral("zoom_in"),
         QStringLiteral("zoom_out"),

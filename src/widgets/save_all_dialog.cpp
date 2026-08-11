@@ -60,8 +60,10 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
 
     auto* iconLabel = new QLabel(this);
     iconLabel->setFixedSize(kIconSize, kIconSize);
-    iconLabel->setPixmap(familiar::dialog_style::severityIcon(
-        QMessageBox::Warning, accent, devicePixelRatioF()));
+    iconLabel->setPixmap(
+        familiar::dialog_style::severityIcon(QMessageBox::Warning,
+                                             accent,
+                                             devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -98,8 +100,9 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setMaximumHeight(220);
-    scroll->setStyleSheet(QStringLiteral("QScrollArea { background: transparent; }"
-                                        "QScrollArea > QWidget > QWidget { background: transparent; }"));
+    scroll->setStyleSheet(QStringLiteral(
+        "QScrollArea { background: transparent; }"
+        "QScrollArea > QWidget > QWidget { background: transparent; }"));
 
     auto* listWidget = new QWidget(scroll);
     auto* listLayout = new QVBoxLayout(listWidget);
@@ -107,12 +110,11 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     listLayout->setSpacing(6);
 
     for (auto& [id, path] : items) {
-        auto* checkbox = new FlatCheckBox(
-            path.isEmpty() ? tr("Untitled") : path,
-            textColor,
-            border,
-            accent,
-            listWidget);
+        auto* checkbox = new FlatCheckBox(path.isEmpty() ? tr("Untitled") : path,
+                                          textColor,
+                                          border,
+                                          accent,
+                                          listWidget);
         checkbox->setChecked(true);
         checkboxes_.insert(id, checkbox);
         listLayout->addWidget(checkbox);
@@ -124,8 +126,11 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     auto* buttonRow = new QHBoxLayout();
     buttonRow->setSpacing(8);
 
-    auto* closeWithoutSaveBtn = new QPushButton(tr("Close without saving"), this);
-    familiar::dialog_style::styleSecondaryButton(closeWithoutSaveBtn, textColor, border);
+    auto* closeWithoutSaveBtn = new QPushButton(tr("Close without saving"),
+                                                this);
+    familiar::dialog_style::styleSecondaryButton(closeWithoutSaveBtn,
+                                                 textColor,
+                                                 border);
     connect(closeWithoutSaveBtn,
             &QPushButton::clicked,
             this,
@@ -148,11 +153,13 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     outer->addLayout(buttonRow);
     saveBtn->setFocus();
 
-    setStyleSheet(
-        familiar::dialog_style::panelStyleSheet(
-            "SaveAllDialog", background, border, textColor)
-        + familiar::dialog_style::closeButtonStyleSheet(
-            "sadCloseBtn", textColor, accent));
+    setStyleSheet(familiar::dialog_style::panelStyleSheet("SaveAllDialog",
+                                                          background,
+                                                          border,
+                                                          textColor)
+                  + familiar::dialog_style::closeButtonStyleSheet("sadCloseBtn",
+                                                                  textColor,
+                                                                  accent));
 
     centered_widget(window_, this);
     show();
@@ -186,12 +193,13 @@ void SaveAllDialog::onCloseWithoutSave_()
 void SaveAllDialog::onSave_()
 {
     std::map<int, bool> m;
-    for (auto it = checkboxes_.constBegin(); it != checkboxes_.constEnd(); ++it) {
+    for (auto it = checkboxes_.constBegin(); it != checkboxes_.constEnd();
+         ++it) {
         FLOG_DEBUG(Ch::UI,
-                  "SaveAllDialog: {} {} {}",
-                  it.key(),
-                  it.value()->text().toStdString(),
-                  it.value()->isChecked());
+                   "SaveAllDialog: {} {} {}",
+                   it.key(),
+                   it.value()->text().toStdString(),
+                   it.value()->isChecked());
         m.emplace(it.key(), it.value()->isChecked());
     }
     window_->saveAllWindowSaveCB(this, std::move(m));

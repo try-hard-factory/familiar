@@ -244,16 +244,13 @@ void AlphaSlider::mouseMoveEvent(QMouseEvent* event)
 namespace {
 constexpr int kSwatchSize = 26;
 constexpr int kSwatchSpacing = 6;
-}
+} // namespace
 
 SwatchRow::SwatchRow(bool withNone, const QColor& accent, QWidget* parent)
     : QWidget(parent)
     , withNone_(withNone)
     , accent_(accent)
 {
-    // A small, fixed default palette - PureRef-style pickers ship one
-    // rather than starting empty (Max's reference screenshot). No
-    // "recently used" tracking (yet) - out of scope for a first pass.
     colors_ = {
         QColor(0x1a, 0x1a, 0x1a),
         QColor(0x8b, 0x1a, 0x1a),
@@ -333,7 +330,7 @@ void SwatchRow::paintEvent(QPaintEvent* event)
         }
 
         const bool isCurrent = current_.isValid()
-            && current_.rgba() == c.rgba();
+                               && current_.rgba() == c.rgba();
         if (isCurrent) {
             QPen ring(accent_);
             ring.setWidthF(2.0);
@@ -433,14 +430,11 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     copyBtn->setToolTip(tr("Copy hex value"));
     connect(copyBtn, &QPushButton::clicked, this, [this, copyBtn] {
         qApp->clipboard()->setText(current_.name(QColor::HexRgb));
-        // Same transient confirmation PureRef itself shows (Max's
-        // screenshot) - QToolTip::showText() at a specific point rather
-        // than copyBtn->setToolTip(), which would only show on the
-        // NEXT hover, not immediately on click.
-        QToolTip::showText(
-            copyBtn->mapToGlobal(QPoint(copyBtn->width() / 2, copyBtn->height())),
-            tr("Copied to clipboard!"),
-            copyBtn);
+
+        QToolTip::showText(copyBtn->mapToGlobal(
+                               QPoint(copyBtn->width() / 2, copyBtn->height())),
+                           tr("Copied to clipboard!"),
+                           copyBtn);
     });
     fieldsRow->addWidget(copyBtn);
 
@@ -470,8 +464,10 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     outer->addLayout(buttonRow);
 
     connect(svPicker_, &SvPicker::svChanged, this, [this](qreal s, qreal v) {
-        QColor c = QColor::fromHsv(
-            hueSlider_->hue(), int(s * 255), int(v * 255), current_.alpha());
+        QColor c = QColor::fromHsv(hueSlider_->hue(),
+                                   int(s * 255),
+                                   int(v * 255),
+                                   current_.alpha());
         setColor_(c, svPicker_);
     });
     connect(hueSlider_, &HueSlider::hueChanged, this, [this](int hue) {
@@ -515,19 +511,21 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
 
     setColor_(current_, nullptr);
 
-    setStyleSheet(
-        familiar::dialog_style::panelStyleSheet(
-            "ColorPickerDialog", background, border, textColor)
-        + familiar::dialog_style::closeButtonStyleSheet(
-            "cpdCloseBtn", textColor, accent)
-        + QStringLiteral("QLineEdit {"
-                        "  background-color: rgba(0,0,0,20);"
-                        "  color: %1;"
-                        "  border: 1px solid %2;"
-                        "  border-radius: 4px;"
-                        "  padding: 4px 6px;"
-                        "}")
-              .arg(textColor.name(), border.name()));
+    setStyleSheet(familiar::dialog_style::panelStyleSheet("ColorPickerDialog",
+                                                          background,
+                                                          border,
+                                                          textColor)
+                  + familiar::dialog_style::closeButtonStyleSheet("cpdCloseBtn",
+                                                                  textColor,
+                                                                  accent)
+                  + QStringLiteral("QLineEdit {"
+                                   "  background-color: rgba(0,0,0,20);"
+                                   "  color: %1;"
+                                   "  border: 1px solid %2;"
+                                   "  border-radius: 4px;"
+                                   "  padding: 4px 6px;"
+                                   "}")
+                        .arg(textColor.name(), border.name()));
 
     centered_widget(parent ? parent : this, this);
 }
@@ -563,7 +561,8 @@ void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
         hexEdit_->setText(color.name(QColor::HexRgb).mid(1));
     if (percentEdit_ && source != percentEdit_)
         percentEdit_->setText(
-            QString::number(qRound(color.alpha() * 100.0 / 255.0)) + QStringLiteral("%"));
+            QString::number(qRound(color.alpha() * 100.0 / 255.0))
+            + QStringLiteral("%"));
 
     swatchRow_->setCurrent(color);
 

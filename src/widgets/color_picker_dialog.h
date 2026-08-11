@@ -129,18 +129,6 @@ private:
     QColor current_;
 };
 
-// PureRef-style custom color picker (roadmap step 24, Max: "поехали с
-// QColorDialog ... вот как у пьюрефа") - replaces the QColorDialog-
-// wrapping pickColor() helpers previously duplicated in
-// ui/group_toolbar.cpp/ui/text_edit_toolbar.cpp. Same custom-chrome
-// convention as CustomMessageBox/SaveAllDialog (widgets/dialog_style.h):
-// frameless, opaque, rounded panel sourced from the current preset,
-// draggable via startSystemMove().
-//
-// The SV square + hue slider (+ alpha slider, if withAlpha) drive a
-// single internal QColor; hex/opacity fields and the preset swatch row
-// both read from and write back to that same color, all kept in sync
-// through setColor_() rather than each control owning its own truth.
 class ColorPickerDialog : public QDialog
 {
     Q_OBJECT
@@ -154,15 +142,6 @@ public:
     QColor selectedColor() const { return current_; }
 
 signals:
-    // Fired from setColor_() on every interaction (SV/hue/alpha drag,
-    // hex/percent edit, swatch click) - lets a caller apply the color
-    // live as the user adjusts it (Max: "чтобы цвет в реалтайме
-    // изменялся при изменении ползунков"), same live-preview feel
-    // PureRef's own picker has, rather than waiting for OK. The caller
-    // is responsible for reverting to the pre-dialog color itself if
-    // the dialog is ultimately rejected - this signal doesn't know or
-    // care how its target represents "no color changed yet" for undo
-    // purposes.
     void colorChanged(QColor color);
 
 protected:

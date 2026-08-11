@@ -289,33 +289,15 @@ void CanvasScene::raise_selection_to_front()
             if (auto* group = dynamic_cast<GroupItem*>(item)) {
                 QList<QGraphicsItem*> children = group->resolve_children();
                 std::sort(children.begin(),
-                         children.end(),
-                         [](QGraphicsItem* a, QGraphicsItem* b) {
-                             return a->zValue() < b->zValue();
-                         });
+                          children.end(),
+                          [](QGraphicsItem* a, QGraphicsItem* b) {
+                              return a->zValue() < b->zValue();
+                          });
                 for (QGraphicsItem* child : children)
                     appendCluster(child);
             }
         };
 
-    // A plain (non-group) selected item that's a group's member - e.g.
-    // clicking directly on one image inside a subgroup, per design point
-    // 1 (unlocked group + click on a member selects the member, not the
-    // group) - also brings its OWNING group's whole cluster along, not
-    // just the clicked image alone. Without this, only that one image
-    // reached global max z while its own group's fill and sibling
-    // members stayed behind at their old z, which looks exactly like the
-    // original "unrelated content stays on top" bug this function exists
-    // to fix, just one level removed (Max: "если кликнем по картинке
-    // подгруппы - то подгруппа тоже должна стать выше всех остальных").
-    // with_attached_items(): a selected picture's attached notes
-    // (roadmap step 25) aren't Qt-selected themselves, so plain
-    // selectedItems() misses them - without this a selected LOOSE
-    // picture (not in any group, where its notes already ride along as
-    // actual group members instead - see group_selection()/
-    // AddToGroupCommand) raised itself to the top while its own notes
-    // stayed behind at their old z (Max: "у приаттаченных текстовых
-    // полей... при выборе картинки поля тоже должны... быть наверху").
     const QList<QGraphicsItem*> initialSelected = selectedItems(true);
     QList<QGraphicsItem*> roots = with_attached_items(initialSelected);
     for (QGraphicsItem* item : initialSelected) {
@@ -328,10 +310,10 @@ void CanvasScene::raise_selection_to_front()
             roots.append(owner);
     }
     std::sort(roots.begin(),
-             roots.end(),
-             [](QGraphicsItem* a, QGraphicsItem* b) {
-                 return a->zValue() < b->zValue();
-             });
+              roots.end(),
+              [](QGraphicsItem* a, QGraphicsItem* b) {
+                  return a->zValue() < b->zValue();
+              });
     for (QGraphicsItem* root : roots)
         appendCluster(root);
 
@@ -425,16 +407,6 @@ void CanvasScene::group_selection()
     if (ids.size() < 2)
         return;
 
-    // Fold in any attached items (roadmap step 25) of a picture that's
-    // becoming a member here - they aren't independently selected in
-    // the normal case, so without this they'd stay loose top-level
-    // items outside a group that visually contains their picture (Max:
-    // "аттаченые текстовые поля тоже должны стать частью группы").
-    // Index-based, over `ids` itself as it grows - a picture can now be
-    // attached to another picture (current, Max: "аттачить картинку к
-    // картинке"), so this has to walk whole chains (A -> B attached to
-    // A -> C attached to B, ...), not just what's directly attached to
-    // the originally-selected items. Same pattern as with_attached_items().
     QList<QGraphicsItem*> members = selected;
     for (int i = 0; i < ids.size(); ++i) {
         auto* picture = dynamic_cast<PixmapItem*>(find_by_uid(ids[i]));
@@ -455,10 +427,7 @@ void CanvasScene::group_selection()
     // visibly jump in size the first time it re-fits after creation.
     const QRectF bounds = itemsBoundingRect(false, members);
     const qreal padding = GroupItem::compute_padding(bounds);
-    const QRectF padded = bounds.adjusted(-padding,
-                                          -padding,
-                                          padding,
-                                          padding);
+    const QRectF padded = bounds.adjusted(-padding, -padding, padding, padding);
 
     auto* group = new GroupItem();
     group->setPos(padded.topLeft());
@@ -497,8 +466,7 @@ void CanvasScene::ungroup_selection()
 }
 
 GroupItem* CanvasScene::find_drop_target_group(
-    const QPointF& scenePos,
-    const QSet<GroupItem*>& excluded) const
+    const QPointF& scenePos, const QSet<GroupItem*>& excluded) const
 {
     // Topmost by z wins if scenePos lands somewhere multiple groups'
     // areas overlap (e.g. a subgroup nested inside an outer group that
@@ -554,14 +522,12 @@ void CanvasScene::clear_drop_target_highlight()
 }
 
 void CanvasScene::maybe_add_dropped_items_to_group(
-    const QList<QGraphicsItem*>& movedItems,
-    const QPointF& cursorScenePos)
+    const QList<QGraphicsItem*>& movedItems, const QPointF& cursorScenePos)
 {
     // ANY item is a candidate, whether loose, already a member of some
     // other group (see the transfer branch below), or a GroupItem
     // itself - dragging a whole subgroup onto another group nests it
-    // the same way "select both + Ctrl+G" would (Max: same drop-target
-    // highlight/behavior for dragging a group into a group).
+    // the same way "select both + Ctrl+G" would
     QList<QGraphicsItem*> candidates = movedItems;
     if (candidates.isEmpty())
         return;
@@ -570,8 +536,9 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     // per item. forbidden_drop_targets(): never offer a dragged group
     // itself, or one of its own descendants, as its own target - that
     // would be a membership cycle.
-    GroupItem* target = find_drop_target_group(
-        cursorScenePos, forbidden_drop_targets(candidates));
+    GroupItem* target = find_drop_target_group(cursorScenePos,
+                                               forbidden_drop_targets(
+                                                   candidates));
     if (!target)
         return;
 
@@ -581,9 +548,7 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     // group earlier, and is now being dragged further, INTO one of the
     // outer's own subgroups that has drag_drop_enabled() on) gets
     // TRANSFERRED instead - remove from its old group, add to the new
-    // one, bundled as one undo step (Max: "перемещая эту картинку
-    // дальше внутри группы, можно добавить её в те группы где галочка
-    // стоит"). Already being a member of the TARGET itself is a no-op -
+    // one, bundled as one undo step. Already being a member of the TARGET itself is a no-op -
     // dropping it back where it already lives shouldn't push a command.
     QList<QGraphicsItem*> toAdd;
     bool changed = false;
@@ -629,7 +594,7 @@ void CanvasScene::add_to_group(QGraphicsItem* item, GroupItem* target)
     auto* base = dynamic_cast<IBaseItem*>(item);
     if (!base || !target || item == target)
         return;
-    // Attached items (roadmap step 25/current) don't take a group
+    // Attached items don't take a group
     // membership independently of their anchor - CanvasScene::
     // attach_item_to() is what keeps that invariant, this call is only
     // for a plain grouped/loose item or a nested subgroup.
@@ -666,13 +631,13 @@ void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
     // AddToGroupCommand::redo() had just bumped it to while the picture
     // itself got raised way above it here, visibly landing the note
     // under the picture it's supposed to be pinned to.
-    QList<QGraphicsItem*> cluster
-        = with_attached_items(group->selection_action_items());
+    QList<QGraphicsItem*> cluster = with_attached_items(
+        group->selection_action_items());
     std::sort(cluster.begin(),
-             cluster.end(),
-             [](QGraphicsItem* a, QGraphicsItem* b) {
-                 return a->zValue() < b->zValue();
-             });
+              cluster.end(),
+              [](QGraphicsItem* a, QGraphicsItem* b) {
+                  return a->zValue() < b->zValue();
+              });
     qreal z = max_z + Z_STEP;
     for (QGraphicsItem* item : cluster) {
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
@@ -1150,12 +1115,6 @@ GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
 QList<QGraphicsItem*> CanvasScene::find_attached_items(
     const QUuid& pictureUid) const
 {
-    // Generalized from TextItem-only (roadmap step 25) to any IBaseItem
-    // whose attachedToUid() matches - a PixmapItem can now attach to
-    // another PixmapItem too (Max: "аттачить картинку к картинке"). The
-    // ANCHOR side stays picture-only by construction (nothing ever sets
-    // attachedToUid_ to a non-picture uid - see the cycle guard in
-    // wouldCreateAttachCycle()), so no extra filtering needed here.
     QList<QGraphicsItem*> attached;
     for (QGraphicsItem* item : items()) {
         auto* base = dynamic_cast<IBaseItem*>(item);
@@ -1190,7 +1149,7 @@ QList<QGraphicsItem*> CanvasScene::with_attached_items(
 }
 
 bool CanvasScene::wouldCreateAttachCycle(const QUuid& itemUid,
-                                        const QUuid& targetUid) const
+                                         const QUuid& targetUid) const
 {
     if (itemUid == targetUid)
         return true;
@@ -1316,8 +1275,8 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
         // restore_drilled_in_members_() (called from on_selection_change())
         // turns them back off the moment it's deselected, so re-selecting
         // it again requires another explicit double-click.
-        const bool wasLockedGroupMember =
-            !(item->flags() & QGraphicsItem::ItemIsSelectable);
+        const bool wasLockedGroupMember = !(item->flags()
+                                            & QGraphicsItem::ItemIsSelectable);
         item->setFlag(QGraphicsItem::ItemIsSelectable, true);
         item->setFlag(QGraphicsItem::ItemIsMovable, true);
         if (wasLockedGroupMember) {
@@ -1378,23 +1337,14 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         view->resetPreviousTransform();
     }
 
-    // Live drop-target highlight while body-dragging something that
-    // could actually land in a group on release - same guard
-    // mouseReleaseEvent() uses to decide whether a real move happened,
-    // minus the "already moved" delta check (this runs every frame, not
-    // just at the end). is_action_active() excludes an active resize/
-    // rotate handle drag (that's not a body drag, dropping doesn't apply
-    // there). A group being dragged is itself a valid candidate now too
-    // (Max: same highlight for dragging a group into a group) -
-    // forbidden_drop_targets() keeps it from ever highlighting itself
-    // or one of its own descendants.
     if (active_mode_ == kMoveMode && has_selection()
         && !multiselect_item_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
         QList<QGraphicsItem*> dragged = selectedItems(true);
-        GroupItem* target = find_drop_target_group(
-            event->scenePos(), forbidden_drop_targets(dragged));
+        GroupItem* target = find_drop_target_group(event->scenePos(),
+                                                   forbidden_drop_targets(
+                                                       dragged));
         if (target != highlightedGroup_) {
             clear_drop_target_highlight();
             if (target) {
@@ -1434,7 +1384,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             undo_stack_->push(
                 new MoveItemsByCommand(selectedItems(), delta, true));
             maybe_add_dropped_items_to_group(selectedItems(true),
-                                            event->scenePos());
+                                             event->scenePos());
             undo_stack_->endMacro();
         }
     }
@@ -1568,10 +1518,10 @@ void CanvasScene::on_selection_change()
     // sweep (kRubberbandMode, so a multi-select-by-dragging ends up on
     // top too, not just ctrl+click accumulation).
     FLOG_DEBUG(Ch::Scene,
-              "CanvasScene::on_selection_change() active_mode_={} "
-              "selectedCount={}",
-              int(active_mode_),
-              selectedItems(true).size());
+               "CanvasScene::on_selection_change() active_mode_={} "
+               "selectedCount={}",
+               int(active_mode_),
+               selectedItems(true).size());
     if (active_mode_ == kMoveMode || active_mode_ == kRubberbandMode) {
         raise_selection_to_front();
     }
@@ -1600,7 +1550,8 @@ void CanvasScene::restore_drilled_in_members_()
             continue;
         }
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        GroupItem* owner = baseItem ? find_owning_group(baseItem->uid()) : nullptr;
+        GroupItem* owner = baseItem ? find_owning_group(baseItem->uid())
+                                    : nullptr;
         if (owner && owner->locked()) {
             item->setFlag(QGraphicsItem::ItemIsSelectable, false);
             item->setFlag(QGraphicsItem::ItemIsMovable, false);
@@ -1621,7 +1572,7 @@ void CanvasScene::on_change()
         multiselect_item_->fit_selection_area(itemsBoundingRect(true));
     }
 
-    // Auto-fit (roadmap step 10): grows OR shrinks every group's fill to
+    // Auto-fit: grows OR shrinks every group's fill to
     // tightly contain its members - e.g. one was just dragged outside
     // it (grows), or back in after having been outside (shrinks back
     // down). Same live-during-drag hook as multiselect's own refit
@@ -1672,7 +1623,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 QString filename = data.value("filename").toString();
                 PixmapItem* pixmapItem = new PixmapItem(image, filename);
 
-                // "crop" and (roadmap step 25/current) "attached_to" -
+                // "crop" and "attached_to" -
                 // see PixmapItem::apply_extra_save_data() (moveitem.h).
                 QVariant extraData = data.value("data");
                 if (extraData.isValid())

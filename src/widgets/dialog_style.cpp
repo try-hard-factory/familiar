@@ -42,17 +42,20 @@ QString panelStyleSheet(const char* className,
     // tooltip rendering, painting it as a solid black plate otherwise.
     // Tooltips have no alpha channel - keep the color fully opaque.
     return QStringLiteral("%1 {"
-                         "  background-color: %2;"
-                         "  border: 1px solid %3;"
-                         "  border-radius: 10px;"
-                         "}"
-                         "QLabel { background: transparent; color: %4; }"
-                         "QToolTip {"
-                         "  background-color: %2;"
-                         "  color: %4;"
-                         "  border: 1px solid %3;"
-                         "}")
-        .arg(QString::fromUtf8(className), background.name(), border.name(), text.name());
+                          "  background-color: %2;"
+                          "  border: 1px solid %3;"
+                          "  border-radius: 10px;"
+                          "}"
+                          "QLabel { background: transparent; color: %4; }"
+                          "QToolTip {"
+                          "  background-color: %2;"
+                          "  color: %4;"
+                          "  border: 1px solid %3;"
+                          "}")
+        .arg(QString::fromUtf8(className),
+             background.name(),
+             border.name(),
+             text.name());
 }
 
 void stylePrimaryButton(QPushButton* button, const QColor& accent)
@@ -71,7 +74,9 @@ void stylePrimaryButton(QPushButton* button, const QColor& accent)
                        "}"
                        "QPushButton:hover { background-color: %2; }"
                        "QPushButton:pressed { background-color: %3; }")
-            .arg(accent.name(), accent.lighter(115).name(), accent.darker(115).name()));
+            .arg(accent.name(),
+                 accent.lighter(115).name(),
+                 accent.darker(115).name()));
 }
 
 void styleSecondaryButton(QPushButton* button,
@@ -82,15 +87,16 @@ void styleSecondaryButton(QPushButton* button,
     button->setMinimumWidth(76);
     button->setMinimumHeight(30);
     button->setStyleSheet(
-        QStringLiteral("QPushButton {"
-                       "  background-color: transparent;"
-                       "  color: %1;"
-                       "  border: 1px solid %2;"
-                       "  border-radius: 6px;"
-                       "  padding: 4px 14px;"
-                       "}"
-                       "QPushButton:hover { background-color: rgba(255,255,255,18); }"
-                       "QPushButton:pressed { background-color: rgba(255,255,255,32); }")
+        QStringLiteral(
+            "QPushButton {"
+            "  background-color: transparent;"
+            "  color: %1;"
+            "  border: 1px solid %2;"
+            "  border-radius: 6px;"
+            "  padding: 4px 14px;"
+            "}"
+            "QPushButton:hover { background-color: rgba(255,255,255,18); }"
+            "QPushButton:pressed { background-color: rgba(255,255,255,32); }")
             .arg(text.name(), border.name()));
 }
 
@@ -100,14 +106,15 @@ QString closeButtonStyleSheet(const char* objectName,
 {
     QColor hover = accent;
     hover.setAlpha(90);
-    return QStringLiteral("#%1 {"
-                         "  background: transparent;"
-                         "  color: %2;"
-                         "  border: none;"
-                         "  border-radius: 11px;"
-                         "  font-size: 14px;"
-                         "}"
-                         "#%1:hover { background-color: rgba(%3, %4, %5, %6); }")
+    return QStringLiteral(
+               "#%1 {"
+               "  background: transparent;"
+               "  color: %2;"
+               "  border: none;"
+               "  border-radius: 11px;"
+               "  font-size: 14px;"
+               "}"
+               "#%1:hover { background-color: rgba(%3, %4, %5, %6); }")
         .arg(QString::fromUtf8(objectName),
              text.name(),
              QString::number(hover.red()),
@@ -137,8 +144,10 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
         tri.closeSubpath();
         p.drawPath(tri);
     } else {
-        p.drawEllipse(QRectF(
-            kIconSize * 0.05, kIconSize * 0.05, kIconSize * 0.9, kIconSize * 0.9));
+        p.drawEllipse(QRectF(kIconSize * 0.05,
+                             kIconSize * 0.05,
+                             kIconSize * 0.9,
+                             kIconSize * 0.9));
     }
 
     QString glyph;
@@ -163,8 +172,11 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
             int(kIconSize * (icon == QMessageBox::Warning ? 0.38 : 0.48)));
         p.setFont(font);
         p.setPen(Qt::white);
-        const QRectF textRect(
-            0, icon == QMessageBox::Warning ? kIconSize * 0.12 : 0, kIconSize, kIconSize);
+        const QRectF textRect(0,
+                              icon == QMessageBox::Warning ? kIconSize * 0.12
+                                                           : 0,
+                              kIconSize,
+                              kIconSize);
         p.drawText(textRect, Qt::AlignHCenter | Qt::AlignVCenter, glyph);
     }
 

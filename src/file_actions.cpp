@@ -29,11 +29,12 @@ void FileActions::openFile()
     // not something this refactor added) but loadFmlIntoCurrentTab()
     // only ever knows how to parse the .fml zip+manifest archive - a
     // raw .svg/.psd file just fails to open as one, so those filters
-    // were pure misdirection (Max: "зачем там svg и psd?").
+    // were pure misdirection.
     const QStringList files = showOpenFilesDialog(&mainwindow_,
                                                   QObject::tr("Open"),
                                                   QDir::homePath(),
-                                                  QStringLiteral("Familiar (*.fml)"));
+                                                  QStringLiteral(
+                                                      "Familiar (*.fml)"));
     for (const QString& file : files)
         processOpenFile(file);
 }
@@ -52,8 +53,12 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
         worker,
         &ThreadedIO::finished,
         &mainwindow_,
-        [this, canvasView, scene, markModifiedAfterLoad, recoveryIdToClear](
-            const QString& error, const QStringList& itemErrors) {
+        [this,
+         canvasView,
+         scene,
+         markModifiedAfterLoad,
+         recoveryIdToClear](const QString& error,
+                            const QStringList& itemErrors) {
             scene->add_queued_items();
             // add_queued_items() populates the scene directly, bypassing
             // the undo stack entirely - the Hierarchy panel's rebuild
@@ -240,12 +245,12 @@ int FileActions::saveFileAs()
     // whichever filter is selected (same job fileExt_ used to do here
     // manually) and confirms overwrite internally. SVG/Adobe filter
     // entries removed - saveFile()/FmlArchive only ever write the .fml
-    // zip+manifest format, there's no actual SVG/PSD export path here
-    // (Max: "зачем там svg и psd?").
+    // zip+manifest format, there's no actual SVG/PSD export path here.
     const QString selected = showSaveFileDialog(&mainwindow_,
                                                 QObject::tr("Save As"),
                                                 QDir::homePath(),
-                                                QStringLiteral("Familiar (*.fml)"));
+                                                QStringLiteral(
+                                                    "Familiar (*.fml)"));
 
     if (!selected.isEmpty()) {
         if (!mainwindow_.tabPane().currentWidget()->isUntitled()

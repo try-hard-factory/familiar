@@ -174,9 +174,9 @@ public:
     std::optional<QRectF> crop_temp{};
     std::optional<QPointF> crop_mode_event_start{};
     std::optional<CropHandleFn> crop_mode_move{};
-    // Attach generalized from TextItem to IBaseItem (Max: "аттачить
-    // картинку к картинке") - see IBaseItem::attachedToUid()'s own
-    // comment (selector.h) for the full picture. A GifItem attaching to
+    // Attach generalized from TextItem to IBaseItem - see
+    // IBaseItem::attachedToUid()'s own comment (selector.h) for the
+    // full picture. A GifItem attaching to
     // another picture (or having one attach to it) IS-A PixmapItem, so
     // this covers that for free.
     QUuid attachedToUid_;
@@ -301,13 +301,13 @@ public:
             const QList<QVariant> cropList = cropVariant.toList();
             if (cropList.size() == 4) {
                 set_crop(QRectF(cropList[0].toReal(),
-                               cropList[1].toReal(),
-                               cropList[2].toReal(),
-                               cropList[3].toReal()));
+                                cropList[1].toReal(),
+                                cropList[2].toReal(),
+                                cropList[3].toReal()));
             }
         }
-        const QString attachedTo = data.value(QStringLiteral("attached_to"))
-                                       .toString();
+        const QString attachedTo
+            = data.value(QStringLiteral("attached_to")).toString();
         if (!attachedTo.isEmpty())
             attachedToUid_ = QUuid::fromString(attachedTo);
     }
@@ -653,9 +653,7 @@ public:
             painter->drawPixmap(crop_, pm, crop_);
             paint_selectable(painter, option, widget);
 
-            // Attached-picture indicator (current, Max: "приаттаченный
-            // текст мы подсвечивали однопиксельной обёрткой. надо
-            // картинки приаттаченные тоже так подсвечивать") - exact
+            // Attached-picture indicator (current) - exact
             // same block as TextItem::paint()'s own attached-note
             // indicator (moveitem.h), just keyed off THIS picture's own
             // attachedToUid_ instead of a note's. While the anchor this
@@ -664,10 +662,11 @@ public:
             // it isn't part of the selection itself.
             if (!attachedToUid_.isNull()) {
                 if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                    if (QGraphicsItem* anchor = scene->find_by_uid(attachedToUid_);
+                    if (QGraphicsItem* anchor = scene->find_by_uid(
+                            attachedToUid_);
                         anchor && anchor->isSelected()) {
                         auto colorPreset = SettingsHandler::getInstance()
-                                                ->getCurrentColorPreset();
+                                               ->getCurrentColorPreset();
                         QColor highlightColor
                             = colorPreset[EPresetsColorIdx::kSelectionColor];
                         highlightColor.setAlpha(230);
@@ -725,7 +724,7 @@ public:
         scene->crop_item = nullptr;
     }
 
-    // Attached items (roadmap step 25 note, current picture-to-picture)
+    // Attached items (a note, or picture-to-picture)
     // draw their own selection-color outline - TextItem::paint() or
     // this same class's own paint() (see its attached-picture indicator
     // block) - while THIS picture is selected, so they need repainting
@@ -736,7 +735,8 @@ public:
     {
         ItemMixin<PixmapItem, QGraphicsPixmapItem>::on_selected_change(value);
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (QGraphicsItem* attachedItem : scene->find_attached_items(this->uid()))
+            for (QGraphicsItem* attachedItem :
+                 scene->find_attached_items(this->uid()))
                 attachedItem->update();
         }
     }
@@ -745,9 +745,8 @@ public:
     // anchor-compensating setPos() BaseItemMixin's default implementation
     // does through the itemChange() cascade above - which, on its own,
     // only applies the raw resulting delta as if it were a plain drag,
-    // landing an attached note (roadmap step 25) in the wrong spot
-    // instead of swinging around with the picture (Max: "баг при
-    // повороте картинки и приаттаченных текстовых полей"). PixmapItem
+    // landing an attached note in the wrong spot
+    // instead of swinging around with the picture. PixmapItem
     // never overrode these before; overriding them here gives each
     // attached note its own independently-anchored set_rotation()/
     // set_scale() call too, by the SAME delta/factor this picture just
@@ -757,7 +756,8 @@ public:
     // set_scale()/set_rotation() overrides use, moveitem.h) suppresses
     // the itemChange() cascade above for the duration, so the note isn't
     // ALSO nudged by the raw anchor-compensation delta on top of this.
-    void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value,
+                      const QPointF& anchor = QPointF(0, 0)) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         const qreal delta = value - this->rotation();
@@ -774,7 +774,7 @@ public:
                     continue;
                 if (auto* noteBase = dynamic_cast<IBaseItem*>(note)) {
                     noteBase->set_rotation(note->rotation() + delta,
-                                          note->mapFromScene(sceneAnchor));
+                                           note->mapFromScene(sceneAnchor));
                 }
             }
             scene->end_group_batch();
@@ -798,7 +798,7 @@ public:
                     continue;
                 if (auto* noteBase = dynamic_cast<IBaseItem*>(note)) {
                     noteBase->set_scale(note->scale() * factor,
-                                       note->mapFromScene(sceneAnchor));
+                                        note->mapFromScene(sceneAnchor));
                 }
             }
             scene->end_group_batch();
@@ -806,16 +806,6 @@ public:
     }
 
 protected:
-    // Carries any TextItem notes attached to THIS picture (roadmap step
-    // 25) along by the same position delta - a one-directional cascade
-    // (anchor moves notes; the reverse never happens, dragging a note is
-    // always its own independent, ordinary body drag - Max's explicit
-    // spec). Skips a note that's ALSO individually Qt-selected+movable
-    // right now (e.g. a rubber-band sweep caught both the picture and
-    // its note at once) - Qt's own native "move every selected+movable
-    // item together" body-drag behavior already carries that one along,
-    // same double-move pitfall already found and fixed for GroupItem's
-    // own member cascade.
     QVariant itemChange(GraphicsItemChange change,
                         const QVariant& value) override
     {
@@ -823,38 +813,12 @@ protected:
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
                 if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                    // Skipped entirely while ANY batch transform is in
-                    // progress (in_group_batch()) - a plain group drag
-                    // (GroupItem::itemChange()'s own cascade) or this
-                    // picture's OWN set_rotation()/set_scale() (below)
-                    // ALREADY give every attached note its own correct,
-                    // independently-anchored move/rotate/scale in that
-                    // case; cascading a raw position delta here TOO
-                    // would double-apply on top of that (Max: "поедут
-                    // куда-то" on group drag/resize, and separately "баг
-                    // при повороте картинки и приаттаченных текстовых
-                    // полей" for a LONE picture's own rotate/scale - the
-                    // note got the anchor-compensation delta from
-                    // set_rotation()'s own setPos() as if it were a
-                    // plain drag, landing it in the wrong place instead
-                    // of swinging around with the picture). Not gated on
-                    // sharing a group with this picture anymore (like it
-                    // used to be) - only ONE batch can possibly be
-                    // active at a time (single mouse, single active
-                    // drag/handle), so in_group_batch() alone already
-                    // means "whatever triggered this IS the batch that
-                    // owns my notes too". If NO batch is active - just
-                    // this picture, dragged/rotated/scaled on its own,
-                    // in or out of a group - the cascade below is
-                    // exactly what's needed (Max: "в группе при
-                    // перемещении картинки - текстовые поля не
-                    // двигаются" was this same check firing too
-                    // broadly, off group-membership alone).
                     if (!scene->in_group_batch()) {
                         for (QGraphicsItem* note :
                              scene->find_attached_items(this->uid())) {
                             if (note->isSelected()
-                                && (note->flags() & QGraphicsItem::ItemIsMovable))
+                                && (note->flags()
+                                    & QGraphicsItem::ItemIsMovable))
                                 continue;
                             note->moveBy(delta.x(), delta.y());
                         }
@@ -867,8 +831,8 @@ protected:
         // (moveitem.h): SelectableMixin has its own itemChange()
         // override reacting to ItemSelectedChange, which a direct Qt
         // base class call would silently skip.
-        return SelectableMixin<PixmapItem, QGraphicsPixmapItem>::itemChange(
-            change, value);
+        return SelectableMixin<PixmapItem,
+                               QGraphicsPixmapItem>::itemChange(change, value);
     }
 
     void keyPressEvent(QKeyEvent* event) override
@@ -1016,7 +980,7 @@ protected:
     }
 };
 
-// Animated GIF, playable on the canvas (roadmap step 11). Inherits
+// Animated GIF, playable on the canvas. Inherits
 // PixmapItem rather than building on ItemMixin directly - crop/scale/
 // rotate/flip/opacity/color-gamut all keep working unmodified, since to
 // Qt's rendering this is still "a QGraphicsPixmapItem with a pixmap set
@@ -1125,7 +1089,10 @@ public:
         else
             play();
     }
-    int current_frame() const { return movie_ ? movie_->currentFrameNumber() : 0; }
+    int current_frame() const
+    {
+        return movie_ ? movie_->currentFrameNumber() : 0;
+    }
     // Pauses (stepping/scrubbing while it's still playing would just get
     // immediately overridden by the next natural tick) and jumps by
     // `delta` frames, wrapping around either end.
@@ -1219,7 +1186,7 @@ public:
     QString old_html;
 
     // Default note fill - the backdrop TextItem always painted, now
-    // per-item and persisted (PureRef-style notes, roadmap step 9).
+    // per-item and persisted (PureRef-style notes).
     static QColor default_fill_color() { return QColor(0, 0, 0, 40); }
 
     TextItem(const QString& text = QString(),
@@ -1296,8 +1263,8 @@ public:
                 data.value(QStringLiteral("field_width")).toReal());
         if (data.contains(QStringLiteral("field_height")))
             manualHeight_ = data.value(QStringLiteral("field_height")).toReal();
-        const QString attachedTo = data.value(QStringLiteral("attached_to"))
-                                       .toString();
+        const QString attachedTo
+            = data.value(QStringLiteral("attached_to")).toString();
         if (!attachedTo.isEmpty())
             attachedToUid_ = QUuid::fromString(attachedTo);
     }
@@ -1305,7 +1272,7 @@ public:
     QColor fill_color() const { return fill_color_; }
     void set_fill_color(const QColor& color)
     {
-        // TEMPORARY debug logging (roadmap step 9 fill-color
+        // TEMPORARY debug logging (fill-color
         // investigation) - remove once the BG/H no-op bug is confirmed
         // fixed.
         FLOG_DEBUG(familiar::log::Ch::Items,
@@ -1457,7 +1424,7 @@ public:
                const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override
     {
-        // TEMPORARY debug logging (roadmap step 9 fill-color
+        // TEMPORARY debug logging (fill-color
         // investigation) - remove once the BG/H no-op bug is confirmed
         // fixed. Throttled to once per actual value (paint() runs every
         // frame) so this doesn't flood the log.
@@ -1492,7 +1459,7 @@ public:
                 if (QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
                     picture && picture->isSelected()) {
                     auto colorPreset = SettingsHandler::getInstance()
-                                            ->getCurrentColorPreset();
+                                           ->getCurrentColorPreset();
                     QColor highlightColor
                         = colorPreset[EPresetsColorIdx::kSelectionColor];
                     highlightColor.setAlpha(230);
@@ -1649,19 +1616,6 @@ protected:
     }
 
 public:
-    // ── Attached-to-a-picture (roadmap step 25) ────────────────────────
-    // Optional uid of a PixmapItem/GifItem this note is pinned to - null
-    // if this is a plain, unattached note (the common case; every
-    // TextItem starts this way). Purely a note→picture reference, not a
-    // group: the picture doesn't know how many notes point at it, and
-    // has no visible container/fill of its own - PixmapItem::itemChange()
-    // (moveitem.h) looks these up via CanvasScene::find_attached_items()
-    // and carries them along by position delta only when the PICTURE
-    // moves; dragging the note itself is always independent (its own
-    // ordinary body drag, untouched), matching Max's explicit spec
-    // ("по отдельности перемещать можно тоже"). Several notes may share
-    // the same attachedToUid_ (Max: "несколько заметок на одну
-    // картинку").
     QUuid attachedToUid() const override { return attachedToUid_; }
     void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
@@ -1677,7 +1631,7 @@ private:
     QUuid attachedToUid_;
 };
 
-// A persistent container (roadmap step 10) - unlike MultiSelectItem (an
+// A persistent container - unlike MultiSelectItem (an
 // ephemeral overlay over CanvasScene::selectedItems(), owns nothing,
 // never saved), a GroupItem is a real, saved item whose membership
 // survives deselection and save/load. Members stay independent
@@ -1685,10 +1639,7 @@ private:
 // scene-graph parenting (see MultiSelectItem/RubberbandItem, the same
 // QGraphicsRectItem base this uses) - membership is tracked purely by
 // uid, exactly as docs/fml_format_design.md's "future grouping" note
-// anticipated. Stage 1 (this class): create/dissolve, move/resize/
-// rotate as a unit. NOT yet done here: persistence (stage 2), lock and
-// click-through-to-child dispatch (stage 3), the floating toolbar/fill
-// picker (stage 4), drag-to-add and auto-expand (stage 5).
+// anticipated.
 class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
 {
 public:
@@ -1759,7 +1710,7 @@ public:
     // a blind reset-to-false in set_rotation() would clear the flag
     // while the OUTER do_flip() call is still in progress and about to
     // do its own setPos(), leaving THAT one unprotected and cascading
-    // an extra, incorrect moveBy() to every child (confirmed with Max:
+    // an extra, incorrect moveBy() to every child (confirmed for
     // vertical flip specifically, not horizontal, since only vertical
     // takes this nested path - the group visibly drifted from its own
     // members). Restoring to whatever it was before (not unconditionally
@@ -1780,7 +1731,7 @@ public:
         scalingOrRotating_ = wasFlagged;
     }
     void do_flip(bool vertical = false,
-                const QPointF& anchor = QPointF(0, 0)) override
+                 const QPointF& anchor = QPointF(0, 0)) override
     {
         const bool wasFlagged = scalingOrRotating_;
         scalingOrRotating_ = true;
@@ -1854,18 +1805,15 @@ public:
         }
         set_child_ids(ids);
 
-        const QString fill = data.value(QStringLiteral("fill_color"))
-                                 .toString();
+        const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
             QColor c(fill);
             if (c.isValid())
                 fill_color_ = c;
         }
 
-        const qreal w = data.value(QStringLiteral("rect_width"), 0.0)
-                            .toReal();
-        const qreal h = data.value(QStringLiteral("rect_height"), 0.0)
-                            .toReal();
+        const qreal w = data.value(QStringLiteral("rect_width"), 0.0).toReal();
+        const qreal h = data.value(QStringLiteral("rect_height"), 0.0).toReal();
         if (w > 0 && h > 0)
             set_local_rect(QRectF(0, 0, w, h));
 
@@ -1880,9 +1828,8 @@ public:
         // Raw field too, same reasoning as locked_ above. Default true
         // (drag-and-drop-to-add-a-member is the expected default
         // behavior; the checkbox is an opt-OUT per group, not opt-in).
-        dragDropEnabled_ = data.value(QStringLiteral("drag_drop_enabled"),
-                                      true)
-                              .toBool();
+        dragDropEnabled_
+            = data.value(QStringLiteral("drag_drop_enabled"), true).toBool();
     }
 
     // See apply_extra_save_data()'s comment - the safety net
@@ -1900,8 +1847,7 @@ public:
 
     // Sets the group's own local footprint - called once at creation
     // (fit to the union of the items being grouped, see
-    // CanvasScene::group_selection()) and later by auto-expand (step 10
-    // stage 5) when a member is dragged outside it.
+    // CanvasScene::group_selection()) and later by auto-expand a member is dragged outside it.
     void set_local_rect(const QRectF& rect)
     {
         this->prepareGeometryChange();
@@ -1994,9 +1940,9 @@ public:
         // dimensions), only round-tripping correctly while scale() == 1
         // and rotation() == 0. The moment this (or an ancestor) group
         // was actually resized via its handle, that produced a
-        // non-converging refit loop (confirmed with Max: identical
-        // before/after values repeating forever, spamming/hanging the
-        // app) - and would have been simply WRONG for a rotated group
+        // non-converging refit loop (confirmed - identical before/after
+        // values repeating forever, spamming/hanging the app) - and
+        // would have been simply WRONG for a rotated group
         // regardless (the axis-aligned bounding box of a rotated
         // rectangle isn't the rectangle's own width/height, there's no
         // single correct answer working backward from scene-space AABB
@@ -2038,15 +1984,17 @@ public:
         // come out differing by ~1e-12 purely from floating-point noise
         // even when nothing meaningfully changed, which an exact
         // comparison never resolves to "equal", looping forever
-        // (confirmed with Max: width/height already identical, only the
+        // (confirmed - width/height already identical, only the
         // position differing at the 1e-12 level). 1e-6 is far above that
         // noise floor and far below anything visually meaningful at any
         // sane zoom level.
         constexpr qreal kEps = 1e-6;
         const bool unchanged = qAbs(unionRect.x() - localRect_.x()) < kEps
-            && qAbs(unionRect.y() - localRect_.y()) < kEps
-            && qAbs(unionRect.width() - localRect_.width()) < kEps
-            && qAbs(unionRect.height() - localRect_.height()) < kEps;
+                               && qAbs(unionRect.y() - localRect_.y()) < kEps
+                               && qAbs(unionRect.width() - localRect_.width())
+                                      < kEps
+                               && qAbs(unionRect.height() - localRect_.height())
+                                      < kEps;
         if (unchanged)
             return;
 
@@ -2097,7 +2045,7 @@ public:
         set_local_rect(QRectF(0, 0, unionRect.width(), unionRect.height()));
     }
 
-    // ── Lock (roadmap step 10 stage 3) ──────────────────────────────────
+    // ── Lock ──────────────────────────────────────────────────────────
     // Locked: clicking any member selects the GROUP instead (see
     // CanvasScene::getFirstItemUnderCursor()) - implemented by turning
     // OFF the members' own ItemIsSelectable/ItemIsMovable, so Qt's
@@ -2119,7 +2067,7 @@ public:
         apply_lock_to_children();
     }
 
-    // ── Drag-and-drop-to-add (roadmap step 10 stage 5) ─────────────────
+    // ── Drag-and-drop-to-add ─────────────────────────────────────────
     // Per-group opt-out (default on) for CanvasScene's drag-a-loose-item-
     // onto-this-group-to-add-it-as-a-member behavior - unlike locked(),
     // this doesn't touch child flags at all, it's read directly by
@@ -2135,7 +2083,7 @@ public:
     // drives the resize/rotate corner handles too (paint_selectable()
     // below), which shouldn't appear just because the cursor is
     // hovering over a potential drop target while dragging something
-    // else (Max: "не отображать корнеры").
+    // else - the corners shouldn't show up there.
     bool highlighted() const { return highlighted_; }
     void set_highlighted(bool value)
     {
@@ -2152,11 +2100,11 @@ public:
     // locked too), and once after a full load batch (CanvasScene::
     // add_queued_items(), alongside invalidate_children_cache() - a
     // freshly-loaded group's children need their flags synced to its
-    // loaded locked() state). Recurses into nested subgroups (Max: a
-    // locked OUTER group only disabled its DIRECT children - the
-    // subgroups themselves - leaving their own grandchildren (the actual
-    // leaf images) still individually clickable via a single plain
-    // click, bypassing the whole point of locking). First walks UP to
+    // loaded locked() state). Recurses into nested subgroups - a
+    // locked OUTER group only disabled its DIRECT children (before this)
+    // - the subgroups themselves - leaving their own grandchildren (the
+    // actual leaf images) still individually clickable via a single
+    // plain click, bypassing the whole point of locking. First walks UP to
     // fold in whatever an ANCESTOR's own lock state already requires -
     // this group can be reached directly (set_locked() on ME) or
     // indirectly (a membership change on some ancestor recursing down
@@ -2224,18 +2172,18 @@ public:
                         continue;
                     auto* otherGroup = dynamic_cast<GroupItem*>(other);
                     if (otherGroup && otherGroup->child_ids().contains(id)) {
-                        FLOG_DEBUG(
-                            familiar::log::Ch::Items,
-                            "GroupItem::add_child_id() WARNING: {} is "
-                            "already a member of ANOTHER group ({}, "
-                            "uid={}) - {} is about to become a SECOND "
-                            "owner of it",
-                            id.toString(QUuid::WithoutBraces).toStdString(),
-                            otherGroup->toString(),
-                            otherGroup->uid()
-                                .toString(QUuid::WithoutBraces)
-                                .toStdString(),
-                            toString());
+                        FLOG_DEBUG(familiar::log::Ch::Items,
+                                   "GroupItem::add_child_id() WARNING: {} is "
+                                   "already a member of ANOTHER group ({}, "
+                                   "uid={}) - {} is about to become a SECOND "
+                                   "owner of it",
+                                   id.toString(QUuid::WithoutBraces)
+                                       .toStdString(),
+                                   otherGroup->toString(),
+                                   otherGroup->uid()
+                                       .toString(QUuid::WithoutBraces)
+                                       .toStdString(),
+                                   toString());
                     }
                 }
             }
@@ -2254,8 +2202,7 @@ public:
         // confusing) regression, not just a cosmetic leftover.
         if (locked_) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-            if (QGraphicsItem* item = scene ? scene->find_by_uid(id)
-                                            : nullptr) {
+            if (QGraphicsItem* item = scene ? scene->find_by_uid(id) : nullptr) {
                 item->setFlag(QGraphicsItem::ItemIsSelectable, true);
                 item->setFlag(QGraphicsItem::ItemIsMovable, true);
             }
@@ -2359,9 +2306,9 @@ public:
         // this group's own member images, which looks worse than the
         // sibling-overlap case it was meant to fix). Checking only the
         // DIRECT owner (one hop) missed a subgroup nested 2+ levels
-        // below whichever ancestor was actually selected - confirmed
-        // with Max: selecting the outermost group didn't outline a
-        // deeply-nested subgroup's boundary at all.
+        // below whichever ancestor was actually selected - confirmed:
+        // selecting the outermost group didn't outline a deeply-nested
+        // subgroup's boundary at all.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             bool ancestorSelected = false;
             for (GroupItem* owner = scene->find_owning_group(this->uid());
@@ -2455,18 +2402,19 @@ protected:
             && !scalingOrRotating_) {
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
-                FLOG_DEBUG(familiar::log::Ch::Items,
-                           "GroupItem::itemChange() {} uid={} ItemPositionChange "
-                           "delta=({},{}) selected={} - cascading to {} "
-                           "children",
-                           toString(),
-                           uid().toString(QUuid::WithoutBraces).toStdString(),
-                           delta.x(),
-                           delta.y(),
-                           this->isSelected(),
-                           resolve_children().size());
+                FLOG_DEBUG(
+                    familiar::log::Ch::Items,
+                    "GroupItem::itemChange() {} uid={} ItemPositionChange "
+                    "delta=({},{}) selected={} - cascading to {} "
+                    "children",
+                    toString(),
+                    uid().toString(QUuid::WithoutBraces).toStdString(),
+                    delta.x(),
+                    delta.y(),
+                    this->isSelected(),
+                    resolve_children().size());
                 // begin/end_group_batch(): tells PixmapItem::itemChange()
-                // (roadmap step 25) that an attached note sharing this
+                // that an attached note sharing this
                 // group's membership is ALREADY being carried along by
                 // THIS cascade (or, several stack frames up, by an
                 // ancestor group's own cascade in the nested case) - its
@@ -2488,7 +2436,8 @@ protected:
                     // selected - Qt is already handling those.
                     auto* baseItem = dynamic_cast<IBaseItem*>(child);
                     const bool skip = child->isSelected()
-                        && (child->flags() & QGraphicsItem::ItemIsMovable);
+                                      && (child->flags()
+                                          & QGraphicsItem::ItemIsMovable);
                     FLOG_DEBUG(
                         familiar::log::Ch::Items,
                         "  child uid={} type={} selected={} movable={} -> {}",
@@ -2513,8 +2462,8 @@ protected:
         // ItemSelectedChange (bring-to-front-on-select/push-behind-on-
         // deselect, via ItemMixin::on_selected_change()); calling the Qt
         // base directly here would silently skip that for every group.
-        return SelectableMixin<GroupItem, QGraphicsRectItem>::itemChange(
-            change, value);
+        return SelectableMixin<GroupItem, QGraphicsRectItem>::itemChange(change,
+                                                                         value);
     }
 
 private:

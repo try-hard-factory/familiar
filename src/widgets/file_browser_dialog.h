@@ -16,13 +16,7 @@ class QPushButton;
 class QResizeEvent;
 class QTreeView;
 
-// Fully custom file browser (roadmap step 24, Max: "полностью свой
-// файловый браузер") - replaces every QFileDialog use in the app
-// (file_actions.cpp, canvasview.cpp, ui/text_edit_toolbar.cpp,
-// ui/new_settings_window.cpp). Same custom-chrome convention as the
-// other dialogs in widgets/dialog_style.h: frameless, opaque, rounded
-// panel, draggable via startSystemMove().
-//
+
 // Actual filesystem access/iteration is still QFileSystemModel (no
 // reason to hand-roll directory listing/sorting/watching, all of which
 // it already does correctly) - what's custom here is everything AROUND
@@ -34,8 +28,7 @@ class FileBrowserDialog : public QDialog
     Q_OBJECT
 
 public:
-    enum class Mode
-    {
+    enum class Mode {
         OpenFile,
         OpenFiles,
         Save,
