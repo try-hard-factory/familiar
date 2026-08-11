@@ -257,6 +257,25 @@ public:
     // DeleteItemsCommand - one undo step restores everything.
     QList<QGraphicsItem*> with_attached_items(
         const QList<QGraphicsItem*>& items) const;
+    // `items` deep-expanded: every GroupItem among them pulls in its
+    // whole own subtree (descendants recursively, nested subgroups
+    // included), AND every item (group or not) pulls in whatever's
+    // attached to it (chains, recursively) - the general "select this,
+    // act on everything it actually contains/carries" expansion shared
+    // by copy_selection_to_internal_clipboard() and CanvasView::
+    // on_action_delete_items()/on_action_cut(). Broader than
+    // with_attached_items() above (that one only
+    // walks the attach relationship, not group membership) - kept as a
+    // separate method rather than folding into it since not every
+    // caller wants the group expansion (e.g. raise_group_cluster_to_
+    // front() explicitly wants ONLY one specific group's own cluster,
+    // not every group nested inside `items`). Order preserving (a
+    // QList, not a QSet) and always lists a GroupItem before its own
+    // members - callers that re-stack z in list order (InsertItemsCommand::
+    // redo()'s bring_to_front() loop) depend on that to keep a group's
+    // fill behind its members.
+    QList<QGraphicsItem*> with_related_items(
+        const QList<QGraphicsItem*>& items) const;
     // True if attaching itemUid to targetUid would create a cycle in
     // the attachedToUid_ chain (itemUid == targetUid counts too - self-
     // attach is a 1-cycle). Walks UP from targetUid through its own

@@ -1192,21 +1192,27 @@ void CanvasView::on_action_delete_items()
     // stays armed until the scene is non-empty again (on_scene_changed()),
     // however that happens, so this covers undo just as well as paste.
     suppressNextEmptySceneReset_ = true;
-    // with_attached_items() - deleting a picture also
-    // deletes any notes pinned to it, bundled into
-    // this same DeleteItemsCommand so one undo restores both.
+    // with_related_items() - deleting a picture also deletes any notes
+    // pinned to it, and deleting a group deletes its whole subtree
+    // (nested subgroups included), all bundled into this same
+    // DeleteItemsCommand so one undo restores everything.
     undoStack_->push(new DeleteItemsCommand(scene_,
-                                            scene_->with_attached_items(
+                                            scene_->with_related_items(
                                                 scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_cut()
 {
+    // on_action_copy() (via CanvasScene::copy_selection_to_internal_
+    // clipboard()) and the delete below both expand the selection
+    // through the SAME with_related_items() - what gets deleted here
+    // always matches what just got copied, so Cut never leaves orphaned
+    // group members or attached items behind on the canvas.
     on_action_copy();
     suppressNextEmptySceneReset_ = true;
     resetPreviousTransform();
     undoStack_->push(new DeleteItemsCommand(scene_,
-                                            scene_->with_attached_items(
+                                            scene_->with_related_items(
                                                 scene_->selectedItems(true))));
 }
 

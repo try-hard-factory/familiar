@@ -398,6 +398,11 @@ public:
             item->do_flip();
         }
         item->set_crop(crop_);
+        // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
+        // CanvasScene::paste_from_internal_clipboard() remaps this to
+        // the anchor's own copy afterward, or clears it if the anchor
+        // wasn't part of this copy - see its own comment.
+        item->attachedToUid_ = attachedToUid_;
         return item;
     }
 
@@ -1051,6 +1056,9 @@ public:
         }
         item->set_crop(crop_);
         item->set_speed_percent(speed_percent());
+        // See PixmapItem::create_copy()'s own comment - remapped (or
+        // cleared) later by CanvasScene::paste_from_internal_clipboard().
+        item->attachedToUid_ = attachedToUid_;
         return item;
     }
 
@@ -1492,6 +1500,11 @@ public:
         if (this->flip() == -1) {
             new_item->do_flip();
         }
+        // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
+        // CanvasScene::paste_from_internal_clipboard() remaps this to
+        // the anchor's own copy afterward, or clears it if the anchor
+        // wasn't part of this copy - see its own comment.
+        new_item->attachedToUid_ = attachedToUid_;
 
         return new_item;
     }
@@ -1741,16 +1754,20 @@ public:
 
     IBaseItem* create_copy() override
     {
-        // TODOLATER: copy/paste of a group doesn't yet duplicate its
-        // members - pasting one produces an empty group with the same
-        // fill/size/transform. Revisit once copy-paste of groups is
-        // actually asked for; not implementing it here is deliberate,
-        // not an oversight - groups are new enough (step 10) that this
-        // gap is narrow (only reachable via Ctrl+C/V on a selected
-        // group) and not worth guessing the right semantics for yet.
+        // childIds_ copied AS-IS (still pointing at the ORIGINAL
+        // members' uids) - deliberately not this class's job to fix up:
+        // create_copy() only ever clones ONE item in isolation, with no
+        // way to know whether those members are ALSO being copied right
+        // now (and if so, what fresh uids their own copies will get).
+        // CanvasScene::paste_from_internal_clipboard() does that
+        // remapping afterward, once every clone in the batch actually
+        // exists - see its own comment for the full picture.
         auto* new_item = new GroupItem();
         new_item->set_local_rect(localRect_);
         new_item->fill_color_ = fill_color_;
+        new_item->childIds_ = childIds_;
+        new_item->locked_ = locked_;
+        new_item->dragDropEnabled_ = dragDropEnabled_;
         new_item->setPos(this->pos());
         new_item->setZValue(this->zValue());
         new_item->setScale(this->scale());

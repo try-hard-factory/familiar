@@ -212,22 +212,110 @@ void CanvasScene::cancel_crop_mode()
     }
 }
 
+QList<QGraphicsItem*> CanvasScene::with_related_items(
+    const QList<QGraphicsItem*>& items) const
+{
+    // QList + QSet (not QSet alone) - insertion ORDER matters to at
+    // least one caller (InsertItemsCommand::redo(), paste time, calls
+    // bring_to_front() on copy_selection_to_internal_clipboard()'s
+    // result in list order, and a group's fill has to stay BEHIND its
+    // own members - established invariant, see AddToGroupCommand::
+    // redo()'s own comment). Adding `item` itself before recursing into
+    // its children below already gives exactly that group-before-
+    // members order for free; a QSet's hash-based iteration order would
+    // NOT have, and could easily have pasted (or, for delete/undo,
+    // reinserted) a group in FRONT of its own members instead.
+    QList<QGraphicsItem*> expanded;
+    QSet<QGraphicsItem*> seen;
+    std::function<void(QGraphicsItem*)> addWithRelated =
+        [&](QGraphicsItem* item) {
+            if (seen.contains(item))
+                return;
+            seen.insert(item);
+            expanded.append(item);
+            if (auto* group = dynamic_cast<GroupItem*>(item)) {
+                for (QGraphicsItem* child : group->resolve_children())
+                    addWithRelated(child);
+            }
+            if (auto* base = dynamic_cast<IBaseItem*>(item)) {
+                for (QGraphicsItem* attachedItem : find_attached_items(base->uid()))
+                    addWithRelated(attachedItem);
+            }
+        };
+    for (QGraphicsItem* item : items)
+        addWithRelated(item);
+    return expanded;
+}
+
 void CanvasScene::copy_selection_to_internal_clipboard()
 {
     internal_clipboard.clear();
-    for (QGraphicsItem* item : selectedItems(true)) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+    // Deep copy - with_related_items() expands the flat
+    // Qt selection to also pull in every group's descendants
+    // (recursively - nested subgroups included) and every anchor's
+    // attached items (recursively - a chain of pictures attached to
+    // pictures), neither of which is itself individually Qt-selected
+    // when only the group/anchor is (group members and attached notes
+    // are always independently selectable, never auto-selected
+    // alongside their owner). One-directional for attach: walks from an
+    // anchor OUT to what's attached TO it, never the reverse - copying
+    // a lone note without its picture selected shouldn't silently pull
+    // in an unrelated picture (and everything ITS group might contain)
+    // the user never selected. Cross-reference REMAPPING (GroupItem::
+    // child_ids_ / IBaseItem::attachedToUid_, from original uids to
+    // whatever fresh uids the eventual copies get) happens later, at
+    // actual paste time (paste_from_internal_clipboard()) - what's
+    // gathered here is still the ORIGINAL live items, shared via
+    // acquireShared(), not copies yet.
+    for (QGraphicsItem* item : with_related_items(selectedItems(true))) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
             internal_clipboard.append(baseItem->acquireShared());
-        }
     }
 }
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
+    // create_copy() is a shallow per-item field copy - copy_selection_
+    // to_internal_clipboard() already expanded the clipboard to include
+    // every group descendant and attached item, so all of them get
+    // cloned here too, but each clone's cross-references (GroupItem::
+    // child_ids_, IBaseItem::attachedToUid_) still point at the
+    // ORIGINAL uids until remapped below. Without this, a pasted group
+    // would look empty (its child_ids_ still names the ORIGINALS, which
+    // are back on the canvas at their old spot, not part of this
+    // paste), and a pasted attached copy would stay silently attached
+    // to the ORIGINAL anchor instead of its own freshly-pasted one.
     QList<IBaseItem*> copies;
+    QHash<QUuid, QUuid> oldToNewUid;
+    copies.reserve(internal_clipboard.size());
     for (const std::shared_ptr<IBaseItem>& item : internal_clipboard) {
         IBaseItem* copy = item->create_copy();
+        oldToNewUid.insert(item->uid(), copy->uid());
         copies.append(copy);
+    }
+    for (IBaseItem* copy : copies) {
+        if (auto* group = dynamic_cast<GroupItem*>(copy)) {
+            QList<QUuid> remapped;
+            for (const QUuid& oldChildUid : group->child_ids()) {
+                auto it = oldToNewUid.find(oldChildUid);
+                if (it != oldToNewUid.end())
+                    remapped.append(it.value());
+                // else: that member wasn't part of THIS copy operation
+                // (shouldn't normally happen now that copy_selection_
+                // to_internal_clipboard() pulls in every descendant -
+                // but drop it rather than pointing at the ORIGINAL,
+                // un-copied member if it somehow still does).
+            }
+            group->set_child_ids(remapped);
+        }
+        if (!copy->attachedToUid().isNull()) {
+            auto it = oldToNewUid.find(copy->attachedToUid());
+            // Anchor wasn't part of this copy (a lone attached item
+            // copied without its anchor selected) - paste unattached
+            // rather than staying silently pinned to the ORIGINAL.
+            copy->set_attached_to(it != oldToNewUid.end() ? it.value()
+                                                          : QUuid());
+        }
     }
 
     undo_stack_->push(new InsertItemsCommand(this, copies, position));
