@@ -746,64 +746,75 @@ public:
         }
     }
 
-    // Rotating/scaling THIS picture around its own anchor pulls the
-    // anchor-compensating setPos() BaseItemMixin's default implementation
-    // does through the itemChange() cascade above - which, on its own,
-    // only applies the raw resulting delta as if it were a plain drag,
-    // landing an attached note in the wrong spot
-    // instead of swinging around with the picture. PixmapItem
-    // never overrode these before; overriding them here gives each
-    // attached note its own independently-anchored set_rotation()/
-    // set_scale() call too, by the SAME delta/factor this picture just
-    // got - matching exactly how a real group member transforms
-    // (GroupItem::selection_action_items()'s own loop, selector.h).
-    // begin/end_group_batch() (same reentrancy guard GroupItem's own
-    // set_scale()/set_rotation() overrides use, moveitem.h) suppresses
-    // the itemChange() cascade above for the duration, so the note isn't
-    // ALSO nudged by the raw anchor-compensation delta on top of this.
+    // Attached items stay exactly in place while THIS picture rotates -
+    // no longer swing around with it (bug report: rotating a picture
+    // used to drag its attached notes/pictures along an arc around the
+    // anchor, which is unwanted now). begin/end_group_batch() still
+    // needed even though nothing is applied to attached items here
+    // anymore - it suppresses itemChange()'s own plain position cascade
+    // (above), which would otherwise still nudge them by the anchor-
+    // compensating setPos() BaseItemMixin's default set_rotation() does
+    // internally.
     void set_rotation(qreal value,
                       const QPointF& anchor = QPointF(0, 0)) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        const qreal delta = value - this->rotation();
-        const QPointF sceneAnchor = this->mapToScene(anchor);
         if (scene)
             scene->begin_group_batch();
         BaseItemMixin<QGraphicsPixmapItem>::set_rotation(value, anchor);
-        if (scene) {
-            for (QGraphicsItem* note : scene->find_attached_items(this->uid())) {
-                // Same "already independently handled" skip the position
-                // cascade above uses.
-                if (note->isSelected()
-                    && (note->flags() & QGraphicsItem::ItemIsMovable))
-                    continue;
-                if (auto* noteBase = dynamic_cast<IBaseItem*>(note)) {
-                    noteBase->set_rotation(note->rotation() + delta,
-                                           note->mapFromScene(sceneAnchor));
-                }
-            }
+        if (scene)
             scene->end_group_batch();
-        }
     }
 
+    // Same "stays exactly in place" treatment as set_rotation() above,
+    // for a flip - BaseItemMixin::do_flip()'s default implementation
+    // (selector.h) internally calls set_rotation() for a VERTICAL flip
+    // (already covered by the override above) but ALSO does its own
+    // final anchor-compensating setPos() unconditionally (horizontal
+    // flip included), which needs its own suppression here too, or
+    // attached items would still get nudged by that.
+    void do_flip(bool vertical = false,
+                const QPointF& anchor = QPointF(0, 0)) override
+    {
+        auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+        if (scene)
+            scene->begin_group_batch();
+        BaseItemMixin<QGraphicsPixmapItem>::do_flip(vertical, anchor);
+        if (scene)
+            scene->end_group_batch();
+    }
+
+    // Attached items track THIS picture's POSITION as it resizes (same
+    // delta the picture's own anchor-compensating setPos() below just
+    // moved it by) but do NOT get bigger/smaller themselves anymore
+    // (bug: resizing a picture was blowing up its attached notes/
+    // pictures right along with it, by the same factor) - a plain
+    // moveBy(), not a scaled set_scale() call like before. Still needs
+    // its own begin/end_group_batch() (unlike relying on the plain
+    // itemChange() cascade above) - resize-handle drags always run
+    // inside an OUTER begin_group_batch() already (SelectableMixin::
+    // mouseMoveEvent()'s kScaleMode branch, selector.h, wraps EVERY
+    // handle-driven set_scale() call this way, lone item or not), which
+    // would otherwise suppress itemChange()'s position cascade entirely
+    // and leave attached items completely frozen in place mid-resize
+    // instead of tracking along.
     void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
     {
         if (value <= 0)
             return; // same validation BaseItemMixin::set_scale() itself does
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        const qreal factor = value / this->scale();
-        const QPointF sceneAnchor = this->mapToScene(anchor);
+        const QPointF posBefore = this->pos();
         if (scene)
             scene->begin_group_batch();
         BaseItemMixin<QGraphicsPixmapItem>::set_scale(value, anchor);
         if (scene) {
-            for (QGraphicsItem* note : scene->find_attached_items(this->uid())) {
-                if (note->isSelected()
-                    && (note->flags() & QGraphicsItem::ItemIsMovable))
-                    continue;
-                if (auto* noteBase = dynamic_cast<IBaseItem*>(note)) {
-                    noteBase->set_scale(note->scale() * factor,
-                                        note->mapFromScene(sceneAnchor));
+            const QPointF pictureDelta = this->pos() - posBefore;
+            if (!pictureDelta.isNull()) {
+                for (QGraphicsItem* note : scene->find_attached_items(this->uid())) {
+                    if (note->isSelected()
+                        && (note->flags() & QGraphicsItem::ItemIsMovable))
+                        continue;
+                    note->moveBy(pictureDelta.x(), pictureDelta.y());
                 }
             }
             scene->end_group_batch();

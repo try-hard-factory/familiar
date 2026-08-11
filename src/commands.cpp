@@ -52,7 +52,17 @@ void InsertItemsCommand::redo()
     for (auto* item : items_) {
         auto* graphicsItem = dynamic_cast<QGraphicsItem*>(item);
         scene_->addItem(graphicsItem);
-        graphicsItem->setSelected(true);
+        // An attached item riding along in this same batch (e.g. a
+        // paste that copied a picture together with its attached
+        // notes/pictures) doesn't join the Qt multi-selection - it
+        // already gets its own 1px selection-color outline whenever its
+        // anchor is selected (TextItem::paint()/PixmapItem::paint()'s
+        // own attached-item indicator), which the anchor's own
+        // setSelected(true) below triggers automatically. A plain item
+        // (attachedToUid().isNull()) - including a copied GROUP and its
+        // non-attached members - keeps the previous behavior unchanged.
+        if (item->attachedToUid().isNull())
+            graphicsItem->setSelected(true);
         item->bring_to_front();
     }
 }
