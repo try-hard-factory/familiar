@@ -119,6 +119,16 @@ public:
     // forbidden_drop_targets()) - that would be a membership cycle.
     void maybe_add_dropped_items_to_group(const QList<QGraphicsItem*>& movedItems,
                                           const QPointF& cursorScenePos);
+    // Hierarchy panel drag-and-drop (current) - explicit-target
+    // counterpart of maybe_add_dropped_items_to_group() above: that one
+    // picks its target group by CURSOR POSITION (a canvas drag has no
+    // other way to say "here"); the tree already knows exactly which
+    // GroupItem node was dropped on, no spatial lookup needed. Same
+    // add-or-transfer logic and cycle guard (forbidden_drop_targets()),
+    // just for one already-known (item, target) pair instead of a
+    // cursor-position-driven batch. No-op if item is already a member
+    // of target, or target is item itself/one of its own descendants.
+    void add_to_group(QGraphicsItem* item, GroupItem* target);
     // Whichever unlocked, drag_drop_enabled() group's area contains
     // `scenePos` - topmost by z if more than one candidate overlaps
     // there (e.g. a subgroup nested inside an outer group that also
@@ -233,20 +243,59 @@ public:
     // tracked (group -> children), so "which group (if any) owns this
     // item" has no shortcut besides asking every group.
     GroupItem* find_owning_group(const QUuid& memberUid) const;
-    // Every TextItem note (roadmap step 25) whose attachedToUid() is
-    // pictureUid - a picture can have any number of notes pinned to it
-    // (Max), so this returns a list, not a single match like
-    // find_owning_group(). Used by PixmapItem::itemChange() (moveitem.h)
-    // to carry notes along when the picture moves, and by deletion to
-    // cascade-remove them along with their anchor.
-    QList<QGraphicsItem*> find_attached_notes(const QUuid& pictureUid) const;
-    // `items` plus every note attached to any picture already in
-    // `items` (deduplicated) - CanvasView::on_action_delete_items()/
-    // on_action_cut() use this so deleting a picture cascades to its
-    // notes too (Max's explicit spec), all as one DeleteItemsCommand -
-    // one undo step restores both.
-    QList<QGraphicsItem*> with_attached_notes(
+    // Every item (TextItem note, roadmap step 25, OR another PixmapItem/
+    // GifItem, current - Max: "аттачить картинку к картинке") whose
+    // attachedToUid() is pictureUid - a picture can have any number of
+    // things pinned to it (Max), so this returns a list, not a single
+    // match like find_owning_group(). Used by PixmapItem::itemChange()
+    // (moveitem.h) to carry them along when the picture moves, and by
+    // deletion to cascade-remove them along with their anchor.
+    QList<QGraphicsItem*> find_attached_items(const QUuid& pictureUid) const;
+    // `items` plus every item attached (directly OR transitively, e.g.
+    // C attached to B attached to A) to any picture already in `items`
+    // (deduplicated) - CanvasView::on_action_delete_items()/
+    // on_action_cut() use this so deleting a picture cascades to
+    // whatever's pinned to it too (Max's explicit spec), all as one
+    // DeleteItemsCommand - one undo step restores everything.
+    QList<QGraphicsItem*> with_attached_items(
         const QList<QGraphicsItem*>& items) const;
+    // True if attaching itemUid to targetUid would create a cycle in
+    // the attachedToUid_ chain (itemUid == targetUid counts too - self-
+    // attach is a 1-cycle). Walks UP from targetUid through its own
+    // anchor, its anchor's anchor, etc.: if itemUid ever turns up there,
+    // targetUid already (transitively) depends on itemUid, so attaching
+    // itemUid TO targetUid would close the loop. Chains were impossible
+    // before a picture could attach to another picture (Max) - a
+    // TextItem note is always a leaf (nothing attaches to a note), so
+    // this never mattered until now. Guards against the resulting
+    // infinite recursion in PixmapItem::itemChange()/set_rotation()/
+    // set_scale()'s own cascades, which walk find_attached_items()
+    // recursively via ordinary virtual dispatch and have no cycle check
+    // of their own - they rely on the graph being acyclic by
+    // construction, which this is the one gate that guarantees.
+    bool wouldCreateAttachCycle(const QUuid& itemUid,
+                                const QUuid& targetUid) const;
+    // Hierarchy panel drag-and-drop (current, Max: PureRef-style
+    // interactive tree - "можно перемещать элементы... приаттачивать
+    // текст к картинке, или добавлять в группу... аттачить картинку к
+    // картинке"): re-anchors item to targetUid (a PixmapItem/GifItem
+    // uid) as one undo step, syncing item's group membership to match
+    // the target's group so "an attached item always lives in the same
+    // group as its anchor" keeps holding (Max: "как с текстом"). No-op
+    // if targetUid doesn't resolve to a picture, attaching would create
+    // a cycle (wouldCreateAttachCycle()), or item is already attached
+    // there - the tree UI is expected to not even offer an invalid drop
+    // in the first place, this is just the defensive floor.
+    void attach_item_to(QGraphicsItem* item, const QUuid& targetUid);
+    // Hierarchy panel drag-and-drop (current) - the reverse: clears any
+    // attachment AND leaves whatever group that attachment had folded
+    // item into, landing it fully top-level (Max: "деаттачить...
+    // элементы... становятся на самом нижнем верхнем уровне"). Also the
+    // right call for dragging a plain (never-attached) grouped item, or
+    // a nested subgroup, out to the tree's empty root area -
+    // RemoveFromGroupCommand alone if there was no attachment to clear.
+    // No-op if item is already fully top-level.
+    void detach_item(QGraphicsItem* item);
     // Reentrant depth counter marking "some batch transform that
     // already gives its own attached notes (roadmap step 25) an
     // independent, correctly-anchored move/rotate/scale is currently

@@ -1189,11 +1189,11 @@ void CanvasView::on_action_delete_items()
     // stays armed until the scene is non-empty again (on_scene_changed()),
     // however that happens, so this covers undo just as well as paste.
     suppressNextEmptySceneReset_ = true;
-    // with_attached_notes() (roadmap step 25) - deleting a picture also
+    // with_attached_items() (roadmap step 25) - deleting a picture also
     // deletes any notes pinned to it (Max's explicit spec), bundled into
     // this same DeleteItemsCommand so one undo restores both.
     undoStack_->push(new DeleteItemsCommand(
-        scene_, scene_->with_attached_notes(scene_->selectedItems(true))));
+        scene_, scene_->with_attached_items(scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_cut()
@@ -1202,7 +1202,7 @@ void CanvasView::on_action_cut()
     suppressNextEmptySceneReset_ = true;
     resetPreviousTransform();
     undoStack_->push(new DeleteItemsCommand(
-        scene_, scene_->with_attached_notes(scene_->selectedItems(true))));
+        scene_, scene_->with_attached_items(scene_->selectedItems(true))));
 }
 
 void CanvasView::on_action_copy()

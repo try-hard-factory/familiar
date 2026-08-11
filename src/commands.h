@@ -524,7 +524,7 @@ public:
     // (maybe_add_dropped_items_to_group(), always bundled into the same
     // undo macro as the drag's own MoveItemsByCommand) wants just the
     // dragged item(s) reselected instead - not the group, not any
-    // attached notes folded in by with_attached_notes() (Max: "картинку
+    // attached notes folded in by with_attached_items() (Max: "картинку
     // надо выделить", plainly, not the group lit up alongside it).
     AddToGroupCommand(CanvasScene* scene,
                       GroupItem* group,
@@ -538,10 +538,38 @@ private:
     CanvasScene* scene_;
     GroupItem* group_;
     QList<QGraphicsItem*> members_;
-    // The `members` argument as given, before with_attached_notes()
+    // The `members` argument as given, before with_attached_items()
     // expanded it into members_ - what reselectOnUndo_==false restores
     // selection to (see constructor comment).
     QList<QGraphicsItem*> primaryMembers_;
     bool reselectOnUndo_;
     QList<QUuid> memberUids_;
+};
+
+// ============================================================================
+// SetAttachedToCommand - Hierarchy panel drag-and-drop (current): pins
+// item to a new anchor picture, or clears the attachment entirely
+// (newUid.isNull()). Plain field set/restore, same shape as
+// ChangeGroupFillColorCommand - group-membership sync (an attached item
+// always lives in the same group as its anchor, Max: "как с текстом")
+// is a SEPARATE command bundled alongside this one by CanvasScene::
+// attach_item_to()/detach_item(), not this class's own job - mirrors
+// how MoveItemsByCommand and AddToGroupCommand are two separate commands
+// bundled into one macro by the drag-drop-to-group path, rather than
+// one command doing both.
+// ============================================================================
+class SetAttachedToCommand : public QUndoCommand
+{
+public:
+    SetAttachedToCommand(IBaseItem* item,
+                         const QUuid& oldUid,
+                         const QUuid& newUid);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    IBaseItem* item_;
+    QUuid oldUid_;
+    QUuid newUid_;
 };

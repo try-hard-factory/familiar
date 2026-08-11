@@ -308,7 +308,7 @@ void CanvasScene::raise_selection_to_front()
     // original "unrelated content stays on top" bug this function exists
     // to fix, just one level removed (Max: "если кликнем по картинке
     // подгруппы - то подгруппа тоже должна стать выше всех остальных").
-    // with_attached_notes(): a selected picture's attached notes
+    // with_attached_items(): a selected picture's attached notes
     // (roadmap step 25) aren't Qt-selected themselves, so plain
     // selectedItems() misses them - without this a selected LOOSE
     // picture (not in any group, where its notes already ride along as
@@ -317,7 +317,7 @@ void CanvasScene::raise_selection_to_front()
     // stayed behind at their old z (Max: "у приаттаченных текстовых
     // полей... при выборе картинки поля тоже должны... быть наверху").
     const QList<QGraphicsItem*> initialSelected = selectedItems(true);
-    QList<QGraphicsItem*> roots = with_attached_notes(initialSelected);
+    QList<QGraphicsItem*> roots = with_attached_items(initialSelected);
     for (QGraphicsItem* item : initialSelected) {
         if (dynamic_cast<GroupItem*>(item))
             continue;
@@ -425,22 +425,27 @@ void CanvasScene::group_selection()
     if (ids.size() < 2)
         return;
 
-    // Fold in any attached notes (roadmap step 25) of a picture that's
+    // Fold in any attached items (roadmap step 25) of a picture that's
     // becoming a member here - they aren't independently selected in
     // the normal case, so without this they'd stay loose top-level
     // items outside a group that visually contains their picture (Max:
     // "аттаченые текстовые поля тоже должны стать частью группы").
+    // Index-based, over `ids` itself as it grows - a picture can now be
+    // attached to another picture (current, Max: "аттачить картинку к
+    // картинке"), so this has to walk whole chains (A -> B attached to
+    // A -> C attached to B, ...), not just what's directly attached to
+    // the originally-selected items. Same pattern as with_attached_items().
     QList<QGraphicsItem*> members = selected;
-    for (const QUuid& uid : ids) {
-        auto* picture = dynamic_cast<PixmapItem*>(find_by_uid(uid));
+    for (int i = 0; i < ids.size(); ++i) {
+        auto* picture = dynamic_cast<PixmapItem*>(find_by_uid(ids[i]));
         if (!picture)
             continue;
-        for (QGraphicsItem* note : find_attached_notes(picture->uid())) {
-            auto* noteBase = dynamic_cast<IBaseItem*>(note);
-            if (noteBase && !ids.contains(noteBase->uid()))
-                ids.append(noteBase->uid());
-            if (!members.contains(note))
-                members.append(note);
+        for (QGraphicsItem* attachedItem : find_attached_items(picture->uid())) {
+            auto* attachedBase = dynamic_cast<IBaseItem*>(attachedItem);
+            if (attachedBase && !ids.contains(attachedBase->uid()))
+                ids.append(attachedBase->uid());
+            if (!members.contains(attachedItem))
+                members.append(attachedItem);
         }
     }
 
@@ -619,9 +624,42 @@ void CanvasScene::maybe_add_dropped_items_to_group(
         raise_group_cluster_to_front(target);
 }
 
+void CanvasScene::add_to_group(QGraphicsItem* item, GroupItem* target)
+{
+    auto* base = dynamic_cast<IBaseItem*>(item);
+    if (!base || !target || item == target)
+        return;
+    // Attached items (roadmap step 25/current) don't take a group
+    // membership independently of their anchor - CanvasScene::
+    // attach_item_to() is what keeps that invariant, this call is only
+    // for a plain grouped/loose item or a nested subgroup.
+    if (!base->attachedToUid().isNull())
+        return;
+    // Same cycle guard as the canvas drag-drop path - dragging a group
+    // onto itself or one of its own descendants would nest it inside its
+    // own subtree. forbidden_drop_targets() is a no-op set for a
+    // non-group item, so this is safe to call unconditionally.
+    if (forbidden_drop_targets({item}).contains(target))
+        return;
+
+    GroupItem* currentOwner = find_owning_group(base->uid());
+    if (currentOwner == target)
+        return; // already a member here
+
+    if (currentOwner) {
+        undo_stack_->beginMacro(tr("Move to group"));
+        undo_stack_->push(new RemoveFromGroupCommand(currentOwner, base->uid()));
+        undo_stack_->push(new AddToGroupCommand(this, target, {item}, false));
+        undo_stack_->endMacro();
+    } else {
+        undo_stack_->push(new AddToGroupCommand(this, target, {item}, false));
+    }
+    raise_group_cluster_to_front(target);
+}
+
 void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
 {
-    // with_attached_notes(): a note attached to one of the group's
+    // with_attached_items(): a note attached to one of the group's
     // pictures isn't itself a group child (attachment is a uid
     // reference, not membership), so selection_action_items() alone
     // misses it - without this it stayed behind at whatever z
@@ -629,7 +667,7 @@ void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
     // itself got raised way above it here, visibly landing the note
     // under the picture it's supposed to be pinned to.
     QList<QGraphicsItem*> cluster
-        = with_attached_notes(group->selection_action_items());
+        = with_attached_items(group->selection_action_items());
     std::sort(cluster.begin(),
              cluster.end(),
              [](QGraphicsItem* a, QGraphicsItem* b) {
@@ -1109,33 +1147,119 @@ GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
     return nullptr;
 }
 
-QList<QGraphicsItem*> CanvasScene::find_attached_notes(
+QList<QGraphicsItem*> CanvasScene::find_attached_items(
     const QUuid& pictureUid) const
 {
-    QList<QGraphicsItem*> notes;
+    // Generalized from TextItem-only (roadmap step 25) to any IBaseItem
+    // whose attachedToUid() matches - a PixmapItem can now attach to
+    // another PixmapItem too (Max: "аттачить картинку к картинке"). The
+    // ANCHOR side stays picture-only by construction (nothing ever sets
+    // attachedToUid_ to a non-picture uid - see the cycle guard in
+    // wouldCreateAttachCycle()), so no extra filtering needed here.
+    QList<QGraphicsItem*> attached;
     for (QGraphicsItem* item : items()) {
-        if (auto* text = dynamic_cast<TextItem*>(item)) {
-            if (text->attachedToUid() == pictureUid)
-                notes.append(item);
-        }
+        auto* base = dynamic_cast<IBaseItem*>(item);
+        if (base && base->attachedToUid() == pictureUid)
+            attached.append(item);
     }
-    return notes;
+    return attached;
 }
 
-QList<QGraphicsItem*> CanvasScene::with_attached_notes(
+QList<QGraphicsItem*> CanvasScene::with_attached_items(
     const QList<QGraphicsItem*>& items) const
 {
+    // Expansion is now recursive (walks the whole chain via a
+    // grow-while-iterating loop over `expanded` itself), not just one
+    // level deep - now that a picture can be attached to another
+    // picture, a chain like A -> B (attached to A) -> C (attached to B)
+    // is possible, and e.g. deleting/grouping A needs to pull in C too,
+    // not just its direct attachment B. `items.contains()` guards
+    // against revisiting/duplicating - fine at this app's scale, same
+    // style as the rest of this class.
     QList<QGraphicsItem*> expanded = items;
-    for (QGraphicsItem* item : items) {
-        auto* picture = dynamic_cast<PixmapItem*>(item);
+    for (int i = 0; i < expanded.size(); ++i) {
+        auto* picture = dynamic_cast<PixmapItem*>(expanded[i]);
         if (!picture)
             continue;
-        for (QGraphicsItem* note : find_attached_notes(picture->uid())) {
-            if (!expanded.contains(note))
-                expanded.append(note);
+        for (QGraphicsItem* attachedItem : find_attached_items(picture->uid())) {
+            if (!expanded.contains(attachedItem))
+                expanded.append(attachedItem);
         }
     }
     return expanded;
+}
+
+bool CanvasScene::wouldCreateAttachCycle(const QUuid& itemUid,
+                                        const QUuid& targetUid) const
+{
+    if (itemUid == targetUid)
+        return true;
+    QUuid cursor = targetUid;
+    QSet<QUuid> seen;
+    while (!cursor.isNull()) {
+        if (cursor == itemUid)
+            return true;
+        if (seen.contains(cursor))
+            break; // already-corrupt chain elsewhere - bail rather than spin forever
+        seen.insert(cursor);
+        auto* base = dynamic_cast<IBaseItem*>(find_by_uid(cursor));
+        cursor = base ? base->attachedToUid() : QUuid();
+    }
+    return false;
+}
+
+void CanvasScene::attach_item_to(QGraphicsItem* item, const QUuid& targetUid)
+{
+    auto* base = dynamic_cast<IBaseItem*>(item);
+    if (!base)
+        return;
+    auto* target = dynamic_cast<PixmapItem*>(find_by_uid(targetUid));
+    if (!target)
+        return; // can only attach to a picture - see IBaseItem::attachedToUid()'s comment
+    if (base->attachedToUid() == targetUid)
+        return; // already attached here
+    if (wouldCreateAttachCycle(base->uid(), targetUid))
+        return;
+
+    GroupItem* oldGroup = find_owning_group(base->uid());
+    GroupItem* newGroup = find_owning_group(targetUid);
+
+    // Two separate commands (attach + group-transfer), same "each does
+    // one job" split as the drag-drop-to-group path bundling
+    // MoveItemsByCommand with AddToGroupCommand - always macro'd, even
+    // when there's no group-transfer half, so the undo stack always
+    // shows one "Attach" entry rather than sometimes falling back to
+    // SetAttachedToCommand's own text.
+    undo_stack_->beginMacro(tr("Attach"));
+    undo_stack_->push(
+        new SetAttachedToCommand(base, base->attachedToUid(), targetUid));
+    if (oldGroup != newGroup) {
+        if (oldGroup)
+            undo_stack_->push(new RemoveFromGroupCommand(oldGroup, base->uid()));
+        if (newGroup)
+            undo_stack_->push(
+                new AddToGroupCommand(this, newGroup, {item}, false));
+    }
+    undo_stack_->endMacro();
+}
+
+void CanvasScene::detach_item(QGraphicsItem* item)
+{
+    auto* base = dynamic_cast<IBaseItem*>(item);
+    if (!base)
+        return;
+    const bool wasAttached = !base->attachedToUid().isNull();
+    GroupItem* owner = find_owning_group(base->uid());
+    if (!wasAttached && !owner)
+        return; // already fully top-level
+
+    undo_stack_->beginMacro(tr("Detach"));
+    if (wasAttached)
+        undo_stack_->push(
+            new SetAttachedToCommand(base, base->attachedToUid(), QUuid()));
+    if (owner)
+        undo_stack_->push(new RemoveFromGroupCommand(owner, base->uid()));
+    undo_stack_->endMacro();
 }
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
@@ -1548,24 +1672,11 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 QString filename = data.value("filename").toString();
                 PixmapItem* pixmapItem = new PixmapItem(image, filename);
 
-                // Handle extra data (crop, etc.)
+                // "crop" and (roadmap step 25/current) "attached_to" -
+                // see PixmapItem::apply_extra_save_data() (moveitem.h).
                 QVariant extraData = data.value("data");
-                if (extraData.isValid()) {
-                    QVariantMap extraMap = extraData.toMap();
-
-                    // Handle crop data if present
-                    QVariant cropVariant = extraMap.value("crop");
-                    if (cropVariant.isValid()) {
-                        QList<QVariant> cropList = cropVariant.toList();
-                        if (cropList.size() == 4) {
-                            QRectF crop(cropList[0].toReal(),
-                                        cropList[1].toReal(),
-                                        cropList[2].toReal(),
-                                        cropList[3].toReal());
-                            pixmapItem->set_crop(crop);
-                        }
-                    }
-                }
+                if (extraData.isValid())
+                    pixmapItem->apply_extra_save_data(extraData.toMap());
                 item = pixmapItem;
             }
         } else if (typ == "gif") {
@@ -1575,25 +1686,13 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 QString filename = data.value("filename").toString();
                 GifItem* gifItem = new GifItem(gifBytes, filename);
 
-                // Same crop-restore as "pixmap" above, plus GIF-specific
-                // "speed" - both live under the same "data" extra-map.
+                // "crop"/"attached_to" (via the PixmapItem base call
+                // inside GifItem::apply_extra_save_data()) plus
+                // GIF-specific "speed" - all live under the same "data"
+                // extra-map.
                 QVariant extraData = data.value("data");
-                if (extraData.isValid()) {
-                    QVariantMap extraMap = extraData.toMap();
-
-                    QVariant cropVariant = extraMap.value("crop");
-                    if (cropVariant.isValid()) {
-                        QList<QVariant> cropList = cropVariant.toList();
-                        if (cropList.size() == 4) {
-                            QRectF crop(cropList[0].toReal(),
-                                        cropList[1].toReal(),
-                                        cropList[2].toReal(),
-                                        cropList[3].toReal());
-                            gifItem->set_crop(crop);
-                        }
-                    }
-                    gifItem->apply_extra_save_data(extraMap);
-                }
+                if (extraData.isValid())
+                    gifItem->apply_extra_save_data(extraData.toMap());
                 item = gifItem;
             }
         } else if (typ == "text") {

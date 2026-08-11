@@ -97,6 +97,22 @@ public:
     {
         return {};
     }
+
+    // Optional uid of another item this one is "attached to" - riding
+    // along on that anchor's position/rotation/scale and joining
+    // whichever group the anchor belongs to (see PixmapItem::
+    // itemChange()/set_rotation()/set_scale() in moveitem.h for the
+    // actual cascade, and CanvasScene::find_attached_items()). Started
+    // as TextItem-only (roadmap step 25, "note attached to a picture"),
+    // generalized here so a PixmapItem can attach to another PixmapItem
+    // too (Max: "я понял что можно аттачить картинку к картинке...
+    // как с текстом"). Null (default) = not attached. Default no-op
+    // pair, same pattern as nested_selection_action_items() above - only
+    // TextItem/PixmapItem actually store anything; a type that can never
+    // be attached (GroupItem, ErrorItem, MultiSelectItem) just keeps
+    // returning a null uid.
+    virtual QUuid attachedToUid() const { return QUuid(); }
+    virtual void set_attached_to(const QUuid& uid) { Q_UNUSED(uid); }
 };
 
 template<typename T>
