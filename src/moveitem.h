@@ -174,6 +174,12 @@ public:
     std::optional<QRectF> crop_temp{};
     std::optional<QPointF> crop_mode_event_start{};
     std::optional<CropHandleFn> crop_mode_move{};
+    // Attach generalized from TextItem to IBaseItem (Max: "аттачить
+    // картинку к картинке") - see IBaseItem::attachedToUid()'s own
+    // comment (selector.h) for the full picture. A GifItem attaching to
+    // another picture (or having one attach to it) IS-A PixmapItem, so
+    // this covers that for free.
+    QUuid attachedToUid_;
 
     PixmapItem(const QImage& image,
                const QString& filename = QString(),
@@ -188,9 +194,8 @@ public:
         init_selectable();
         // ItemPositionChange/ItemPositionHasChanged notifications are
         // OFF by default since Qt 4.6 - needed here (like GroupItem,
-        // moveitem.h) to carry along any attached notes (roadmap step
-        // 25, TextItem::attachedToUid_) when this picture moves. See
-        // itemChange() below.
+        // moveitem.h) to carry along any items attached to THIS picture
+        // (attachedToUid_ above) when it moves. See itemChange() below.
         this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     }
 
@@ -278,8 +283,37 @@ public:
                                                     crop_.topLeft().y(),
                                                     crop_.width(),
                                                     crop_.height()};
+        if (!attachedToUid_.isNull())
+            data[QStringLiteral("attached_to")] = attachedToUid_.toString(
+                QUuid::WithoutBraces);
         return data;
     }
+
+    // Counterpart of get_extra_save_data() - covers "crop" (previously
+    // parsed inline, separately, by both the "pixmap" AND "gif" branches
+    // of CanvasScene::add_queued_items(); pulled out here so GifItem::
+    // apply_extra_save_data() can just call this base first, same
+    // pattern TextItem/GroupItem already use) and "attached_to".
+    void apply_extra_save_data(const QVariantMap& data)
+    {
+        const QVariant cropVariant = data.value(QStringLiteral("crop"));
+        if (cropVariant.isValid()) {
+            const QList<QVariant> cropList = cropVariant.toList();
+            if (cropList.size() == 4) {
+                set_crop(QRectF(cropList[0].toReal(),
+                               cropList[1].toReal(),
+                               cropList[2].toReal(),
+                               cropList[3].toReal()));
+            }
+        }
+        const QString attachedTo = data.value(QStringLiteral("attached_to"))
+                                       .toString();
+        if (!attachedTo.isEmpty())
+            attachedToUid_ = QUuid::fromString(attachedTo);
+    }
+
+    QUuid attachedToUid() const override { return attachedToUid_; }
+    void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
     // TODOLATER: not wired up to a caller yet (batch export).
     QString get_filename_for_export(const QString& imgformat) const
@@ -618,6 +652,36 @@ public:
             const QPixmap& pm = grayscale_ ? grayscalePixmap_ : pixmap();
             painter->drawPixmap(crop_, pm, crop_);
             paint_selectable(painter, option, widget);
+
+            // Attached-picture indicator (current, Max: "приаттаченный
+            // текст мы подсвечивали однопиксельной обёрткой. надо
+            // картинки приаттаченные тоже так подсвечивать") - exact
+            // same block as TextItem::paint()'s own attached-note
+            // indicator (moveitem.h), just keyed off THIS picture's own
+            // attachedToUid_ instead of a note's. While the anchor this
+            // picture is attached to is selected, outline this picture
+            // too, so it reads as "belongs to that picture" even though
+            // it isn't part of the selection itself.
+            if (!attachedToUid_.isNull()) {
+                if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+                    if (QGraphicsItem* anchor = scene->find_by_uid(attachedToUid_);
+                        anchor && anchor->isSelected()) {
+                        auto colorPreset = SettingsHandler::getInstance()
+                                                ->getCurrentColorPreset();
+                        QColor highlightColor
+                            = colorPreset[EPresetsColorIdx::kSelectionColor];
+                        highlightColor.setAlpha(230);
+                        painter->save();
+                        QPen highlightPen(highlightColor);
+                        highlightPen.setWidthF(1.0);
+                        highlightPen.setCosmetic(true);
+                        painter->setPen(highlightPen);
+                        painter->setBrush(Qt::NoBrush);
+                        painter->drawRect(this->bounding_rect_unselected());
+                        painter->restore();
+                    }
+                }
+            }
         }
     }
 
@@ -661,17 +725,19 @@ public:
         scene->crop_item = nullptr;
     }
 
-    // Attached notes (roadmap step 25) draw their own selection-color
-    // outline in TextItem::paint() while THIS picture is selected, so
-    // they need repainting the instant that flag flips - Qt only
-    // schedules a repaint for the item whose own state actually changed,
-    // not for other items merely watching it.
+    // Attached items (roadmap step 25 note, current picture-to-picture)
+    // draw their own selection-color outline - TextItem::paint() or
+    // this same class's own paint() (see its attached-picture indicator
+    // block) - while THIS picture is selected, so they need repainting
+    // the instant that flag flips - Qt only schedules a repaint for the
+    // item whose own state actually changed, not for other items merely
+    // watching it.
     void on_selected_change(bool value) override
     {
         ItemMixin<PixmapItem, QGraphicsPixmapItem>::on_selected_change(value);
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (QGraphicsItem* note : scene->find_attached_notes(this->uid()))
-                note->update();
+            for (QGraphicsItem* attachedItem : scene->find_attached_items(this->uid()))
+                attachedItem->update();
         }
     }
 
@@ -700,7 +766,7 @@ public:
             scene->begin_group_batch();
         BaseItemMixin<QGraphicsPixmapItem>::set_rotation(value, anchor);
         if (scene) {
-            for (QGraphicsItem* note : scene->find_attached_notes(this->uid())) {
+            for (QGraphicsItem* note : scene->find_attached_items(this->uid())) {
                 // Same "already independently handled" skip the position
                 // cascade above uses.
                 if (note->isSelected()
@@ -726,7 +792,7 @@ public:
             scene->begin_group_batch();
         BaseItemMixin<QGraphicsPixmapItem>::set_scale(value, anchor);
         if (scene) {
-            for (QGraphicsItem* note : scene->find_attached_notes(this->uid())) {
+            for (QGraphicsItem* note : scene->find_attached_items(this->uid())) {
                 if (note->isSelected()
                     && (note->flags() & QGraphicsItem::ItemIsMovable))
                     continue;
@@ -786,7 +852,7 @@ protected:
                     // broadly, off group-membership alone).
                     if (!scene->in_group_batch()) {
                         for (QGraphicsItem* note :
-                             scene->find_attached_notes(this->uid())) {
+                             scene->find_attached_items(this->uid())) {
                             if (note->isSelected()
                                 && (note->flags() & QGraphicsItem::ItemIsMovable))
                                 continue;
@@ -999,9 +1065,11 @@ public:
 
     // Counterpart of get_extra_save_data()'s "speed" - called by
     // canvasscene.cpp after construction, same naming/shape as
-    // TextItem::apply_extra_save_data().
+    // TextItem::apply_extra_save_data(). Base call picks up "crop" and
+    // "attached_to", same as the plain "pixmap" branch there.
     void apply_extra_save_data(const QVariantMap& data)
     {
+        PixmapItem::apply_extra_save_data(data);
         if (data.contains(QStringLiteral("speed")))
             set_speed_percent(data.value(QStringLiteral("speed")).toInt());
     }
@@ -1587,15 +1655,15 @@ public:
     // TextItem starts this way). Purely a note→picture reference, not a
     // group: the picture doesn't know how many notes point at it, and
     // has no visible container/fill of its own - PixmapItem::itemChange()
-    // (moveitem.h) looks these up via CanvasScene::find_attached_notes()
+    // (moveitem.h) looks these up via CanvasScene::find_attached_items()
     // and carries them along by position delta only when the PICTURE
     // moves; dragging the note itself is always independent (its own
     // ordinary body drag, untouched), matching Max's explicit spec
     // ("по отдельности перемещать можно тоже"). Several notes may share
     // the same attachedToUid_ (Max: "несколько заметок на одну
     // картинку").
-    QUuid attachedToUid() const { return attachedToUid_; }
-    void set_attached_to(const QUuid& uid) { attachedToUid_ = uid; }
+    QUuid attachedToUid() const override { return attachedToUid_; }
+    void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
 private:
     QColor fill_color_;

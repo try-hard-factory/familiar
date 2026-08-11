@@ -5,6 +5,7 @@
 #include <core/settingshandler.h>
 #include <moveitem.h>
 
+#include <QDropEvent>
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QMouseEvent>
@@ -94,6 +95,55 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
     return QIcon(pm);
 }
 
+// Interactive drag-and-drop (current, Max: "в пьюрефе эта панель
+// интерактивная... можно перемещать элементы"). Qt's own InternalMove
+// drag-drop mode is used only to get the press/drag/drop GESTURE for
+// free - the QTreeWidgetItem reparenting it would normally do on drop
+// is discarded entirely (dropEvent() below never calls the base class
+// implementation): this tree is always a read-only PROJECTION of the
+// scene graph, rebuilt wholesale by HierarchyPanel::rebuild_() whenever
+// the scene actually changes, so a drop here just translates into a
+// CanvasScene call (via onDrop) and lets that call's own undo command
+// trigger the next rebuild. No Q_OBJECT/moc needed - onDrop is a plain
+// std::function callback, not a signal, and dropEvent() is an ordinary
+// virtual override.
+class HierarchyTreeWidget : public QTreeWidget
+{
+public:
+    using QTreeWidget::QTreeWidget;
+
+    // dragged is always non-null (Qt doesn't start a drag without a
+    // current item); target is null when dropped on empty space below
+    // the last root row.
+    std::function<void(QTreeWidgetItem* dragged, QTreeWidgetItem* target)> onDrop;
+
+protected:
+    void dropEvent(QDropEvent* event) override
+    {
+        QTreeWidgetItem* dragged = currentItem();
+        QTreeWidgetItem* target = itemAt(event->position().toPoint());
+        // NOT acceptProposedAction() - for InternalMove, the proposed
+        // action IS Qt::MoveAction, and accepting AS a move tells
+        // QAbstractItemView::startDrag() (back up the call stack, once
+        // drag->exec() returns) that a row move actually happened at
+        // the MODEL level - it then deletes the dragged QTreeWidgetItem
+        // (and its children) itself, entirely bypassing rebuild_()'s
+        // own gifIconConnections_ disconnect-before-clear() ordering.
+        // Crashed exactly that way (Max: drag a picture with 2 attached
+        // notes into a group - some UNRELATED gif's frameChanged fired
+        // into a node Qt had already deleted out from under it). This
+        // view's "move" is entirely on the SCENE side (via onDrop's own
+        // CanvasScene calls) - explicitly IgnoreAction here tells Qt
+        // none of ITS row-ownership bookkeeping applies, so it leaves
+        // every QTreeWidgetItem alone and rebuild_() stays the only
+        // thing that ever deletes tree nodes.
+        event->setDropAction(Qt::IgnoreAction);
+        event->accept();
+        if (dragged && onDrop)
+            onDrop(dragged, target);
+    }
+};
+
 } // namespace
 
 HierarchyPanel::HierarchyPanel(QWidget* parent)
@@ -109,10 +159,25 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     // main window's dock areas.
     setFeatures(QDockWidget::DockWidgetMovable);
 
-    tree_ = new QTreeWidget(this);
+    auto* tree = new HierarchyTreeWidget(this);
+    tree_ = tree;
     tree_->setHeaderHidden(true);
     tree_->setIndentation(14);
     tree_->setUniformRowHeights(true);
+    // Interactive drag-and-drop (current, Max: "в пьюрефе эта панель
+    // интерактивная") - InternalMove for the press/drag/drop gesture
+    // only, see HierarchyTreeWidget's own comment for why the actual
+    // reparenting it would do is discarded in favor of a CanvasScene
+    // call. Single-item drag only (v1) - SingleSelection keeps
+    // currentItem() unambiguous.
+    tree_->setSelectionMode(QAbstractItemView::SingleSelection);
+    tree_->setDragEnabled(true);
+    tree_->setAcceptDrops(true);
+    tree_->setDropIndicatorShown(true);
+    tree_->setDragDropMode(QAbstractItemView::InternalMove);
+    tree->onDrop = [this](QTreeWidgetItem* dragged, QTreeWidgetItem* target) {
+        handleTreeDrop_(dragged, target);
+    };
     connect(tree_, &QTreeWidget::itemClicked, this, &HierarchyPanel::onItemClicked_);
     connect(tree_,
             &QTreeWidget::itemDoubleClicked,
@@ -200,10 +265,12 @@ void HierarchyPanel::rebuild_()
     if (!scene_)
         return;
 
-    // Every uid that's either a group's child or an attached note's own
+    // Every uid that's either a group's child or an attached item's own
     // uid is "consumed" - it gets added as a NESTED node from its
     // owner/anchor's own recursion below, not as a second, redundant
-    // top-level root.
+    // top-level root. attachedToUid() is generalized to any IBaseItem
+    // now (Max: "аттачить картинку к картинке"), not just TextItem, so
+    // this checks the interface rather than dynamic_cast<TextItem*>.
     QSet<QUuid> consumed;
     const QList<QGraphicsItem*> allItems = scene_->items();
     for (QGraphicsItem* item : allItems) {
@@ -213,9 +280,9 @@ void HierarchyPanel::rebuild_()
             for (const QUuid& childId : group->child_ids())
                 consumed.insert(childId);
         }
-        if (auto* text = dynamic_cast<TextItem*>(item)) {
-            if (!text->attachedToUid().isNull())
-                consumed.insert(text->uid());
+        if (auto* base = dynamic_cast<IBaseItem*>(item)) {
+            if (!base->attachedToUid().isNull())
+                consumed.insert(base->uid());
         }
     }
 
@@ -251,7 +318,7 @@ void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
             addItemNode_(node, child, added);
     }
     if (auto* picture = dynamic_cast<PixmapItem*>(item)) { // GifItem IS-A PixmapItem
-        for (QGraphicsItem* note : scene_->find_attached_notes(picture->uid()))
+        for (QGraphicsItem* note : scene_->find_attached_items(picture->uid()))
             addItemNode_(node, note, added);
     }
     if (auto* gif = dynamic_cast<GifItem*>(item))
@@ -335,6 +402,47 @@ void HierarchyPanel::onItemDoubleClicked_(QTreeWidgetItem* node)
         return;
     }
     view_->fitRect(scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item}), item);
+}
+
+void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged, QTreeWidgetItem* target)
+{
+    if (!scene_ || dragged == target)
+        return;
+    QGraphicsItem* draggedItem = scene_->find_by_uid(
+        dragged->data(0, kUidRole).toUuid());
+    if (!draggedItem)
+        return;
+
+    if (!target) {
+        // Dropped on empty space below the last root row - "make it
+        // top-level" (Max: "деаттачить... элементы... становятся на
+        // самом нижнем верхнем уровне"). Covers both an attached item
+        // (clears the attachment) and a plain grouped item/nested
+        // subgroup (leaves its group) - detach_item() picks whichever
+        // applies, no-op if already fully top-level.
+        scene_->detach_item(draggedItem);
+        return;
+    }
+
+    QGraphicsItem* targetItem = scene_->find_by_uid(
+        target->data(0, kUidRole).toUuid());
+    if (!targetItem)
+        return;
+
+    if (auto* targetGroup = dynamic_cast<GroupItem*>(targetItem)) {
+        // An attached item's group membership is derived from its
+        // anchor, not independently settable (add_to_group() itself
+        // also refuses this - see its own comment) - re-attach to a
+        // different picture instead if that's the intent.
+        scene_->add_to_group(draggedItem, targetGroup);
+    } else if (auto* targetPicture = dynamic_cast<PixmapItem*>(targetItem)) {
+        // A whole GroupItem can't be "attached" (attach means one
+        // riding-along item, not a cluster) - only offer this for a
+        // non-group dragged item.
+        if (!dynamic_cast<GroupItem*>(draggedItem))
+            scene_->attach_item_to(draggedItem, targetPicture->uid());
+    }
+    // Dropped on a TextItem node: nothing attaches to a note - no-op.
 }
 
 void HierarchyPanel::syncSelectionFromScene()

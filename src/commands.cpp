@@ -757,19 +757,29 @@ RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
     , group_(group)
 {
     memberUids_.append(memberUid);
-    // A picture's attached notes (roadmap step 25) ride along as actual
+    // A picture's attached items (roadmap step 25) ride along as actual
     // group members now (AddToGroupCommand/group_selection() both fold
     // them in whenever the picture joins) - taking the picture back out
     // has to take them too, or they'd linger as orphaned members of a
     // group their picture no longer belongs to (Max: "аттаченые
-    // текстовые поля тоже должны стать частью группы").
+    // текстовые поля тоже должны стать частью группы"). Index-based,
+    // over memberUids_ itself as it grows - a picture can now be
+    // attached to another picture (current, Max: "аттачить картинку к
+    // картинке"), so a whole chain has to come along, not just whatever
+    // is directly attached to the picture being removed. Same pattern
+    // as CanvasScene::with_attached_items().
     if (auto* scene = dynamic_cast<CanvasScene*>(group_->scene())) {
-        if (auto* picture
-            = dynamic_cast<PixmapItem*>(scene->find_by_uid(memberUid))) {
-            for (QGraphicsItem* note :
-                 scene->find_attached_notes(picture->uid())) {
-                if (auto* noteBase = dynamic_cast<IBaseItem*>(note))
-                    memberUids_.append(noteBase->uid());
+        for (int i = 0; i < memberUids_.size(); ++i) {
+            auto* picture
+                = dynamic_cast<PixmapItem*>(scene->find_by_uid(memberUids_[i]));
+            if (!picture)
+                continue;
+            for (QGraphicsItem* attachedItem :
+                 scene->find_attached_items(picture->uid())) {
+                if (auto* attachedBase = dynamic_cast<IBaseItem*>(attachedItem)) {
+                    if (!memberUids_.contains(attachedBase->uid()))
+                        memberUids_.append(attachedBase->uid());
+                }
             }
         }
     }
@@ -805,13 +815,13 @@ AddToGroupCommand::AddToGroupCommand(CanvasScene* scene,
     : QUndoCommand(QObject::tr("Add to group"))
     , scene_(scene)
     , group_(group)
-    // with_attached_notes(): any picture among `members` brings its
+    // with_attached_items(): any picture among `members` brings its
     // attached notes (roadmap step 25) in as actual group members too,
     // not just a position/z cascade (Max: "аттаченые текстовые поля
     // тоже должны стать частью группы") - covers the "Group" button's
     // fold-into-existing-group path AND drag-drop add/transfer, both of
     // which construct this command.
-    , members_(scene->with_attached_notes(members))
+    , members_(scene->with_attached_items(members))
     , primaryMembers_(members)
     , reselectOnUndo_(reselectOnUndo)
 {
@@ -835,7 +845,7 @@ void AddToGroupCommand::redo()
         // joins. Bump it just above the group if it isn't already -
         // same +Z_STEP convention GroupCommand::redo() uses in reverse.
         // An attached note (roadmap step 25) is now folded into
-        // members_ too (see constructor's with_attached_notes()), so it
+        // members_ too (see constructor's with_attached_items()), so it
         // gets the exact same bump as any other member here - no
         // separate case needed.
         QGraphicsItem* item = members_[i];
@@ -876,9 +886,32 @@ void AddToGroupCommand::undo()
             item->setSelected(true);
     } else {
         // Drag-drop path: just the dragged item(s), not the group and
-        // not any attached notes with_attached_notes() folded into
+        // not any attached notes with_attached_items() folded into
         // members_ - see constructor comment.
         for (auto* item : primaryMembers_)
             item->setSelected(true);
     }
+}
+
+// ============================================================================
+// SetAttachedToCommand
+// ============================================================================
+SetAttachedToCommand::SetAttachedToCommand(IBaseItem* item,
+                                           const QUuid& oldUid,
+                                           const QUuid& newUid)
+    : QUndoCommand(newUid.isNull() ? QObject::tr("Detach")
+                                   : QObject::tr("Attach"))
+    , item_(item)
+    , oldUid_(oldUid)
+    , newUid_(newUid)
+{}
+
+void SetAttachedToCommand::redo()
+{
+    item_->set_attached_to(newUid_);
+}
+
+void SetAttachedToCommand::undo()
+{
+    item_->set_attached_to(oldUid_);
 }
