@@ -134,6 +134,10 @@ set(PROJECT_SOURCES
         widgets/file_browser_dialog.h
         widgets/save_all_dialog.cpp
         widgets/save_all_dialog.h
+        widgets/help_dialog.cpp
+        widgets/help_dialog.h
+        widgets/about_dialog.cpp
+        widgets/about_dialog.h
         widgets/settings_dialog.cpp
         widgets/settings_dialog.h
         widgets/color_gamut.cpp

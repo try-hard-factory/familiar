@@ -115,55 +115,6 @@ private slots:
 };
 
 
-class HelpDialog : public QDialog
-{
-    Q_OBJECT
-
-public:
-    HelpDialog(QWidget* parent = nullptr)
-        : QDialog(parent)
-    {
-        // See ChangeOpacityDialog: shown non-modally via show() below and
-        // never explicitly deleted by whoever calls "new HelpDialog(...)".
-        setAttribute(Qt::WA_DeleteOnClose);
-        // See FileActions::openFile(): MainWindow's translucent/frameless
-        // stylesheet cascades into this otherwise-unstyled top-level
-        // dialog, painting it solid black.
-        setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet("* { background-color: palette(window); color: "
-                      "palette(window-text); }");
-        setWindowTitle(qApp->applicationName() + " Help");
-        QString docDir = QCoreApplication::applicationDirPath()
-                         + "/documentation";
-        QTabWidget* tabs = new QTabWidget();
-
-        QFile controlsFile(docDir + "/controls.html");
-        QString controlsTxt;
-        if (controlsFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&controlsFile);
-            controlsTxt = in.readAll();
-        }
-        QLabel* controls = new QLabel(controlsTxt);
-        controls->setTextInteractionFlags(Qt::TextSelectableByMouse);
-        QScrollArea* scroll = new QScrollArea(this);
-        scroll->setWidgetResizable(true);
-        scroll->setWidget(controls);
-        tabs->addTab(scroll, "Controls");
-
-        QVBoxLayout* layout = new QVBoxLayout();
-        setLayout(layout);
-        layout->addWidget(tabs);
-
-        QDialogButtonBox* buttons = new QDialogButtonBox(
-            QDialogButtonBox::Close);
-        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-        layout->addWidget(buttons);
-
-        show();
-    }
-};
-
-
 // Live-tails familiar::log's RingSink (last N formatted lines, kept in
 // memory by the logger itself - see log/ring_sink.h) rather than reading
 // the log file off disk: a one-shot disk read would go stale the moment

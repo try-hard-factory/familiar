@@ -125,6 +125,11 @@ public slots:
     void on_action_about();
     void on_action_debuglog();
 
+    // HelpDialog's "Keyboard Shortcuts" link - opens the (new) settings
+    // window already on that category, not just settingsWindowNew()'s
+    // own default/last-used one.
+    void openKeyboardShortcutsSettings();
+
     // Per-tab actions: thin forwarders to tabpane_->currentWidget().
     // Real logic stays on CanvasView; see there for implementations.
 

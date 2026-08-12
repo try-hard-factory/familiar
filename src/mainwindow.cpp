@@ -17,7 +17,9 @@
 #include "project_settings.h"
 #include "recovery.h"
 #include "tabpane.h"
+#include "widgets/about_dialog.h"
 #include "widgets/dialogs.h"
+#include "widgets/help_dialog.h"
 #include "widgets/save_all_dialog.h"
 #include <actions/action_mouse_dispatch.h>
 #include <core/held_buttons_tracker.h>
@@ -292,6 +294,15 @@ void MainWindow::settingsWindowNew()
     NewSettingsWindow* widget = new NewSettingsWindow(this,
                                                       this->parentWidget());
 
+    widget->show();
+    centered_widget(this, widget);
+}
+
+void MainWindow::openKeyboardShortcutsSettings()
+{
+    NewSettingsWindow* widget = new NewSettingsWindow(this,
+                                                      this->parentWidget());
+    widget->selectCategory(tr("Keyboard Shortcuts"));
     widget->show();
     centered_widget(this, widget);
 }
@@ -859,20 +870,12 @@ void MainWindow::on_action_open_settings_dir()
 
 void MainWindow::on_action_help()
 {
-    // TODOLATER: open help dialog
+    new HelpDialog(this);
 }
 
 void MainWindow::on_action_about()
 {
-    CustomMessageBox box(QMessageBox::NoIcon,
-                         this,
-                         tr("About Familiar"),
-                         tr("<h2>Familiar</h2>"
-                            "<p>Reference board application.</p>"),
-                         QMessageBox::Ok,
-                         QMessageBox::Ok);
-    box.setIconPixmap(windowIcon().pixmap(64, 64));
-    box.exec();
+    new AboutDialog(this);
 }
 
 void MainWindow::on_action_debuglog()

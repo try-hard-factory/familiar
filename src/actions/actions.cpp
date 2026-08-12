@@ -510,7 +510,7 @@ static ActionRegistry buildRegistry()
 
     // ── Help ──────────────────────────────────────────────────────────────────
     r.add(A::make("help", "Help", "on_action_help", {"F1"}));
-    r.add(A::make("about", "About", "on_action_about"));
+    r.add(A::make("about", "About", "on_action_about", {"Shift+F1"}));
     r.add(A::make("debuglog", "Show Debug Log", "on_action_debuglog"));
 
     return r;

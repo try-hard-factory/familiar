@@ -337,6 +337,21 @@ NewSettingsWindow::NewSettingsWindow(MainWindow* wm, QWidget* parent)
     stack_->setCurrentIndex(0);
 }
 
+void NewSettingsWindow::selectCategory(const QString& name)
+{
+    for (int i = 0; i < categories_.size(); ++i) {
+        if (categories_[i].name != name)
+            continue;
+        // setChecked() alone doesn't fire idClicked (that's only
+        // emitted on an actual user click) - the stack switch above is
+        // wired to that signal, so it needs its own explicit call here,
+        // same as the constructor's own last two lines for index 0.
+        categoryButtons_->button(i)->setChecked(true);
+        stack_->setCurrentIndex(i);
+        return;
+    }
+}
+
 void NewSettingsWindow::keyPressEvent(QKeyEvent* e)
 {
     if (e->key() == Qt::Key_Escape) {

@@ -30,6 +30,13 @@ class NewSettingsWindow : public QWidget
 public:
     explicit NewSettingsWindow(MainWindow* wm, QWidget* parent = nullptr);
 
+    // Jumps straight to the category whose label (tr("Keyboard
+    // Shortcuts"), tr("Colors"), ...) matches `name` exactly - e.g.
+    // HelpDialog's "Keyboard Shortcuts" link opens this window already
+    // on that page instead of whatever was last selected. No-op
+    // (silently) if nothing matches.
+    void selectCategory(const QString& name);
+
 protected:
     void keyPressEvent(QKeyEvent*) override;
 
