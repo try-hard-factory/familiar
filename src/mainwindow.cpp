@@ -839,11 +839,6 @@ void MainWindow::on_action_settings()
     settingsWindow();
 }
 
-void MainWindow::on_action_keyboard_settings()
-{
-    // TODOLATER: open keyboard/mouse controls dialog
-}
-
 void MainWindow::on_action_open_settings_dir()
 {
     QString dir = QFileInfo(SettingsHandler::getInstance()->settingsFileName())
@@ -929,6 +924,11 @@ void MainWindow::on_action_paste()
 {
     if (auto* cv = tabpane_->currentWidget())
         cv->on_action_paste();
+}
+void MainWindow::on_action_duplicate()
+{
+    if (auto* cv = tabpane_->currentWidget())
+        cv->on_action_duplicate();
 }
 void MainWindow::on_action_delete_items()
 {

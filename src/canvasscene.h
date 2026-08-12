@@ -80,6 +80,14 @@ public:
     void cancel_crop_mode();
     void copy_selection_to_internal_clipboard();
     void paste_from_internal_clipboard(QPointF position);
+    // Copy+paste collapsed into one step: clones the current selection
+    // (with_related_items() expansion, same as copy - group descendants
+    // and attached items included) and inserts the clones offset by a
+    // small fixed delta from the originals, instead of centering on the
+    // cursor like a real paste does. Does NOT touch internal_clipboard -
+    // an in-place Ctrl+D shouldn't clobber whatever the user separately
+    // Ctrl+C'd, and a later Ctrl+V should still paste that, not this.
+    void duplicate_selection();
     void raise_to_top();
     void lower_to_bottom();
     // Raises the CURRENT selection (however it was built - single
@@ -395,6 +403,16 @@ private:
     qint16 objectsCount() const;
 
     void handleImageFromClipboard(const QImage& image);
+
+    // Shared by paste_from_internal_clipboard()/duplicate_selection():
+    // create_copy() on each source, then remap each clone's cross-
+    // references (GroupItem::child_ids_, IBaseItem::attachedToUid_) from
+    // the original uids to the fresh uids its SIBLING clones (from this
+    // same call) got - dropped instead of left pointing at the original
+    // if that original wasn't part of `sources`. See paste_from_
+    // internal_clipboard()'s own comment for the full rationale.
+    QList<IBaseItem*> clone_with_remap_(
+        const QList<std::shared_ptr<IBaseItem>>& sources) const;
 
     MainWindow& mainwindow_;
     uint64_t& zCounter_;

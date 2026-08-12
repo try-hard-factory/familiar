@@ -273,22 +273,23 @@ void CanvasScene::copy_selection_to_internal_clipboard()
     }
 }
 
-void CanvasScene::paste_from_internal_clipboard(QPointF position)
+QList<IBaseItem*> CanvasScene::clone_with_remap_(
+    const QList<std::shared_ptr<IBaseItem>>& sources) const
 {
-    // create_copy() is a shallow per-item field copy - copy_selection_
-    // to_internal_clipboard() already expanded the clipboard to include
-    // every group descendant and attached item, so all of them get
-    // cloned here too, but each clone's cross-references (GroupItem::
-    // child_ids_, IBaseItem::attachedToUid_) still point at the
-    // ORIGINAL uids until remapped below. Without this, a pasted group
-    // would look empty (its child_ids_ still names the ORIGINALS, which
-    // are back on the canvas at their old spot, not part of this
-    // paste), and a pasted attached copy would stay silently attached
-    // to the ORIGINAL anchor instead of its own freshly-pasted one.
+    // create_copy() is a shallow per-item field copy - the caller has
+    // already expanded `sources` to include every group descendant and
+    // attached item, so all of them get cloned here too, but each
+    // clone's cross-references (GroupItem::child_ids_, IBaseItem::
+    // attachedToUid_) still point at the ORIGINAL uids until remapped
+    // below. Without this, a cloned group would look empty (its
+    // child_ids_ still names the ORIGINALS, which are still on the
+    // canvas at their old spot, not part of this clone batch), and a
+    // cloned attached copy would stay silently attached to the ORIGINAL
+    // anchor instead of its own freshly-cloned one.
     QList<IBaseItem*> copies;
     QHash<QUuid, QUuid> oldToNewUid;
-    copies.reserve(internal_clipboard.size());
-    for (const std::shared_ptr<IBaseItem>& item : internal_clipboard) {
+    copies.reserve(sources.size());
+    for (const std::shared_ptr<IBaseItem>& item : sources) {
         IBaseItem* copy = item->create_copy();
         oldToNewUid.insert(item->uid(), copy->uid());
         copies.append(copy);
@@ -300,23 +301,68 @@ void CanvasScene::paste_from_internal_clipboard(QPointF position)
                 auto it = oldToNewUid.find(oldChildUid);
                 if (it != oldToNewUid.end())
                     remapped.append(it.value());
-                // else: that member wasn't part of THIS copy operation
-                // (shouldn't normally happen now that copy_selection_
-                // to_internal_clipboard() pulls in every descendant -
-                // but drop it rather than pointing at the ORIGINAL,
-                // un-copied member if it somehow still does).
+                // else: that member wasn't part of THIS clone operation
+                // (shouldn't normally happen given how both callers
+                // already pull in every descendant - but drop it rather
+                // than pointing at the ORIGINAL, un-cloned member if it
+                // somehow still does).
             }
             group->set_child_ids(remapped);
         }
         if (!copy->attachedToUid().isNull()) {
             auto it = oldToNewUid.find(copy->attachedToUid());
-            // Anchor wasn't part of this copy (a lone attached item
-            // copied without its anchor selected) - paste unattached
+            // Anchor wasn't part of this clone (a lone attached item
+            // cloned without its anchor selected) - land it unattached
             // rather than staying silently pinned to the ORIGINAL.
             copy->set_attached_to(it != oldToNewUid.end() ? it.value()
                                                           : QUuid());
         }
     }
+    return copies;
+}
+
+void CanvasScene::paste_from_internal_clipboard(QPointF position)
+{
+    QList<IBaseItem*> copies = clone_with_remap_(internal_clipboard);
+    undo_stack_->push(new InsertItemsCommand(this, copies, position));
+}
+
+void CanvasScene::duplicate_selection()
+{
+    // Same deep expansion as copy (group descendants, attached items,
+    // recursively - see with_related_items()'s own comment), but sourced
+    // straight from the live selection instead of internal_clipboard, so
+    // this never disturbs whatever the user separately Ctrl+C'd.
+    QList<std::shared_ptr<IBaseItem>> sources;
+    for (QGraphicsItem* item : with_related_items(selectedItems(true))) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+            sources.append(baseItem->acquireShared());
+    }
+    if (sources.isEmpty())
+        return;
+
+    QList<IBaseItem*> copies = clone_with_remap_(sources);
+
+    // A copy still sits at its original's exact position (create_copy()
+    // doesn't offset it) - InsertItemsCommand::redo() only recenters
+    // items on `position` when one is given, computed as item->pos() +
+    // position - bounds.center(); passing the ORIGINAL bounding center
+    // plus a small offset (rather than paste's cursor position) shifts
+    // every copy by exactly that offset from where it started, reading
+    // as "duplicated right next to the original" instead of "pasted
+    // here".
+    QList<QGraphicsItem*> copyGraphicsItems;
+    for (IBaseItem* copy : copies)
+        copyGraphicsItems.append(dynamic_cast<QGraphicsItem*>(copy));
+    const QRectF bounds = itemsBoundingRect(false, copyGraphicsItems);
+    // Scene units are real image pixels here, not screen pixels - a flat
+    // offset (e.g. 24) is imperceptible next to a typical multi-hundred-
+    // or thousand-pixel-wide picture, and way too much for something
+    // tiny. Scale with the duplicated selection's own size instead (15%
+    // of its average dimension), clamped to stay visible either way.
+    const qreal offset = std::clamp(
+        (bounds.width() + bounds.height()) * 0.15, 40.0, 400.0);
+    const QPointF position = bounds.center() + QPointF(offset, offset);
 
     undo_stack_->push(new InsertItemsCommand(this, copies, position));
 }

@@ -118,7 +118,6 @@ public slots:
 
     // Settings / Help
     void on_action_settings();
-    void on_action_keyboard_settings();
     void on_action_open_settings_dir();
     void on_action_help();
     void on_action_about();
@@ -146,6 +145,7 @@ public slots:
     void on_action_cut();
     void on_action_copy();
     void on_action_paste();
+    void on_action_duplicate();
     void on_action_delete_items();
     void on_action_raise_to_top();
     void on_action_lower_to_bottom();

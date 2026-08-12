@@ -262,6 +262,13 @@ static ActionRegistry buildRegistry()
                   false,
                   "active_when_selection"));
     r.add(A::make("paste", "Paste", "on_action_paste", {"Ctrl+V"}));
+    r.add(A::make("duplicate",
+                  "Duplicate",
+                  "on_action_duplicate",
+                  {"Ctrl+D"},
+                  false,
+                  false,
+                  "active_when_selection"));
     r.add(A::make("delete",
                   "Delete",
                   "on_action_delete_items",
@@ -500,9 +507,6 @@ static ActionRegistry buildRegistry()
 
     // ── Settings ──────────────────────────────────────────────────────────────
     r.add(A::make("settings", "Settings", "on_action_settings"));
-    r.add(A::make("keyboard_settings",
-                  "Keyboard && Mouse",
-                  "on_action_keyboard_settings"));
     r.add(A::make("open_settings_dir",
                   "Open Settings Folder",
                   "on_action_open_settings_dir"));

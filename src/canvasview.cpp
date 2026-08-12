@@ -1253,6 +1253,12 @@ void CanvasView::on_action_copy()
     clipboard->setMimeData(mimeData);
 }
 
+void CanvasView::on_action_duplicate()
+{
+    cancelActiveModes();
+    scene_->duplicate_selection();
+}
+
 void CanvasView::on_action_paste()
 {
     cancelActiveModes();

@@ -31,6 +31,7 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::action("cut"),
                               MenuNode::action("copy"),
                               MenuNode::action("paste"),
+                              MenuNode::action("duplicate"),
                               MenuNode::action("delete"),
                               MenuNode::sep(),
                               MenuNode::action("raise_to_top"),
