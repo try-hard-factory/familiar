@@ -118,16 +118,15 @@ public slots:
 
     // Settings / Help
     void on_action_settings();
-    void on_action_settings_new();
     void on_action_keyboard_settings();
     void on_action_open_settings_dir();
     void on_action_help();
     void on_action_about();
     void on_action_debuglog();
 
-    // HelpDialog's "Keyboard Shortcuts" link - opens the (new) settings
-    // window already on that category, not just settingsWindowNew()'s
-    // own default/last-used one.
+    // HelpDialog's "Keyboard Shortcuts" link - opens the settings window
+    // already on that category, not just settingsWindow()'s own
+    // default/last-used one.
     void openKeyboardShortcutsSettings();
 
     // Per-tab actions: thin forwarders to tabpane_->currentWidget().
@@ -248,7 +247,7 @@ protected:
 
 private:
     static constexpr int kResizeBorder
-        = 10; // Толщина невидимой границы для ресайза, в пикселях
+        = 5; // Толщина невидимой границы для ресайза, в пикселях
 
     Qt::Edges resizeEdgesAt(const QPoint& pos) const
     {
@@ -335,7 +334,6 @@ private slots:
     void saveAll();
     void newFile();
     void settingsWindow();
-    void settingsWindowNew();
     void saveFile();
     void quit();
     void openFile();

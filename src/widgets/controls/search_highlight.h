@@ -7,7 +7,7 @@
 // plain escape when there's no match (or no active search), so labels
 // render identically to before search existed. Shared between the
 // Keyboard Shortcuts row list (bindings_tree_widget.cpp) and the
-// settings-window category sidebar (ui/new_settings_window.cpp), which
+// settings-window category sidebar (ui/settings_window.cpp), which
 // both bold the matched substring of whatever the search box found.
 inline QString highlightSearchMatch(const QString& text, const QString& query)
 {

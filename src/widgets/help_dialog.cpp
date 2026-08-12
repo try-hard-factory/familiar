@@ -164,8 +164,8 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
         this,
         accent);
     // Opens the settings window already on that specific category
-    // (NewSettingsWindow::selectCategory()), not just wherever
-    // settingsWindowNew() would otherwise land by default.
+    // (SettingsWindow::selectCategory()), not just wherever
+    // settingsWindow() would otherwise land by default.
     connect(shortcutsLabel,
             &QLabel::linkActivated,
             window_,

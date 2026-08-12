@@ -500,7 +500,6 @@ static ActionRegistry buildRegistry()
 
     // ── Settings ──────────────────────────────────────────────────────────────
     r.add(A::make("settings", "Settings", "on_action_settings"));
-    r.add(A::make("settings_new", "Settings (New)", "on_action_settings_new"));
     r.add(A::make("keyboard_settings",
                   "Keyboard && Mouse",
                   "on_action_keyboard_settings"));

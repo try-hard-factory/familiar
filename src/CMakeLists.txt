@@ -70,8 +70,6 @@ set(PROJECT_SOURCES
         file_actions.h
         ui/settings_window.cpp
         ui/settings_window.h
-        ui/new_settings_window.cpp
-        ui/new_settings_window.h
         ui/presetsave_window.cpp
         ui/presetsave_window.h
         ui/text_edit_toolbar.cpp
@@ -144,12 +142,6 @@ set(PROJECT_SOURCES
         widgets/color_gamut.h
         widgets/controls/controls_common.cpp
         widgets/controls/controls_common.h
-        widgets/controls/keyboard_controls.cpp
-        widgets/controls/keyboard_controls.h
-        widgets/controls/mouse_controls.cpp
-        widgets/controls/mouse_controls.h
-        widgets/controls/mousewheel_controls.cpp
-        widgets/controls/mousewheel_controls.h
         widgets/controls/binding_target.cpp
         widgets/controls/binding_target.h
         widgets/controls/binding_dialogs.cpp

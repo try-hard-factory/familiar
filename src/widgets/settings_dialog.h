@@ -105,7 +105,7 @@ signals:
     // Fired on every check-state change (in addition to the usual
     // settings persistence) - for wiring up a dependent widget's
     // setEnabled() live, e.g. AutosaveIntervalWidget under
-    // AutosaveEnabledWidget in ui/new_settings_window.cpp.
+    // AutosaveEnabledWidget in ui/settings_window.cpp.
     void toggled(bool checked);
 
 protected:

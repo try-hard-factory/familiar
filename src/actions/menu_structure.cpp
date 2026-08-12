@@ -94,7 +94,6 @@ const QList<MenuNode>& menuStructure()
         MenuNode::submenu("Settings",
                           {
                               MenuNode::action("settings"),
-                              MenuNode::action("settings_new"),
                               MenuNode::action("keyboard_settings"),
                               MenuNode::action("open_settings_dir"),
                           }),
