@@ -4,8 +4,10 @@
 
 #include <core/settingshandler.h>
 
+#include <QAction>
 #include <QComboBox>
 #include <QDir>
+#include <QFile>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QFileSystemModel>
@@ -14,12 +16,15 @@
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QShortcut>
 #include <QStandardPaths>
 #include <QTreeView>
 #include <QVBoxLayout>
@@ -153,6 +158,14 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
         setDirectory_(pathEdit_->text());
     });
     navRow->addWidget(pathEdit_, 1);
+
+    newFolderBtn_ = new QPushButton(tr("New Folder"), this);
+    newFolderBtn_->setCursor(Qt::PointingHandCursor);
+    connect(newFolderBtn_,
+            &QPushButton::clicked,
+            this,
+            &FileBrowserDialog::createFolder_);
+    navRow->addWidget(newFolderBtn_);
     outer->addLayout(navRow);
 
     // ── Sidebar + tree ───────────────────────────────────────────────
@@ -166,6 +179,13 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     model_->setRootPath(QDir::rootPath());
     static FmlIconProvider iconProvider;
     model_->setIconProvider(&iconProvider);
+    // QFileSystemModel defaults to read-only, which makes flags() never
+    // set Qt::ItemIsEditable regardless of actual filesystem permissions
+    // - createFolder_()'s tree_->edit() call would silently no-op (Qt
+    // logs "edit: editing failed") without this. NoEditTriggers above
+    // still blocks the user from triggering rename via double-click/F2
+    // on their own - this only unblocks our own programmatic edit().
+    model_->setReadOnly(false);
     if (mode_ == Mode::SelectFolder) {
         model_->setFilter(QDir::AllDirs | QDir::Drives | QDir::NoDotAndDotDot);
     } else {
@@ -196,6 +216,31 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
             &QItemSelectionModel::selectionChanged,
             this,
             &FileBrowserDialog::onSelectionChanged_);
+    tree_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(tree_,
+            &QTreeView::customContextMenuRequested,
+            this,
+            &FileBrowserDialog::showContextMenu_);
+    // Scoped to tree_ (WidgetWithChildrenShortcut) rather than the whole
+    // dialog, so these don't fire while e.g. typing in nameEdit_ (Save
+    // mode's filename field) or pathEdit_. Delete doesn't need a guard
+    // against firing mid-rename - QLineEdit already claims Delete/
+    // Backspace/etc. for itself via QEvent::ShortcutOverride before any
+    // QShortcut gets a look, which is exactly why a plain QLineEdit
+    // editing session never loses characters to an app-level Delete
+    // shortcut elsewhere.
+    auto* deleteShortcut = new QShortcut(QKeySequence::Delete, tree_);
+    deleteShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(deleteShortcut,
+            &QShortcut::activated,
+            this,
+            &FileBrowserDialog::deleteSelected_);
+    auto* renameShortcut = new QShortcut(QKeySequence(Qt::Key_F2), tree_);
+    renameShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(renameShortcut,
+            &QShortcut::activated,
+            this,
+            &FileBrowserDialog::renameSelected_);
     contentRow->addWidget(tree_, 1);
     outer->addLayout(contentRow, 1);
 
@@ -276,8 +321,35 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
                         "  border: none;"
                         "  border-bottom: 1px solid %2;"
                         "  padding: 4px;"
+                        "}"
+                        // createFolder_()'s inline-rename editor is a
+                        // QLineEdit sitting directly on top of the
+                        // still-selected (red-highlighted) row - the
+                        // generic QLineEdit rule above is deliberately
+                        // near-transparent (rgba alpha 20) to read as a
+                        // recessed field over the dialog's own plain
+                        // background, but layered over an already-
+                        // painted row it barely masked the OLD text
+                        // underneath, showing both at once. This more
+                        // specific selector (QTreeView descendant) wins
+                        // over the generic one and forces a fully opaque
+                        // backing just for this editor.
+                        "QTreeView QLineEdit {"
+                        "  background-color: %4;"
+                        "  color: %1;"
+                        "  border: 1px solid %3;"
+                        "  border-radius: 2px;"
+                        "  padding: 0px 2px;"
+                        "  selection-background-color: %3;"
+                        "  selection-color: white;"
                         "}")
-                        .arg(textColor.name(), border.name(), accent.name()));
+                        .arg(textColor.name(),
+                             border.name(),
+                             accent.name(),
+                             QColor(background.red(),
+                                    background.green(),
+                                    background.blue())
+                                 .name()));
 
     setDirectory_(startDir.isEmpty() ? QDir::homePath() : startDir);
 }
@@ -332,6 +404,153 @@ void FileBrowserDialog::navigateUp_()
     QDir dir(currentDir_);
     if (dir.cdUp())
         setDirectory_(dir.absolutePath());
+}
+
+void FileBrowserDialog::createFolder_()
+{
+    QDir dir(currentDir_);
+    QString name = tr("New Folder");
+    for (int suffix = 2; dir.exists(name); ++suffix)
+        name = tr("New Folder (%1)").arg(suffix);
+    if (!dir.mkdir(name))
+        return;
+
+    // Same "create, then rename in place" flow as a real file manager -
+    // no separate name-prompt dialog needed (this app has no custom
+    // text-input dialog to reuse, and a native QInputDialog would be the
+    // one native dialog left in an otherwise fully custom set - see
+    // widgets/dialog_style.h's siblings). QFileSystemModel::index(path)
+    // resolves synchronously against the filesystem rather than waiting
+    // on its change-watcher, so the freshly created row is already there
+    // by the time edit() is called. edit() itself ignores editTriggers_
+    // (that only gates user-initiated editing, e.g. F2/double-click) -
+    // NoEditTriggers above stays in effect for every OTHER row.
+    const QModelIndex idx = model_->index(dir.filePath(name));
+    if (!idx.isValid())
+        return;
+    tree_->setCurrentIndex(idx);
+    tree_->scrollTo(idx);
+    tree_->edit(idx);
+}
+
+void FileBrowserDialog::renameSelected_()
+{
+    const auto rows = tree_->selectionModel()->selectedRows();
+    if (rows.size() != 1)
+        return;
+    tree_->edit(rows.first());
+}
+
+void FileBrowserDialog::deleteSelected_()
+{
+    const auto rows = tree_->selectionModel()->selectedRows();
+    if (rows.isEmpty())
+        return;
+
+    QStringList paths;
+    for (const QModelIndex& idx : rows)
+        paths << model_->filePath(idx);
+
+    // Permanent, not a trash move - QFile::moveToTrash()'s static
+    // overload needs a newer Qt than this project targets (see
+    // CMakeLists.txt) - so this asks first, same as tryAccept_()'s own
+    // overwrite confirmation just below.
+    const QString message
+        = paths.size() == 1
+              ? tr("Permanently delete \"%1\"?")
+                    .arg(QFileInfo(paths.first()).fileName())
+              : tr("Permanently delete %1 items?").arg(paths.size());
+    const auto reply = showMessageBox(QMessageBox::Warning,
+                                      this,
+                                      tr("Delete?"),
+                                      message,
+                                      QMessageBox::Yes | QMessageBox::No,
+                                      QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+        return;
+
+    for (const QString& path : paths) {
+        const QFileInfo info(path);
+        if (info.isDir())
+            QDir(path).removeRecursively();
+        else
+            QFile::remove(path);
+    }
+}
+
+void FileBrowserDialog::showContextMenu_(const QPoint& pos)
+{
+    const QModelIndex idx = tree_->indexAt(pos);
+    if (!idx.isValid()) {
+        // Empty area - a stale prior selection shouldn't be what
+        // Rename/Delete below silently act on.
+        tree_->clearSelection();
+    } else if (!tree_->selectionModel()->isSelected(idx)) {
+        // Right-clicking an item outside the current selection replaces
+        // it, same as a plain left click would - right-clicking INSIDE
+        // an existing multi-selection keeps it intact (so Delete can
+        // still act on all of it).
+        tree_->selectionModel()->select(idx,
+                                        QItemSelectionModel::ClearAndSelect
+                                            | QItemSelectionModel::Rows);
+        tree_->setCurrentIndex(idx);
+    }
+    const auto rows = tree_->selectionModel()->selectedRows();
+
+    // QMenu gets none of this dialog's own styleSheet() - it's a
+    // separate top-level popup, not a plain child widget - so left
+    // unstyled it falls back to the app-wide "background: transparent"
+    // cascade (MainWindow's own setStyleSheet()) with nothing underneath
+    // to actually paint, rendering solid black. Same root cause as
+    // dialog_style::panelStyleSheet()'s QToolTip rule, just for a widget
+    // type that rule doesn't cover.
+    const auto colorPreset = SettingsHandler::getInstance()
+                                 ->getCurrentColorPreset();
+    const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
+    const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
+
+    QMenu menu(this);
+    menu.setStyleSheet(
+        QStringLiteral("QMenu {"
+                       "  background-color: %1;"
+                       "  color: %2;"
+                       "  border: 1px solid %3;"
+                       "  border-radius: 6px;"
+                       "  padding: 4px;"
+                       "}"
+                       "QMenu::item {"
+                       "  padding: 4px 20px;"
+                       "  border-radius: 4px;"
+                       "}"
+                       "QMenu::item:selected {"
+                       "  background-color: %4;"
+                       "  color: white;"
+                       "}"
+                       "QMenu::item:disabled {"
+                       "  color: rgba(128, 128, 128, 150);"
+                       "}"
+                       "QMenu::separator {"
+                       "  height: 1px;"
+                       "  background-color: %3;"
+                       "  margin: 4px 6px;"
+                       "}")
+            .arg(menuBg.name(), menuText.name(), menuBorder.name(),
+                menuAccent.name()));
+    menu.addAction(tr("New Folder"), this, &FileBrowserDialog::createFolder_);
+    menu.addSeparator();
+    QAction* renameAction = menu.addAction(tr("Rename"),
+                                           this,
+                                           &FileBrowserDialog::renameSelected_);
+    renameAction->setShortcut(QKeySequence(Qt::Key_F2));
+    renameAction->setEnabled(rows.size() == 1);
+    QAction* deleteAction = menu.addAction(tr("Delete"),
+                                           this,
+                                           &FileBrowserDialog::deleteSelected_);
+    deleteAction->setShortcut(QKeySequence::Delete);
+    deleteAction->setEnabled(!rows.isEmpty());
+    menu.exec(tree_->viewport()->mapToGlobal(pos));
 }
 
 void FileBrowserDialog::onDoubleClicked_(const QModelIndex& index)

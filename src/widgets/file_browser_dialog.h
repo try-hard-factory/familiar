@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QList>
+#include <QPoint>
 #include <QString>
 #include <QStringList>
 
@@ -69,6 +70,10 @@ protected:
 private:
     void setDirectory_(const QString& path);
     void navigateUp_();
+    void createFolder_();
+    void renameSelected_();
+    void deleteSelected_();
+    void showContextMenu_(const QPoint& pos);
     void onDoubleClicked_(const QModelIndex& index);
     void onSelectionChanged_();
     void onFilterChanged_(int index);
@@ -85,6 +90,7 @@ private:
     QListWidget* sidebar_ = nullptr;
     QLineEdit* pathEdit_ = nullptr;
     QPushButton* upBtn_ = nullptr;
+    QPushButton* newFolderBtn_ = nullptr;
     QLineEdit* nameEdit_ = nullptr;
     QComboBox* filterCombo_ = nullptr;
     QPushButton* actionBtn_ = nullptr;
