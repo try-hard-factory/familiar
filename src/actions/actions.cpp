@@ -520,7 +520,10 @@ static ActionRegistry buildRegistry()
                   "active_when_items_in_scene"));
 
     // ── Settings ──────────────────────────────────────────────────────────────
-    r.add(A::make("settings", "Settings", "on_action_settings"));
+    r.add(A::make("settings",
+                  "Settings",
+                  "on_action_settings",
+                  {"Ctrl+U"}));
     r.add(A::make("open_settings_dir",
                   "Open Settings Folder",
                   "on_action_open_settings_dir"));
