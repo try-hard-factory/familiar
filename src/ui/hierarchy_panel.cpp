@@ -2,22 +2,39 @@
 
 #include <canvasscene.h>
 #include <canvasview.h>
+#include <commands.h>
 #include <core/settingshandler.h>
 #include <moveitem.h>
+#include <widgets/dialog_style.h>
 
+#include <QAction>
+#include <QDialog>
 #include <QDropEvent>
 #include <QFileInfo>
+#include <QGraphicsDropShadowEffect>
+#include <QHBoxLayout>
 #include <QHeaderView>
+#include <QKeySequence>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QMovie>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPushButton>
+#include <QResizeEvent>
+#include <QShortcut>
 #include <QShowEvent>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include <QWindow>
 
 #include <functional>
+
+#include "log/log.h"
+using namespace familiar::log;
 
 namespace {
 
@@ -103,6 +120,23 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
     return QIcon(pm);
 }
 
+// "Export" on a group (context menu, showContextMenu_()) - every picture
+// among the group's own members, recursively through nested subgroups.
+// GroupItem::resolve_children() already includes members that got there
+// via an attachment (a note or picture attached to something already in
+// the group becomes a real member too - see CanvasScene::
+// attach_item_to()), so this needs no separate attach-chain walk of its
+// own, just group membership.
+void collectGroupPictures(GroupItem* group, QList<PixmapItem*>& out)
+{
+    for (QGraphicsItem* child : group->resolve_children()) {
+        if (auto* picture = dynamic_cast<PixmapItem*>(child))
+            out.append(picture);
+        else if (auto* nested = dynamic_cast<GroupItem*>(child))
+            collectGroupPictures(nested, out);
+    }
+}
+
 // Interactive drag-and-drop (current, PureRef-style). Qt's own
 // InternalMove drag-drop mode is used only to get the press/drag/drop
 // GESTURE for free - the QTreeWidgetItem reparenting it would normally do on drop
@@ -151,6 +185,122 @@ protected:
     }
 };
 
+// Rename prompt (HierarchyPanel::startRename_()) - a real, small, modal
+// top-level dialog, same custom-chrome convention as every other dialog
+// in this app (dialog_style.h: frameless, opaque + setMask() rounding,
+// NOT WA_TranslucentBackground - see panelStyleSheet()'s own comment for
+// why). Deliberately NOT an inline editor layered over the tree row -
+// two different inline approaches were tried and abandoned first:
+// QTreeWidget's own item-editing (QAbstractItemView::edit()/
+// QStyledItemDelegate's QExpandingLineEdit - Qt-level success confirmed
+// (edit() returned true), yet typed characters were read as this app's
+// own single-letter tool shortcuts, H/V/R/G/S/1/2 (actions.cpp), instead
+// of reaching the editor), then a plain hand-positioned QLineEdit child
+// widget (isVisible()/hasFocus() both true, even with a loud debug
+// stylesheet applied - never actually appeared on screen at all,
+// confirmed with Max). Neither was ever root-caused; a genuine top-level
+// window sidesteps both, since it has its own independent backing
+// store/compositing, unlike a child widget layered inside this app's
+// translucent frameless MainWindow.
+class RenameDialog : public QDialog
+{
+public:
+    RenameDialog(const QString& currentName, QWidget* parent)
+        : QDialog(parent)
+    {
+        setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setAttribute(Qt::WA_StyledBackground);
+        setWindowModality(Qt::ApplicationModal);
+        setFixedWidth(320);
+
+        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+
+        auto* shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(0, 0, 0, 150));
+        setGraphicsEffect(shadow);
+
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(18, 14, 18, 16);
+        outer->setSpacing(10);
+
+        auto* titleLabel = new QLabel(tr("Rename"), this);
+        QFont titleFont = titleLabel->font();
+        titleFont.setBold(true);
+        titleLabel->setFont(titleFont);
+        outer->addWidget(titleLabel);
+
+        edit_ = new QLineEdit(currentName, this);
+        edit_->selectAll();
+        connect(edit_, &QLineEdit::returnPressed, this, &QDialog::accept);
+        outer->addWidget(edit_);
+
+        auto* buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+        familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+        connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+        buttonRow->addWidget(cancelBtn);
+        auto* okBtn = new QPushButton(tr("Rename"), this);
+        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        okBtn->setDefault(true);
+        connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+        buttonRow->addWidget(okBtn);
+        outer->addLayout(buttonRow);
+
+        // "QDialog", not "RenameDialog" - this class has no Q_OBJECT (a
+        // plain local class, no moc), so metaObject()->className() (what
+        // this type-selector actually matches against) reports the base
+        // Qt class, "QDialog", not our own subclass name. Passing our
+        // own name here silently never matched anything - the panel's
+        // own opaque background rule never applied, leaving the window
+        // to fall back to MainWindow's app-wide "background: transparent"
+        // with nothing underneath to actually paint (rendered solid
+        // black, stale content visibly not clearing while typing).
+        setStyleSheet(
+            familiar::dialog_style::panelStyleSheet("QDialog",
+                                                    background,
+                                                    border,
+                                                    textColor)
+            + QStringLiteral("QLineEdit {"
+                             "  background-color: rgba(0, 0, 0, 20);"
+                             "  color: %1;"
+                             "  border: 1px solid %2;"
+                             "  border-radius: 4px;"
+                             "  padding: 6px 8px;"
+                             "}")
+                  .arg(textColor.name(), border.name()));
+    }
+
+    QString text() const { return edit_->text(); }
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && windowHandle()) {
+            windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QDialog::mousePressEvent(event);
+    }
+
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QDialog::resizeEvent(event);
+        familiar::dialog_style::applyRoundedMask(this, 10);
+    }
+
+private:
+    QLineEdit* edit_ = nullptr;
+};
+
 } // namespace
 
 HierarchyPanel::HierarchyPanel(QWidget* parent)
@@ -191,6 +341,24 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
             &QTreeWidget::itemDoubleClicked,
             this,
             &HierarchyPanel::onItemDoubleClicked_);
+    auto* renameShortcut = new QShortcut(QKeySequence(Qt::Key_F2), tree_);
+    // WindowShortcut, not Widget/WidgetWithChildrenShortcut - neither of
+    // those ever fired at all (confirmed via debug log during
+    // development: tree_ genuinely never has actual Qt widget focus
+    // after a click in this app - frameless window + this app's own
+    // custom focus/event handling, see MainWindow's eventFilter).
+    // WindowShortcut fires anywhere within the top-level window
+    // regardless of which exact child has focus - no other action in
+    // this app is bound to F2 (grepped), so this is safe app-wide.
+    renameShortcut->setContext(Qt::WindowShortcut);
+    connect(renameShortcut, &QShortcut::activated, this, [this] {
+        startRename_(tree_->currentItem());
+    });
+    tree_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(tree_,
+            &QTreeWidget::customContextMenuRequested,
+            this,
+            &HierarchyPanel::showContextMenu_);
     setWidget(tree_);
 
     rebuildTimer_ = new QTimer(this);
@@ -461,6 +629,123 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
             scene_->attach_item_to(draggedItem, targetPicture->uid());
     }
     // Dropped on a TextItem node: nothing attaches to a note - no-op.
+}
+
+void HierarchyPanel::showContextMenu_(const QPoint& pos)
+{
+    QTreeWidgetItem* node = tree_->itemAt(pos);
+    if (!node || !scene_)
+        return;
+    QGraphicsItem* item = scene_->find_by_uid(node->data(0, kUidRole).toUuid());
+    if (!item)
+        return;
+
+    auto* picture = dynamic_cast<PixmapItem*>(item);
+    auto* group = dynamic_cast<GroupItem*>(item);
+    auto* text = dynamic_cast<TextItem*>(item);
+    if (!picture && !group && !text)
+        return; // nothing actionable for this node type
+
+    QMenu menu(this);
+    QAction* renameAction = nullptr;
+    if (picture) {
+        renameAction = menu.addAction(tr("Rename"));
+        renameAction->setShortcut(QKeySequence(Qt::Key_F2));
+    }
+    QAction* editAction = nullptr;
+    if (text)
+        editAction = menu.addAction(tr("Edit"));
+    QAction* exportAction = nullptr;
+    if (picture || group)
+        exportAction = menu.addAction(tr("Export..."));
+
+    // Same reasoning as FileBrowserDialog::showContextMenu_() - QMenu is
+    // a separate top-level popup, not a plain child widget, so this
+    // dock's own setStyleSheet() cascade doesn't reach it; left unstyled
+    // it falls back to the app-wide "background: transparent" (MainWindow's
+    // own setStyleSheet()) with nothing underneath to actually paint,
+    // rendering solid black.
+    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
+    const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    menu.setStyleSheet(
+        QStringLiteral("QMenu {"
+                       "  background-color: %1;"
+                       "  color: %2;"
+                       "  border: 1px solid %3;"
+                       "  border-radius: 6px;"
+                       "  padding: 4px;"
+                       "}"
+                       "QMenu::item {"
+                       "  padding: 4px 20px;"
+                       "  border-radius: 4px;"
+                       "}"
+                       "QMenu::item:selected {"
+                       "  background-color: %4;"
+                       "  color: white;"
+                       "}")
+            .arg(menuBg.name(), menuText.name(), menuBorder.name(),
+                menuAccent.name()));
+
+    // Acted on AFTER exec() returns, not from the actions' own
+    // triggered() handlers - QMenu is still mid-close/ungrab at the
+    // moment a handler fires from inside its own nested event loop.
+    QAction* chosen = menu.exec(tree_->viewport()->mapToGlobal(pos));
+    if (chosen == renameAction) {
+        startRename_(node);
+    } else if (chosen == editAction) {
+        // Same as double-clicking the row (onItemDoubleClicked_) - drops
+        // straight into the note's own in-canvas text editing, not a
+        // separate dialog/overlay of ours (TextItem::enter_edit_mode()
+        // already works fine as-is, nothing like the picture-rename
+        // saga's rendering/focus issues to work around here).
+        scene_->deselect_all_items();
+        item->setSelected(true);
+        text->enter_edit_mode();
+        text->setFocus();
+    } else if (chosen == exportAction) {
+        if (!view_)
+            return;
+        // Single picture -> just itself; a group -> every picture among
+        // its own members, recursively through nested subgroups
+        // (collectGroupPictures()).
+        QList<PixmapItem*> pictures;
+        if (picture)
+            pictures.append(picture);
+        else if (group)
+            collectGroupPictures(group, pictures);
+        view_->exportPictures(pictures);
+    }
+}
+
+void HierarchyPanel::startRename_(QTreeWidgetItem* node)
+{
+    if (!node || !scene_)
+        return;
+    auto* picture = dynamic_cast<PixmapItem*>(
+        scene_->find_by_uid(node->data(0, kUidRole).toUuid()));
+    if (!picture)
+        return; // F2/Rename only meaningful for a picture row
+
+    RenameDialog dlg(node->text(0), this);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const QString currentLabel = picture->filename_.isEmpty()
+                                     ? tr("Untitled")
+                                     : QFileInfo(picture->filename_).fileName();
+    const QString newName = dlg.text().trimmed();
+    if (newName.isEmpty() || newName == currentLabel)
+        return;
+
+    FLOG_DEBUG(Ch::UI,
+              "startRename_: '{}' -> '{}'",
+              currentLabel.toStdString(),
+              newName.toStdString());
+    scene_->undo_stack_->push(
+        new RenamePictureCommand(picture, picture->filename_, newName));
 }
 
 void HierarchyPanel::syncSelectionFromScene()

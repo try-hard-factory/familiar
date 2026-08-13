@@ -2,6 +2,7 @@
 
 #include <QDockWidget>
 #include <QMetaObject>
+#include <QPoint>
 #include <QSet>
 #include <QUuid>
 
@@ -104,6 +105,24 @@ private:
     void onItemClicked_(QTreeWidgetItem* node);
     void onItemDoubleClicked_(QTreeWidgetItem* node);
     void handleTreeDrop_(QTreeWidgetItem* dragged, QTreeWidgetItem* target);
+    // Rename (pictures only)/Export (pictures + groups, recursively).
+    void showContextMenu_(const QPoint& pos);
+    // Shared by showContextMenu_()'s Rename item AND the F2 QShortcut. A
+    // real modal top-level QDialog (RenameDialog, hierarchy_panel.cpp),
+    // NOT an inline editor layered over the row - two different inline
+    // approaches were tried and abandoned first: QTreeWidget's own
+    // item-editing (QAbstractItemView::edit()/QStyledItemDelegate's
+    // QExpandingLineEdit - Qt-level success confirmed, edit() returned
+    // true, yet typed characters were read as this app's own single-
+    // letter tool shortcuts, H/V/R/G/S/1/2, instead of reaching the
+    // editor), then a plain hand-positioned QLineEdit child widget
+    // (isVisible()/hasFocus() both true, even with a loud debug
+    // stylesheet applied - never actually appeared on screen at all).
+    // Neither was ever root-caused; a genuine top-level window sidesteps
+    // both, since it has its own independent backing store/compositing,
+    // unlike a child widget layered inside this app's translucent
+    // frameless MainWindow.
+    void startRename_(QTreeWidgetItem* node);
 
     QTreeWidget* tree_ = nullptr;
     CanvasScene* scene_ = nullptr;

@@ -1046,9 +1046,19 @@ void CanvasView::on_export_scene_finished(const QString& filename,
 
 void CanvasView::on_action_export_images()
 {
+    QList<PixmapItem*> pictures;
+    for (QGraphicsItem* item : scene_->items_by_type("pixmap")) {
+        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item))
+            pictures.append(pixmapItem);
+    }
+    exportPictures(pictures);
+}
+
+void CanvasView::exportPictures(const QList<PixmapItem*>& pictures)
+{
     cancelActiveModes();
 
-    if (scene_->items_by_type("pixmap").isEmpty()) {
+    if (pictures.isEmpty()) {
         showMessageBox(QMessageBox::Information,
                        &mainwindow_,
                        tr("Export Images"),
@@ -1065,7 +1075,7 @@ void CanvasView::on_action_export_images()
     if (directory.isEmpty())
         return;
 
-    imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(scene_,
+    imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(pictures,
                                                                   directory);
 
     imageExportWorker_ = new ThreadedIO(

@@ -2243,10 +2243,16 @@ public:
     // and cached until membership changes - re-resolving via a linear
     // scan on every mouse-move of an active drag would be wasteful. A
     // member that's been deleted out from under the group (dangling
-    // uid) is silently skipped, not treated as an error - TODOLATER:
-    // groups don't yet react to a member's own deletion by pruning
-    // child_ids(), so a deleted member's uid lingers (harmlessly - this
-    // already skips it) until the group is next saved and reloaded.
+    // uid) is silently skipped, not treated as an error - DeleteItemsCommand
+    // (commands.cpp) prunes childIds_ (via remove_child_id(), which also
+    // marks this cache dirty) as part of the delete itself now, so this
+    // is just defensive: it was NOT harmless before that existed -
+    // resolvedChildren_ being a CACHE (not a fresh lookup) meant a
+    // deleted-but-still-alive-for-undo item's C++ object kept getting
+    // returned here and re-added to HierarchyPanel's tree, even though
+    // find_by_uid() itself already correctly stopped finding it (only
+    // reproduced for a GROUPED member, never a top-level item - confirmed
+    // with Max).
     QList<QGraphicsItem*> resolve_children()
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());

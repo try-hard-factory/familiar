@@ -103,6 +103,10 @@ class ImagesToDirectoryExporter : public ExporterBase
 {
 public:
     ImagesToDirectoryExporter(CanvasScene* scene, const QString& dirname);
+    // Explicit subset (HierarchyPanel's per-picture/per-group "Export"
+    // context menu item) instead of every pixmap item in the scene.
+    ImagesToDirectoryExporter(const QList<PixmapItem*>& items,
+                              const QString& dirname);
 
     const QString& dirname() const { return dirname_; }
     // One of "skip"/"skip_all"/"overwrite"/"overwrite_all" (see

@@ -55,6 +55,13 @@ public:
                           std::optional<QPoint> pos = std::nullopt);
     void handleDrop(const QMimeData* mimedata, const QPoint& pos);
 
+    // Folder-picker + threaded export, factored out of
+    // on_action_export_images() so HierarchyPanel's per-picture/
+    // per-group "Export" context menu item can reuse the exact same
+    // flow (conflict-resolution dialog, progress dialog, ...) for an
+    // explicit subset instead of every picture in the scene.
+    void exportPictures(const QList<PixmapItem*>& pictures);
+
     // Used by MainWindow to (re)wire action enabled-state to whichever
     // tab is currently active (see MainWindow::resyncActionsForTab).
     CanvasScene* scene() const { return scene_; }

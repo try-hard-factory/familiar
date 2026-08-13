@@ -60,6 +60,12 @@ private:
     QList<QGraphicsItem*> items_;
     // See InsertItemsCommand::ownedRefs_.
     QList<std::shared_ptr<IBaseItem>> ownedRefs_;
+    // Parallel to items_ - the group (if any) each item was a member of,
+    // captured at construction time before anything is touched. redo()
+    // prunes the item's uid out of that group's child_ids_ (nullptr if
+    // it wasn't grouped), undo() restores it - see redo()'s own comment
+    // for why this matters beyond just keeping child_ids_ accurate.
+    QList<GroupItem*> owningGroups_;
 };
 
 // ============================================================================
@@ -572,4 +578,27 @@ private:
     IBaseItem* item_;
     QUuid oldUid_;
     QUuid newUid_;
+};
+
+// ============================================================================
+// RenamePictureCommand - HierarchyPanel's inline "Rename" (context menu/F2).
+// filename_ is display-only metadata (get_filename_for_export()'s human-
+// readable half, the hierarchy label) - not tied to any real path on
+// disk, so plain field set/restore is all this needs, same shape as
+// SetAttachedToCommand above.
+// ============================================================================
+class RenamePictureCommand : public QUndoCommand
+{
+public:
+    RenamePictureCommand(PixmapItem* item,
+                         const QString& oldName,
+                         const QString& newName);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    PixmapItem* item_;
+    QString oldName_;
+    QString newName_;
 };

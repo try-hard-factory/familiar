@@ -9,6 +9,7 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
+#include <QGraphicsDropShadowEffect>
 #include <QGraphicsItem>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -17,6 +18,7 @@
 #include <QLoggingCategory>
 #include <QMap>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPalette>
@@ -25,6 +27,7 @@
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QResizeEvent>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSize>
@@ -39,6 +42,7 @@
 #include <QVBoxLayout>
 #include <QVariant>
 #include <QVariantMap>
+#include <QWindow>
 
 #include "commands.h"
 #include "file_actions.h"
@@ -46,6 +50,8 @@
 #include "log/log.h"
 #include "message_box.h"
 #include "recovery.h"
+#include <core/settingshandler.h>
+#include <widgets/dialog_style.h>
 
 class ProgressDialog : public QProgressDialog
 {
@@ -603,6 +609,12 @@ private:
 };
 
 
+// Custom-chrome convention (see FileBrowserDialog/HelpDialog/RenameDialog
+// (ui/hierarchy_panel.cpp)): frameless, opaque (NOT WA_TranslucentBackground
+// - see dialog_style::panelStyleSheet()'s own comment for why that combo
+// breaks rendering on a QSS-auto-painted top-level widget), rounded via
+// a real setMask() rather than QSS border-radius alone, drag-to-move via
+// startSystemMove() since there's no native title bar to grab.
 class ExportImagesFileExistsDialog : public QDialog
 {
     Q_OBJECT
@@ -611,39 +623,104 @@ public:
     ExportImagesFileExistsDialog(QWidget* parent, const QString& filename)
         : QDialog(parent)
     {
-        // See FileActions::openFile(): MainWindow's translucent/frameless
-        // stylesheet cascades into this otherwise-unstyled top-level
-        // dialog, painting it solid black.
+        setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet("* { background-color: palette(window); color: "
-                      "palette(window-text); }");
-        setWindowTitle("File exists");
+        setAttribute(Qt::WA_StyledBackground);
+        setWindowModality(Qt::ApplicationModal);
+        setFixedWidth(380);
 
-        QVBoxLayout* layout = new QVBoxLayout();
-        setLayout(layout);
+        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
-        layout->addWidget(
-            new QLabel(QString("File already exists:\n%1").arg(filename)));
+        auto* shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(0, 0, 0, 150));
+        setGraphicsEffect(shadow);
+
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(20, 14, 20, 16);
+        outer->setSpacing(12);
+
+        auto* topRow = new QHBoxLayout();
+        auto* titleLabel = new QLabel(tr("File Exists"), this);
+        QFont titleFont = titleLabel->font();
+        titleFont.setBold(true);
+        titleFont.setPointSize(titleFont.pointSize() + 1);
+        titleLabel->setFont(titleFont);
+        topRow->addWidget(titleLabel, 1);
+
+        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
+        closeBtn->setFixedSize(22, 22);
+        closeBtn->setCursor(Qt::PointingHandCursor);
+        closeBtn->setFocusPolicy(Qt::NoFocus);
+        closeBtn->setObjectName(QStringLiteral("exportExistsCloseBtn"));
+        connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
+        topRow->addWidget(closeBtn);
+        outer->addLayout(topRow);
+
+        auto* messageLabel = new QLabel(
+            tr("This file already exists:\n%1").arg(filename), this);
+        messageLabel->setWordWrap(true);
+        outer->addWidget(messageLabel);
 
         const QList<QPair<QString, QString>> choices = {
-            {"skip", "Skip this file"},
-            {"skip_all", "Skip all existing files"},
-            {"overwrite", "Overwrite this file"},
-            {"overwrite_all", "Overwrite all existing files"},
+            {QStringLiteral("skip"), tr("Skip this file")},
+            {QStringLiteral("skip_all"), tr("Skip all existing files")},
+            {QStringLiteral("overwrite"), tr("Overwrite this file")},
+            {QStringLiteral("overwrite_all"),
+             tr("Overwrite all existing files")},
         };
-
         for (const auto& [value, label] : choices) {
-            auto* btn = new QRadioButton(label);
+            auto* btn = new QRadioButton(label, this);
             radioButtons.insert(value, btn);
-            layout->addWidget(btn);
+            outer->addWidget(btn);
         }
-        radioButtons["skip"]->setChecked(true);
+        radioButtons[QStringLiteral("skip")]->setChecked(true);
 
-        QDialogButtonBox* buttons = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-        connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-        layout->addWidget(buttons);
+        auto* buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+                                                     textColor,
+                                                     border);
+        connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+        buttonRow->addWidget(cancelBtn);
+        auto* okBtn = new QPushButton(tr("Continue"), this);
+        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        okBtn->setDefault(true);
+        connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+        buttonRow->addWidget(okBtn);
+        outer->addLayout(buttonRow);
+
+        setStyleSheet(
+            familiar::dialog_style::panelStyleSheet(
+                "ExportImagesFileExistsDialog", background, border, textColor)
+            + familiar::dialog_style::closeButtonStyleSheet(
+                  "exportExistsCloseBtn", textColor, accent)
+            // Explicit ::indicator rules, not just a bare QRadioButton
+            // color rule - QSS on a QRadioButton/QCheckBox with no
+            // ::indicator rule of its own kills the native indicator
+            // rendering entirely (confirmed the hard way on QCheckBox
+            // during step 24's dialog pass - same underlying Qt/QSS
+            // behavior applies here).
+            + QStringLiteral(
+                  "QRadioButton { color: %1; padding: 2px 0; }"
+                  "QRadioButton::indicator { width: 14px; height: 14px; }"
+                  "QRadioButton::indicator:unchecked {"
+                  "  border: 1px solid %2;"
+                  "  border-radius: 7px;"
+                  "  background-color: rgba(0, 0, 0, 20);"
+                  "}"
+                  "QRadioButton::indicator:checked {"
+                  "  border: 1px solid %3;"
+                  "  border-radius: 7px;"
+                  "  background-color: %3;"
+                  "}")
+                  .arg(textColor.name(), border.name(), accent.name()));
     }
 
     QString getAnswer() const
@@ -653,7 +730,24 @@ public:
             if (it.value()->isChecked())
                 return it.key();
         }
-        return "skip";
+        return QStringLiteral("skip");
+    }
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && windowHandle()) {
+            windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QDialog::mousePressEvent(event);
+    }
+
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QDialog::resizeEvent(event);
+        familiar::dialog_style::applyRoundedMask(this, 10);
     }
 
 private:

@@ -1189,6 +1189,7 @@ void MainWindow::on_active_scene_changed()
 
 void MainWindow::notifyStructuralChange()
 {
+    FLOG_DEBUG(Ch::UI, "notifyStructuralChange");
     hierarchyPanel_->scheduleRefresh();
 }
 

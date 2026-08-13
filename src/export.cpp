@@ -308,6 +308,12 @@ ImagesToDirectoryExporter::ImagesToDirectoryExporter(CanvasScene* scene,
     }
 }
 
+ImagesToDirectoryExporter::ImagesToDirectoryExporter(
+    const QList<PixmapItem*>& items, const QString& dirname)
+    : items_(items)
+    , dirname_(dirname)
+{}
+
 void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
 {
     int total = items_.size();
@@ -321,8 +327,22 @@ void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
         }
 
         PixmapItem* item = items_[i];
-        auto [bytes, imgformat] = item->pixmap_to_bytes();
-        QString filename = item->get_filename_for_export(imgformat);
+        // GifItem checked BEFORE the generic PixmapItem case - same
+        // reasoning as FmlArchive::save(): pixmap_to_bytes() only ever
+        // encodes the CURRENTLY DISPLAYED frame as a static raster,
+        // silently discarding the animation. GifItem doesn't override
+        // it, so without this check every exported gif quietly became a
+        // single still frame.
+        QByteArray bytes;
+        QString filename;
+        if (auto* gifItem = dynamic_cast<GifItem*>(item)) {
+            bytes = gifItem->gif_bytes();
+            filename = gifItem->get_filename_for_export(QStringLiteral("gif"));
+        } else {
+            const auto [pixBytes, imgformat] = item->pixmap_to_bytes();
+            bytes = pixBytes;
+            filename = item->get_filename_for_export(imgformat);
+        }
         QString path = QDir(dirname_).filePath(filename);
 
         if (QFile::exists(path)) {

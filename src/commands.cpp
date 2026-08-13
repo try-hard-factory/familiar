@@ -93,16 +93,39 @@ DeleteItemsCommand::DeleteItemsCommand(CanvasScene* scene,
     , items_(items)
 {
     ownedRefs_.reserve(items.size());
+    owningGroups_.reserve(items.size());
     for (auto* item : items) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        if (baseItem) {
             ownedRefs_.append(baseItem->acquireShared());
+            owningGroups_.append(scene_->find_owning_group(baseItem->uid()));
+        } else {
+            owningGroups_.append(nullptr);
         }
     }
 }
 
 void DeleteItemsCommand::redo()
 {
-    for (auto* item : items_) {
+    for (int i = 0; i < items_.size(); ++i) {
+        QGraphicsItem* item = items_[i];
+        // Prune the group membership BEFORE removeItem() below, not
+        // after - a grouped member's uid otherwise lingers in GroupItem::
+        // childIds_ (harmless on its own, find_by_uid()-based resolution
+        // already skips a dangling uid - see resolve_children()'s own
+        // comment) but resolve_children()'s CACHE (resolvedChildren_)
+        // only gets invalidated by an explicit membership change, not by
+        // a plain scene removal - so without this, HierarchyPanel::
+        // rebuild_() kept re-adding the deleted item's C++ object (still
+        // alive - kept around for undo, see ownedRefs_) straight back
+        // into the tree via the group's stale cache. Only reproduced for
+        // a GROUPED item, never a top-level one (which rebuild_() reads
+        // straight off scene_->items(), no cache involved) - confirmed
+        // with Max.
+        if (GroupItem* group = owningGroups_[i]) {
+            if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+                group->remove_child_id(baseItem->uid());
+        }
         scene_->removeItem(item);
     }
 }
@@ -116,9 +139,19 @@ void DeleteItemsCommand::undo()
     // scene yet crashed (Q_ASSERT abort in a debug build) - confirmed
     // via a real stack trace, undoing a delete.
     scene_->clearSelection();
-    for (auto* item : items_) {
+    for (int i = 0; i < items_.size(); ++i) {
+        QGraphicsItem* item = items_[i];
         scene_->addItem(item);
         item->setSelected(true);
+        // Mirrors redo()'s own pruning - restores membership in the
+        // SAME group (works even if that group was ALSO deleted as part
+        // of this same command and is being restored earlier in this
+        // same loop, since with_related_items() always orders a group
+        // before its own members).
+        if (GroupItem* group = owningGroups_[i]) {
+            if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+                group->add_child_id(baseItem->uid());
+        }
     }
 }
 
@@ -922,4 +955,26 @@ void SetAttachedToCommand::redo()
 void SetAttachedToCommand::undo()
 {
     item_->set_attached_to(oldUid_);
+}
+
+// ============================================================================
+// RenamePictureCommand
+// ============================================================================
+RenamePictureCommand::RenamePictureCommand(PixmapItem* item,
+                                           const QString& oldName,
+                                           const QString& newName)
+    : QUndoCommand(QObject::tr("Rename"))
+    , item_(item)
+    , oldName_(oldName)
+    , newName_(newName)
+{}
+
+void RenamePictureCommand::redo()
+{
+    item_->filename_ = newName_;
+}
+
+void RenamePictureCommand::undo()
+{
+    item_->filename_ = oldName_;
 }
