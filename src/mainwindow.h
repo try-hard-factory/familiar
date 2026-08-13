@@ -112,6 +112,7 @@ public slots:
     // View
     void on_action_fullscreen(bool checked);
     void on_action_always_on_top(bool checked);
+    void on_action_transparent_to_mouse(bool checked);
     void on_action_show_menubar(bool checked);
     void on_action_auto_hide_ui(bool checked);
     void on_action_hierarchy(bool checked);
@@ -415,6 +416,21 @@ private:
     QTimer* autosaveTimer_ = nullptr;
     QTimer* recoveryTimer_ = nullptr;
     QVector<QGraphicsItem*> clipboardItems_;
+
+    // Guards on_action_transparent_to_mouse()'s auto-exit-on-focus
+    // (changeEvent()): the destroy()+create()+show() that turns the mode
+    // ON also re-activates the window itself, which would otherwise
+    // immediately satisfy "regained focus" before the user ever
+    // Alt-Tabbed away. Reset false whenever the mode is (re-)enabled, set
+    // true the first time the window actually loses activation while the
+    // mode is on - only THEN does regaining it auto-disable the mode.
+    bool sawDeactivationSinceTransparentEnabled_ = false;
+    // True only if on_action_transparent_to_mouse(true) itself flipped
+    // Always On Top on (it was off beforehand) - turning transparent-to-
+    // mouse back off then also reverts it. Left alone (stays false, so
+    // Always On Top is never touched on the way out) if the user already
+    // had it on independently before enabling transparent-to-mouse.
+    bool forcedAlwaysOnTopForTransparency_ = false;
 
     int currentOpacity_;
     QColor backGroundColor_;

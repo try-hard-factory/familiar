@@ -1,23 +1,31 @@
 #include "mainwindow.h"
 #include <QDesktopServices>
+#include <QDialog>
+#include <QGraphicsDropShadowEffect>
 #include <QGraphicsOpacityEffect>
 #include <QLabel>
 #include <QLayout>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QShortcut>
+#include <QSignalBlocker>
 #include <QStatusBar>
 #include <QTabBar>
 #include <QTimer>
 #include <QToolButton>
 #include <QVariantAnimation>
+#include <QVBoxLayout>
+#include <QWindow>
 
 #include "canvasscene.h"
 #include "project_settings.h"
 #include "recovery.h"
 #include "tabpane.h"
 #include "widgets/about_dialog.h"
+#include "widgets/dialog_style.h"
 #include "widgets/dialogs.h"
 #include "widgets/help_dialog.h"
 #include "widgets/save_all_dialog.h"
@@ -32,6 +40,118 @@
 
 #include "log/log.h"
 using namespace familiar::log;
+
+namespace {
+
+// PureRef-style confirmation before entering transparent-to-mouse mode
+// (MainWindow::on_action_transparent_to_mouse()) - shown every time, no
+// "don't show again" (Max explicitly didn't want one): it's the one
+// place explaining the escape hatch, and skipping it after the first
+// time would mean a user who forgot could turn this on with no idea how
+// to get back. Same custom-chrome convention as every other dialog in
+// this app (dialog_style.h) - "QDialog", not our own class name, as the
+// panelStyleSheet() selector: this is a plain local class with no
+// Q_OBJECT/moc, so metaObject()->className() reports the Qt base class,
+// not ours (see RenameDialog, ui/hierarchy_panel.cpp, for the exact same
+// reasoning - passing our own name there silently matched nothing and
+// left the dialog unpainted).
+class TransparentToMouseConfirmDialog : public QDialog
+{
+public:
+    explicit TransparentToMouseConfirmDialog(QWidget* parent)
+        : QDialog(parent)
+    {
+        setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
+        setAttribute(Qt::WA_TranslucentBackground, false);
+        setAttribute(Qt::WA_StyledBackground);
+        setWindowModality(Qt::ApplicationModal);
+        setFixedWidth(360);
+
+        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+
+        auto* shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(0, 0, 0, 150));
+        setGraphicsEffect(shadow);
+
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(20, 14, 20, 16);
+        outer->setSpacing(12);
+
+        auto* topRow = new QHBoxLayout();
+        auto* titleLabel = new QLabel(tr("Transparent to Mouse"), this);
+        QFont titleFont = titleLabel->font();
+        titleFont.setBold(true);
+        titleFont.setPointSize(titleFont.pointSize() + 1);
+        titleLabel->setFont(titleFont);
+        topRow->addWidget(titleLabel, 1);
+
+        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
+        closeBtn->setFixedSize(22, 22);
+        closeBtn->setCursor(Qt::PointingHandCursor);
+        closeBtn->setFocusPolicy(Qt::NoFocus);
+        closeBtn->setObjectName(QStringLiteral("transparentConfirmCloseBtn"));
+        connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
+        topRow->addWidget(closeBtn);
+        outer->addLayout(topRow);
+
+        const QString appName = QCoreApplication::applicationName();
+        auto* messageLabel = new QLabel(
+            tr("Are you sure you want %1 to ignore mouse events?\n\n"
+               "Disable this mode by giving the %1 window focus.")
+                .arg(appName),
+            this);
+        messageLabel->setWordWrap(true);
+        outer->addWidget(messageLabel);
+
+        auto* buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+                                                     textColor,
+                                                     border);
+        connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+        buttonRow->addWidget(cancelBtn);
+        auto* okBtn = new QPushButton(tr("OK"), this);
+        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        okBtn->setDefault(true);
+        connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
+        buttonRow->addWidget(okBtn);
+        outer->addLayout(buttonRow);
+
+        setStyleSheet(
+            familiar::dialog_style::panelStyleSheet("QDialog",
+                                                    background,
+                                                    border,
+                                                    textColor)
+            + familiar::dialog_style::closeButtonStyleSheet(
+                  "transparentConfirmCloseBtn", textColor, accent));
+    }
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && windowHandle()) {
+            windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QDialog::mousePressEvent(event);
+    }
+
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QDialog::resizeEvent(event);
+        familiar::dialog_style::applyRoundedMask(this, 10);
+    }
+};
+
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     // ActionsMixin<T>'s constructor only forwards `parent` (no extra
@@ -84,7 +204,6 @@ MainWindow::MainWindow(QWidget* parent)
     statusBar()->hide();
 
     setMouseTracking(true);
-    //this->setWindowFlags(Qt::WindowTransparentForInput|Qt::WindowStaysOnTopHint);
 
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
@@ -110,10 +229,6 @@ MainWindow::MainWindow(QWidget* parent)
 
     setStyleSheet(
         "background: transparent; background-color: transparent;"); // + rgbaBackGroundStr_);
-    // Qt::WindowFlags flags = Qt::Window | Qt::FramelessWindowHint | Qt::WindowTransparentForInput | Qt::WindowStaysOnTopHint;
-    // flags &= ~Qt::WindowTransparentForInput; // Опускаем последний бит
-    // setWindowFlags(flags);
-    // setWindowOpacity(0.6);
     setMouseTracking(true);
 
     // Central widget (tabpane_) covers the whole frameless window, so this
@@ -499,6 +614,69 @@ void MainWindow::on_action_always_on_top(bool checked)
     // change on an already-mapped window - hide/show remaps the same
     // native window handle, while destroy/create forces Qt to hand the
     // WM a brand new one with the current flags applied from scratch.
+    destroy();
+    create();
+    show();
+}
+
+void MainWindow::on_action_transparent_to_mouse(bool checked)
+{
+    // Click-through overlay mode - PureRef-style tracing over another
+    // app (Photoshop etc.): the window stays visible (and, combined with
+    // Always On Top below, stays on screen above everything) but every
+    // mouse event passes straight through to whatever's underneath, as
+    // if this window weren't there at all.
+    if (windowFlags().testFlag(Qt::WindowTransparentForInput) == checked)
+        return;
+
+    if (checked) {
+        TransparentToMouseConfirmDialog confirm(this);
+        if (confirm.exec() != QDialog::Accepted) {
+            // Un-check without re-entering this slot - QAction::toggled
+            // is what got us here in the first place (ActionsMixin, see
+            // action_mixin.h), so a plain setChecked() would recurse
+            // right back into "checked=false" territory above and
+            // return early anyway (harmless), but blocking it is more
+            // direct about "this click didn't actually happen".
+            if (Action* a = getActions().find("transparent_to_mouse");
+                a && a->qaction) {
+                const QSignalBlocker blocker(a->qaction);
+                a->qaction->setChecked(false);
+            }
+            return;
+        }
+        // PureRef always forces this on alongside transparent-to-mouse -
+        // without it, the window can just as easily end up buried under
+        // whatever you're tracing over instead of staying visible above
+        // it. Routed through the real action (not setWindowFlag()
+        // directly) so its own checkbox/corner pin button stay in sync -
+        // one extra destroy()/create() cycle, not worth special-casing
+        // away. Only tracked (forcedAlwaysOnTopForTransparency_) - and so
+        // only reverted below on the way back out - if it was actually
+        // WE who flipped it; already-on beforehand means it's the user's
+        // own independent choice, left alone either way.
+        forcedAlwaysOnTopForTransparency_ = false;
+        if (Action* a = getActions().find("always_on_top");
+            a && a->qaction && !a->qaction->isChecked()) {
+            a->qaction->setChecked(true);
+            forcedAlwaysOnTopForTransparency_ = true;
+        }
+        // The very act of destroy()+create()+show() below re-activating
+        // this window would otherwise immediately satisfy changeEvent()'s
+        // own "regained focus -> auto-exit" check before the user ever
+        // left - sawDeactivationSinceTransparentEnabled_ gates that on a
+        // real intervening Alt-Tab-away first.
+        sawDeactivationSinceTransparentEnabled_ = false;
+    } else if (forcedAlwaysOnTopForTransparency_) {
+        forcedAlwaysOnTopForTransparency_ = false;
+        if (Action* a = getActions().find("always_on_top"); a && a->qaction)
+            a->qaction->setChecked(false);
+    }
+
+    setWindowFlag(Qt::WindowTransparentForInput, checked);
+    // Same destroy()+create()+show() as on_action_always_on_top() above -
+    // the window manager can ignore a flag change on an already-mapped
+    // window.
     destroy();
     create();
     show();
@@ -1236,6 +1414,38 @@ void MainWindow::changeEvent(QEvent* event)
     if (event->type() == QEvent::ActivationChange) {
         for (int i = 0; i < tabpane_->count(); ++i) {
             tabpane_->widgetAt(i)->updateSelectionVisibility();
+        }
+
+        // PureRef-style auto-exit from transparent-to-mouse: regaining
+        // window focus (Alt-Tab back, clicking the taskbar entry, ...)
+        // is the documented way out (TransparentToMouseConfirmDialog's
+        // own message), no re-pressing the shortcut needed. Gated on a
+        // real intervening deactivation first - see
+        // sawDeactivationSinceTransparentEnabled_'s own comment for why
+        // (otherwise the mode would immediately cancel itself the
+        // instant it's turned on).
+        if (windowFlags().testFlag(Qt::WindowTransparentForInput)) {
+            if (!isActiveWindow()) {
+                sawDeactivationSinceTransparentEnabled_ = true;
+            } else if (sawDeactivationSinceTransparentEnabled_) {
+                // Deferred, not called straight from here - this whole
+                // branch runs from INSIDE Qt's own window-activation
+                // notification (QApplicationPrivate::
+                // notifyActiveWindowChange(), still on the call stack
+                // above us). destroy()+create() (on_action_
+                // transparent_to_mouse()'s own toggle path) tears down
+                // the native QWindow that same notification is still
+                // actively processing - confirmed crashing right there
+                // (QMetaObject::cast() on a QWindow* that's gone by the
+                // time the notification call unwinds back to it).
+                // Posting this for the next event loop iteration lets
+                // Qt's own notification finish first.
+                QTimer::singleShot(0, this, [] {
+                    if (Action* a = getActions().find("transparent_to_mouse");
+                        a && a->qaction)
+                        a->qaction->setChecked(false);
+                });
+            }
         }
     }
 }

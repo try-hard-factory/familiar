@@ -49,6 +49,7 @@ const QList<MenuNode>& menuStructure()
                               MenuNode::sep(),
                               MenuNode::action("fullscreen"),
                               MenuNode::action("always_on_top"),
+                              MenuNode::action("transparent_to_mouse"),
                               MenuNode::action("show_menubar"),
                               MenuNode::action("auto_hide_ui"),
                               MenuNode::sep(),

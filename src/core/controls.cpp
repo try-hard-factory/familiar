@@ -1,11 +1,14 @@
 #include "controls.h"
 #include "settings.h"
 #include "settingshandler.h"
+#include <actions/actions.h>
+#include <QAction>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QKeyEvent>
+#include <QKeySequence>
 #include <QMouseEvent>
 #include <QSet>
 #include <QWheelEvent>
@@ -473,6 +476,28 @@ void KeyboardSettings::restoreDefaults()
 {
     SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Actions"));
     SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
+    // Clearing storage alone only fixes what Action::get_shortcuts()
+    // returns on its NEXT call (e.g. the Keyboard Shortcuts settings
+    // page's own rows, refreshed via restoreKeyboardDefaults() below) -
+    // every already-built QAction (menu bar AND context_menu() -
+    // ActionsMixin::_create_menu() adds the SAME QAction* to both, see
+    // action_mixin.h) keeps showing whatever shortcut it was created/
+    // last explicitly setShortcuts()'d with, since nothing else ever
+    // re-pushes a fresh value into it. Refresh every action's live
+    // QAction here too, straight to its (now unstored-again) code
+    // default - NOT through Action::setShortcuts() (that persists
+    // whatever it's given, which would defeat the whole point: a future
+    // code-level default change should still reach anyone who's reset
+    // here on their next launch, not pin them to today's default
+    // forever).
+    for (Action* action : getActions().all()) {
+        if (!action->qaction)
+            continue;
+        QList<QKeySequence> seqs;
+        for (const QString& s : action->get_shortcuts())
+            seqs.append(QKeySequence(s));
+        action->qaction->setShortcuts(seqs);
+    }
     emit SettingsEvents::instance().restoreKeyboardDefaults();
 }
 

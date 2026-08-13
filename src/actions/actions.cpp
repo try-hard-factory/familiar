@@ -194,7 +194,7 @@ static ActionRegistry buildRegistry()
     ActionRegistry r;
 
     // ── File ──────────────────────────────────────────────────────────────────
-    r.add(A::make("new_scene", "New Scene", "on_action_new_scene", {"Ctrl+N"}));
+    r.add(A::make("new_scene", "New Scene", "on_action_new_scene", {"Ctrl+P"}));
     r.add(A::make("open", "Open", "on_action_open", {"Ctrl+O"}));
     r.add(A::make("save",
                   "Save",
@@ -326,6 +326,15 @@ static ActionRegistry buildRegistry()
                   "on_action_always_on_top",
                   {},
                   true));
+    // Explicit default shortcut, unlike always_on_top above - this is
+    // the ONLY way to turn it back off once it's on (mouse clicks no
+    // longer reach this window at all, menu included - see
+    // on_action_transparent_to_mouse()'s own comment).
+    r.add(A::make("transparent_to_mouse",
+                  "Transparent to Mouse",
+                  "on_action_transparent_to_mouse",
+                  {"Ctrl+T"},
+                  true));
     r.add(A::make("show_menubar",
                   "Show Menu Bar",
                   "on_action_show_menubar",
@@ -362,7 +371,12 @@ static ActionRegistry buildRegistry()
                   "Images...",
                   "on_action_insert_images",
                   {"Ctrl+I"}));
-    r.add(A::make("insert_text", "Text", "on_action_insert_text", {"Ctrl+T"}));
+    // Was Ctrl+T - freed up for the new "transparent_to_mouse" action
+    // above (Ctrl+T there matches PureRef's own binding for it).
+    r.add(A::make("insert_text",
+                  "Text",
+                  "on_action_insert_text",
+                  {"Ctrl+N"}));
 
     // ── Transform ─────────────────────────────────────────────────────────────
     r.add(A::make("crop",
