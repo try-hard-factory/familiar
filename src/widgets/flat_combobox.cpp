@@ -1,14 +1,17 @@
 #include "flat_combobox.h"
 
+#include "log/log.h"
+#include <algorithm>
+#include <widgets/dialog_style.h>
+#include <widgets/settings_style.h>
 #include <QAbstractItemView>
 #include <QEvent>
 #include <QFrame>
 #include <QPainter>
 #include <QPainterPath>
 #include <QStyleOptionComboBox>
-
-#include <algorithm>
-
+#include <qtimer.h>
+using namespace familiar::log;
 // ─── FlatComboItemDelegate ──────────────────────────────────────────────────
 
 FlatComboItemDelegate::FlatComboItemDelegate(const QColor& text,
@@ -17,7 +20,9 @@ FlatComboItemDelegate::FlatComboItemDelegate(const QColor& text,
     : QStyledItemDelegate(parent)
     , text_(text)
     , highlightBackground_(highlightBackground)
-{}
+{
+    FLOG_DEBUG(Ch::UI, "highlightBackground_ {}", highlightBackground_);
+}
 
 void FlatComboItemDelegate::paint(QPainter* painter,
                                   const QStyleOptionViewItem& option,
@@ -31,18 +36,18 @@ void FlatComboItemDelegate::paint(QPainter* painter,
     // solid pill for both, matching PureRef's own popup (Max's
     // reference screenshot), just this window's gray instead of its
     // blue.
-    const bool highlighted = option.state & (QStyle::State_Selected
-                                             | QStyle::State_MouseOver);
-    QColor fg = text_;
+    const bool highlighted = option.state
+                             & (QStyle::State_Selected
+                                | QStyle::State_MouseOver);
     if (highlighted) {
         painter->setPen(Qt::NoPen);
         painter->setBrush(highlightBackground_);
-        painter->drawRoundedRect(
-            QRectF(option.rect).adjusted(2, 1, -2, -1), 5, 5);
-        fg = Qt::white;
+        painter->drawRoundedRect(QRectF(option.rect).adjusted(2, 1, -2, -1),
+                                 5,
+                                 5);
     }
 
-    painter->setPen(fg);
+    painter->setPen(text_);
     const QRect textRect = option.rect.adjusted(10, 0, -10, 0);
     painter->drawText(textRect,
                       Qt::AlignVCenter | Qt::AlignLeft,
@@ -71,7 +76,8 @@ FlatComboBox::FlatComboBox(const QColor& background,
     , text_(text)
     , hoverBackground_(hoverBackground)
 {
-    view()->setItemDelegate(new FlatComboItemDelegate(text, itemHighlight, this));
+    view()->setItemDelegate(
+        new FlatComboItemDelegate(text, hoverBackground, this));
     // QAbstractItemView is itself a QFrame - it draws its own native
     // sunken/raised bevel (a highlight line on one edge, a shadow line
     // on the opposite one) independently of the QSS "border:" on
@@ -102,6 +108,48 @@ void FlatComboBox::leaveEvent(QEvent* event)
     QComboBox::leaveEvent(event);
     update();
 }
+void FlatComboBox::showPopup()
+{
+    QComboBox::showPopup();
+
+    QWidget* container = view()->window();
+    if (!container || container == this)
+        return;
+
+    if (auto* frame = qobject_cast<QFrame*>(container))
+        frame->setFrameShape(QFrame::NoFrame);
+
+    container->setWindowFlags(Qt::Popup | Qt::FramelessWindowHint
+                              | Qt::NoDropShadowWindowHint);
+
+    const auto& sp = familiar::settings_style::palette();
+
+    // Теперь С border-radius — QSS сам нарисует скруглённую рамку
+    container->setStyleSheet(
+        QStringLiteral("background: %1;"
+                       "border: 1px solid %2;"
+                       "border-radius: 6px;")
+            .arg(sp.popupBackground.name(), sp.border.name()));
+
+    view()->setStyleSheet("background: transparent; border: none;");
+    view()->viewport()->setAutoFillBackground(false);
+    view()->viewport()->setStyleSheet("background: transparent;");
+
+    // прячем скроллеры
+    for (QObject* child : container->children()) {
+        auto* w = qobject_cast<QWidget*>(child);
+        if (w
+            && QString::fromLatin1(w->metaObject()->className())
+                   .contains(QStringLiteral("Scroller"), Qt::CaseInsensitive)) {
+            w->hide();
+        }
+    }
+
+    // Маску ставим после геометрии
+    QTimer::singleShot(0, container, [container]() {
+        familiar::dialog_style::applyRoundedMask(container, 6);
+    });
+}
 
 void FlatComboBox::paintEvent(QPaintEvent*)
 {
@@ -109,7 +157,8 @@ void FlatComboBox::paintEvent(QPaintEvent*)
     p.setRenderHint(QPainter::Antialiasing);
 
     const bool enabled = isEnabled();
-    const QColor bg = (enabled && underMouse()) ? hoverBackground_ : background_;
+    const QColor bg = (enabled && underMouse()) ? hoverBackground_
+                                                : background_;
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
     p.drawRoundedRect(rect(), 6, 6);
@@ -117,13 +166,13 @@ void FlatComboBox::paintEvent(QPaintEvent*)
     QStyleOptionComboBox opt;
     initStyleOption(&opt);
     const QRect arrowRect = style()->subControlRect(QStyle::CC_ComboBox,
-                                                     &opt,
-                                                     QStyle::SC_ComboBoxArrow,
-                                                     this);
-    const QRect editRect = style()->subControlRect(QStyle::CC_ComboBox,
                                                     &opt,
-                                                    QStyle::SC_ComboBoxEditField,
+                                                    QStyle::SC_ComboBoxArrow,
                                                     this);
+    const QRect editRect = style()->subControlRect(QStyle::CC_ComboBox,
+                                                   &opt,
+                                                   QStyle::SC_ComboBoxEditField,
+                                                   this);
 
     QColor fg = text_;
     if (!enabled)
@@ -132,10 +181,10 @@ void FlatComboBox::paintEvent(QPaintEvent*)
     p.setPen(fg);
     const QRect textRect = editRect.adjusted(4, 0, -4, 0);
     p.drawText(textRect,
-              Qt::AlignVCenter | Qt::AlignLeft,
-              fontMetrics().elidedText(currentText(),
-                                       Qt::ElideRight,
-                                       textRect.width()));
+               Qt::AlignVCenter | Qt::AlignLeft,
+               fontMetrics().elidedText(currentText(),
+                                        Qt::ElideRight,
+                                        textRect.width()));
 
     const qreal cx = arrowRect.center().x();
     const qreal cy = arrowRect.center().y();
