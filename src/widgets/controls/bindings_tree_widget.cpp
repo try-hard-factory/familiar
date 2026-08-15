@@ -2,10 +2,10 @@
 #include "binding_dialogs.h"
 #include "search_highlight.h"
 
+#include <widgets/setting_row.h>
 #include <widgets/settings_style.h>
 
 #include <QHBoxLayout>
-#include <QLabel>
 #include <QLayoutItem>
 #include <QPushButton>
 #include <QToolButton>
@@ -185,8 +185,15 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         layout->addWidget(spacer);
     }
 
-    auto* nameLabel = new QLabel(highlightSearchMatch(label, searchFilter_),
-                                 row);
+    // HoverInfoLabel (widgets/setting_row.h) - same hover-tooltip label
+    // the Performance/Images & Items settings rows use, for a consistent
+    // "hover for more info" affordance across the whole Settings window.
+    // Real per-action/control copy is a follow-up, same as those pages'
+    // own rows (kPlaceholderInfo in widgets/setting_row.cpp).
+    auto* nameLabel = new HoverInfoLabel(highlightSearchMatch(label,
+                                                              searchFilter_),
+                                         row);
+    nameLabel->setInfoText(tr("Description coming soon."));
     layout->addWidget(nameLabel);
     layout->addStretch(1);
 
