@@ -184,8 +184,7 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              [](const QVariant& v) {
                  const QString s = v.toString();
                  return s == QLatin1String("off") || s == QLatin1String("warn")
-                        || s == QLatin1String("optimize_large")
-                        || s == QLatin1String("optimize_all");
+                        || s == QLatin1String("optimize_large");
              },
          }},
         {"Save/autosave_enabled",

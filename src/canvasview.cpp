@@ -1678,6 +1678,23 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
                            .arg(names.join(QStringLiteral("\n"))));
     }
 
+    if (!insertImagesLargeItems_.isEmpty()) {
+        QStringList names;
+        for (const QString& fn : insertImagesLargeItems_)
+            names.append(QStringLiteral("<li>%1</li>").arg(fn));
+        showMessageBox(
+            QMessageBox::Information,
+            this,
+            tr("Large images imported"),
+            tr("%1 image(s) are larger than %2px on their long side and "
+               "were imported as-is.<br/>Enable \"Optimize large images\" "
+               "under Performance settings to downscale these "
+               "automatically.<ul>%3</ul>")
+                .arg(insertImagesLargeItems_.size())
+                .arg(kLargeImageMaxDimension)
+                .arg(names.join(QStringLiteral("\n"))));
+    }
+
     if (!insertImagesInsertedItems_.isEmpty()) {
         undoStack_->push(new InsertItemsCommand(scene_,
                                                 insertImagesInsertedItems_,
@@ -1707,6 +1724,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
 
     insertImagesNewScene_ = scene_->items().isEmpty();
     insertImagesInsertedItems_.clear();
+    insertImagesLargeItems_.clear();
 
     scene_->deselect_all_items();
 
@@ -1740,6 +1758,12 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
             &ThreadedIO::finished,
             this,
             &CanvasView::on_insert_images_finished);
+    connect(worker,
+            &ThreadedIO::largeImagesFound,
+            this,
+            [this](const QStringList& filenames) {
+                insertImagesLargeItems_ += filenames;
+            });
 
     // QThread's own finished() (not ThreadedIO's same-named result signal)
     // only fires once the thread has actually stopped running, which is

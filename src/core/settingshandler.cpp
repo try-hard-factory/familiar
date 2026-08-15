@@ -477,6 +477,13 @@ int SettingsHandler::undoHistorySize() const
         .toInt();
 }
 
+QString SettingsHandler::autoOptimizeImportedImages() const
+{
+    return FamSettings()
+        .valueOrDefault(QStringLiteral("Items/auto_optimize_imported_images"))
+        .toString();
+}
+
 // ─── Facade: KeyboardSettings-backed ───────────────────────────────────────────
 
 std::optional<ControlMatch> SettingsHandler::mousewheelActionForEvent(

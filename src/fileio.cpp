@@ -1,6 +1,7 @@
 #include "fileio.h"
 
 #include "canvasscene.h"
+#include "core/settingshandler.h"
 #include "fml_archive.h"
 
 #include <QBuffer>
@@ -46,6 +47,24 @@ struct LoadedImage
     QImage image;
     QByteArray bytes;
 };
+
+bool is_image_large(const QImage& img)
+{
+    return img.width() > kLargeImageMaxDimension
+           || img.height() > kLargeImageMaxDimension;
+}
+
+// Scales `img` down in place to fit within kLargeImageMaxDimension on its
+// longer side, preserving aspect ratio. No-op if already within bounds.
+void downscale_to_limit(QImage& img)
+{
+    if (!is_image_large(img))
+        return;
+    img = img.scaled(kLargeImageMaxDimension,
+                     kLargeImageMaxDimension,
+                     Qt::KeepAspectRatio,
+                     Qt::SmoothTransformation);
+}
 
 // True if `bytes` is a multi-frame (animated) image Qt can decode -
 // checked on the raw bytes regardless of where they came from (local
@@ -184,6 +203,12 @@ void load_images(const QList<QUrl>& urls,
                  ThreadedIO* worker)
 {
     QStringList errors;
+    // Labels of images over kLargeImageMaxDimension, collected only in
+    // "warn" mode (see below) and reported once via
+    // ThreadedIO::largeImagesFound() after the loop.
+    QStringList largeImages;
+    const QString optimizeMode
+        = SettingsHandler::getInstance()->autoOptimizeImportedImages();
     emit worker->beginProcessing(urls.size());
 
     // Only constructed if actually needed (most drops are local files).
@@ -245,16 +270,33 @@ void load_images(const QList<QUrl>& urls,
             continue;
         }
 
+        // Items/auto_optimize_imported_images: an animated GIF is
+        // excluded either way - GifItem plays back the raw `bytes`
+        // stream via QMovie, not the decoded first-frame `img` below, so
+        // shrinking `img` alone wouldn't touch what's actually displayed.
+        const bool animated = is_animated(bytes);
+        if (!animated) {
+            if (optimizeMode == QLatin1String("warn")) {
+                if (is_image_large(img)) {
+                    FLOG_DEBUG(Ch::IO, "{} is a large image", label);
+                    largeImages.append(label);
+                }
+            } else if (optimizeMode == QLatin1String("optimize_large")) {
+                downscale_to_limit(img);
+            }
+        }
+
         // Queue the raw data instead of constructing a Pixmap/GifItem
         // here: this runs on a background thread, and
         // add_queued_items() (the consumer) must only ever touch the
         // QGraphicsScene from the GUI thread. Center the item on `pos`,
         // matching what PixmapItem::set_pos_center() would do for a
-        // fresh item (scale 1, rotation 0).
+        // fresh item (scale 1, rotation 0). Computed after the possible
+        // downscale above so the item is centered on its final size.
         QPointF topLeft = pos - QPointF(img.width() / 2.0, img.height() / 2.0);
 
         QVariantMap itemData;
-        if (is_animated(bytes)) {
+        if (animated) {
             FLOG_DEBUG(Ch::IO, "{} is animated - loading as GifItem", label);
             itemData[QStringLiteral("type")] = QStringLiteral("gif");
             itemData[QStringLiteral("gifBytes")] = bytes;
@@ -275,6 +317,9 @@ void load_images(const QList<QUrl>& urls,
 
     delete netManager;
 
+    if (!largeImages.isEmpty()) {
+        emit worker->largeImagesFound(largeImages);
+    }
     emit worker->finished(QString(), errors);
     worker->quit();
 }

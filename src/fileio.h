@@ -13,6 +13,12 @@
 
 class CanvasScene;
 
+// "Large" for Items/auto_optimize_imported_images purposes (warn /
+// optimize_large): long side over this many pixels. Fixed, not itself a
+// setting. Shared with canvasview.cpp's on_insert_images_finished(),
+// which quotes it in the "large images imported" message.
+constexpr int kLargeImageMaxDimension = 4096;
+
 // Dedicated thread for loading and saving.
 class ThreadedIO : public QThread
 {
@@ -38,6 +44,12 @@ signals:
     void finished(const QString& error, const QStringList& errors);
     void beginProcessing(int count);
     void userInputRequired(const QString& message);
+    // Emitted once, right before finished(), when
+    // load_images() ran in "warn" mode (Items/auto_optimize_imported_images)
+    // and found one or more images over the large-image size threshold.
+    // Separate from finished()'s `errors` - these images loaded fine and
+    // were queued as-is, just flagged as candidates for optimization.
+    void largeImagesFound(const QStringList& filenames);
 
 public slots:
     void onCanceled();

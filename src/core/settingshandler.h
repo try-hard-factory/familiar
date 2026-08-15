@@ -139,6 +139,7 @@ public:
     QString arrangeDefault() const;
     QString imageStorageFormat() const;
     int undoHistorySize() const;
+    QString autoOptimizeImportedImages() const;
 
     // KeyboardSettings-backed (also the underlying store for mouse/wheel
     // control matching, despite the class name)

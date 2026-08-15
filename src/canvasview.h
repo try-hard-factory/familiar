@@ -335,6 +335,10 @@ private:
     // these on self.worker/instance state directly).
     bool insertImagesNewScene_ = false;
     QList<IBaseItem*> insertImagesInsertedItems_;
+    // Filenames flagged by load_images() as over the large-image
+    // threshold (Items/auto_optimize_imported_images == "warn") -
+    // reported to the user once in on_insert_images_finished().
+    QStringList insertImagesLargeItems_;
 
     // State for the in-flight on_action_export_scene() operation - kept
     // alive across the async ThreadedIO call, released in
