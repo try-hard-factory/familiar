@@ -2,12 +2,24 @@
 #include "binding_dialogs.h"
 #include "search_highlight.h"
 
+#include <widgets/settings_style.h>
+
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLayoutItem>
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+namespace {
+// Every shortcut chip gets at least this width, so the column of badges
+// lines up instead of each one shrink-wrapping its own text (QPushButton
+// centers its text by default, so short labels like "Ctrl+P" just end up
+// centered in the extra space). It's a floor, not a cap - setMinimumWidth
+// rather than setFixedWidth - so a longer chord (mouse bindings can read
+// e.g. "Left MB + Ctrl+Alt+Shift") still grows to fit instead of clipping.
+constexpr int kChipMinWidth = 104;
+} // namespace
 
 // ─── CollapsibleSection ───────────────────────────────────────────────────────
 
@@ -27,7 +39,8 @@ CollapsibleSection::CollapsibleSection(const QString& title,
     headerBtn_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     headerBtn_->setArrowType(Qt::DownArrow);
     headerBtn_->setStyleSheet(
-        QStringLiteral("QToolButton { border: none; font-weight: bold; }"));
+        QStringLiteral("QToolButton { border: none; font-weight: bold; color: %1; }")
+            .arg(familiar::settings_style::palette().text.name()));
     connect(headerBtn_, &QToolButton::toggled, this, [this](bool checked) {
         content_->setVisible(checked);
         headerBtn_->setArrowType(checked ? Qt::DownArrow : Qt::RightArrow);
@@ -154,7 +167,9 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         chevron->setChecked(true);
         chevron->setArrowType(Qt::DownArrow);
         chevron->setAutoRaise(true);
-        chevron->setStyleSheet(QStringLiteral("QToolButton { border: none; }"));
+        chevron->setStyleSheet(
+            QStringLiteral("QToolButton { border: none; color: %1; }")
+                .arg(familiar::settings_style::palette().text.name()));
         connect(chevron,
                 &QToolButton::toggled,
                 this,
@@ -181,16 +196,8 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
                                                             : b.displayText();
         auto* chip = new QPushButton(chipLabel, row);
         chip->setCursor(Qt::PointingHandCursor);
-        chip->setStyleSheet(QStringLiteral("QPushButton {"
-                                           "  padding: 2px 8px;"
-                                           "  border: 1px solid palette(mid);"
-                                           "  border-radius: 4px;"
-                                           "  background: palette(button);"
-                                           "}"
-                                           "QPushButton:hover {"
-                                           "  background: palette(highlight);"
-                                           "  color: palette(highlighted-text);"
-                                           "}"));
+        chip->setMinimumWidth(kChipMinWidth);
+        chip->setStyleSheet(familiar::settings_style::shortcutChipStyleSheet());
         connect(chip,
                 &QPushButton::clicked,
                 this,
@@ -213,6 +220,9 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         if (bindingIndex > 0) {
             auto* removeBtn = new QToolButton(row);
             removeBtn->setText(QStringLiteral("-"));
+            removeBtn->setCursor(Qt::PointingHandCursor);
+            removeBtn->setStyleSheet(
+                familiar::settings_style::miniButtonStyleSheet());
             connect(removeBtn,
                     &QToolButton::clicked,
                     this,
@@ -233,6 +243,8 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     if (showAdd) {
         auto* addBtn = new QToolButton(row);
         addBtn->setText(QStringLiteral("+"));
+        addBtn->setCursor(Qt::PointingHandCursor);
+        addBtn->setStyleSheet(familiar::settings_style::miniButtonStyleSheet());
         connect(addBtn, &QToolButton::clicked, this, [this, target]() {
             auto* dlg = new AddAliasDialog(target, this);
             connect(dlg, &QDialog::accepted, this, [this, target]() {
