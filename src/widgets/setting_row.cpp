@@ -103,6 +103,7 @@ ComboSettingRow::ComboSettingRow(const QString& label,
           return new FlatComboBox(sp.chipBackground,
                                   sp.text,
                                   sp.chipBackground.darker(112),
+                                  sp.mutedText,
                                   this);
       }())
     , options_(options)
