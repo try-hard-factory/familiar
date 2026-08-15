@@ -427,6 +427,11 @@ private:
 };
 
 
+// Custom-chrome convention (see ExportImagesFileExistsDialog/
+// ColorPickerDialog): frameless, opaque (NOT WA_TranslucentBackground -
+// see dialog_style::panelStyleSheet()'s own comment), rounded via a real
+// setMask() rather than QSS border-radius alone, drag-to-move via
+// startSystemMove() since there's no native title bar to grab.
 class ChangeOpacityDialog : public QDialog
 {
     Q_OBJECT
@@ -442,13 +447,9 @@ public:
     {
         int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
 
-        // See FileActions::openFile()/saveFileAs(): MainWindow's
-        // translucent/frameless stylesheet ("background: transparent",
-        // no selector) cascades into any child top-level widget without
-        // its own stylesheet, painting it solid black instead.
+        setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet("* { background-color: palette(window); color: "
-                      "palette(window-text); }");
+        setAttribute(Qt::WA_StyledBackground);
 
         // Not owned/deleted anywhere by the caller (it's a "new
         // ChangeOpacityDialog(...)" fire-and-forget, WindowModal rather
@@ -458,35 +459,101 @@ public:
         // accept() and reject() before this fires, so the destructor's
         // "delete command" is a safe no-op either way.
         setAttribute(Qt::WA_DeleteOnClose);
-        setWindowTitle("Change Opacity:");
+        setWindowTitle(tr("Change Opacity"));
         setWindowModality(Qt::WindowModal);
-        setMinimumWidth(250);
-        QVBoxLayout* layout = new QVBoxLayout();
-        setLayout(layout);
+        setFixedWidth(280);
 
-        label = new QLabel("Opacity:");
-        layout->addWidget(label);
+        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
-        input = new QSlider(Qt::Horizontal);
+        auto* shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(0, 0, 0, 150));
+        setGraphicsEffect(shadow);
+
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(20, 14, 20, 16);
+        outer->setSpacing(14);
+
+        auto* topRow = new QHBoxLayout();
+        auto* titleLabel = new QLabel(tr("Change Opacity"), this);
+        QFont titleFont = titleLabel->font();
+        titleFont.setBold(true);
+        titleFont.setPointSize(titleFont.pointSize() + 1);
+        titleLabel->setFont(titleFont);
+        topRow->addWidget(titleLabel, 1);
+
+        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
+        closeBtn->setFixedSize(22, 22);
+        closeBtn->setCursor(Qt::PointingHandCursor);
+        closeBtn->setFocusPolicy(Qt::NoFocus);
+        closeBtn->setObjectName(QStringLiteral("changeOpacityCloseBtn"));
+        connect(closeBtn, &QPushButton::clicked, this, &ChangeOpacityDialog::reject);
+        topRow->addWidget(closeBtn);
+        outer->addLayout(topRow);
+
+        label = new QLabel(tr("Opacity: %1%").arg(value), this);
+        outer->addWidget(label);
+
+        input = new QSlider(Qt::Horizontal, this);
+        input->setObjectName(QStringLiteral("changeOpacitySlider"));
         input->setRange(0, 100);
         connect(input,
                 &QSlider::valueChanged,
                 this,
                 &ChangeOpacityDialog::onValueChanged);
         input->setValue(value);
-        layout->addWidget(input);
+        outer->addWidget(input);
 
-        QDialogButtonBox* buttons = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
-        connect(buttons,
-                &QDialogButtonBox::accepted,
-                this,
-                &ChangeOpacityDialog::accept);
-        connect(buttons,
-                &QDialogButtonBox::rejected,
-                this,
-                &ChangeOpacityDialog::reject);
-        layout->addWidget(buttons);
+        auto* buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+                                                     textColor,
+                                                     border);
+        connect(cancelBtn, &QPushButton::clicked, this, &ChangeOpacityDialog::reject);
+        buttonRow->addWidget(cancelBtn);
+        auto* okBtn = new QPushButton(tr("OK"), this);
+        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        okBtn->setDefault(true);
+        connect(okBtn, &QPushButton::clicked, this, &ChangeOpacityDialog::accept);
+        buttonRow->addWidget(okBtn);
+        outer->addLayout(buttonRow);
+
+        setStyleSheet(
+            familiar::dialog_style::panelStyleSheet(
+                "ChangeOpacityDialog", background, border, textColor)
+            + familiar::dialog_style::closeButtonStyleSheet(
+                  "changeOpacityCloseBtn", textColor, accent)
+            // Explicit ::groove/::handle rules, not just a bare QSlider
+            // color rule - same reasoning as QRadioButton's ::indicator
+            // in ExportImagesFileExistsDialog: QSS with no sub-control
+            // rule kills the native rendering rather than just recoloring
+            // it.
+            + QStringLiteral(
+                  "QSlider::groove:horizontal {"
+                  "  height: 4px;"
+                  "  background: %1;"
+                  "  border-radius: 2px;"
+                  "}"
+                  "QSlider::sub-page:horizontal {"
+                  "  height: 4px;"
+                  "  background: %2;"
+                  "  border-radius: 2px;"
+                  "}"
+                  "QSlider::handle:horizontal {"
+                  "  width: 14px;"
+                  "  height: 14px;"
+                  "  margin: -5px 0;"
+                  "  border-radius: 7px;"
+                  "  background: %2;"
+                  "  border: 1px solid %2;"
+                  "}")
+                  .arg(border.name(), accent.name()));
 
         show();
     }
@@ -514,10 +581,27 @@ public slots:
         QDialog::reject();
     }
 
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && windowHandle()) {
+            windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QDialog::mousePressEvent(event);
+    }
+
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QDialog::resizeEvent(event);
+        familiar::dialog_style::applyRoundedMask(this, 10);
+    }
+
 private slots:
     void onValueChanged(int value)
     {
-        label->setText(QString("Opacity: %1%").arg(value));
+        label->setText(tr("Opacity: %1%").arg(value));
         command->setOpacity(value / 100.0);
         command->redo();
     }
