@@ -63,12 +63,22 @@ QString rootStyleSheet()
                           // invisible; a real custom-painted spinbox
                           // (same idea as FlatCheckBox) is the option if
                           // the native chrome still looks wrong here.
+                          // selection-background-color deliberately NOT
+                          // set here - QAbstractSpinBox applies it to the
+                          // internal QLineEdit's own palette directly
+                          // regardless of whether paintEvent() is
+                          // overridden (unlike background/border, which
+                          // only paint through the default paintEvent
+                          // FlatSpinBox skips calling) - it was
+                          // overriding FlatSpinBox's own per-instance
+                          // "selection looks like normal text" fix
+                          // (widgets/flat_spinbox.cpp) with this orange
+                          // accent instead (Max, by screenshot).
                           "QSpinBox {"
                           "  border: none;"
                           "  border-radius: 6px;"
                           "  padding: 4px 8px;"
                           "  background: %6;"
-                          "  selection-background-color: %4;"
                           "}"
                           "QSpinBox:focus { background: %7; }"
                           "QComboBox {"
@@ -78,24 +88,27 @@ QString rootStyleSheet()
                           "  background: %6;"
                           "}"
                           "QComboBox:hover { background: %7; }"
+                          // Just padding + no border/background of its
+                          // own - FlatComboBox::showPopup() styles the
+                          // actual popup frame (QComboBoxPrivateContainer,
+                          // a Qt-private class with no public accessor
+                          // from here) directly in code instead, so this
+                          // rule used to draw a second, redundant rounded
+                          // border nested a few px inside that one.
+                          // Row content (text color, hover/selected pill)
+                          // isn't styled here at all any more -
+                          // FlatComboItemDelegate (widgets/flat_combobox.h)
+                          // paints every row directly instead, after
+                          // ::item/the view's own "color:" both proved
+                          // unreliable for text specifically (items kept
+                          // coming out in a stray native link-blue no
+                          // matter which selector it was pinned on -
+                          // Max, by screenshot, more than once).
                           "QComboBox QAbstractItemView {"
-                          "  border: 1px solid %3;"
-                          "  border-radius: 6px;"
+                          "  border: none;"
+                          "  background: transparent;"
                           "  padding: 4px;"
-                          "  background: %1;"
                           "  outline: none;"
-                          "}"
-                          "QComboBox QAbstractItemView::item {"
-                          "  padding: 6px 10px;"
-                          "  border-radius: 4px;"
-                          "  min-height: 20px;"
-                          "}"
-                          "QComboBox QAbstractItemView::item:hover {"
-                          "  background: %6;"
-                          "}"
-                          "QComboBox QAbstractItemView::item:selected {"
-                          "  background: %4;"
-                          "  color: white;"
                           "}"
                           "QGroupBox {"
                           "  border: 1px solid %3;"
