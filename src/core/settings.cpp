@@ -159,9 +159,18 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
          }},
         {"Items/image_allocation_limit",
          {
-             /*default*/ 256,
+             // Matches the Maximum Image Size row's spinbox ceiling
+             // (widgets/setting_row.cpp's MaximumImageSizeRow) - kept in
+             // sync since valueOrDefault() results also feed
+             // QImageReader::setAllocationLimit() directly at startup
+             // (below), not just through that row's own UI clamp.
+             /*default*/ 32,
              /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
-             /*validate*/ [](const QVariant& v) { return v.toInt() >= 0; },
+             /*validate*/
+             [](const QVariant& v) {
+                 const int n = v.toInt();
+                 return n >= 0 && n <= 32;
+             },
              /*postSaveCallback*/
              [](const QVariant& v) {
                  QImageReader::setAllocationLimit(v.toInt());

@@ -313,7 +313,7 @@ MaximumImageSizeRow::MaximumImageSizeRow(QWidget* parent)
               " Set to 0 for no limitation."),
           QStringLiteral("Items/image_allocation_limit"),
           0,
-          10000,
+          1024,
           parent)
 {}
 
