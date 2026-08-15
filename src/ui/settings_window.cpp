@@ -9,6 +9,7 @@
 #include <widgets/dialog_style.h>
 #include <widgets/dialogs.h>
 #include <widgets/file_browser_dialog.h>
+#include <widgets/setting_row.h>
 #include <widgets/settings_dialog.h>
 #include <widgets/settings_style.h>
 #include <QAbstractTextDocumentLayout>
@@ -32,14 +33,16 @@
 
 namespace {
 
-// Misc/Images & Items are a QGridLayout of SettingsGroupBase-derived
-// QGroupBoxes (settings_dialog.h), each already carrying its display
-// title as objectName() (see SettingsGroupBase::updateTitle()) - reused
-// here as-is rather than adding a parallel "searchable label" API.
-// Colors has no such children (ColorsWidget is one monolithic custom
-// widget, not decomposed into named sub-items), so this simply finds
-// nothing and reports no content match there - it can still be reached
-// by matching the category name itself.
+// Images & Items is a QGridLayout of SettingsGroupBase-derived
+// QGroupBoxes (settings_dialog.h); Performance is a QVBoxLayout of
+// SettingRowBase-derived rows (widgets/setting_row.h) - both carry their
+// display name as objectName() (SettingsGroupBase::updateTitle(),
+// SettingRowBase's own constructor), so both get checked here rather
+// than adding a parallel "searchable label" API for each shape. Colors
+// has neither (ColorsWidget is one monolithic custom widget, not
+// decomposed into named sub-items), so this simply finds nothing and
+// reports no content match there - it can still be reached by matching
+// the category name itself.
 bool applyGroupFilter(QWidget* page, const QString& text)
 {
     bool anyVisible = false;
@@ -48,6 +51,13 @@ bool applyGroupFilter(QWidget* page, const QString& text)
             = text.isEmpty()
               || group->objectName().contains(text, Qt::CaseInsensitive);
         group->setVisible(matches);
+        anyVisible = anyVisible || matches;
+    }
+    for (SettingRowBase* row : page->findChildren<SettingRowBase*>()) {
+        const bool matches
+            = text.isEmpty()
+              || row->objectName().contains(text, Qt::CaseInsensitive);
+        row->setVisible(matches);
         anyVisible = anyVisible || matches;
     }
     return anyVisible;
@@ -143,9 +153,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     , categoryButtons_(new QButtonGroup(this))
     , stack_(new QStackedWidget(this))
     , miscPage_(new QWidget)
-    , confirmCloseUnsaved_(new ConfirmCloseUnsavedWidget)
-    , autosaveEnabled_(new AutosaveEnabledWidget)
-    , autosaveInterval_(new AutosaveIntervalWidget)
+    , undoHistorySize_(new UndoHistorySizeRow)
+    , autoOptimizeImportedImages_(new AutoOptimizeImportedImagesRow)
+    , autosaveEnabled_(new AutosaveEnabledRow)
+    , autosaveInterval_(new AutosaveIntervalRow)
     , imagesPage_(new QWidget)
     , imageStorageFormat_(new ImageStorageFormatWidget)
     , arrangeGap_(new ArrangeGapWidget)
@@ -238,7 +249,15 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     outer->addLayout(root, /*stretch=*/1);
 
     // ─── Left column: search + category buttons + bottom button row ───────────
-    auto* leftColumn = new QVBoxLayout();
+    // A real container widget, not just a bare layout added to `root` -
+    // narrower than before, and a plain QLayout has no width of its own
+    // to pin down: every child (searchBox_, categoryPanel_, the bottom
+    // buttons) would otherwise each demand its own natural width and the
+    // column would end up as wide as the widest one anyway.
+    auto* leftContainer = new QWidget(this);
+    leftContainer->setFixedWidth(200);
+    auto* leftColumn = new QVBoxLayout(leftContainer);
+    leftColumn->setContentsMargins(0, 0, 0, 0);
 
     searchBox_->setPlaceholderText(tr("Search"));
     searchBox_->setClearButtonEnabled(true);
@@ -300,7 +319,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     categoryButtons_->setExclusive(true);
     leftColumn->addWidget(categoryPanel_, /*stretch=*/1);
 
-    auto* bottomRow = new QHBoxLayout();
+    auto* bottomColumn = new QVBoxLayout();
+    bottomColumn->setSpacing(6);
     auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
     resetBtn->setCursor(Qt::PointingHandCursor);
@@ -317,8 +337,13 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             KeyboardSettings().restoreDefaults();
         }
     });
-    bottomRow->addWidget(resetBtn);
-    bottomRow->addStretch();
+    bottomColumn->addWidget(resetBtn);
+
+    // Import/Export share a row below Restore Defaults instead of all
+    // three sitting side by side - three buttons abreast no longer fit
+    // the narrower sidebar (leftContainer above).
+    auto* importExportRow = new QHBoxLayout();
+    importExportRow->setSpacing(6);
 
     auto* importBtn = new QPushButton(tr("Import"), this);
     importBtn->setCursor(Qt::PointingHandCursor);
@@ -367,11 +392,12 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
                            tr("Could not write settings to %1.").arg(path));
         }
     });
-    bottomRow->addWidget(importBtn);
-    bottomRow->addWidget(exportBtn);
-    leftColumn->addLayout(bottomRow);
+    importExportRow->addWidget(importBtn);
+    importExportRow->addWidget(exportBtn);
+    bottomColumn->addLayout(importExportRow);
+    leftColumn->addLayout(bottomColumn);
 
-    root->addLayout(leftColumn);
+    root->addWidget(leftContainer);
     root->addWidget(stack_, /*stretch=*/1);
 
     // ─── Pages ──────────────────────────────────────────────────────────────
@@ -392,23 +418,28 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         ++categoryIndex;
     };
 
-    // Miscellaneous
-    auto* miscLayout = new QGridLayout(miscPage_);
-    miscLayout->addWidget(confirmCloseUnsaved_, 0, 0);
-    miscLayout->addWidget(autosaveEnabled_, 1, 0);
-    // Nested inside the checkbox's own group box (not a separate row of
-    // its own) and disabled unless autosave is actually enabled - the
-    // interval is meaningless on its own.
-    autosaveEnabled_->addNestedWidget(autosaveInterval_);
+    // Performance - a flat column of rows (widgets/setting_row.h), not
+    // the QGridLayout-of-groupboxes the other pages below still use -
+    // see setting_row.h's own comment for why (PureRef reference:
+    // description on hover, not an always-visible paragraph).
+    auto* miscLayout = new QVBoxLayout(miscPage_);
+    miscLayout->addWidget(undoHistorySize_);
+    miscLayout->addWidget(autoOptimizeImportedImages_);
+    miscLayout->addWidget(autosaveEnabled_);
+    // Not nested/indented under autosaveEnabled_ any more - just the
+    // next row down, disabled unless autosave is actually enabled (it's
+    // meaningless on its own).
+    miscLayout->addWidget(autosaveInterval_);
+    miscLayout->addStretch(1);
     autosaveInterval_->setEnabled(
         FamSettings()
             .valueOrDefault(QStringLiteral("Save/autosave_enabled"))
             .toBool());
     connect(autosaveEnabled_,
-            &AutosaveEnabledWidget::toggled,
+            &AutosaveEnabledRow::toggled,
             autosaveInterval_,
-            &AutosaveIntervalWidget::setEnabled);
-    addCategory(tr("Miscellaneous"), miscPage_);
+            &AutosaveIntervalRow::setEnabled);
+    addCategory(tr("Performance"), miscPage_);
 
     // Images & Items
     auto* imagesLayout = new QGridLayout(imagesPage_);

@@ -128,6 +128,10 @@ set(PROJECT_SOURCES
         widgets/settings_style.h
         widgets/flat_checkbox.cpp
         widgets/flat_checkbox.h
+        widgets/flat_spinbox.cpp
+        widgets/flat_spinbox.h
+        widgets/flat_combobox.cpp
+        widgets/flat_combobox.h
         widgets/color_picker_dialog.cpp
         widgets/color_picker_dialog.h
         widgets/file_browser_dialog.cpp
@@ -140,6 +144,8 @@ set(PROJECT_SOURCES
         widgets/about_dialog.h
         widgets/settings_dialog.cpp
         widgets/settings_dialog.h
+        widgets/setting_row.cpp
+        widgets/setting_row.h
         widgets/color_gamut.cpp
         widgets/color_gamut.h
         widgets/controls/controls_common.cpp

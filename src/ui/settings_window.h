@@ -9,9 +9,10 @@ class QLineEdit;
 class QButtonGroup;
 class QStackedWidget;
 class ColorsWidget;
-class ConfirmCloseUnsavedWidget;
-class AutosaveEnabledWidget;
-class AutosaveIntervalWidget;
+class UndoHistorySizeRow;
+class AutoOptimizeImportedImagesRow;
+class AutosaveEnabledRow;
+class AutosaveIntervalRow;
 class ImageStorageFormatWidget;
 class ArrangeGapWidget;
 class AllocationLimitWidget;
@@ -59,9 +60,10 @@ private:
     QList<SettingsCategory> categories_;
 
     QWidget* miscPage_ = nullptr;
-    ConfirmCloseUnsavedWidget* confirmCloseUnsaved_ = nullptr;
-    AutosaveEnabledWidget* autosaveEnabled_ = nullptr;
-    AutosaveIntervalWidget* autosaveInterval_ = nullptr;
+    UndoHistorySizeRow* undoHistorySize_ = nullptr;
+    AutoOptimizeImportedImagesRow* autoOptimizeImportedImages_ = nullptr;
+    AutosaveEnabledRow* autosaveEnabled_ = nullptr;
+    AutosaveIntervalRow* autosaveInterval_ = nullptr;
 
     QWidget* imagesPage_ = nullptr;
     ImageStorageFormatWidget* imageStorageFormat_ = nullptr;

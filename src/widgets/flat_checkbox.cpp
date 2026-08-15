@@ -1,5 +1,6 @@
 #include "flat_checkbox.h"
 
+#include <QEvent>
 #include <QPainter>
 #include <QPainterPath>
 
@@ -40,11 +41,12 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
     // confirmed via screenshot - alpha tweaks on the border color did
     // nothing because the BRUSH, not the pen, was the real culprit).
     if (isChecked()) {
-        p.setPen(QPen(accent_, 1.5));
-        p.setBrush(accent_);
+        const QColor fill = underMouse() ? accent_.lighter(115) : accent_;
+        p.setPen(QPen(fill, 1.5));
+        p.setBrush(fill);
     } else {
         QColor uncheckedBorder = border_;
-        uncheckedBorder.setAlpha(130);
+        uncheckedBorder.setAlpha(underMouse() ? 200 : 130);
         p.setPen(QPen(uncheckedBorder, 1.5));
         p.setBrush(Qt::NoBrush);
     }
@@ -69,4 +71,16 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
                           width() - box.right() - 8,
                           height());
     p.drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, text());
+}
+
+void FlatCheckBox::enterEvent(QEnterEvent* event)
+{
+    QCheckBox::enterEvent(event);
+    update();
+}
+
+void FlatCheckBox::leaveEvent(QEvent* event)
+{
+    QCheckBox::leaveEvent(event);
+    update();
 }

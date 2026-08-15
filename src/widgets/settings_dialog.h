@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QCheckBox>
 #include <QGroupBox>
 #include <QMap>
 #include <QRadioButton>
@@ -89,33 +88,6 @@ private:
     QSpinBox* input_ = nullptr;
 };
 
-// ─── SingleCheckboxGroupWidget ────────────────────────────────────────────────
-
-class SingleCheckboxGroupWidget : public SettingsGroupBase
-{
-    Q_OBJECT
-public:
-    explicit SingleCheckboxGroupWidget(const QString& title,
-                                       const QString& helptext,
-                                       const QString& key,
-                                       const QString& label,
-                                       QWidget* parent = nullptr);
-
-signals:
-    // Fired on every check-state change (in addition to the usual
-    // settings persistence) - for wiring up a dependent widget's
-    // setEnabled() live, e.g. AutosaveIntervalWidget under
-    // AutosaveEnabledWidget in ui/settings_window.cpp.
-    void toggled(bool checked);
-
-protected:
-    void setValue(const QVariant& value) override;
-    QVariant convertValueFromQt(const QVariant& value) override;
-
-private:
-    QCheckBox* input_ = nullptr;
-};
-
 // ─── Concrete setting widgets ─────────────────────────────────────────────────
 
 class ArrangeDefaultWidget : public RadioGroupWidget
@@ -142,20 +114,3 @@ public:
     explicit AllocationLimitWidget(QWidget* parent = nullptr);
 };
 
-class ConfirmCloseUnsavedWidget : public SingleCheckboxGroupWidget
-{
-public:
-    explicit ConfirmCloseUnsavedWidget(QWidget* parent = nullptr);
-};
-
-class AutosaveEnabledWidget : public SingleCheckboxGroupWidget
-{
-public:
-    explicit AutosaveEnabledWidget(QWidget* parent = nullptr);
-};
-
-class AutosaveIntervalWidget : public IntegerGroupWidget
-{
-public:
-    explicit AutosaveIntervalWidget(QWidget* parent = nullptr);
-};
