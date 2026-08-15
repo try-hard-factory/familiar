@@ -10,6 +10,7 @@ using namespace familiar::log;
 namespace {
 constexpr char CHANGED_SYMBOL[] = "✎";
 
+// TODOLATER:
 constexpr char kPlaceholderInfo[] =
     "Description coming soon.";
 
@@ -259,8 +260,6 @@ AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
               {QStringLiteral("warn"), QStringLiteral("Large image warning")},
               {QStringLiteral("optimize_large"),
                QStringLiteral("Optimize large images")},
-              {QStringLiteral("optimize_all"),
-               QStringLiteral("Optimize all images")},
           },
           parent)
 {}
