@@ -13,6 +13,8 @@
 #include <QVariant>
 #include <QVector>
 
+// TODOLATER: rework this class and FamSettings someday...
+
 class QWheelEvent;
 class QMouseEvent;
 
@@ -82,6 +84,7 @@ public:
     // These back onto the "Colors" JSON group via valueHandler()'s
     // check/process/fallback/representation (core/valuehandler.h) - kept
     // as the stable entry point SETTINGS_GETTER_SETTER expands into.
+    // TODOLATER:
     void setValue(const QString& key, const QVariant& value);
     QVariant value(const QString& key) const;
     void remove(const QString& key);
@@ -135,6 +138,7 @@ public:
     qreal arrangeGap() const;
     QString arrangeDefault() const;
     QString imageStorageFormat() const;
+    int undoHistorySize() const;
 
     // KeyboardSettings-backed (also the underlying store for mouse/wheel
     // control matching, despite the class name)

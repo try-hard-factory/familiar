@@ -470,6 +470,13 @@ QString SettingsHandler::imageStorageFormat() const
         .toString();
 }
 
+int SettingsHandler::undoHistorySize() const
+{
+    return FamSettings()
+        .valueOrDefault(QStringLiteral("Items/undo_history_size"))
+        .toInt();
+}
+
 // ─── Facade: KeyboardSettings-backed ───────────────────────────────────────────
 
 std::optional<ControlMatch> SettingsHandler::mousewheelActionForEvent(

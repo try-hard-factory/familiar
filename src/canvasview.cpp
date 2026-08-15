@@ -47,7 +47,16 @@ CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
     setFrameShape(QFrame::NoFrame);
     setRenderHint(QPainter::Antialiasing, true);
 
-    undoStack_->setUndoLimit(100);
+    // QUndoStack::setUndoLimit() only takes effect while the stack is
+    // empty (Qt silently no-ops + warns otherwise) - read once here, at
+    // construction, rather than trying to live-update already-open tabs
+    // when the setting changes; a tab opened after the setting changes
+    // picks up the new value naturally since this constructor runs
+    // fresh for it. The row (widgets/setting_row.h's
+    // UndoHistorySizeRow) is a plain spinbox with range [0, 10000] -
+    // 0 already matches Qt's own "0 means no limit" for this property,
+    // no translation needed.
+    undoStack_->setUndoLimit(SettingsHandler::getInstance()->undoHistorySize());
     connect(undoStack_.get(),
             &QUndoStack::cleanChanged,
             this,
