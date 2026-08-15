@@ -10,12 +10,15 @@
 #include <QWidget>
 
 // A settings-row label that shows an info tooltip on hover - PureRef's
-// own Performance page drops the always-visible help paragraph
-// SettingsGroupBase (settings_dialog.h) prints under every group box, in
-// favor of a flat list of rows whose description only shows up on
-// hover. Native QToolTip for now (supports basic rich text, shows on
-// hover for free) - structure only, per Max: every row's info text
-// below is a placeholder, real per-setting copy is a follow-up.
+// own Performance/Images & Items pages drop the always-visible help
+// paragraph the old QGroupBox-based settings widgets (settings_dialog.h,
+// removed once every page had migrated to this row shape) printed under
+// every group box, in favor of a flat list of rows whose description
+// only shows up on hover. Native QToolTip for now (supports basic rich
+// text, shows on hover for free) - per Max, the Performance page's own
+// rows below are structure only for now (kPlaceholderInfo, real copy is
+// a follow-up); Images & Items' rows carry over their real helptext from
+// the widgets they replaced.
 class HoverInfoLabel : public QLabel
 {
     Q_OBJECT
@@ -27,10 +30,11 @@ public:
 
 // ─── SettingRowBase ─────────────────────────────────────────────────────────
 
-// Row-shaped counterpart to SettingsGroupBase (settings_dialog.h): same
-// persistence / restore-defaults / changed-indicator ("✎") plumbing, but
-// a flat "label ... control" QHBoxLayout instead of a QGroupBox with a
-// title and an always-visible helptext paragraph.
+// Row-shaped counterpart to the old QGroupBox-based SettingsGroupBase
+// (settings_dialog.h, removed): same persistence / restore-defaults /
+// changed-indicator ("✎") plumbing, but a flat "label ... control"
+// QHBoxLayout instead of a QGroupBox with a title and an always-visible
+// helptext paragraph.
 class SettingRowBase : public QWidget
 {
     Q_OBJECT
@@ -39,6 +43,18 @@ public:
                             const QString& infoText,
                             const QString& key,
                             QWidget* parent = nullptr);
+
+    // Disables just the input control - NOT QWidget::setEnabled() on the
+    // whole row, which would take label_ down with it. Qt doesn't
+    // dispatch hover/enter events (and so never applies a custom
+    // setCursor()) to a disabled widget, while still special-casing
+    // tooltips to work on one - so a fully-disabled row ends up with its
+    // tooltip working but its WhatsThisCursor hand cursor silently
+    // stuck at the default arrow. Used for a row that only matters
+    // alongside a sibling (e.g. AutosaveIntervalRow while
+    // AutosaveEnabledRow is unchecked) - the label should stay
+    // explorable either way.
+    virtual void setControlEnabled(bool enabled) = 0;
 
 protected:
     virtual void setValue(const QVariant& value) = 0;
@@ -75,6 +91,8 @@ public:
                              const QList<ComboOption>& options,
                              QWidget* parent = nullptr);
 
+    void setControlEnabled(bool enabled) override;
+
 protected:
     void setValue(const QVariant& value) override;
 
@@ -92,10 +110,13 @@ public:
                                 const QString& key,
                                 QWidget* parent = nullptr);
 
+    void setControlEnabled(bool enabled) override;
+
 signals:
     // Same purpose as SingleCheckboxGroupWidget::toggled() used to serve
-    // - wiring a dependent row's setEnabled() live (AutosaveIntervalRow
-    // under AutosaveEnabledRow in ui/settings_window.cpp).
+    // - wiring a dependent row's setControlEnabled() live
+    // (AutosaveIntervalRow under AutosaveEnabledRow in
+    // ui/settings_window.cpp).
     void toggled(bool checked);
 
 protected:
@@ -116,6 +137,8 @@ public:
                                int min,
                                int max,
                                QWidget* parent = nullptr);
+
+    void setControlEnabled(bool enabled) override;
 
 protected:
     void setValue(const QVariant& value) override;
@@ -148,4 +171,29 @@ class AutosaveIntervalRow : public IntegerSettingRow
 {
 public:
     explicit AutosaveIntervalRow(QWidget* parent = nullptr);
+};
+
+// ─── Concrete Images & Items-page rows ──────────────────────────────────────
+// Replaces settings_dialog.h's SettingsGroupBase-derived
+// ArrangeGapWidget/AllocationLimitWidget/ArrangeDefaultWidget (and drops
+// ImageStorageFormatWidget outright - UI removed, the underlying
+// Items/image_storage_format setting/facade/get_imgformat() usage is
+// untouched) - same flat-row shape as the Performance page above.
+
+class ArrangeGapRow : public IntegerSettingRow
+{
+public:
+    explicit ArrangeGapRow(QWidget* parent = nullptr);
+};
+
+class MaximumImageSizeRow : public IntegerSettingRow
+{
+public:
+    explicit MaximumImageSizeRow(QWidget* parent = nullptr);
+};
+
+class ArrangeDefaultRow : public ComboSettingRow
+{
+public:
+    explicit ArrangeDefaultRow(QWidget* parent = nullptr);
 };

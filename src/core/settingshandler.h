@@ -122,7 +122,7 @@ public:
 
     // FACADE: SettingsHandler is the only settings class code outside
     // the settings subsystem itself (core/, widgets/controls/,
-    // widgets/settings_dialog.*) should call. These delegate to
+    // widgets/setting_row.*) should call. These delegate to
     // FamSettings/KeyboardSettings (core/settings.h, core/controls.h),
     // which stay the internal storage-shaped API - not reimplemented here.
 

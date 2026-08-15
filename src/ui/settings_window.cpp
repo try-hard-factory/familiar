@@ -10,13 +10,11 @@
 #include <widgets/dialogs.h>
 #include <widgets/file_browser_dialog.h>
 #include <widgets/setting_row.h>
-#include <widgets/settings_dialog.h>
 #include <widgets/settings_style.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
 #include <QFont>
 #include <QGraphicsDropShadowEffect>
-#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
@@ -33,26 +31,16 @@
 
 namespace {
 
-// Images & Items is a QGridLayout of SettingsGroupBase-derived
-// QGroupBoxes (settings_dialog.h); Performance is a QVBoxLayout of
-// SettingRowBase-derived rows (widgets/setting_row.h) - both carry their
-// display name as objectName() (SettingsGroupBase::updateTitle(),
-// SettingRowBase's own constructor), so both get checked here rather
-// than adding a parallel "searchable label" API for each shape. Colors
-// has neither (ColorsWidget is one monolithic custom widget, not
-// decomposed into named sub-items), so this simply finds nothing and
+// Both Performance and Images & Items are a QVBoxLayout of
+// SettingRowBase-derived rows (widgets/setting_row.h), each carrying its
+// display name as objectName() (SettingRowBase's own constructor) - that's
+// all this needs to check. Colors has no such decomposition (ColorsWidget
+// is one monolithic custom widget), so this simply finds nothing and
 // reports no content match there - it can still be reached by matching
 // the category name itself.
 bool applyGroupFilter(QWidget* page, const QString& text)
 {
     bool anyVisible = false;
-    for (SettingsGroupBase* group : page->findChildren<SettingsGroupBase*>()) {
-        const bool matches
-            = text.isEmpty()
-              || group->objectName().contains(text, Qt::CaseInsensitive);
-        group->setVisible(matches);
-        anyVisible = anyVisible || matches;
-    }
     for (SettingRowBase* row : page->findChildren<SettingRowBase*>()) {
         const bool matches
             = text.isEmpty()
@@ -158,10 +146,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     , autosaveEnabled_(new AutosaveEnabledRow)
     , autosaveInterval_(new AutosaveIntervalRow)
     , imagesPage_(new QWidget)
-    , imageStorageFormat_(new ImageStorageFormatWidget)
-    , arrangeGap_(new ArrangeGapWidget)
-    , allocationLimit_(new AllocationLimitWidget)
-    , arrangeDefault_(new ArrangeDefaultWidget)
+    , arrangeGap_(new ArrangeGapRow)
+    , allocationLimit_(new MaximumImageSizeRow)
+    , arrangeDefault_(new ArrangeDefaultRow)
     , colorsPage_(new QWidget)
     , colors_(new ColorsWidget(this))
     , keyboardShortcutsPage_(new KeyboardShortcutsPage)
@@ -418,35 +405,39 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         ++categoryIndex;
     };
 
-    // Performance - a flat column of rows (widgets/setting_row.h), not
-    // the QGridLayout-of-groupboxes the other pages below still use -
-    // see setting_row.h's own comment for why (PureRef reference:
-    // description on hover, not an always-visible paragraph).
+    // Performance - a flat column of rows (widgets/setting_row.h) - see
+    // setting_row.h's own comment for why (PureRef reference: description
+    // on hover, not an always-visible paragraph).
     auto* miscLayout = new QVBoxLayout(miscPage_);
     miscLayout->addWidget(undoHistorySize_);
     miscLayout->addWidget(autoOptimizeImportedImages_);
     miscLayout->addWidget(autosaveEnabled_);
-    // Not nested/indented under autosaveEnabled_ any more - just the
-    // next row down, disabled unless autosave is actually enabled (it's
-    // meaningless on its own).
+    // Not nested/indented as a child widget under autosaveEnabled_ - just
+    // the next row down, disabled unless autosave is actually enabled
+    // (it's meaningless on its own). A left margin on its own layout is
+    // enough to read as "belongs to Autosave" without actual nesting.
+    if (auto* intervalLayout = autosaveInterval_->layout())
+        intervalLayout->setContentsMargins(24, 4, 0, 4);
     miscLayout->addWidget(autosaveInterval_);
     miscLayout->addStretch(1);
-    autosaveInterval_->setEnabled(
+    autosaveInterval_->setControlEnabled(
         FamSettings()
             .valueOrDefault(QStringLiteral("Save/autosave_enabled"))
             .toBool());
     connect(autosaveEnabled_,
             &AutosaveEnabledRow::toggled,
             autosaveInterval_,
-            &AutosaveIntervalRow::setEnabled);
+            &AutosaveIntervalRow::setControlEnabled);
     addCategory(tr("Performance"), miscPage_);
 
-    // Images & Items
-    auto* imagesLayout = new QGridLayout(imagesPage_);
-    imagesLayout->addWidget(imageStorageFormat_, 0, 0);
-    imagesLayout->addWidget(allocationLimit_, 0, 1);
-    imagesLayout->addWidget(arrangeGap_, 1, 0);
-    imagesLayout->addWidget(arrangeDefault_, 1, 1);
+    // Images & Items - flat column of rows, same shape as Performance
+    // above (Items/image_storage_format's own UI dropped here per Max;
+    // the setting/facade/get_imgformat() usage elsewhere is untouched).
+    auto* imagesLayout = new QVBoxLayout(imagesPage_);
+    imagesLayout->addWidget(allocationLimit_);
+    imagesLayout->addWidget(arrangeGap_);
+    imagesLayout->addWidget(arrangeDefault_);
+    imagesLayout->addStretch(1);
     addCategory(tr("Images & Items"), imagesPage_);
 
     // Colors

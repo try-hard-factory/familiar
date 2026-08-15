@@ -142,8 +142,6 @@ set(PROJECT_SOURCES
         widgets/help_dialog.h
         widgets/about_dialog.cpp
         widgets/about_dialog.h
-        widgets/settings_dialog.cpp
-        widgets/settings_dialog.h
         widgets/setting_row.cpp
         widgets/setting_row.h
         widgets/color_gamut.cpp
