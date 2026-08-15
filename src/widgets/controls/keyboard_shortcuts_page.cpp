@@ -6,6 +6,7 @@
 #include <core/controls.h>
 #include <core/settings.h>
 
+#include <QFrame>
 #include <QScrollArea>
 #include <QSet>
 #include <QVBoxLayout>
@@ -94,6 +95,7 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
 
     auto* scrollArea = new QScrollArea(this);
     scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
     scrollArea->setWidget(scrollContent);
 
     auto* layout = new QVBoxLayout(this);

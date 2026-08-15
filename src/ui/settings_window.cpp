@@ -6,23 +6,29 @@
 #include <ui/colors_widget.h>
 #include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/controls/search_highlight.h>
+#include <widgets/dialog_style.h>
 #include <widgets/dialogs.h>
 #include <widgets/file_browser_dialog.h>
 #include <widgets/settings_dialog.h>
+#include <widgets/settings_style.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
+#include <QFont>
+#include <QGraphicsDropShadowEffect>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QStyleOptionButton>
 #include <QStylePainter>
 #include <QTextDocument>
-#include <QToolButton>
 #include <QVBoxLayout>
+#include <QWindow>
 
 namespace {
 
@@ -77,8 +83,14 @@ protected:
         opt.text.clear();
         painter.drawControl(QStyle::CE_PushButton, opt);
 
-        const QColor color = palette().color(
-            isChecked() ? QPalette::HighlightedText : QPalette::ButtonText);
+        // Read from the fixed settings_style palette rather than
+        // QPalette::HighlightedText/ButtonText - the checked/hover
+        // background is QSS-only (sidebarButtonStyleSheet()), which
+        // never updates the real QPalette roles those would resolve to.
+        // Every state is a shade of gray (navIdleBg/navHoverBg/
+        // navSelectedBg), not a saturated accent, so text stays the
+        // same dark color throughout - no need for a light/dark swap.
+        const QColor color = familiar::settings_style::palette().text;
         QTextDocument doc;
         doc.setDefaultFont(font());
         doc.setDefaultStyleSheet(
@@ -96,6 +108,29 @@ protected:
 
 private:
     QString richText_;
+};
+
+// The window is frameless now (no native title bar to grab), so this
+// plain strip stands in for one: a left-click anywhere on it (not
+// consumed by a child, e.g. the centered title QLabel - unhandled mouse
+// events on a plain QWidget/QLabel propagate up to their parent) starts
+// an OS-level move, same technique as ExportImagesFileExistsDialog/
+// ColorPickerDialog (widgets/dialogs.h, widgets/color_picker_dialog.cpp).
+class DragTitleBar : public QWidget
+{
+public:
+    using QWidget::QWidget;
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && window()->windowHandle()) {
+            window()->windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QWidget::mousePressEvent(event);
+    }
 };
 
 } // namespace
@@ -121,8 +156,18 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     , keyboardShortcutsPage_(new KeyboardShortcutsPage)
 {
     setAttribute(Qt::WA_DeleteOnClose);
-    setWindowFlags(Qt::Window | Qt::WindowCloseButtonHint
-                   | Qt::MSWindowsFixedSizeDialogHint);
+    // Frameless, custom-chrome window - same convention as every other
+    // custom dialog in this app (ExportImagesFileExistsDialog,
+    // ColorPickerDialog, ...): no native title bar/min/max, just our own
+    // "x" close button (see closeBtn below). Square corners, not a
+    // rounded setMask() - see settings_style.cpp's SettingsWindow QSS
+    // rule for why that was dropped. This also drops
+    // MSWindowsFixedSizeDialogHint's old minimize/maximize buttons that
+    // hint never actually suppressed on this WM - there's simply no
+    // native chrome left to show them on.
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setAttribute(Qt::WA_StyledBackground);
     // This window is deliberately NOT widget-parented to MainWindow (that
     // would cascade its "* { background: transparent }" stylesheet in),
     // so the WM doesn't know it belongs above it - with Always On Top
@@ -131,10 +176,66 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     if (wm && wm->windowFlags().testFlag(Qt::WindowStaysOnTopHint))
         setWindowFlag(Qt::WindowStaysOnTopHint, true);
     setWindowModality(Qt::ApplicationModal);
-    setWindowTitle(tr("Configuration"));
-    resize(760, 480);
+    setWindowTitle(tr("Settings"));
+    // Not just resize() - there's no native resize border any more
+    // either, so the window needs to actually commit to a fixed size
+    // rather than merely start at one (matches the old
+    // MSWindowsFixedSizeDialogHint's intent).
+    setFixedSize(760, 480);
 
-    auto* root = new QHBoxLayout(this);
+    // Fixed PureRef-style white palette - always this scheme, unlike
+    // the rest of the app which follows the user's chosen accent-color
+    // preset (see settings_style.h's own comment).
+    setStyleSheet(familiar::settings_style::rootStyleSheet());
+
+    auto* shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setBlurRadius(24);
+    shadow->setOffset(0, 4);
+    shadow->setColor(QColor(0, 0, 0, 150));
+    setGraphicsEffect(shadow);
+
+    auto* outer = new QVBoxLayout(this);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
+
+    // ─── Title bar: centered title + the only window control (close) ──────────
+    auto* titleBar = new DragTitleBar(this);
+    // Transparent, not the inherited "* { background-color: ... }" white
+    // fill - titleBar spans the full width flush to the window's top
+    // corners, so an opaque square background here would paint right
+    // over SettingsWindow's own rounded corners/border underneath it
+    // (children paint on top of their parent). Letting the window's own
+    // background/border show through instead is what actually rounds
+    // the top corners correctly.
+    titleBar->setAttribute(Qt::WA_StyledBackground, true);
+    titleBar->setStyleSheet(QStringLiteral("background: transparent;"));
+    auto* titleBarLayout = new QHBoxLayout(titleBar);
+    titleBarLayout->setContentsMargins(16, 10, 10, 6);
+    titleBarLayout->addStretch(1);
+    auto* titleLabel = new QLabel(tr("Settings"), titleBar);
+    titleLabel->setStyleSheet(QStringLiteral("background: transparent;"));
+    QFont titleFont = titleLabel->font();
+    titleFont.setBold(true);
+    titleFont.setPointSize(titleFont.pointSize() + 1);
+    titleLabel->setFont(titleFont);
+    titleBarLayout->addWidget(titleLabel);
+    titleBarLayout->addStretch(1);
+    auto* closeBtn = new QPushButton(QStringLiteral("×"), titleBar);
+    closeBtn->setFixedSize(22, 22);
+    closeBtn->setCursor(Qt::PointingHandCursor);
+    closeBtn->setFocusPolicy(Qt::NoFocus);
+    closeBtn->setObjectName(QStringLiteral("settingsCloseBtn"));
+    const familiar::settings_style::Palette& sp
+        = familiar::settings_style::palette();
+    closeBtn->setStyleSheet(familiar::dialog_style::closeButtonStyleSheet(
+        "settingsCloseBtn", sp.text, sp.accent));
+    connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
+    titleBarLayout->addWidget(closeBtn);
+    outer->addWidget(titleBar);
+
+    auto* root = new QHBoxLayout();
+    root->setContentsMargins(16, 0, 16, 16);
+    outer->addLayout(root, /*stretch=*/1);
 
     // ─── Left column: search + category buttons + bottom button row ───────────
     auto* leftColumn = new QVBoxLayout();
@@ -188,25 +289,22 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // is picked in CategoryNavButton::paintEvent() directly rather than
     // through this stylesheet's "color" property, since that's only
     // read by the style's own (now-unused) text drawing.
-    categoryPanel_->setStyleSheet("QPushButton#categoryButton {"
-                                  "  border: none;"
-                                  "  background: transparent;"
-                                  "}"
-                                  "QPushButton#categoryButton:checked {"
-                                  "  background: palette(highlight);"
-                                  "}"
-                                  "QPushButton#categoryButton:hover:!checked {"
-                                  "  background: palette(alternate-base);"
-                                  "}");
+    categoryPanel_->setStyleSheet(
+        familiar::settings_style::sidebarButtonStyleSheet());
     auto* categoryLayout = new QVBoxLayout(categoryPanel_);
-    categoryLayout->setContentsMargins(0, 0, 0, 0);
-    categoryLayout->setSpacing(0);
+    // Visible gaps between the filled boxes + a little breathing room
+    // around the whole stack - PureRef's own sidebar isn't a flush
+    // edge-to-edge list, each category reads as its own block.
+    categoryLayout->setContentsMargins(4, 4, 4, 4);
+    categoryLayout->setSpacing(6);
     categoryButtons_->setExclusive(true);
     leftColumn->addWidget(categoryPanel_, /*stretch=*/1);
 
     auto* bottomRow = new QHBoxLayout();
     auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
+    resetBtn->setCursor(Qt::PointingHandCursor);
+    resetBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
     connect(resetBtn, &QPushButton::clicked, this, [this]() {
         const auto reply = showMessageBox(
             QMessageBox::Question,
@@ -222,9 +320,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     bottomRow->addWidget(resetBtn);
     bottomRow->addStretch();
 
-    auto* importBtn = new QToolButton(this);
-    importBtn->setText(tr("Import"));
-    connect(importBtn, &QToolButton::clicked, this, [this]() {
+    auto* importBtn = new QPushButton(tr("Import"), this);
+    importBtn->setCursor(Qt::PointingHandCursor);
+    importBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
+    connect(importBtn, &QPushButton::clicked, this, [this]() {
         const QString path = showOpenFileDialog(this,
                                                 tr("Import Settings"),
                                                 QString(),
@@ -249,9 +348,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         emit SettingsHandler::getInstance() -> presetsChanged();
     });
 
-    auto* exportBtn = new QToolButton(this);
-    exportBtn->setText(tr("Export"));
-    connect(exportBtn, &QToolButton::clicked, this, [this]() {
+    auto* exportBtn = new QPushButton(tr("Export"), this);
+    exportBtn->setCursor(Qt::PointingHandCursor);
+    exportBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
+    connect(exportBtn, &QPushButton::clicked, this, [this]() {
         const QString path = showSaveFileDialog(this,
                                                 tr("Export Settings"),
                                                 QString(),
@@ -283,7 +383,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         auto* btn = new CategoryNavButton(categoryPanel_);
         btn->setObjectName(QStringLiteral("categoryButton"));
         btn->setCheckable(true);
-        btn->setMinimumHeight(28);
+        btn->setMinimumHeight(38);
         btn->setLabelText(highlightSearchMatch(label, QString()));
         categoryLayout->addWidget(btn);
         categoryButtons_->addButton(btn, categoryIndex);
@@ -358,3 +458,4 @@ void SettingsWindow::keyPressEvent(QKeyEvent* e)
         close();
     }
 }
+
