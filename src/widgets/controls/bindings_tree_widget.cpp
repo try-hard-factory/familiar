@@ -2,14 +2,19 @@
 #include "binding_dialogs.h"
 #include "search_highlight.h"
 
+#include <widgets/setting_descriptions.h>
 #include <widgets/setting_row.h>
 #include <widgets/settings_style.h>
 
 #include <QHBoxLayout>
 #include <QLayoutItem>
+#include <QMouseEvent>
 #include <QPushButton>
+#include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+
+#include <functional>
 
 namespace {
 // Every shortcut chip gets at least this width, so the column of badges
@@ -19,6 +24,52 @@ namespace {
 // rather than setFixedWidth - so a longer chord (mouse bindings can read
 // e.g. "Left MB + Ctrl+Alt+Shift") still grows to fit instead of clipping.
 constexpr int kChipMinWidth = 104;
+
+// A target's primary row (buildRow()'s showAdd==true case) - adds the
+// same Ctrl+double-click-to-reset gesture SettingRowBase's rows have
+// (widgets/setting_row.h/.cpp), reset here meaning "replace this
+// target's whole binding list (primary + every alias) with
+// defaultBindings()". Not applied to alias sub-rows: an individual alias
+// has no "default" of its own to reset to, only the target as a whole
+// does.
+class BindingRowWidget : public QWidget
+{
+public:
+    using ResetCallback = std::function<void()>;
+
+    BindingRowWidget(ResetCallback onReset, QWidget* parent)
+        : QWidget(parent)
+        , onReset_(std::move(onReset))
+    {}
+
+protected:
+    void mouseDoubleClickEvent(QMouseEvent* event) override
+    {
+        if (event->modifiers().testFlag(Qt::ControlModifier)) {
+            event->accept();
+            // Deferred: onReset_ ends up calling
+            // BindingsTreeWidget::refreshTarget(), which immediately
+            // deletes this very row widget (same rebuild-in-place
+            // pattern the existing remove/add-alias buttons already
+            // trigger from their own clicked() handlers) - unlike those
+            // (a child QToolButton's slot deleting its parent), this
+            // would be deleting `this` from inside `this` own in-progress
+            // virtual event handler, still being unwound by
+            // QWidget::event()/QApplication::notify() above us on the
+            // call stack. QTimer::singleShot(0, ...) runs it on a fresh
+            // stack frame right after, once nothing above us still
+            // expects `this` to be alive.
+            QTimer::singleShot(0, this, [callback = onReset_]() {
+                callback();
+            });
+            return;
+        }
+        QWidget::mouseDoubleClickEvent(event);
+    }
+
+private:
+    ResetCallback onReset_;
+};
 } // namespace
 
 // ─── CollapsibleSection ───────────────────────────────────────────────────────
@@ -155,7 +206,18 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
                                       bool indent,
                                       QWidget* toggleTarget)
 {
-    auto* row = new QWidget(this);
+    // showAdd is only true for a target's primary row (see refreshTarget()'s
+    // two buildRow() call sites) - BindingRowWidget's Ctrl+double-click
+    // reset gesture only makes sense there (see its own comment above).
+    QWidget* row
+        = showAdd ? new BindingRowWidget(
+              [this, target]() {
+                  target->setBindings(target->defaultBindings());
+                  refreshTarget(target);
+                  emit bindingsChanged();
+              },
+              this)
+                  : new QWidget(this);
     auto* layout = new QHBoxLayout(row);
     layout->setContentsMargins(indent ? 24 : 4, 2, 4, 2);
 
@@ -188,12 +250,33 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     // HoverInfoLabel (widgets/setting_row.h) - same hover-tooltip label
     // the Performance/Images & Items settings rows use, for a consistent
     // "hover for more info" affordance across the whole Settings window.
-    // Real per-action/control copy is a follow-up, same as those pages'
-    // own rows (kPlaceholderInfo in widgets/setting_row.cpp).
+    // Body text comes from widgets/setting_descriptions.h, keyed by
+    // target->id() - same single-source-of-truth table those pages'
+    // own rows read from (currently still a shared placeholder for
+    // every id here, real per-action/control copy is a follow-up).
     auto* nameLabel = new HoverInfoLabel(highlightSearchMatch(label,
                                                               searchFilter_),
                                          row);
-    nameLabel->setInfoText(tr("Description coming soon."));
+    nameLabel->setInfoText(
+        familiar::setting_descriptions::forBindingTargetId(target->id()));
+    // "Default: X" / the reset-gesture footer hint only apply to the
+    // primary row - matches BindingRowWidget's own showAdd-only gate
+    // above, and for the same reason (an alias has no "default" of its
+    // own).
+    if (showAdd) {
+        QStringList defaultChords;
+        for (const Binding& b : target->defaultBindings()) {
+            const QString dt = b.displayText();
+            if (!dt.isEmpty())
+                defaultChords.append(dt);
+        }
+        nameLabel->setDefaultText(
+            tr("Default: %1")
+                .arg(defaultChords.isEmpty() ? tr("(none)")
+                                             : defaultChords.join(
+                                                   QStringLiteral(", "))));
+        nameLabel->setShowResetHint(true);
+    }
     layout->addWidget(nameLabel);
     layout->addStretch(1);
 
