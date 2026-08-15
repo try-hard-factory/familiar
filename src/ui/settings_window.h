@@ -13,10 +13,9 @@ class UndoHistorySizeRow;
 class AutoOptimizeImportedImagesRow;
 class AutosaveEnabledRow;
 class AutosaveIntervalRow;
-class ImageStorageFormatWidget;
-class ArrangeGapWidget;
-class AllocationLimitWidget;
-class ArrangeDefaultWidget;
+class ArrangeGapRow;
+class MaximumImageSizeRow;
+class ArrangeDefaultRow;
 class KeyboardShortcutsPage;
 class QPushButton;
 
@@ -66,10 +65,9 @@ private:
     AutosaveIntervalRow* autosaveInterval_ = nullptr;
 
     QWidget* imagesPage_ = nullptr;
-    ImageStorageFormatWidget* imageStorageFormat_ = nullptr;
-    ArrangeGapWidget* arrangeGap_ = nullptr;
-    AllocationLimitWidget* allocationLimit_ = nullptr;
-    ArrangeDefaultWidget* arrangeDefault_ = nullptr;
+    ArrangeGapRow* arrangeGap_ = nullptr;
+    MaximumImageSizeRow* allocationLimit_ = nullptr;
+    ArrangeDefaultRow* arrangeDefault_ = nullptr;
 
     QWidget* colorsPage_ = nullptr;
     ColorsWidget* colors_ = nullptr;

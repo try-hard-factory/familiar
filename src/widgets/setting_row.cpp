@@ -45,8 +45,7 @@ SettingRowBase::SettingRowBase(const QString& label,
     , label_(new HoverInfoLabel(label, this))
 {
     // Searchable by the search box's applyGroupFilter() (ui/
-    // settings_window.cpp) the same way SettingsGroupBase's title does
-    // (settings_dialog.cpp) - raw label, no "✎" changed-marker.
+    // settings_window.cpp) - raw label, no "✎" changed-marker.
     setObjectName(label);
     hbox_->setContentsMargins(0, 4, 0, 4);
     label_->setInfoText(infoText);
@@ -116,9 +115,8 @@ ComboSettingRow::ComboSettingRow(const QString& label,
         input_->addItem(opt.label);
     input_->setFixedWidth(kControlWidth);
     // setValue() (via setCurrentIndex) happens before this connect(), so
-    // it can't fire onValueChanged() with nothing listening yet - same
-    // ordering trick settings_dialog.cpp's IntegerGroupWidget etc. use,
-    // no ignoreValueChanged_ guard needed.
+    // it can't fire onValueChanged() with nothing listening yet - no
+    // ignoreValueChanged_ guard needed.
     setValue(settings.valueOrDefault(key_));
     hbox_->addWidget(input_);
     ignoreValueChanged_ = false;
@@ -141,6 +139,11 @@ void ComboSettingRow::setValue(const QVariant& value)
             return;
         }
     }
+}
+
+void ComboSettingRow::setControlEnabled(bool enabled)
+{
+    input_->setEnabled(enabled);
 }
 
 // ─── CheckboxSettingRow ─────────────────────────────────────────────────────
@@ -205,6 +208,11 @@ QVariant CheckboxSettingRow::convertValueFromQt(const QVariant& value)
     return value.value<Qt::CheckState>() == Qt::Checked;
 }
 
+void CheckboxSettingRow::setControlEnabled(bool enabled)
+{
+    input_->setEnabled(enabled);
+}
+
 // ─── IntegerSettingRow ──────────────────────────────────────────────────────
 
 IntegerSettingRow::IntegerSettingRow(const QString& label,
@@ -239,6 +247,11 @@ void IntegerSettingRow::setValue(const QVariant& value)
     input_->setValue(value.toInt());
 }
 
+void IntegerSettingRow::setControlEnabled(bool enabled)
+{
+    input_->setEnabled(enabled);
+}
+
 // ─── Concrete Performance-page rows ─────────────────────────────────────────
 
 UndoHistorySizeRow::UndoHistorySizeRow(QWidget* parent)
@@ -265,7 +278,7 @@ AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
 {}
 
 AutosaveEnabledRow::AutosaveEnabledRow(QWidget* parent)
-    : CheckboxSettingRow(QStringLiteral("Autosave"),
+    : CheckboxSettingRow(QStringLiteral("Enable Autosave"),
                         QString::fromUtf8(kPlaceholderInfo),
                         QStringLiteral("Save/autosave_enabled"),
                         parent)
@@ -278,4 +291,46 @@ AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
                        1,
                        3600,
                        parent)
+{}
+
+// ─── Concrete Images & Items-page rows ──────────────────────────────────────
+
+ArrangeGapRow::ArrangeGapRow(QWidget* parent)
+    : IntegerSettingRow(
+          QStringLiteral("Arrange Gap"),
+          QStringLiteral("The gap between images when using arrange actions."),
+          QStringLiteral("Items/arrange_gap"),
+          0,
+          200,
+          parent)
+{}
+
+MaximumImageSizeRow::MaximumImageSizeRow(QWidget* parent)
+    : IntegerSettingRow(
+          QStringLiteral("Maximum Image Size (MB)"),
+          QStringLiteral(
+              "The maximum image size that can be loaded (in megabytes)."
+              " Set to 0 for no limitation."),
+          QStringLiteral("Items/image_allocation_limit"),
+          0,
+          10000,
+          parent)
+{}
+
+ArrangeDefaultRow::ArrangeDefaultRow(QWidget* parent)
+    : ComboSettingRow(
+          QStringLiteral("Default Arrange Method"),
+          QStringLiteral(
+              "How images are arranged when inserted in batch."),
+          QStringLiteral("Items/arrange_default"),
+          {
+              {QStringLiteral("optimal"), QStringLiteral("Optimal")},
+              {QStringLiteral("horizontal"),
+               QStringLiteral("Horizontal (by filename)")},
+              {QStringLiteral("vertical"),
+               QStringLiteral("Vertical (by filename)")},
+              {QStringLiteral("square"),
+               QStringLiteral("Square (by filename)")},
+          },
+          parent)
 {}
