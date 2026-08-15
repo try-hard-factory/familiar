@@ -220,7 +220,7 @@ static ActionRegistry buildRegistry()
     r.add(A::make("export_images",
                   "Export Images...",
                   "on_action_export_images",
-                  {},
+                  {"Ctrl+Shift+I"},
                   false,
                   false,
                   "active_when_items_in_scene"));
@@ -246,7 +246,7 @@ static ActionRegistry buildRegistry()
     r.add(A::make("deselect_all",
                   "Deselect All",
                   "on_action_deselect_all",
-                  {"Ctrl+Shift+A"}));
+                  {"Ctrl+Shift+D"}));
     r.add(A::make("cut",
                   "Cut",
                   "on_action_cut",
@@ -314,7 +314,7 @@ static ActionRegistry buildRegistry()
                   false,
                   false,
                   "active_when_selection"));
-    r.add(A::make("zoom_in", "Zoom In", "on_action_zoom_in", {"Ctrl++"}));
+    r.add(A::make("zoom_in", "Zoom In", "on_action_zoom_in", {"Ctrl++", "Ctrl+="}));
     r.add(A::make("zoom_out", "Zoom Out", "on_action_zoom_out", {"Ctrl+-"}));
     r.add(A::make("fullscreen",
                   "Fullscreen",
@@ -324,7 +324,7 @@ static ActionRegistry buildRegistry()
     r.add(A::make("always_on_top",
                   "Always On Top",
                   "on_action_always_on_top",
-                  {},
+                  {"Ctrl+Shift+A"},
                   true));
     // Explicit default shortcut, unlike always_on_top above - this is
     // the ONLY way to turn it back off once it's on (mouse clicks no
@@ -338,7 +338,7 @@ static ActionRegistry buildRegistry()
     r.add(A::make("show_menubar",
                   "Show Menu Bar",
                   "on_action_show_menubar",
-                  {},
+                  {"Ctrl+M"},
                   true,
                   false,
                   {},
@@ -350,7 +350,7 @@ static ActionRegistry buildRegistry()
     r.add(A::make("auto_hide_ui",
                   "Auto-Hide Interface",
                   "on_action_auto_hide_ui",
-                  {},
+                  {"Ctrl+H"},
                   true,
                   false,
                   {},
@@ -403,56 +403,56 @@ static ActionRegistry buildRegistry()
     r.add(A::make("reset_scale",
                   "Reset Scale",
                   "on_action_reset_scale",
-                  {},
+                  {"Ctrl+Shift+L"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_rotation",
                   "Reset Rotation",
                   "on_action_reset_rotation",
-                  {},
+                  {"Ctrl+Shift+R"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_flip",
                   "Reset Flip",
                   "on_action_reset_flip",
-                  {},
+                  {"Ctrl+Shift+F"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_crop",
                   "Reset Crop",
                   "on_action_reset_crop",
-                  {},
+                  {"Ctrl+Shift+C"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("reset_transforms",
                   "Reset All",
                   "on_action_reset_transforms",
-                  {"R"},
+                  {"Ctrl+Shift+T"},
                   false,
                   false,
                   "active_when_selection"));
 
     // ── Normalize ─────────────────────────────────────────────────────────────
     r.add(A::make("normalize_height",
-                  "Height",
+                  "Normalize Height",
                   "on_action_normalize_height",
                   {"Shift+H"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("normalize_width",
-                  "Width",
+                  "Normalize Width",
                   "on_action_normalize_width",
                   {"Shift+W"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("normalize_size",
-                  "Size",
+                  "Normalize Size",
                   "on_action_normalize_size",
                   {"Shift+S"},
                   false,
@@ -461,39 +461,39 @@ static ActionRegistry buildRegistry()
 
     // ── Arrange ───────────────────────────────────────────────────────────────
     r.add(A::make("arrange_optimal",
-                  "Optimal",
+                  "Arrange Optimal",
                   "on_action_arrange_optimal",
                   {"Shift+O"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("arrange_horizontal",
-                  "Horizontal (by filename)",
+                  "Arrange Horizontal (by filename)",
                   "on_action_arrange_horizontal",
-                  {},
+                  {"Ctrl+Shift+H"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("arrange_vertical",
-                  "Vertical (by filename)",
+                  "Arrange Vertical (by filename)",
                   "on_action_arrange_vertical",
-                  {},
+                  {"Ctrl+Shift+V"},
                   false,
                   false,
                   "active_when_selection"));
     r.add(A::make("arrange_square",
-                  "Square (by filename)",
+                  "Arrange Square (by filename)",
                   "on_action_arrange_square",
-                  {},
+                  {"Ctrl+Shift+Q"},
                   false,
                   false,
                   "active_when_selection"));
 
     // ── Images ────────────────────────────────────────────────────────────────
     r.add(A::make("change_opacity",
-                  "Change Opacity...",
+                  "Change Image Opacity",
                   "on_action_change_opacity",
-                  {},
+                  {"O"},
                   false,
                   false,
                   "active_when_selection"));
@@ -507,7 +507,7 @@ static ActionRegistry buildRegistry()
     r.add(A::make("show_color_gamut",
                   "Show Color Gamut",
                   "on_action_show_color_gamut",
-                  {},
+                  {"C"},
                   false,
                   false,
                   "active_when_single_image"));
