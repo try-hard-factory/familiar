@@ -4,23 +4,116 @@
 #include <widgets/flat_checkbox.h>
 #include <widgets/flat_combobox.h>
 #include <widgets/flat_spinbox.h>
+#include <widgets/setting_descriptions.h>
 #include <widgets/settings_style.h>
+
+#include <QGraphicsDropShadowEffect>
+#include <QMouseEvent>
+#include <QScreen>
+#include <QVBoxLayout>
+
 #include "log/log.h"
 using namespace familiar::log;
 namespace {
 constexpr char CHANGED_SYMBOL[] = "✎";
 
-// TODOLATER:
-constexpr char kPlaceholderInfo[] =
-    "Description coming soon.";
-
 constexpr int kControlWidth = 200;
+constexpr int kInfoPopupWidth = 320;
 } // namespace
+
+// ─── SettingInfoPopup ───────────────────────────────────────────────────────
+
+SettingInfoPopup::SettingInfoPopup(QWidget* parent)
+    : QWidget(parent)
+{
+    setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_ShowWithoutActivating);
+    // Never intercepts a click/double-click meant for whatever's under
+    // it - critical for the Ctrl+double-click-to-reset gesture this
+    // popup's own footer hint describes: the popup often visually
+    // overlaps the row it's attached to.
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+    // A plain QWidget (this isn't a QFrame) doesn't auto-paint a QSS
+    // background-color at all without this - without it the panel fell
+    // back to a solid black plate (Max, by screenshot) instead of white.
+    // Same attribute every dialog_style::panelStyleSheet() consumer sets
+    // (ChangeOpacityDialog etc., widgets/dialogs.h) - missed here at
+    // first.
+    setAttribute(Qt::WA_StyledBackground);
+    setFixedWidth(kInfoPopupWidth);
+
+    // Square, not dialog_style::panelStyleSheet()'s usual rounded panel
+    // (border-radius baked into that shared helper, paired with
+    // applyRoundedMask() to clip the actual window shape to match) -
+    // Max saw the same square-window-under-a-rounded-QSS-paint artifact
+    // this whole app's dialogs already ran into once (see
+    // SettingsWindow's own history: rounded corners reverted to square
+    // for the same reason), so this popup just skips rounding outright
+    // rather than reaching for applyRoundedMask() again.
+    const auto& sp = familiar::settings_style::palette();
+    setStyleSheet(
+        QStringLiteral("SettingInfoPopup {"
+                       "  background-color: %1;"
+                       "  border: 1px solid %2;"
+                       "}"
+                       "QLabel { background: transparent; color: %3; }")
+            .arg(sp.background.name(), sp.border.name(), sp.text.name()));
+
+    auto* shadow = new QGraphicsDropShadowEffect(this);
+    shadow->setBlurRadius(24);
+    shadow->setOffset(0, 4);
+    shadow->setColor(QColor(0, 0, 0, 110));
+    setGraphicsEffect(shadow);
+
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(16, 12, 16, 10);
+    layout->setSpacing(8);
+
+    titleLabel_ = new QLabel(this);
+    QFont titleFont = titleLabel_->font();
+    titleFont.setBold(true);
+    titleLabel_->setFont(titleFont);
+    layout->addWidget(titleLabel_);
+
+    bodyLabel_ = new QLabel(this);
+    bodyLabel_->setWordWrap(true);
+    bodyLabel_->setTextFormat(Qt::RichText);
+    layout->addWidget(bodyLabel_);
+
+    defaultLabel_ = new QLabel(this);
+    defaultLabel_->setStyleSheet(
+        QStringLiteral("color: %1;").arg(sp.mutedText.name()));
+    layout->addWidget(defaultLabel_);
+
+    hintLabel_ = new QLabel(tr("Ctrl + Dbl click to restore default"), this);
+    QFont hintFont = hintLabel_->font();
+    hintFont.setPointSize(hintFont.pointSize() - 1);
+    hintLabel_->setFont(hintFont);
+    hintLabel_->setStyleSheet(
+        QStringLiteral("color: %1;").arg(sp.mutedText.name()));
+    hintLabel_->setAlignment(Qt::AlignRight);
+    layout->addWidget(hintLabel_);
+}
+
+void SettingInfoPopup::setContent(const QString& title,
+                                  const QString& bodyHtml,
+                                  const QString& defaultText,
+                                  bool showResetHint)
+{
+    titleLabel_->setText(title);
+    bodyLabel_->setText(bodyHtml);
+    bodyLabel_->setVisible(!bodyHtml.isEmpty());
+    defaultLabel_->setText(defaultText);
+    defaultLabel_->setVisible(!defaultText.isEmpty());
+    hintLabel_->setVisible(showResetHint);
+    adjustSize();
+}
 
 // ─── HoverInfoLabel ─────────────────────────────────────────────────────────
 
 HoverInfoLabel::HoverInfoLabel(const QString& text, QWidget* parent)
     : QLabel(text, parent)
+    , title_(text)
 {
     // No native hand-cursor for "this has a tooltip" in Qt - WhatsThis
     // is the closest stock cursor that reads as "hover for more info".
@@ -29,13 +122,65 @@ HoverInfoLabel::HoverInfoLabel(const QString& text, QWidget* parent)
 
 void HoverInfoLabel::setInfoText(const QString& html)
 {
+    infoHtml_ = html;
+    // Kept in sync even though the native tooltip never actually
+    // renders any more (event() below intercepts QEvent::ToolTip before
+    // QLabel's own handling gets a chance) - still what screen readers/
+    // anything else reading QWidget::toolTip() sees.
     setToolTip(html);
+}
+
+void HoverInfoLabel::setDefaultText(const QString& text)
+{
+    defaultText_ = text;
+}
+
+void HoverInfoLabel::setShowResetHint(bool show)
+{
+    showResetHint_ = show;
+}
+
+bool HoverInfoLabel::event(QEvent* event)
+{
+    if (event->type() == QEvent::ToolTip) {
+        if (!infoHtml_.isEmpty()) {
+            if (!popup_)
+                popup_ = new SettingInfoPopup(window());
+            popup_->setContent(title_, infoHtml_, defaultText_, showResetHint_);
+
+            QPoint pos = mapToGlobal(QPoint(0, height() + 4));
+            // Clamp to the screen this label is actually on, same idea
+            // as any other popup that can open near a screen edge - a
+            // 320px-wide panel opened from a row near the right edge of
+            // a narrow Settings window would otherwise run off-screen.
+            if (QScreen* screen = this->screen()) {
+                const QRect avail = screen->availableGeometry();
+                popup_->adjustSize();
+                pos.setX(qBound(avail.left(),
+                                pos.x(),
+                                avail.right() - popup_->width()));
+                pos.setY(qBound(avail.top(),
+                                pos.y(),
+                                avail.bottom() - popup_->height()));
+            }
+            popup_->move(pos);
+            popup_->show();
+        }
+        return true;
+    }
+    return QLabel::event(event);
+}
+
+void HoverInfoLabel::leaveEvent(QEvent* event)
+{
+    QLabel::leaveEvent(event);
+    if (popup_)
+        popup_->hide();
 }
 
 // ─── SettingRowBase ─────────────────────────────────────────────────────────
 
 SettingRowBase::SettingRowBase(const QString& label,
-                               const QString& infoText,
                                const QString& key,
                                QWidget* parent)
     : QWidget(parent)
@@ -48,7 +193,7 @@ SettingRowBase::SettingRowBase(const QString& label,
     // settings_window.cpp) - raw label, no "✎" changed-marker.
     setObjectName(label);
     hbox_->setContentsMargins(0, 4, 0, 4);
-    label_->setInfoText(infoText);
+    label_->setInfoText(familiar::setting_descriptions::forSettingsKey(key));
     hbox_->addWidget(label_);
     hbox_->addStretch(1);
 
@@ -91,14 +236,49 @@ void SettingRowBase::onRestoreDefaults()
     updateLabel();
 }
 
+QString SettingRowBase::defaultValueDisplayText() const
+{
+    return FamSettings().valueOrDefault(key_).toString();
+}
+
+void SettingRowBase::refreshInfoPopup()
+{
+    label_->setDefaultText(
+        tr("Default: %1").arg(defaultValueDisplayText()));
+    label_->setShowResetHint(true);
+}
+
+void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
+{
+    if (event->modifiers().testFlag(Qt::ControlModifier)) {
+        FamSettings settings;
+        // Unlike onRestoreDefaults() above (the page-wide button already
+        // cleared the whole JSON group before emitting
+        // SettingsEvents::restoreDefaults(), so that path only needs to
+        // resync the widget's displayed value) - this is the one place
+        // that actually removes just THIS field's stored override.
+        // FamSettings::remove() also fires its postSaveCallback with the
+        // resulting default, so real runtime effects (e.g.
+        // QImageReader::setAllocationLimit() for Maximum Image Size)
+        // re-apply immediately too, not just the display.
+        settings.remove(key_);
+        ignoreValueChanged_ = true;
+        setValue(settings.valueOrDefault(key_));
+        ignoreValueChanged_ = false;
+        updateLabel();
+        event->accept();
+        return;
+    }
+    QWidget::mouseDoubleClickEvent(event);
+}
+
 // ─── ComboSettingRow ────────────────────────────────────────────────────────
 
 ComboSettingRow::ComboSettingRow(const QString& label,
-                                 const QString& infoText,
                                  const QString& key,
                                  const QList<ComboOption>& options,
                                  QWidget* parent)
-    : SettingRowBase(label, infoText, key, parent)
+    : SettingRowBase(label, key, parent)
     , input_([&] {
         const auto& sp = familiar::settings_style::palette();
         FLOG_DEBUG(Ch::UI, "popupItemHover {}", sp.popupItemHover);
@@ -128,6 +308,11 @@ ComboSettingRow::ComboSettingRow(const QString& label,
                 if (index >= 0 && index < options_.size())
                     onValueChanged(options_[index].value);
             });
+
+    // options_ (used by defaultValueDisplayText() below) is fully set by
+    // now - see that method's own comment for why this can't happen from
+    // SettingRowBase's constructor instead.
+    refreshInfoPopup();
 }
 
 void ComboSettingRow::setValue(const QVariant& value)
@@ -141,6 +326,16 @@ void ComboSettingRow::setValue(const QVariant& value)
     }
 }
 
+QString ComboSettingRow::defaultValueDisplayText() const
+{
+    const QString def = FamSettings().valueOrDefault(key_).toString();
+    for (const ComboOption& opt : options_) {
+        if (opt.value == def)
+            return opt.label;
+    }
+    return def;
+}
+
 void ComboSettingRow::setControlEnabled(bool enabled)
 {
     input_->setEnabled(enabled);
@@ -149,10 +344,9 @@ void ComboSettingRow::setControlEnabled(bool enabled)
 // ─── CheckboxSettingRow ─────────────────────────────────────────────────────
 
 CheckboxSettingRow::CheckboxSettingRow(const QString& label,
-                                       const QString& infoText,
                                        const QString& key,
                                        QWidget* parent)
-    : SettingRowBase(label, infoText, key, parent)
+    : SettingRowBase(label, key, parent)
     , input_([&] {
           // FlatCheckBox (widgets/flat_checkbox.h) - hand-painted, not a
           // plain QCheckBox (QSS on a QCheckBox with no ::indicator rule
@@ -196,6 +390,8 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
                 onValueChanged(QVariant::fromValue(state));
                 emit toggled(state == Qt::Checked);
             });
+
+    refreshInfoPopup();
 }
 
 void CheckboxSettingRow::setValue(const QVariant& value)
@@ -208,6 +404,12 @@ QVariant CheckboxSettingRow::convertValueFromQt(const QVariant& value)
     return value.value<Qt::CheckState>() == Qt::Checked;
 }
 
+QString CheckboxSettingRow::defaultValueDisplayText() const
+{
+    return FamSettings().valueOrDefault(key_).toBool() ? tr("Checked")
+                                                        : tr("Unchecked");
+}
+
 void CheckboxSettingRow::setControlEnabled(bool enabled)
 {
     input_->setEnabled(enabled);
@@ -216,12 +418,11 @@ void CheckboxSettingRow::setControlEnabled(bool enabled)
 // ─── IntegerSettingRow ──────────────────────────────────────────────────────
 
 IntegerSettingRow::IntegerSettingRow(const QString& label,
-                                     const QString& infoText,
                                      const QString& key,
                                      int min,
                                      int max,
                                      QWidget* parent)
-    : SettingRowBase(label, infoText, key, parent)
+    : SettingRowBase(label, key, parent)
     , input_([&] {
           const auto& sp = familiar::settings_style::palette();
           return new FlatSpinBox(sp.chipBackground,
@@ -240,6 +441,8 @@ IntegerSettingRow::IntegerSettingRow(const QString& label,
     connect(input_, &QSpinBox::valueChanged, this, [this](int v) {
         onValueChanged(v);
     });
+
+    refreshInfoPopup();
 }
 
 void IntegerSettingRow::setValue(const QVariant& value)
@@ -256,7 +459,6 @@ void IntegerSettingRow::setControlEnabled(bool enabled)
 
 UndoHistorySizeRow::UndoHistorySizeRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Undo History Size"),
-                        QString::fromUtf8(kPlaceholderInfo),
                         QStringLiteral("Items/undo_history_size"),
                         0,
                         10000,
@@ -266,7 +468,6 @@ UndoHistorySizeRow::UndoHistorySizeRow(QWidget* parent)
 AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
     : ComboSettingRow(
           QStringLiteral("Auto Optimize Imported Images"),
-          QString::fromUtf8(kPlaceholderInfo),
           QStringLiteral("Items/auto_optimize_imported_images"),
           {
               {QStringLiteral("off"), QStringLiteral("Off")},
@@ -279,14 +480,12 @@ AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
 
 AutosaveEnabledRow::AutosaveEnabledRow(QWidget* parent)
     : CheckboxSettingRow(QStringLiteral("Enable Autosave"),
-                        QString::fromUtf8(kPlaceholderInfo),
                         QStringLiteral("Save/autosave_enabled"),
                         parent)
 {}
 
 AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Autosave Interval (seconds)"),
-                       QString::fromUtf8(kPlaceholderInfo),
                        QStringLiteral("Save/autosave_interval_seconds"),
                        1,
                        3600,
@@ -296,32 +495,24 @@ AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
 // ─── Concrete Images & Items-page rows ──────────────────────────────────────
 
 ArrangeGapRow::ArrangeGapRow(QWidget* parent)
-    : IntegerSettingRow(
-          QStringLiteral("Arrange Gap"),
-          QStringLiteral("The gap between images when using arrange actions."),
-          QStringLiteral("Items/arrange_gap"),
-          0,
-          200,
-          parent)
+    : IntegerSettingRow(QStringLiteral("Arrange Gap"),
+                        QStringLiteral("Items/arrange_gap"),
+                        0,
+                        200,
+                        parent)
 {}
 
 MaximumImageSizeRow::MaximumImageSizeRow(QWidget* parent)
-    : IntegerSettingRow(
-          QStringLiteral("Maximum Image Size (MB)"),
-          QStringLiteral(
-              "The maximum image size that can be loaded (in megabytes)."
-              " Set to 0 for no limitation."),
-          QStringLiteral("Items/image_allocation_limit"),
-          0,
-          1024,
-          parent)
+    : IntegerSettingRow(QStringLiteral("Maximum Image Size (MB)"),
+                        QStringLiteral("Items/image_allocation_limit"),
+                        0,
+                        1024,
+                        parent)
 {}
 
 ArrangeDefaultRow::ArrangeDefaultRow(QWidget* parent)
     : ComboSettingRow(
           QStringLiteral("Default Arrange Method"),
-          QStringLiteral(
-              "How images are arranged when inserted in batch."),
           QStringLiteral("Items/arrange_default"),
           {
               {QStringLiteral("optimal"), QStringLiteral("Optimal")},
