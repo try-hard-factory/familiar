@@ -22,6 +22,8 @@ struct Palette
     QColor navIdleBg;      // sidebar button, unselected
     QColor navHoverBg;     // sidebar button, unselected + hovered
     QColor navSelectedBg;  // sidebar button, selected
+    QColor popupBackground; // dropdown popup panel (FlatComboBox)
+    QColor popupItemHover;  // dropdown row under the cursor (FlatComboItemDelegate)
 };
 
 const Palette& palette();

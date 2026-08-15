@@ -5,7 +5,8 @@
 #include <widgets/flat_combobox.h>
 #include <widgets/flat_spinbox.h>
 #include <widgets/settings_style.h>
-
+#include "log/log.h"
+using namespace familiar::log;
 namespace {
 constexpr char CHANGED_SYMBOL[] = "✎";
 
@@ -99,10 +100,11 @@ ComboSettingRow::ComboSettingRow(const QString& label,
                                  QWidget* parent)
     : SettingRowBase(label, infoText, key, parent)
     , input_([&] {
-          const auto& sp = familiar::settings_style::palette();
+        const auto& sp = familiar::settings_style::palette();
+        FLOG_DEBUG(Ch::UI, "popupItemHover {}", sp.popupItemHover);
           return new FlatComboBox(sp.chipBackground,
                                   sp.text,
-                                  sp.chipBackground.darker(112),
+                                  sp.popupItemHover,
                                   sp.mutedText,
                                   this);
       }())

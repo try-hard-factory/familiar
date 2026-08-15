@@ -15,6 +15,8 @@ const Palette& palette()
         QColor(0xEC, 0xEC, 0xEC), // navIdleBg
         QColor(0xDD, 0xDD, 0xDD), // navHoverBg
         QColor(0xBD, 0xBD, 0xBD), // navSelectedBg
+        QColor(0xE3, 0xE3, 0xE3), // popupBackground
+        QColor(0xCB, 0xCB, 0xCB), // popupItemHover
     };
     return p;
 }
@@ -87,26 +89,26 @@ QString rootStyleSheet()
                           "  padding: 4px 10px;"
                           "  background: %6;"
                           "}"
-                          "QComboBox:hover { background: %7; }"
-                          // Just padding + no border/background of its
-                          // own - FlatComboBox::showPopup() styles the
-                          // actual popup frame (QComboBoxPrivateContainer,
-                          // a Qt-private class with no public accessor
-                          // from here) directly in code instead, so this
-                          // rule used to draw a second, redundant rounded
-                          // border nested a few px inside that one.
-                          // Row content (text color, hover/selected pill)
-                          // isn't styled here at all any more -
-                          // FlatComboItemDelegate (widgets/flat_combobox.h)
-                          // paints every row directly instead, after
-                          // ::item/the view's own "color:" both proved
-                          // unreliable for text specifically (items kept
-                          // coming out in a stray native link-blue no
-                          // matter which selector it was pinned on -
-                          // Max, by screenshot, more than once).
+                          "QComboBox:hover { background: %9; }"
+                          // No border of its own - the popup's real
+                          // OS-level window shape is still a plain
+                          // rectangle regardless of what's painted here,
+                          // and a QSS border-radius that doesn't match
+                          // that actual shape just draws a rounded line
+                          // with square window corners poking out past
+                          // it. Background only. Row content (text
+                          // color, hover/selected pill) isn't styled
+                          // here at all - FlatComboItemDelegate
+                          // (widgets/flat_combobox.h) paints every row
+                          // directly instead, after ::item/the view's
+                          // own "color:" both proved unreliable for text
+                          // specifically (items kept coming out in a
+                          // stray native link-blue no matter which
+                          // selector it was pinned on - Max, by
+                          // screenshot, more than once).
                           "QComboBox QAbstractItemView {"
                           "  border: none;"
-                          "  background: transparent;"
+                          "  background: %8;"
                           "  padding: 4px;"
                           "  outline: none;"
                           "}"
@@ -153,7 +155,9 @@ QString rootStyleSheet()
              p.accent.name(),
              p.navSelectedBg.name(),
              p.chipBackground.name(),
-             p.chipBackground.darker(112).name());
+             p.chipBackground.darker(112).name(),
+             p.popupBackground.name(),
+             p.popupItemHover.name());
 }
 
 QString sidebarButtonStyleSheet()

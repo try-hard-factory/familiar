@@ -60,8 +60,7 @@ public:
                 const QColor& itemHighlight,
                 QWidget* parent = nullptr);
 
-    // void showPopup() override;
-
+    void showPopup() override;
 protected:
     void paintEvent(QPaintEvent* event) override;
     void enterEvent(QEnterEvent* event) override;
