@@ -43,6 +43,60 @@ QString rootStyleSheet()
                           "  padding: 4px 8px;"
                           "}"
                           "QLineEdit:focus { border-color: %4; }"
+                          // Filled gray, not a white box with a border
+                          // line - same chipBackground language as the
+                          // shortcut chips/sidebar/buttons, not a
+                          // separate "form field" look of its own.
+                          // Deliberately NOT touching ::up-button/
+                          // ::down-button/::drop-down/::*-arrow here -
+                          // two rounds of trying (width/background,
+                          // then explicit ::up-arrow/::down-arrow too)
+                          // both left the buttons and their arrows
+                          // invisible outside hover (Max, by
+                          // screenshot). This QSS engine only seems to
+                          // draw those sub-controls from an explicit
+                          // "image:" (an external asset, against this
+                          // app's own convention of drawing icons in
+                          // code) - so the buttons are left fully
+                          // native/unstyled instead. Trade-off: visible
+                          // and functional beats pixel-matched but
+                          // invisible; a real custom-painted spinbox
+                          // (same idea as FlatCheckBox) is the option if
+                          // the native chrome still looks wrong here.
+                          "QSpinBox {"
+                          "  border: none;"
+                          "  border-radius: 6px;"
+                          "  padding: 4px 8px;"
+                          "  background: %6;"
+                          "  selection-background-color: %4;"
+                          "}"
+                          "QSpinBox:focus { background: %7; }"
+                          "QComboBox {"
+                          "  border: none;"
+                          "  border-radius: 6px;"
+                          "  padding: 4px 10px;"
+                          "  background: %6;"
+                          "}"
+                          "QComboBox:hover { background: %7; }"
+                          "QComboBox QAbstractItemView {"
+                          "  border: 1px solid %3;"
+                          "  border-radius: 6px;"
+                          "  padding: 4px;"
+                          "  background: %1;"
+                          "  outline: none;"
+                          "}"
+                          "QComboBox QAbstractItemView::item {"
+                          "  padding: 6px 10px;"
+                          "  border-radius: 4px;"
+                          "  min-height: 20px;"
+                          "}"
+                          "QComboBox QAbstractItemView::item:hover {"
+                          "  background: %6;"
+                          "}"
+                          "QComboBox QAbstractItemView::item:selected {"
+                          "  background: %4;"
+                          "  color: white;"
+                          "}"
                           "QGroupBox {"
                           "  border: 1px solid %3;"
                           "  border-radius: 6px;"
@@ -84,7 +138,9 @@ QString rootStyleSheet()
              p.text.name(),
              p.border.name(),
              p.accent.name(),
-             p.navSelectedBg.name());
+             p.navSelectedBg.name(),
+             p.chipBackground.name(),
+             p.chipBackground.darker(112).name());
 }
 
 QString sidebarButtonStyleSheet()

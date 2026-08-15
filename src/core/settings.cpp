@@ -123,11 +123,6 @@ QString keySubkey(const QString& key)
 const QMap<QString, FieldConfig>& FamSettings::fields()
 {
     static const QMap<QString, FieldConfig> map = {
-        {"Save/confirm_close_unsaved",
-         {
-             /*default*/ true,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toBool(); },
-         }},
         {"Items/image_storage_format",
          {
              /*default*/ QString("best"),
@@ -170,6 +165,27 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              /*postSaveCallback*/
              [](const QVariant& v) {
                  QImageReader::setAllocationLimit(v.toInt());
+             },
+         }},
+        {"Items/undo_history_size",
+         {
+             // Matches the hardcoded undoStack_->setUndoLimit(100) this
+             // is meant to replace (canvasview.cpp) - not wired up to it
+             // yet, UI only for now.
+             /*default*/ 100,
+             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*validate*/ [](const QVariant& v) { return v.toInt() >= 0; },
+         }},
+        {"Items/auto_optimize_imported_images",
+         {
+             /*default*/ QString("warn"),
+             /*cast*/ {},
+             /*validate*/
+             [](const QVariant& v) {
+                 const QString s = v.toString();
+                 return s == QLatin1String("off") || s == QLatin1String("warn")
+                        || s == QLatin1String("optimize_large")
+                        || s == QLatin1String("optimize_all");
              },
          }},
         {"Save/autosave_enabled",
