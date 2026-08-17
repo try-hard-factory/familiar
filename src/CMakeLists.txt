@@ -202,6 +202,20 @@ else()
     )
 endif()
 
+# GoogleTest suite lives inside the app binary itself (main.cpp's "-t"
+# handling: ::testing::InitGoogleTest + RUN_ALL_TESTS instead of the
+# normal GUI startup), not a separate test executable - linked
+# unconditionally, every build mode gets it, no BUILD_TESTING option to
+# thread through both CMake and an #ifdef in main.cpp for what's really
+# one fixed choice. See the top-level CMakeLists.txt for the
+# FetchContent that provides GTest::gtest/GTest::gmock.
+# GTest::gtest_main/gmock_main deliberately NOT linked - those provide
+# their own main(), which would collide with familiar's own.
+target_sources(familiar PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/core/commandline_args_test.cpp
+)
+target_link_libraries(familiar PRIVATE GTest::gtest GTest::gmock)
+
 
 
 if (WIN32)

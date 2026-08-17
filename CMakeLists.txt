@@ -53,6 +53,27 @@ add_library(project_warnings INTERFACE)
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# GoogleTest - linked into `familiar` unconditionally (see
+# src/CMakeLists.txt + main.cpp's "-t" handling, which runs the suite in
+# place of the normal GUI startup), not gated behind a build option -
+# every build mode gets it. After CMAKE_CXX_STANDARD above, not before -
+# so googletest's own CMakeLists.txt (add_subdirectory()'d synchronously
+# by FetchContent_MakeAvailable() below) configures at the same C++
+# standard as the rest of this project instead of whatever the
+# compiler's bare default happens to be.
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.18.0
+)
+# Matches whatever CRT familiar itself links against on Windows; a
+# no-op on Linux/macOS. Set before FetchContent_MakeAvailable() so it
+# takes before googletest's own CMakeLists.txt reads it.
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/quill)
 
 # miniz: zip read/write for the .fml project file format (see
