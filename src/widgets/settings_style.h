@@ -66,4 +66,13 @@ QString outlineButtonStyleSheet();
 // than the earlier white-outline design.
 QString filledButtonStyleSheet();
 
+// QSlider chrome (ui/colors_widget.cpp's Master opacity slider): thin
+// rounded groove/fill + a round navSelectedBg-gray handle (not accent -
+// see this function's own .cpp comment) - same explicit
+// ::groove/::sub-page/::handle sub-control rules ChangeOpacityDialog's
+// own slider QSS uses (widgets/dialogs.h), not a bare "QSlider { color:
+// ... }" rule (kills native rendering with no sub-control targeted, per
+// this app's established QSS-subcontrol lesson).
+QString sliderStyleSheet();
+
 } // namespace familiar::settings_style
