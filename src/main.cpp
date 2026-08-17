@@ -10,6 +10,8 @@
 #include "log/log.h"
 using namespace familiar::log;
 
+#include <gtest/gtest.h>
+
 namespace {
 
 // Single-instance guard. QSharedMemory is the
@@ -51,6 +53,18 @@ int main(int argc, char* argv[])
     qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
 
     QApplication a(argc, argv);
+
+    // Checked here, before anything below sets up real app state
+    // (single-instance lock, SettingsHandler, MainWindow) - "familiar
+    // -t" runs the GoogleTest suite in place of the app proper and
+    // exits, it doesn't launch a window alongside it.
+    for (int i = 1; i < argc; ++i) {
+        if (QString::fromLocal8Bit(argv[i]) == QStringLiteral("-t")) {
+            ::testing::InitGoogleTest(&argc, argv);
+            return RUN_ALL_TESTS();
+        }
+    }
+
     // Needed for a sane default settings file location
     // (QStandardPaths::AppConfigLocation, see
     // SettingsHandler::SettingsHandler() in core/settingshandler.cpp) -
