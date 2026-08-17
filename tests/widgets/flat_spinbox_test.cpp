@@ -22,7 +22,16 @@
 
 TEST(FlatSpinBoxTest, ArrowKeysStepValueAndEmitValueChanged)
 {
-    FlatSpinBox box(QColor(Qt::white), QColor(Qt::black), QColor(Qt::lightGray));
+    // Brace-init, not FlatSpinBox box(QColor(Qt::white), ...) - MSVC
+    // misparses that as a function DECLARATION named `box` (three
+    // consecutive same-type functional-cast arguments trip its most-
+    // vexing-parse handling, even though Qt::white being a qualified
+    // name should rule that reading out per the standard - confirmed via
+    // a real CI failure: "error C2751: 'Qt::white': the name of a
+    // function parameter cannot be qualified"). GCC/Clang never saw the
+    // ambiguity. Braces are never ambiguous with a declaration on any
+    // compiler.
+    FlatSpinBox box{QColor(Qt::white), QColor(Qt::black), QColor(Qt::lightGray)};
     box.setRange(0, 10);
     box.setValue(5);
     box.resize(80, 24);
@@ -43,7 +52,9 @@ TEST(FlatSpinBoxTest, ArrowKeysStepValueAndEmitValueChanged)
 
 TEST(FlatSpinBoxTest, ClampsToRange)
 {
-    FlatSpinBox box(QColor(Qt::white), QColor(Qt::black), QColor(Qt::lightGray));
+    // Brace-init - see the other TEST() above for why plain parens break
+    // on MSVC here.
+    FlatSpinBox box{QColor(Qt::white), QColor(Qt::black), QColor(Qt::lightGray)};
     box.setRange(0, 3);
     box.setValue(3);
     box.resize(80, 24);
