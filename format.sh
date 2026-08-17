@@ -3,10 +3,11 @@
 #
 # Usage: ./format.sh [--check]
 #
-# Recursively formats every .cpp/.h file under src/ in place, using the
-# .clang-format config at the repo root (clang-format finds it by walking
-# up from each file, but -style=file makes that explicit rather than
-# silently falling back to some default if the config ever goes missing).
+# Recursively formats every .cpp/.h file under src/ and tests/ in place,
+# using the .clang-format config at the repo root (clang-format finds it
+# by walking up from each file, but -style=file makes that explicit
+# rather than silently falling back to some default if the config ever
+# goes missing).
 #
 # Pass --check to run in dry-run mode instead: reports which files are
 # not already formatted (via clang-format's --dry-run/--Werror) without
@@ -22,10 +23,10 @@ if [ "${1:-}" = "--check" ]; then
     CHECK=1
 fi
 
-mapfile -d '' -t FILES < <(find src -type f \( -name '*.cpp' -o -name '*.h' \) -print0)
+mapfile -d '' -t FILES < <(find src tests -type f \( -name '*.cpp' -o -name '*.h' \) -print0)
 
 if [ "${#FILES[@]}" -eq 0 ]; then
-    echo "No .cpp/.h files found under src/." >&2
+    echo "No .cpp/.h files found under src/ or tests/." >&2
     exit 1
 fi
 

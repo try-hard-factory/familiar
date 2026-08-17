@@ -41,6 +41,10 @@ BreakConstructorInitializers: BeforeComma
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
 ColumnLimit:    80
+# Always wraps a single-statement if/for/while/... body in { } instead of
+# leaving it braceless on the next line - clang-format 15+ only
+# (confirmed available: installed clang-format is 21).
+InsertBraces:    true
 CommentPragmas:  '^ IWYU pragma:'
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
