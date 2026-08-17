@@ -90,24 +90,27 @@ void remove(const QUuid& id)
 void clear()
 {
     QDir dir(recoveryDir());
-    if (dir.exists())
+    if (dir.exists()) {
         dir.removeRecursively();
+    }
 }
 
 QList<Entry> scan()
 {
     QList<Entry> entries;
     const QDir dir(recoveryDir());
-    if (!dir.exists())
+    if (!dir.exists()) {
         return entries;
+    }
 
     const QStringList fmlFiles = dir.entryList({QStringLiteral("*.fml")},
                                                QDir::Files);
     for (const QString& fmlFile : fmlFiles) {
         const QUuid id = QUuid::fromString(
             QFileInfo(fmlFile).completeBaseName());
-        if (id.isNull())
+        if (id.isNull()) {
             continue;
+        }
 
         Entry entry;
         entry.id = id;

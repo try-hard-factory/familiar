@@ -23,16 +23,18 @@ TEST(FamSettingsTest, ValueOrDefaultFallsBackWhenUnset)
 {
     FamSettings settings;
     settings.remove(QStringLiteral("Items/arrange_gap"));
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap")).toInt(),
-             0);
+    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                  .toInt(),
+              0);
 }
 
 TEST(FamSettingsTest, SetValueRoundTrips)
 {
     FamSettings settings;
     settings.setValue(QStringLiteral("Items/arrange_gap"), 50);
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap")).toInt(),
-             50);
+    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                  .toInt(),
+              50);
     settings.remove(QStringLiteral("Items/arrange_gap"));
 }
 
@@ -46,8 +48,9 @@ TEST(FamSettingsTest, OutOfRangeValueFallsBackToDefaultOnRead)
     // yields the field's default instead of the out-of-range value.
     FamSettings settings;
     settings.setValue(QStringLiteral("Items/arrange_gap"), 9999);
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap")).toInt(),
-             0);
+    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                  .toInt(),
+              0);
     settings.remove(QStringLiteral("Items/arrange_gap"));
 }
 
@@ -69,12 +72,14 @@ TEST(FamSettingsTest, RestoreDefaultsClearsItemsAndSaveGroups)
 
     settings.restoreDefaults();
 
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap")).toInt(),
-             0);
+    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+                  .toInt(),
+              0);
     EXPECT_EQ(settings
-                 .valueOrDefault(QStringLiteral("Save/autosave_interval_seconds"))
-                 .toInt(),
-             5);
+                  .valueOrDefault(
+                      QStringLiteral("Save/autosave_interval_seconds"))
+                  .toInt(),
+              5);
 }
 
 TEST(FamSettingsTest, UpdateRecentFilesDedupsPrependsAndCaps)
@@ -86,8 +91,9 @@ TEST(FamSettingsTest, UpdateRecentFilesDedupsPrependsAndCaps)
     // QFileInfo::absoluteFilePath(), which is a no-op for these, so the
     // list this test reads back matches what it wrote verbatim instead
     // of depending on the current working directory.
-    for (int i = 0; i < 12; ++i)
+    for (int i = 0; i < 12; ++i) {
         settings.updateRecentFiles(QStringLiteral("/tmp/file_%1.fml").arg(i));
+    }
 
     // Re-adding an already-present file moves it to the front instead of
     // appearing twice.

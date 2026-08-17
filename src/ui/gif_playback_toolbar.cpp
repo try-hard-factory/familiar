@@ -203,16 +203,19 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     outerLay_->addWidget(filmstrip_);
 
     connect(prevBtn_, &QToolButton::clicked, this, [this] {
-        if (item_)
+        if (item_) {
             item_->step_frame(-1);
+        }
     });
     connect(nextBtn_, &QToolButton::clicked, this, [this] {
-        if (item_)
+        if (item_) {
             item_->step_frame(1);
+        }
     });
     connect(playPauseBtn_, &QToolButton::clicked, this, [this] {
-        if (item_)
+        if (item_) {
             item_->toggle_play_pause();
+        }
         updatePlayPauseIcon_();
     });
     connect(speedBtn_,
@@ -251,14 +254,16 @@ void GifPlaybackToolbar::onFrameChanged_(int frame)
 {
     Q_UNUSED(frame);
     updatePlayPauseIcon_();
-    if (filmstrip_->isVisible())
+    if (filmstrip_->isVisible()) {
         rebuildFilmstrip_(); // cheap enough - just re-highlights the current thumbnail
+    }
 }
 
 void GifPlaybackToolbar::updatePlayPauseIcon_()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     const qreal dpr = devicePixelRatioF();
     playPauseBtn_->setIcon(item_->is_playing()
                                ? makePauseIcon(iconGlyphColor_, dpr)
@@ -267,8 +272,9 @@ void GifPlaybackToolbar::updatePlayPauseIcon_()
 
 void GifPlaybackToolbar::updateSpeedLabel_()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     const qreal speed = item_->speed_percent() / 100.0;
     QString text = QString::number(speed, 'g', 3);
     speedBtn_->setText(QStringLiteral("x%1").arg(text));
@@ -276,8 +282,9 @@ void GifPlaybackToolbar::updateSpeedLabel_()
 
 void GifPlaybackToolbar::showSpeedPopup_()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
 
     // Reuse an already-open popup instead of stacking a new one on top of
     // it - clicking the speed button repeatedly without picking a speed
@@ -342,8 +349,9 @@ void GifPlaybackToolbar::showSpeedPopup_()
         btn->setFocusPolicy(Qt::NoFocus);
         grid->addWidget(btn, i / 4, i % 4);
         connect(btn, &QToolButton::clicked, this, [this, percent, popup] {
-            if (item_)
+            if (item_) {
                 item_->set_speed_percent(percent);
+            }
             updateSpeedLabel_();
             popup->close();
         });
@@ -375,8 +383,9 @@ void GifPlaybackToolbar::toggleFilmstrip_()
 
 void GifPlaybackToolbar::rebuildFilmstrip_()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
 
     QLayoutItem* child;
     while ((child = filmstripLay_->takeAt(0)) != nullptr) {
@@ -397,8 +406,9 @@ void GifPlaybackToolbar::rebuildFilmstrip_()
         btn->setAutoRaise(true);
         btn->setFocusPolicy(Qt::NoFocus);
         connect(btn, &QToolButton::clicked, this, [this, i] {
-            if (item_)
+            if (item_) {
                 item_->jump_to_frame(i);
+            }
         });
         filmstripLay_->addWidget(btn);
     }

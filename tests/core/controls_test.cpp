@@ -61,10 +61,10 @@ TEST(BindingTest, DisplayTextCombinesPartsWithPlusSeparator)
 
     Binding mouseWithModifiers;
     mouseWithModifiers.mouseButton = QStringLiteral("Left");
-    mouseWithModifiers.mouseModifiers
-        = {QStringLiteral("Ctrl"), QStringLiteral("Alt")};
+    mouseWithModifiers.mouseModifiers = {QStringLiteral("Ctrl"),
+                                         QStringLiteral("Alt")};
     EXPECT_EQ(mouseWithModifiers.displayText(),
-             QStringLiteral("Left MB + Ctrl+Alt"));
+              QStringLiteral("Left MB + Ctrl+Alt"));
 
     // Wheel binding: no button/key, but a real (non-"No Modifier")
     // modifier requirement - still needs some text so it doesn't read as
@@ -93,7 +93,7 @@ TEST(ModifiersToQtTest, CombinesFlagsFromNames)
 TEST(ModifiersToQtTest, UnknownNameIsIgnored)
 {
     EXPECT_EQ(MouseConfigBase::modifiersToQt({QStringLiteral("Bogus")}),
-             Qt::NoModifier);
+              Qt::NoModifier);
 }
 
 TEST(ModifiersToQtTest, EmptyListIsNoModifier)
@@ -124,7 +124,6 @@ TEST(KeyEventToSequenceStringTest, NormalKeyUsesQKeySequenceFormat)
     // not whatever platform-specific text QKeySequence happens to
     // render ("Ctrl+S" vs "⌘S", ...).
     QKeyEvent ctrlS(QEvent::KeyPress, Qt::Key_S, Qt::ControlModifier);
-    const QString expected
-        = QKeySequence(ctrlS.keyCombination()).toString();
+    const QString expected = QKeySequence(ctrlS.keyCombination()).toString();
     EXPECT_EQ(keyEventToSequenceString(&ctrlS), expected);
 }

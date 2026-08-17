@@ -110,8 +110,9 @@ void SvPicker::mousePressEvent(QMouseEvent* event)
 
 void SvPicker::mouseMoveEvent(QMouseEvent* event)
 {
-    if (event->buttons() & Qt::LeftButton)
+    if (event->buttons() & Qt::LeftButton) {
         pick_(event->pos());
+    }
 }
 
 // ============================================================================
@@ -140,8 +141,9 @@ void HueSlider::paintEvent(QPaintEvent* event)
     QPainterPath track;
     track.addRoundedRect(rect(), height() / 2.0, height() / 2.0);
     QLinearGradient grad(0, 0, width(), 0);
-    for (int i = 0; i <= 6; ++i)
+    for (int i = 0; i <= 6; ++i) {
         grad.setColorAt(i / 6.0, QColor::fromHsv((i * 60) % 360, 255, 255));
+    }
     p.fillPath(track, grad);
 
     const qreal hx = hue_ / 359.0 * width();
@@ -165,8 +167,9 @@ void HueSlider::mousePressEvent(QMouseEvent* event)
 
 void HueSlider::mouseMoveEvent(QMouseEvent* event)
 {
-    if (event->buttons() & Qt::LeftButton)
+    if (event->buttons() & Qt::LeftButton) {
         pick_(event->pos());
+    }
 }
 
 // ============================================================================
@@ -234,8 +237,9 @@ void AlphaSlider::mousePressEvent(QMouseEvent* event)
 
 void AlphaSlider::mouseMoveEvent(QMouseEvent* event)
 {
-    if (event->buttons() & Qt::LeftButton)
+    if (event->buttons() & Qt::LeftButton) {
         pick_(event->pos());
+    }
 }
 
 // ============================================================================
@@ -261,8 +265,9 @@ SwatchRow::SwatchRow(bool withNone, const QColor& accent, QWidget* parent)
         QColor(0xc4, 0x3d, 0xc4),
         QColor(0x3d, 0xa8, 0xd8),
     };
-    if (withNone_)
+    if (withNone_) {
         colors_.prepend(QColor(0, 0, 0, 0));
+    }
 
     setFixedHeight(kSwatchSize);
 }
@@ -283,8 +288,9 @@ void SwatchRow::setCurrent(const QColor& color)
 QRectF SwatchRow::cellRect_(int index) const
 {
     const int count = colors_.size();
-    if (count == 0)
+    if (count == 0) {
         return QRectF();
+    }
     const qreal cellW = width() / qreal(count);
     const qreal size = qMin(cellW - kSwatchSpacing, qreal(height()));
     const qreal x = index * cellW + (cellW - size) / 2.0;
@@ -295,11 +301,13 @@ QRectF SwatchRow::cellRect_(int index) const
 int SwatchRow::swatchAt_(const QPoint& pos) const
 {
     const int count = colors_.size();
-    if (count == 0)
+    if (count == 0) {
         return -1;
+    }
     const int idx = int(pos.x() / (width() / qreal(count)));
-    if (idx < 0 || idx >= count)
+    if (idx < 0 || idx >= count) {
         return -1;
+    }
     return cellRect_(idx).contains(pos) ? idx : -1;
 }
 
@@ -344,8 +352,9 @@ void SwatchRow::paintEvent(QPaintEvent* event)
 void SwatchRow::mousePressEvent(QMouseEvent* event)
 {
     const int idx = swatchAt_(event->pos());
-    if (idx >= 0)
+    if (idx >= 0) {
         emit swatchPicked(colors_[idx]);
+    }
 }
 
 // ============================================================================
@@ -359,8 +368,9 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     , current_(initial.isValid() ? initial : Qt::black)
     , withAlpha_(withAlpha)
 {
-    if (!withAlpha_)
+    if (!withAlpha_) {
         current_.setAlpha(255);
+    }
 
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground, false);
@@ -487,8 +497,9 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
         // string parsing needs it, so it's added back here rather than
         // shown to the user.
         QColor c(QStringLiteral("#") + hexEdit_->text());
-        if (!c.isValid())
+        if (!c.isValid()) {
             return;
+        }
         c.setAlpha(current_.alpha());
         setColor_(c, hexEdit_);
     });
@@ -496,16 +507,18 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
         connect(percentEdit_, &QLineEdit::editingFinished, this, [this] {
             bool ok = false;
             const int pct = qBound(0, percentEdit_->text().toInt(&ok), 100);
-            if (!ok)
+            if (!ok) {
                 return;
+            }
             QColor c = current_;
             c.setAlpha(qRound(pct * 255.0 / 100.0));
             setColor_(c, percentEdit_);
         });
     }
     connect(swatchRow_, &SwatchRow::swatchPicked, this, [this](QColor c) {
-        if (!withAlpha_)
+        if (!withAlpha_) {
             c.setAlpha(255);
+        }
         setColor_(c, swatchRow_);
     });
 
@@ -543,10 +556,12 @@ void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
     // back up doesn't silently reset a chosen hue.
     const int effectiveHue = h < 0 ? hueSlider_->hue() : h;
 
-    if (source != hueSlider_)
+    if (source != hueSlider_) {
         hueSlider_->setHue(effectiveHue);
-    if (source != svPicker_)
+    }
+    if (source != svPicker_) {
         svPicker_->setSv(s / 255.0, v / 255.0);
+    }
     // Always resync, regardless of source - setHue() just repaints, it
     // doesn't emit anything, so this can't cause a feedback loop, and
     // the SV square's gradient needs the current hue to render at all.
@@ -554,15 +569,18 @@ void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
 
     if (alphaSlider_) {
         alphaSlider_->setRgb(color);
-        if (source != alphaSlider_)
+        if (source != alphaSlider_) {
             alphaSlider_->setAlpha(color.alpha());
+        }
     }
-    if (source != hexEdit_)
+    if (source != hexEdit_) {
         hexEdit_->setText(color.name(QColor::HexRgb).mid(1));
-    if (percentEdit_ && source != percentEdit_)
+    }
+    if (percentEdit_ && source != percentEdit_) {
         percentEdit_->setText(
             QString::number(qRound(color.alpha() * 100.0 / 255.0))
             + QStringLiteral("%"));
+    }
 
     swatchRow_->setCurrent(color);
 
@@ -604,7 +622,8 @@ QColor showColorPickerDialog(QWidget* parent,
                              bool withAlpha)
 {
     ColorPickerDialog dlg(parent, initial, title, withAlpha);
-    if (dlg.exec() != QDialog::Accepted)
+    if (dlg.exec() != QDialog::Accepted) {
         return QColor();
+    }
     return dlg.selectedColor();
 }

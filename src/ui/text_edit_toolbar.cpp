@@ -244,8 +244,9 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
                                     tr("Text highlight color"),
                                     false);
     fillColorBtn_ = makeButton(QString(), tr("Note fill color"), false);
-    for (QToolButton* b : {textColorBtn_, highlightColorBtn_, fillColorBtn_})
+    for (QToolButton* b : {textColorBtn_, highlightColorBtn_, fillColorBtn_}) {
         b->setIconSize(QSize(kIconSize, kIconSize));
+    }
 
     lay->addWidget(makeSeparator(this));
 
@@ -272,16 +273,19 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
 
     bulletListBtn_ = makeButton(QString(), tr("Bulleted list"), true);
     numberedListBtn_ = makeButton(QString(), tr("Numbered list"), true);
-    for (QToolButton* b : {bulletListBtn_, numberedListBtn_})
+    for (QToolButton* b : {bulletListBtn_, numberedListBtn_}) {
         b->setIconSize(QSize(kIconSize, kIconSize));
+    }
 
     lay->addWidget(makeSeparator(this));
 
     sizeBox_ = new QComboBox(this);
     sizeBox_->setEditable(true);
     sizeBox_->setInsertPolicy(QComboBox::NoInsert);
-    for (int s : {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72})
+    for (int s :
+         {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72}) {
         sizeBox_->addItem(QString::number(s));
+    }
     sizeBox_->setToolTip(tr("Font size"));
     sizeBox_->setFixedWidth(sizeBox_->fontMetrics().horizontalAdvance("000")
                             + 30);
@@ -301,13 +305,15 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     autosizeBtn_->setIconSize(QSize(kIconSize, kIconSize));
 
     connect(autosizeBtn_, &QToolButton::clicked, this, [this] {
-        if (item_)
+        if (item_) {
             item_->reset_manual_size();
+        }
     });
 
     connect(textColorBtn_, &QToolButton::clicked, this, [this] {
-        if (!item_)
+        if (!item_) {
             return;
+        }
         const QColor original
             = item_->textCursor().charFormat().foreground().color();
         auto applyForeground = [this](const QColor& c) {
@@ -325,18 +331,21 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
                 &ColorPickerDialog::colorChanged,
                 this,
                 applyForeground);
-        if (dialog.exec() != QDialog::Accepted)
+        if (dialog.exec() != QDialog::Accepted) {
             applyForeground(original);
+        }
     });
 
     connect(highlightColorBtn_, &QToolButton::clicked, this, [this] {
-        if (!item_)
+        if (!item_) {
             return;
+        }
         const QColor original
             = item_->textCursor().charFormat().background().color();
         QColor initial = original;
-        if (!initial.isValid())
+        if (!initial.isValid()) {
             initial = Qt::yellow; // typical highlighter default
+        }
         // Default the alpha slider to fully opaque - a transparent
         // starting point (e.g. an unset highlight, alpha 0) makes the
         // newly picked hue invisible until the user separately remembers
@@ -356,8 +365,9 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
                 &ColorPickerDialog::colorChanged,
                 this,
                 applyBackground);
-        if (dialog.exec() != QDialog::Accepted)
+        if (dialog.exec() != QDialog::Accepted) {
             applyBackground(original);
+        }
     });
 
     connect(fillColorBtn_, &QToolButton::clicked, this, [this] {
@@ -428,8 +438,9 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     auto applySize = [this](const QString& text) {
         bool ok = false;
         const qreal size = text.toDouble(&ok);
-        if (!ok || size <= 0)
+        if (!ok || size <= 0) {
             return;
+        }
         QTextCharFormat format;
         format.setFontPointSize(size);
         applyCharFormat(format);
@@ -477,20 +488,23 @@ void TextEditToolbar::attach(TextItem* item)
 
 void TextEditToolbar::applyCharFormat(const QTextCharFormat& format)
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     QTextCursor cursor = item_->textCursor();
     // No selection -> the whole note. Predictable, and matches how a
     // one-line note is usually formatted; select a range for less.
-    if (!cursor.hasSelection())
+    if (!cursor.hasSelection()) {
         cursor.select(QTextCursor::Document);
+    }
     cursor.mergeCharFormat(format);
 }
 
 void TextEditToolbar::applyLink(const QString& href)
 {
-    if (!item_ || href.isEmpty())
+    if (!item_ || href.isEmpty()) {
         return;
+    }
     QTextCharFormat format;
     format.setAnchor(true);
     format.setAnchorHref(href);
@@ -506,8 +520,9 @@ void TextEditToolbar::applyLink(const QString& href)
     // (like typing normally would), not preserved-and-wrapped.
     QTextCursor cursor = item_->textCursor();
     cursor.beginEditBlock();
-    if (cursor.hasSelection())
+    if (cursor.hasSelection()) {
         cursor.removeSelectedText();
+    }
     cursor.insertText(href, format);
     cursor.endEditBlock();
     // insertText() advanced this local cursor copy, but the item's own
@@ -519,8 +534,9 @@ void TextEditToolbar::applyLink(const QString& href)
 
 void TextEditToolbar::showLinkPopup()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
 
     // Qt::Tool, not Qt::Popup: a Popup auto-closes (and, with
     // WA_DeleteOnClose below, gets destroyed) the moment it loses
@@ -581,8 +597,9 @@ void TextEditToolbar::showLinkPopup()
     // Editing an existing link (cursor already inside one) starts from
     // its current target instead of empty.
     const QString existingHref = item_->textCursor().charFormat().anchorHref();
-    if (!existingHref.isEmpty())
+    if (!existingHref.isEmpty()) {
         edit->setText(existingHref);
+    }
     lay->addWidget(edit);
 
     auto* applyBtn = new QToolButton(popup);
@@ -594,8 +611,9 @@ void TextEditToolbar::showLinkPopup()
     connect(browseBtn, &QToolButton::clicked, popup, [popup, edit] {
         const QString file = showOpenFileDialog(popup,
                                                 tr("Select a file to link to"));
-        if (!file.isEmpty())
+        if (!file.isEmpty()) {
             edit->setText(QUrl::fromLocalFile(file).toString());
+        }
     });
 
     connect(applyBtn, &QToolButton::clicked, this, [this, edit, popup] {
@@ -617,8 +635,9 @@ void TextEditToolbar::showLinkPopup()
 
 void TextEditToolbar::toggleListStyle(int style)
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     const auto wanted = static_cast<QTextListFormat::Style>(style);
     QTextCursor cursor = item_->textCursor();
 
@@ -682,8 +701,9 @@ void TextEditToolbar::toggleListStyle(int style)
          block.isValid();
          block = block.next()) {
         blocks.append(block);
-        if (block == endBlock)
+        if (block == endBlock) {
             break;
+        }
     }
 
     const bool anyListed
@@ -715,8 +735,9 @@ void TextEditToolbar::toggleListStyle(int style)
             QTextCursor blockCursor(block);
             QTextList* list = blockCursor.currentList();
             if (turningOff) {
-                if (list && list->format().style() == wanted)
+                if (list && list->format().style() == wanted) {
                     detachFromList(list, block);
+                }
             } else if (list) {
                 QTextListFormat fmt = list->format();
                 fmt.setStyle(wanted);
@@ -733,8 +754,9 @@ void TextEditToolbar::toggleListStyle(int style)
 
 void TextEditToolbar::syncFromCursor()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     const QTextCharFormat format = item_->textCursor().charFormat();
 
     {
@@ -755,8 +777,9 @@ void TextEditToolbar::syncFromCursor()
     {
         QSignalBlocker b(sizeBox_);
         qreal size = format.fontPointSize();
-        if (size <= 0)
+        if (size <= 0) {
             size = item_->font().pointSizeF(); // unset -> item default
+        }
         sizeBox_->setCurrentText(QString::number(size));
     }
     {
@@ -769,14 +792,16 @@ void TextEditToolbar::syncFromCursor()
 
 void TextEditToolbar::updateColorButtonIcons()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     const qreal dpr = devicePixelRatioF();
     const QTextCharFormat format = item_->textCursor().charFormat();
 
     QColor textC = format.foreground().color();
-    if (!textC.isValid())
+    if (!textC.isValid()) {
         textC = item_->defaultTextColor();
+    }
     textColorBtn_->setIcon(
         makeColorGlyphIcon(QStringLiteral("A"), textC, iconGlyphColor_, dpr));
 

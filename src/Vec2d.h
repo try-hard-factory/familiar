@@ -106,8 +106,9 @@ public:
 
     Vec2d& normalize()
     {
-        if (length() == 0)
+        if (length() == 0) {
             return *this;
+        }
         *this *= (1.0 / length());
         return *this;
     }

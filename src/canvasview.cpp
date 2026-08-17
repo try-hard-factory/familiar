@@ -253,8 +253,9 @@ void CanvasView::on_selection_changed()
     // mode" signal - selecting the item is enough.
     GifItem* gifItem = nullptr;
     QList<QGraphicsItem*> selected = scene_->selectedItems(true);
-    if (selected.size() == 1)
+    if (selected.size() == 1) {
         gifItem = dynamic_cast<GifItem*>(selected.first());
+    }
 
     gifToolbar_->attach(gifItem);
     if (gifItem) {
@@ -267,8 +268,9 @@ void CanvasView::on_selection_changed()
 
     // Group toolbar - same "single selected item is enough" shape.
     GroupItem* groupItem = nullptr;
-    if (selected.size() == 1)
+    if (selected.size() == 1) {
         groupItem = dynamic_cast<GroupItem*>(selected.first());
+    }
 
     groupToolbar_->attach(groupItem);
     if (groupItem) {
@@ -287,14 +289,16 @@ void CanvasView::on_context_menu(const QPoint& point)
 
 void CanvasView::on_cursor_changed(QCursor cursor)
 {
-    if (activeMode_ == ModeNone)
+    if (activeMode_ == ModeNone) {
         viewport()->setCursor(cursor);
+    }
 }
 
 void CanvasView::on_cursor_cleared()
 {
-    if (activeMode_ == ModeNone)
+    if (activeMode_ == ModeNone) {
         viewport()->unsetCursor();
+    }
 }
 
 void CanvasView::on_undo_clean_changed(bool clean)
@@ -309,12 +313,15 @@ void CanvasView::settingsChangedSlot()
     canvasColor_ = colorPreset[EPresetsColorIdx::kCanvasColor];
     borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
     currentOpacity_ = settings->getCurrentOpacity();
-    if (textToolbar_)
+    if (textToolbar_) {
         textToolbar_->restyleFromPreset();
-    if (gifToolbar_)
+    }
+    if (gifToolbar_) {
         gifToolbar_->restyleFromPreset();
-    if (groupToolbar_)
+    }
+    if (groupToolbar_) {
         groupToolbar_->restyleFromPreset();
+    }
 }
 
 // ─── Active modes ─────────────────────────────────────────────────────────────
@@ -348,8 +355,9 @@ QPointF CanvasView::getViewCenter() const
 
 void CanvasView::recalcSceneRect()
 {
-    if (previousTransform_)
+    if (previousTransform_) {
         return;
+    }
 
     // Falls back to the remembered extent so the view's actual
     // navigable/scrollable sceneRect() still covers it when there are no
@@ -360,8 +368,9 @@ void CanvasView::recalcSceneRect()
     // drawBackground() never gets asked to paint it.
     QRectF itemsRect = scene_->itemsBoundingRect();
     QRectF rect = itemsRect.isEmpty() ? canvasRect_ : itemsRect;
-    if (rect.isEmpty())
+    if (rect.isEmpty()) {
         return;
+    }
 
     QPoint topleft = mapFromScene(rect.topLeft());
     topleft = mapToScene(QPoint(topleft.x() - size().width(),
@@ -429,8 +438,9 @@ void CanvasView::on_edit_item_changed(TextItem* item)
 
 void CanvasView::updateTextToolbarPos_()
 {
-    if (!textToolbar_ || !textToolbar_->isVisible() || !textToolbar_->item())
+    if (!textToolbar_ || !textToolbar_->isVisible() || !textToolbar_->item()) {
         return;
+    }
     const QRectF itemRect = textToolbar_->item()->sceneBoundingRect();
     const QPoint top = mapFromScene(itemRect.topLeft());
     int x = top.x();
@@ -445,8 +455,9 @@ void CanvasView::updateTextToolbarPos_()
 
 void CanvasView::updateGifToolbarPos_()
 {
-    if (!gifToolbar_ || !gifToolbar_->isVisible() || !gifToolbar_->item())
+    if (!gifToolbar_ || !gifToolbar_->isVisible() || !gifToolbar_->item()) {
         return;
+    }
     // Below the item and horizontally centered under it. Near the edge
     // of the visible canvas, the qBound() clamp
     // below takes over and slides the toolbar to stay on-screen - that's
@@ -472,8 +483,10 @@ void CanvasView::updateGifToolbarPos_()
 
 void CanvasView::updateGroupToolbarPos_()
 {
-    if (!groupToolbar_ || !groupToolbar_->isVisible() || !groupToolbar_->item())
+    if (!groupToolbar_ || !groupToolbar_->isVisible()
+        || !groupToolbar_->item()) {
         return;
+    }
     // Same bottom-center placement (with edge clamp) as the GIF toolbar
     // above - no left-snap/positionControlsRow complexity needed here,
     // this toolbar has no filmstrip-like element that can outgrow the
@@ -504,14 +517,16 @@ void CanvasView::zoom(double delta, QPointF anchor)
     // it has (sceneEverHadItems_), the user can still be looking at a
     // real, empty-for-now canvas and should be able to zoom/pan it, e.g.
     // to reposition before pasting something back in.
-    if (scene_->items().isEmpty() && !sceneEverHadItems_)
+    if (scene_->items().isEmpty() && !sceneEverHadItems_) {
         return;
+    }
 
     QPoint anchorPt(qRound(anchor.x()), qRound(anchor.y()));
     QPointF refPoint = mapToScene(anchorPt);
 
-    if (delta == 0.0)
+    if (delta == 0.0) {
         return;
+    }
 
     double factor = 1.0 + std::abs(delta / 1000.0);
     // The min/max-size clamp below is measured against the items
@@ -522,17 +537,19 @@ void CanvasView::zoom(double delta, QPointF anchor)
     if (delta > 0) {
         if (!hasItems || getZoomSize([](double w, double h) {
                              return std::max(w, h);
-                         }) < 10000000.0)
+                         }) < 10000000.0) {
             doScale(factor, factor);
-        else
+        } else {
             return;
+        }
     } else {
         if (!hasItems || getZoomSize([](double w, double h) {
                              return std::min(w, h);
-                         }) > 10.0)
+                         }) > 10.0) {
             doScale(1.0 / factor, 1.0 / factor);
-        else
+        } else {
             return;
+        }
     }
 
     pan(QPointF(mapFromScene(refPoint)) - QPointF(anchorPt));
@@ -542,8 +559,9 @@ void CanvasView::zoom(double delta, QPointF anchor)
 void CanvasView::pan(QPointF delta)
 {
     // See zoom() for why this only blocks a never-had-content scene.
-    if (scene_->items().isEmpty() && !sceneEverHadItems_)
+    if (scene_->items().isEmpty() && !sceneEverHadItems_) {
         return;
+    }
     horizontalScrollBar()->setValue(
         qRound(horizontalScrollBar()->value() + delta.x()));
     verticalScrollBar()->setValue(
@@ -569,12 +587,14 @@ void CanvasView::wheelEvent(QWheelEvent* event)
     }
 
     auto match = SettingsHandler::getInstance()->mousewheelActionForEvent(event);
-    if (!match)
+    if (!match) {
         return;
+    }
 
     double delta = event->angleDelta().y();
-    if (match->inverted)
+    if (match->inverted) {
         delta = -delta;
+    }
 
     if (match->group == QLatin1String("pan_horizontal")) {
         pan(QPointF(0.0, 0.5 * delta));
@@ -587,8 +607,9 @@ void CanvasView::wheelEvent(QWheelEvent* event)
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
-    if (mousePressEventMainControls(event))
+    if (mousePressEventMainControls(event)) {
         return;
+    }
 
     if (activeMode_ == ModeSampleColor) {
         if (event->button() == Qt::LeftButton) {
@@ -634,10 +655,12 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     // re-shows them once the interaction is over. Left visible, they
     // stay anchored to the item's PRE-drag bounding rect and visibly
     // lag/overlap the resize handles while dragging.
-    if (gifToolbar_->isVisible())
+    if (gifToolbar_->isVisible()) {
         gifToolbar_->hide();
-    if (groupToolbar_->isVisible())
+    }
+    if (groupToolbar_->isVisible()) {
         groupToolbar_->hide();
+    }
 
     QGraphicsView::mousePressEvent(event);
 }
@@ -657,8 +680,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         resetPreviousTransform();
         QPointF pos = event->position();
         double delta = (eventStart_ - pos).y();
-        if (eventInverted_)
+        if (eventInverted_) {
             delta *= -1;
+        }
         eventStart_ = pos;
         zoom(delta * 20.0, eventAnchor_);
         event->accept();
@@ -673,8 +697,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (mouseMoveEventMainControls(event))
+    if (mouseMoveEventMainControls(event)) {
         return;
+    }
 
     // Covers the case mousePressEvent()'s own hide can't: pressing on a
     // not-yet-selected GIF/group selects it (synchronously, inside
@@ -684,10 +709,12 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
     // select-and-drag-in-one-motion case leaves the toolbar visible and
     // lagging behind the item for the whole drag.
     if (event->buttons() & Qt::LeftButton) {
-        if (gifToolbar_->isVisible())
+        if (gifToolbar_->isVisible()) {
             gifToolbar_->hide();
-        if (groupToolbar_->isVisible())
+        }
+        if (groupToolbar_->isVisible()) {
             groupToolbar_->hide();
+        }
     }
 
     QGraphicsView::mouseMoveEvent(event);
@@ -710,8 +737,9 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
         event->accept();
         return;
     }
-    if (mouseReleaseEventMainControls(event))
+    if (mouseReleaseEventMainControls(event)) {
         return;
+    }
     QGraphicsView::mouseReleaseEvent(event);
 
     // Re-show the GIF/group toolbars hidden in mousePressEvent(), but
@@ -745,8 +773,9 @@ void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
 
 void CanvasView::keyPressEvent(QKeyEvent* event)
 {
-    if (keyPressEventMainControls(event))
+    if (keyPressEventMainControls(event)) {
         return;
+    }
     if (activeMode_ == ModeSampleColor) {
         cancelSampleColorMode();
         event->accept();
@@ -762,12 +791,14 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
 bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
 {
     const QString pressed = keyEventToSequenceString(event);
-    if (pressed.isEmpty())
+    if (pressed.isEmpty()) {
         return false;
+    }
 
     for (const MouseConfig& cfg : KeyboardSettings::mouseActions()) {
-        if (cfg.group() != QLatin1String("zoom"))
+        if (cfg.group() != QLatin1String("zoom")) {
             continue;
+        }
         for (const Binding& b : cfg.getBindings()) {
             if (b.keySequence == pressed) {
                 zoom(120.0, getViewCenter());
@@ -778,8 +809,9 @@ bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
 
     for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheelActions()) {
         for (const Binding& b : cfg.getBindings()) {
-            if (b.keySequence != pressed)
+            if (b.keySequence != pressed) {
                 continue;
+            }
             const double delta = b.inverted ? -120.0 : 120.0;
             if (cfg.group() == QLatin1String("pan_horizontal")) {
                 pan(QPointF(0.0, 0.5 * delta));
@@ -807,10 +839,12 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 
     QGraphicsView::resizeEvent(event);
     recalcSceneRect();
-    if (dx != 0)
+    if (dx != 0) {
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() + dx);
-    if (dy != 0)
+    }
+    if (dy != 0) {
         verticalScrollBar()->setValue(verticalScrollBar()->value() + dy);
+    }
     welcomeOverlay_->resize(size());
     updateTextToolbarPos_();
     updateGifToolbarPos_();
@@ -1013,8 +1047,9 @@ void CanvasView::on_action_export_scene()
                                 ";;PNG (*.png)"
                                 ";;JPEG (*.jpg *.jpeg)"
                                 ";;SVG (*.svg)"));
-    if (filename.isEmpty())
+    if (filename.isEmpty()) {
         return;
+    }
 
     sceneExporter_ = createSceneExporter(QFileInfo(filename).suffix(), scene_);
     if (!sceneExporter_->getUserInput(this)) {
@@ -1052,8 +1087,9 @@ void CanvasView::on_action_export_images()
 {
     QList<PixmapItem*> pictures;
     for (QGraphicsItem* item : scene_->items_by_type("pixmap")) {
-        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item))
+        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
             pictures.append(pixmapItem);
+        }
     }
     exportPictures(pictures);
 }
@@ -1076,8 +1112,9 @@ void CanvasView::exportPictures(const QList<PixmapItem*>& pictures)
                                  path().isEmpty()
                                      ? QDir::homePath()
                                      : QFileInfo(path()).absolutePath());
-    if (directory.isEmpty())
+    if (directory.isEmpty()) {
         return;
+    }
 
     imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(pictures,
                                                                   directory);
@@ -1160,8 +1197,9 @@ void CanvasView::on_action_undo()
     // through GroupToolbar - re-attach to re-sync the toolbar's own
     // displayed state (fill swatch, lock checkbox) with whatever undo
     // just reverted it to.
-    if (groupToolbar_->item())
+    if (groupToolbar_->item()) {
         groupToolbar_->attach(groupToolbar_->item());
+    }
 }
 
 void CanvasView::on_action_redo()
@@ -1179,8 +1217,9 @@ void CanvasView::on_action_redo()
     }
     undoStack_->redo();
     // See on_action_undo() above - same re-sync, needed after redo too.
-    if (groupToolbar_->item())
+    if (groupToolbar_->item()) {
         groupToolbar_->attach(groupToolbar_->item());
+    }
 }
 
 void CanvasView::on_action_select_all()
@@ -1430,12 +1469,14 @@ void CanvasView::on_action_insert_images()
                               tr("Select one or more images to open"),
                               QString(),
                               tr("Images (%1)").arg(formats));
-    if (filenames.isEmpty())
+    if (filenames.isEmpty()) {
         return;
+    }
     QList<QUrl> urls;
     urls.reserve(filenames.size());
-    for (const QString& fn : filenames)
+    for (const QString& fn : filenames) {
         urls.append(QUrl::fromLocalFile(fn));
+    }
     do_insert_images(urls);
 }
 
@@ -1451,10 +1492,11 @@ void CanvasView::on_action_insert_text()
     QList<QGraphicsItem*> selected = scene_->selectedItems(true);
     GroupItem* targetGroup = nullptr;
     if (selected.size() == 1) {
-        if (auto* picture = dynamic_cast<PixmapItem*>(selected.first()))
+        if (auto* picture = dynamic_cast<PixmapItem*>(selected.first())) {
             item->set_attached_to(picture->uid());
-        else if (auto* group = dynamic_cast<GroupItem*>(selected.first()))
+        } else if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
             targetGroup = group;
+        }
     }
     if (targetGroup) {
         // Same "add text with a group selected -> lands inside it"
@@ -1662,8 +1704,9 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
 
     if (!errors.isEmpty()) {
         QStringList names;
-        for (const QString& fn : errors)
+        for (const QString& fn : errors) {
             names.append(QStringLiteral("<li>%1</li>").arg(fn));
+        }
         showMessageBox(QMessageBox::Warning,
                        this,
                        tr("Problem loading images"),
@@ -1675,8 +1718,9 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
 
     if (!insertImagesLargeItems_.isEmpty()) {
         QStringList names;
-        for (const QString& fn : insertImagesLargeItems_)
+        for (const QString& fn : insertImagesLargeItems_) {
             names.append(QStringLiteral("<li>%1</li>").arg(fn));
+        }
         showMessageBox(
             QMessageBox::Information,
             this,

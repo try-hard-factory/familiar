@@ -66,29 +66,33 @@ void WelcomeOverlay::on_context_menu(const QPoint& point)
 
 void WelcomeOverlay::mousePressEvent(QMouseEvent* event)
 {
-    if (mousePressEventMainControls(event))
+    if (mousePressEventMainControls(event)) {
         return;
+    }
     QWidget::mousePressEvent(event);
 }
 
 void WelcomeOverlay::mouseMoveEvent(QMouseEvent* event)
 {
-    if (mouseMoveEventMainControls(event))
+    if (mouseMoveEventMainControls(event)) {
         return;
+    }
     QWidget::mouseMoveEvent(event);
 }
 
 void WelcomeOverlay::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (mouseReleaseEventMainControls(event))
+    if (mouseReleaseEventMainControls(event)) {
         return;
+    }
     QWidget::mouseReleaseEvent(event);
 }
 
 void WelcomeOverlay::keyPressEvent(QKeyEvent* event)
 {
-    if (keyPressEventMainControls(event))
+    if (keyPressEventMainControls(event)) {
         return;
+    }
     QWidget::keyPressEvent(event);
 }
 

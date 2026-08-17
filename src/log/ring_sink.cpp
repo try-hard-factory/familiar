@@ -32,8 +32,9 @@ void RingSink::write_log(
     {
         QMutexLocker locker(&mutex_);
         ring_.append(line);
-        while (size_t(ring_.size()) > capacity_)
+        while (size_t(ring_.size()) > capacity_) {
             ring_.removeFirst();
+        }
     }
 
     emit entryAdded(line);

@@ -26,9 +26,8 @@ public:
         path_ = QDir::temp().filePath(
             QStringLiteral("familiar_test_settings_%1.json")
                 .arg(QCoreApplication::applicationPid()));
-        CommandlineArgs::instance().parse({QStringLiteral("familiar"),
-                                           QStringLiteral("--settings"),
-                                           path_});
+        CommandlineArgs::instance().parse(
+            {QStringLiteral("familiar"), QStringLiteral("--settings"), path_});
     }
 
     void TearDown() override { QFile::remove(path_); }

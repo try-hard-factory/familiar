@@ -80,8 +80,9 @@ QList<FileBrowserDialog::FilterEntry> parseNameFilter(const QString& filterStrin
         }
         if (!entry.patterns.isEmpty()) {
             const QString& first = entry.patterns.first();
-            if (first.startsWith(QStringLiteral("*.")))
+            if (first.startsWith(QStringLiteral("*."))) {
                 entry.primaryExt = first.mid(2);
+            }
         }
         entries.append(entry);
     }
@@ -191,8 +192,9 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     } else {
         model_->setFilter(QDir::AllDirs | QDir::Files | QDir::Drives
                           | QDir::NoDotAndDotDot);
-        if (!filters_.isEmpty())
+        if (!filters_.isEmpty()) {
             model_->setNameFilters(filters_.first().patterns);
+        }
         model_->setNameFilterDisables(false);
     }
 
@@ -247,8 +249,9 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     // ── Filename field (Save only) ──────────────────────────────────
     if (mode_ == Mode::Save) {
         nameEdit_ = new QLineEdit(this);
-        if (!defaultFileName.isEmpty())
+        if (!defaultFileName.isEmpty()) {
             nameEdit_->setText(defaultFileName);
+        }
         connect(nameEdit_,
                 &QLineEdit::returnPressed,
                 this,
@@ -258,8 +261,9 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
 
     if (mode_ != Mode::SelectFolder) {
         filterCombo_ = new QComboBox(this);
-        for (const FilterEntry& f : filters_)
+        for (const FilterEntry& f : filters_) {
             filterCombo_->addItem(f.label);
+        }
         connect(filterCombo_,
                 qOverload<int>(&QComboBox::currentIndexChanged),
                 this,
@@ -362,8 +366,9 @@ void FileBrowserDialog::buildSidebar_(const QColor& accent)
     sidebar_->setFrameShape(QFrame::NoFrame);
 
     auto addEntry = [this](const QString& label, const QString& path) {
-        if (path.isEmpty() || !QDir(path).exists())
+        if (path.isEmpty() || !QDir(path).exists()) {
             return;
+        }
         auto* item = new QListWidgetItem(label, sidebar_);
         item->setData(Qt::UserRole, path);
     };
@@ -390,8 +395,9 @@ void FileBrowserDialog::setDirectory_(const QString& path)
     const QString dirPath = info.isDir() ? info.absoluteFilePath()
                                          : info.absolutePath();
     QDir dir(dirPath);
-    if (!dir.exists())
+    if (!dir.exists()) {
         return;
+    }
     currentDir_ = dir.absolutePath();
     tree_->setRootIndex(model_->index(currentDir_));
     pathEdit_->setText(currentDir_);
@@ -402,18 +408,21 @@ void FileBrowserDialog::setDirectory_(const QString& path)
 void FileBrowserDialog::navigateUp_()
 {
     QDir dir(currentDir_);
-    if (dir.cdUp())
+    if (dir.cdUp()) {
         setDirectory_(dir.absolutePath());
+    }
 }
 
 void FileBrowserDialog::createFolder_()
 {
     QDir dir(currentDir_);
     QString name = tr("New Folder");
-    for (int suffix = 2; dir.exists(name); ++suffix)
+    for (int suffix = 2; dir.exists(name); ++suffix) {
         name = tr("New Folder (%1)").arg(suffix);
-    if (!dir.mkdir(name))
+    }
+    if (!dir.mkdir(name)) {
         return;
+    }
 
     // Same "create, then rename in place" flow as a real file manager -
     // no separate name-prompt dialog needed (this app has no custom
@@ -426,8 +435,9 @@ void FileBrowserDialog::createFolder_()
     // (that only gates user-initiated editing, e.g. F2/double-click) -
     // NoEditTriggers above stays in effect for every OTHER row.
     const QModelIndex idx = model_->index(dir.filePath(name));
-    if (!idx.isValid())
+    if (!idx.isValid()) {
         return;
+    }
     tree_->setCurrentIndex(idx);
     tree_->scrollTo(idx);
     tree_->edit(idx);
@@ -436,20 +446,23 @@ void FileBrowserDialog::createFolder_()
 void FileBrowserDialog::renameSelected_()
 {
     const auto rows = tree_->selectionModel()->selectedRows();
-    if (rows.size() != 1)
+    if (rows.size() != 1) {
         return;
+    }
     tree_->edit(rows.first());
 }
 
 void FileBrowserDialog::deleteSelected_()
 {
     const auto rows = tree_->selectionModel()->selectedRows();
-    if (rows.isEmpty())
+    if (rows.isEmpty()) {
         return;
+    }
 
     QStringList paths;
-    for (const QModelIndex& idx : rows)
+    for (const QModelIndex& idx : rows) {
         paths << model_->filePath(idx);
+    }
 
     // Permanent, not a trash move - QFile::moveToTrash()'s static
     // overload needs a newer Qt than this project targets (see
@@ -466,15 +479,17 @@ void FileBrowserDialog::deleteSelected_()
                                       message,
                                       QMessageBox::Yes | QMessageBox::No,
                                       QMessageBox::No);
-    if (reply != QMessageBox::Yes)
+    if (reply != QMessageBox::Yes) {
         return;
+    }
 
     for (const QString& path : paths) {
         const QFileInfo info(path);
-        if (info.isDir())
+        if (info.isDir()) {
             QDir(path).removeRecursively();
-        else
+        } else {
             QFile::remove(path);
+        }
     }
 }
 
@@ -556,8 +571,9 @@ void FileBrowserDialog::showContextMenu_(const QPoint& pos)
 
 void FileBrowserDialog::onDoubleClicked_(const QModelIndex& index)
 {
-    if (!index.isValid())
+    if (!index.isValid()) {
         return;
+    }
     const QString path = model_->filePath(index);
     if (model_->isDir(index)) {
         setDirectory_(path);
@@ -571,17 +587,20 @@ void FileBrowserDialog::onDoubleClicked_(const QModelIndex& index)
 
 void FileBrowserDialog::onSelectionChanged_()
 {
-    if (mode_ != Mode::Save || !nameEdit_)
+    if (mode_ != Mode::Save || !nameEdit_) {
         return;
+    }
     const auto rows = tree_->selectionModel()->selectedRows();
-    if (rows.size() == 1 && !model_->isDir(rows.first()))
+    if (rows.size() == 1 && !model_->isDir(rows.first())) {
         nameEdit_->setText(model_->fileName(rows.first()));
+    }
 }
 
 void FileBrowserDialog::onFilterChanged_(int index)
 {
-    if (index < 0 || index >= filters_.size())
+    if (index < 0 || index >= filters_.size()) {
         return;
+    }
     model_->setNameFilters(filters_[index].patterns);
 }
 
@@ -603,8 +622,9 @@ void FileBrowserDialog::tryAccept_()
     case Mode::OpenFiles: {
         QStringList files;
         for (const QModelIndex& idx : rows) {
-            if (!model_->isDir(idx))
+            if (!model_->isDir(idx)) {
                 files << model_->filePath(idx);
+            }
         }
         if (!files.isEmpty()) {
             selected_ = files;
@@ -614,8 +634,9 @@ void FileBrowserDialog::tryAccept_()
     }
     case Mode::Save: {
         const QString name = nameEdit_->text().trimmed();
-        if (name.isEmpty())
+        if (name.isEmpty()) {
             return;
+        }
         QString fullPath = QDir(currentDir_).filePath(name);
         const int filterIdx = filterCombo_ ? filterCombo_->currentIndex() : 0;
         if (QFileInfo(fullPath).suffix().isEmpty() && filterIdx >= 0
@@ -632,8 +653,9 @@ void FileBrowserDialog::tryAccept_()
                                      .arg(QFileInfo(fullPath).fileName()),
                                  QMessageBox::Yes | QMessageBox::No,
                                  QMessageBox::No);
-            if (reply != QMessageBox::Yes)
+            if (reply != QMessageBox::Yes) {
                 return;
+            }
         }
         selected_ = {fullPath};
         accept();
@@ -683,8 +705,9 @@ QString showOpenFileDialog(QWidget* parent,
                           title,
                           startDir,
                           nameFilter);
-    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty())
+    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty()) {
         return QString();
+    }
     return dlg.selectedFiles().first();
 }
 
@@ -698,8 +721,9 @@ QStringList showOpenFilesDialog(QWidget* parent,
                           title,
                           startDir,
                           nameFilter);
-    if (dlg.exec() != QDialog::Accepted)
+    if (dlg.exec() != QDialog::Accepted) {
         return {};
+    }
     return dlg.selectedFiles();
 }
 
@@ -715,8 +739,9 @@ QString showSaveFileDialog(QWidget* parent,
                           startDir,
                           nameFilter,
                           defaultFileName);
-    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty())
+    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty()) {
         return QString();
+    }
     return dlg.selectedFiles().first();
 }
 
@@ -728,7 +753,8 @@ QString showSelectFolderDialog(QWidget* parent,
                           FileBrowserDialog::Mode::SelectFolder,
                           title,
                           startDir);
-    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty())
+    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty()) {
         return QString();
+    }
     return dlg.selectedFiles().first();
 }

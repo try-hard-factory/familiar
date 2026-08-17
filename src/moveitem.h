@@ -283,9 +283,10 @@ public:
                                                     crop_.topLeft().y(),
                                                     crop_.width(),
                                                     crop_.height()};
-        if (!attachedToUid_.isNull())
+        if (!attachedToUid_.isNull()) {
             data[QStringLiteral("attached_to")] = attachedToUid_.toString(
                 QUuid::WithoutBraces);
+        }
         return data;
     }
 
@@ -308,8 +309,9 @@ public:
         }
         const QString attachedTo
             = data.value(QStringLiteral("attached_to")).toString();
-        if (!attachedTo.isEmpty())
+        if (!attachedTo.isEmpty()) {
             attachedToUid_ = QUuid::fromString(attachedTo);
+        }
     }
 
     QUuid attachedToUid() const override { return attachedToUid_; }
@@ -741,8 +743,9 @@ public:
         ItemMixin<PixmapItem, QGraphicsPixmapItem>::on_selected_change(value);
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             for (QGraphicsItem* attachedItem :
-                 scene->find_attached_items(this->uid()))
+                 scene->find_attached_items(this->uid())) {
                 attachedItem->update();
+            }
         }
     }
 
@@ -759,11 +762,13 @@ public:
                       const QPointF& anchor = QPointF(0, 0)) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        if (scene)
+        if (scene) {
             scene->begin_group_batch();
+        }
         BaseItemMixin<QGraphicsPixmapItem>::set_rotation(value, anchor);
-        if (scene)
+        if (scene) {
             scene->end_group_batch();
+        }
     }
 
     // Same "stays exactly in place" treatment as set_rotation() above,
@@ -777,11 +782,13 @@ public:
                  const QPointF& anchor = QPointF(0, 0)) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        if (scene)
+        if (scene) {
             scene->begin_group_batch();
+        }
         BaseItemMixin<QGraphicsPixmapItem>::do_flip(vertical, anchor);
-        if (scene)
+        if (scene) {
             scene->end_group_batch();
+        }
     }
 
     // Attached items track THIS picture's POSITION as it resizes (same
@@ -800,12 +807,14 @@ public:
     // instead of tracking along.
     void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
     {
-        if (value <= 0)
+        if (value <= 0) {
             return; // same validation BaseItemMixin::set_scale() itself does
+        }
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         const QPointF posBefore = this->pos();
-        if (scene)
+        if (scene) {
             scene->begin_group_batch();
+        }
         BaseItemMixin<QGraphicsPixmapItem>::set_scale(value, anchor);
         if (scene) {
             const QPointF pictureDelta = this->pos() - posBefore;
@@ -813,8 +822,9 @@ public:
                 for (QGraphicsItem* note :
                      scene->find_attached_items(this->uid())) {
                     if (note->isSelected()
-                        && (note->flags() & QGraphicsItem::ItemIsMovable))
+                        && (note->flags() & QGraphicsItem::ItemIsMovable)) {
                         continue;
+                    }
                     note->moveBy(pictureDelta.x(), pictureDelta.y());
                 }
             }
@@ -835,8 +845,9 @@ protected:
                              scene->find_attached_items(this->uid())) {
                             if (note->isSelected()
                                 && (note->flags()
-                                    & QGraphicsItem::ItemIsMovable))
+                                    & QGraphicsItem::ItemIsMovable)) {
                                 continue;
+                            }
                             note->moveBy(delta.x(), delta.y());
                         }
                     }
@@ -1051,8 +1062,9 @@ public:
     void apply_extra_save_data(const QVariantMap& data)
     {
         PixmapItem::apply_extra_save_data(data);
-        if (data.contains(QStringLiteral("speed")))
+        if (data.contains(QStringLiteral("speed"))) {
             set_speed_percent(data.value(QStringLiteral("speed")).toInt());
+        }
     }
 
     IBaseItem* create_copy() override
@@ -1092,22 +1104,26 @@ public:
     }
     void play()
     {
-        if (movie_)
+        if (movie_) {
             movie_->setPaused(false);
+        }
     }
     void pause()
     {
-        if (movie_)
+        if (movie_) {
             movie_->setPaused(true);
+        }
     }
     void toggle_play_pause()
     {
-        if (!movie_)
+        if (!movie_) {
             return;
-        if (is_playing())
+        }
+        if (is_playing()) {
             pause();
-        else
+        } else {
             play();
+        }
     }
     int current_frame() const
     {
@@ -1118,19 +1134,22 @@ public:
     // `delta` frames, wrapping around either end.
     void step_frame(int delta)
     {
-        if (!movie_ || frameThumbnails_.isEmpty())
+        if (!movie_ || frameThumbnails_.isEmpty()) {
             return;
+        }
         pause();
         const int count = frameThumbnails_.size();
         int next = (current_frame() + delta) % count;
-        if (next < 0)
+        if (next < 0) {
             next += count;
+        }
         movie_->jumpToFrame(next);
     }
     void jump_to_frame(int index)
     {
-        if (!movie_ || frameThumbnails_.isEmpty())
+        if (!movie_ || frameThumbnails_.isEmpty()) {
             return;
+        }
         pause();
         movie_->jumpToFrame(qBound(0, index, frameThumbnails_.size() - 1));
     }
@@ -1139,8 +1158,9 @@ public:
     // remapping needed.
     void set_speed_percent(int percent)
     {
-        if (movie_)
+        if (movie_) {
             movie_->setSpeed(percent);
+        }
     }
     int speed_percent() const { return movie_ ? movie_->speed() : 100; }
 
@@ -1158,8 +1178,9 @@ private:
         QImageReader reader(&buf);
         while (reader.canRead()) {
             QImage frame = reader.read();
-            if (frame.isNull())
+            if (frame.isNull()) {
                 break;
+            }
             frameThumbnails_.append(
                 QPixmap::fromImage(frame).scaled(48,
                                                  48,
@@ -1249,20 +1270,24 @@ public:
         // fallback and greppable manifests (docs/fml_format_design.md).
         data[QStringLiteral("text")] = this->toPlainText();
         data[QStringLiteral("html")] = this->toHtml();
-        if (fill_color_ != default_fill_color())
+        if (fill_color_ != default_fill_color()) {
             data[QStringLiteral("fill_color")] = fill_color_.name(
                 QColor::HexArgb);
+        }
         // Manual field size from the edit-mode square handles
         // (resize_field()) - absent entirely for the common case (never
         // manually resized), same -1-is-auto convention as
         // document()->textWidth() itself.
-        if (this->document()->textWidth() >= 0)
+        if (this->document()->textWidth() >= 0) {
             data[QStringLiteral("field_width")] = this->document()->textWidth();
-        if (manualHeight_ >= 0)
+        }
+        if (manualHeight_ >= 0) {
             data[QStringLiteral("field_height")] = manualHeight_;
-        if (!attachedToUid_.isNull())
+        }
+        if (!attachedToUid_.isNull()) {
             data[QStringLiteral("attached_to")] = attachedToUid_.toString(
                 QUuid::WithoutBraces);
+        }
         return data;
     }
 
@@ -1271,23 +1296,28 @@ public:
     void apply_extra_save_data(const QVariantMap& data)
     {
         const QString html = data.value(QStringLiteral("html")).toString();
-        if (!html.isEmpty())
+        if (!html.isEmpty()) {
             this->setHtml(html);
+        }
         const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
             QColor c(fill);
-            if (c.isValid())
+            if (c.isValid()) {
                 fill_color_ = c;
+            }
         }
-        if (data.contains(QStringLiteral("field_width")))
+        if (data.contains(QStringLiteral("field_width"))) {
             this->document()->setTextWidth(
                 data.value(QStringLiteral("field_width")).toReal());
-        if (data.contains(QStringLiteral("field_height")))
+        }
+        if (data.contains(QStringLiteral("field_height"))) {
             manualHeight_ = data.value(QStringLiteral("field_height")).toReal();
+        }
         const QString attachedTo
             = data.value(QStringLiteral("attached_to")).toString();
-        if (!attachedTo.isEmpty())
+        if (!attachedTo.isEmpty()) {
             attachedToUid_ = QUuid::fromString(attachedTo);
+        }
     }
 
     QColor fill_color() const { return fill_color_; }
@@ -1323,8 +1353,9 @@ public:
     QRectF bounding_rect_unselected() const override
     {
         QRectF rect = QGraphicsTextItem::boundingRect();
-        if (manualHeight_ > rect.height())
+        if (manualHeight_ > rect.height()) {
             rect.setHeight(manualHeight_);
+        }
         return rect;
     }
 
@@ -1404,8 +1435,9 @@ public:
                              bool anchorBottom) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        if (!scene)
+        if (!scene) {
             return;
+        }
         scene->undo_stack_->push(
             new ResizeTextFieldCommand(this,
                                        document()->textWidth(),
@@ -1427,8 +1459,9 @@ public:
     {
         const qreal oldWidth = document()->textWidth();
         const qreal oldHeight = manualHeight_;
-        if (oldWidth < 0 && oldHeight < 0)
+        if (oldWidth < 0 && oldHeight < 0) {
             return; // already natural size
+        }
         resize_field(-1, -1, false, false);
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             scene->undo_stack_->push(new ResizeTextFieldCommand(
@@ -1785,8 +1818,9 @@ public:
         new_item->setZValue(this->zValue());
         new_item->setScale(this->scale());
         new_item->setRotation(this->rotation());
-        if (this->flip() == -1)
+        if (this->flip() == -1) {
             new_item->do_flip();
+        }
         return new_item;
     }
 
@@ -1801,18 +1835,22 @@ public:
     {
         QVariantMap data;
         QVariantList idList;
-        for (const QUuid& id : childIds_)
+        for (const QUuid& id : childIds_) {
             idList.append(id.toString(QUuid::WithoutBraces));
+        }
         data[QStringLiteral("child_ids")] = idList;
-        if (fill_color_ != default_fill_color())
+        if (fill_color_ != default_fill_color()) {
             data[QStringLiteral("fill_color")] = fill_color_.name(
                 QColor::HexArgb);
+        }
         data[QStringLiteral("rect_width")] = localRect_.width();
         data[QStringLiteral("rect_height")] = localRect_.height();
-        if (locked_)
+        if (locked_) {
             data[QStringLiteral("locked")] = true;
-        if (!dragDropEnabled_)
+        }
+        if (!dragDropEnabled_) {
             data[QStringLiteral("drag_drop_enabled")] = false;
+        }
         return data;
     }
 
@@ -1830,22 +1868,25 @@ public:
         for (const QVariant& v :
              data.value(QStringLiteral("child_ids")).toList()) {
             const QUuid id = QUuid::fromString(v.toString());
-            if (!id.isNull())
+            if (!id.isNull()) {
                 ids.append(id);
+            }
         }
         set_child_ids(ids);
 
         const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
             QColor c(fill);
-            if (c.isValid())
+            if (c.isValid()) {
                 fill_color_ = c;
+            }
         }
 
         const qreal w = data.value(QStringLiteral("rect_width"), 0.0).toReal();
         const qreal h = data.value(QStringLiteral("rect_height"), 0.0).toReal();
-        if (w > 0 && h > 0)
+        if (w > 0 && h > 0) {
             set_local_rect(QRectF(0, 0, w, h));
+        }
 
         // Raw field, not set_locked() - this item isn't attached to a
         // scene yet at this point in the load (see
@@ -1912,11 +1953,13 @@ public:
     // pass.
     void keep_below_children(const QList<QGraphicsItem*>& children)
     {
-        if (children.isEmpty())
+        if (children.isEmpty()) {
             return;
+        }
         qreal minChildZ = children.first()->zValue();
-        for (QGraphicsItem* child : children)
+        for (QGraphicsItem* child : children) {
             minChildZ = qMin(minChildZ, child->zValue());
+        }
         if (this->zValue() >= minChildZ) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 FLOG_DEBUG(familiar::log::Ch::Items,
@@ -1952,14 +1995,16 @@ public:
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             for (GroupItem* ancestor = this; ancestor;
                  ancestor = scene->find_owning_group(ancestor->uid())) {
-                if (scene->mouseGrabberItem() == ancestor)
+                if (scene->mouseGrabberItem() == ancestor) {
                     return;
+                }
             }
         }
 
         const QList<QGraphicsItem*> children = resolve_children();
-        if (children.isEmpty())
+        if (children.isEmpty()) {
             return;
+        }
 
         keep_below_children(children);
 
@@ -1984,8 +2029,9 @@ public:
         bool haveRect = false;
         for (QGraphicsItem* child : children) {
             auto* baseItem = dynamic_cast<IBaseItem*>(child);
-            if (!baseItem)
+            if (!baseItem) {
                 continue;
+            }
             for (const QPointF& corner : baseItem->corners_scene_coords()) {
                 const QPointF localCorner = this->mapFromScene(corner);
                 if (!haveRect) {
@@ -1993,18 +2039,23 @@ public:
                     haveRect = true;
                     continue;
                 }
-                if (localCorner.x() < unionRect.left())
+                if (localCorner.x() < unionRect.left()) {
                     unionRect.setLeft(localCorner.x());
-                if (localCorner.x() > unionRect.right())
+                }
+                if (localCorner.x() > unionRect.right()) {
                     unionRect.setRight(localCorner.x());
-                if (localCorner.y() < unionRect.top())
+                }
+                if (localCorner.y() < unionRect.top()) {
                     unionRect.setTop(localCorner.y());
-                if (localCorner.y() > unionRect.bottom())
+                }
+                if (localCorner.y() > unionRect.bottom()) {
                     unionRect.setBottom(localCorner.y());
+                }
             }
         }
-        if (!haveRect)
+        if (!haveRect) {
             return;
+        }
         const qreal padding = compute_padding(unionRect);
         unionRect = unionRect.adjusted(-padding, -padding, padding, padding);
 
@@ -2025,8 +2076,9 @@ public:
                                       < kEps
                                && qAbs(unionRect.height() - localRect_.height())
                                       < kEps;
-        if (unchanged)
+        if (unchanged) {
             return;
+        }
 
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "GroupItem::fit_to_contain_children() {} uid={} z={} "
@@ -2091,8 +2143,9 @@ public:
     bool locked() const { return locked_; }
     void set_locked(bool locked)
     {
-        if (locked_ == locked)
+        if (locked_ == locked) {
             return;
+        }
         locked_ = locked;
         apply_lock_to_children();
     }
@@ -2117,8 +2170,9 @@ public:
     bool highlighted() const { return highlighted_; }
     void set_highlighted(bool value)
     {
-        if (highlighted_ == value)
+        if (highlighted_ == value) {
             return;
+        }
         highlighted_ = value;
         update();
     }
@@ -2171,8 +2225,9 @@ public:
         for (QGraphicsItem* child : resolve_children()) {
             child->setFlag(QGraphicsItem::ItemIsSelectable, !effective);
             child->setFlag(QGraphicsItem::ItemIsMovable, !effective);
-            if (auto* childGroup = dynamic_cast<GroupItem*>(child))
+            if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
                 childGroup->apply_effective_lock(effective);
+            }
         }
     }
 
@@ -2198,8 +2253,9 @@ public:
             // visible in the log if it does.
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 for (QGraphicsItem* other : scene->items()) {
-                    if (other == this)
+                    if (other == this) {
                         continue;
+                    }
                     auto* otherGroup = dynamic_cast<GroupItem*>(other);
                     if (otherGroup && otherGroup->child_ids().contains(id)) {
                         FLOG_DEBUG(familiar::log::Ch::Items,
@@ -2257,13 +2313,15 @@ public:
     QList<QGraphicsItem*> resolve_children()
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        if (!scene)
+        if (!scene) {
             return {};
+        }
         if (resolvedChildrenDirty_) {
             resolvedChildren_.clear();
             for (const QUuid& id : childIds_) {
-                if (QGraphicsItem* item = scene->find_by_uid(id))
+                if (QGraphicsItem* item = scene->find_by_uid(id)) {
                     resolvedChildren_.append(item);
+                }
             }
             resolvedChildrenDirty_ = false;
         }
@@ -2295,12 +2353,14 @@ public:
         queue << this;
         while (!queue.isEmpty()) {
             QGraphicsItem* item = queue.takeFirst();
-            if (seen.contains(item))
+            if (seen.contains(item)) {
                 continue;
+            }
             seen.insert(item);
             items << item;
-            if (auto* group = dynamic_cast<GroupItem*>(item))
+            if (auto* group = dynamic_cast<GroupItem*>(item)) {
                 queue << group->resolve_children();
+            }
         }
         return items;
     }
@@ -2455,8 +2515,9 @@ protected:
                 // ancestor group's own cascade in the nested case) - its
                 // own separate attach-cascade must not ALSO move it.
                 auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-                if (scene)
+                if (scene) {
                     scene->begin_group_batch();
+                }
                 for (QGraphicsItem* child : resolve_children()) {
                     // A rubber-band sweep (or ctrl+click accumulation)
                     // can select this group AND, independently, one of
@@ -2484,12 +2545,14 @@ protected:
                         child->isSelected(),
                         bool(child->flags() & QGraphicsItem::ItemIsMovable),
                         skip ? "SKIP (Qt native)" : "moveBy (explicit)");
-                    if (skip)
+                    if (skip) {
                         continue;
+                    }
                     child->moveBy(delta.x(), delta.y());
                 }
-                if (scene)
+                if (scene) {
                     scene->end_group_batch();
+                }
             }
         }
         // NOT QGraphicsRectItem::itemChange() directly - SelectableMixin

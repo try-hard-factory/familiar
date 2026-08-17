@@ -35,8 +35,9 @@ void FileActions::openFile()
                                                   QDir::homePath(),
                                                   QStringLiteral(
                                                       "Familiar (*.fml)"));
-    for (const QString& file : files)
+    for (const QString& file : files) {
         processOpenFile(file);
+    }
 }
 
 void FileActions::loadFmlIntoCurrentTab(const QString& path,
@@ -80,8 +81,9 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
             // just read from. Also only on success: if loading failed,
             // keep the recovery snapshot around rather than silently
             // losing the only copy of that data.
-            if (error.isEmpty() && !recoveryIdToClear.isNull())
+            if (error.isEmpty() && !recoveryIdToClear.isNull()) {
                 familiar::recovery::remove(recoveryIdToClear);
+            }
 
             if (!error.isEmpty()) {
                 showMessageBox(QMessageBox::Critical,
@@ -114,10 +116,11 @@ void FileActions::restoreFromRecovery(const QString& recoveryFmlPath,
                                       const QString& originalPath,
                                       const QUuid& recoveryId)
 {
-    if (originalPath.isEmpty())
+    if (originalPath.isEmpty()) {
         mainwindow_.tabPane().addNewUntitledTab();
-    else
+    } else {
         mainwindow_.tabPane().addNewTab(originalPath);
+    }
     loadFmlIntoCurrentTab(recoveryFmlPath,
                           /*markModifiedAfterLoad=*/true,
                           recoveryId);
@@ -128,8 +131,9 @@ CanvasView* FileActions::findBlankTab()
     TabPane& tp = mainwindow_.tabPane();
     for (int i = 0; i < tp.count(); ++i) {
         CanvasView* cv = tp.widgetAt(i);
-        if (cv->isUntitled() && !cv->isModified())
+        if (cv->isUntitled() && !cv->isModified()) {
             return cv;
+        }
     }
     return nullptr;
 }

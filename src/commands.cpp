@@ -61,8 +61,9 @@ void InsertItemsCommand::redo()
         // setSelected(true) below triggers automatically. A plain item
         // (attachedToUid().isNull()) - including a copied GROUP and its
         // non-attached members - keeps the previous behavior unchanged.
-        if (item->attachedToUid().isNull())
+        if (item->attachedToUid().isNull()) {
             graphicsItem->setSelected(true);
+        }
         item->bring_to_front();
     }
 }
@@ -122,8 +123,9 @@ void DeleteItemsCommand::redo()
         // a GROUPED item, never a top-level one (which rebuild_() reads
         // straight off scene_->items(), no cache involved).
         if (GroupItem* group = owningGroups_[i]) {
-            if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+            if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
                 group->remove_child_id(baseItem->uid());
+            }
         }
         scene_->removeItem(item);
     }
@@ -148,8 +150,9 @@ void DeleteItemsCommand::undo()
         // same loop, since with_related_items() always orders a group
         // before its own members).
         if (GroupItem* group = owningGroups_[i]) {
-            if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+            if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
                 group->add_child_id(baseItem->uid());
+            }
         }
     }
 }
@@ -212,15 +215,17 @@ void ScaleItemsByCommand::redo()
     auto* scene = items_.isEmpty()
                       ? nullptr
                       : dynamic_cast<CanvasScene*>(items_.first()->scene());
-    if (scene)
+    if (scene) {
         scene->begin_group_batch();
+    }
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_scale(item->scale() * factor_,
                             item->mapFromScene(anchor_));
     }
-    if (scene)
+    if (scene) {
         scene->end_group_batch();
+    }
 }
 
 void ScaleItemsByCommand::undo()
@@ -228,15 +233,17 @@ void ScaleItemsByCommand::undo()
     auto* scene = items_.isEmpty()
                       ? nullptr
                       : dynamic_cast<CanvasScene*>(items_.first()->scene());
-    if (scene)
+    if (scene) {
         scene->begin_group_batch();
+    }
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_scale(item->scale() / factor_,
                             item->mapFromScene(anchor_));
     }
-    if (scene)
+    if (scene) {
         scene->end_group_batch();
+    }
 }
 
 // ============================================================================
@@ -263,15 +270,17 @@ void RotateItemsByCommand::redo()
     auto* scene = items_.isEmpty()
                       ? nullptr
                       : dynamic_cast<CanvasScene*>(items_.first()->scene());
-    if (scene)
+    if (scene) {
         scene->begin_group_batch();
+    }
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_rotation(item->rotation() + delta_ * baseItem->flip(),
                                item->mapFromScene(anchor_));
     }
-    if (scene)
+    if (scene) {
         scene->end_group_batch();
+    }
 }
 
 void RotateItemsByCommand::undo()
@@ -279,15 +288,17 @@ void RotateItemsByCommand::undo()
     auto* scene = items_.isEmpty()
                       ? nullptr
                       : dynamic_cast<CanvasScene*>(items_.first()->scene());
-    if (scene)
+    if (scene) {
         scene->begin_group_batch();
+    }
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->set_rotation(item->rotation() - delta_ * baseItem->flip(),
                                item->mapFromScene(anchor_));
     }
-    if (scene)
+    if (scene) {
         scene->end_group_batch();
+    }
 }
 
 // ============================================================================
@@ -749,8 +760,9 @@ void GroupCommand::redo()
     // not bring_to_front() (InsertItemsCommand's usual move for newly
     // inserted content): a group is a background, not new content on top.
     qreal minZ = members_.isEmpty() ? 0 : members_.first()->zValue();
-    for (auto* item : members_)
+    for (auto* item : members_) {
         minZ = qMin(minZ, item->zValue());
+    }
     scene_->addItem(group_);
     group_->set_z_value(minZ - scene_->Z_STEP);
     group_->setSelected(true);
@@ -760,8 +772,9 @@ void GroupCommand::undo()
 {
     scene_->deselect_all_items();
     scene_->removeItem(group_);
-    for (auto* item : members_)
+    for (auto* item : members_) {
         item->setSelected(true);
+    }
 }
 
 // ============================================================================
@@ -779,8 +792,9 @@ void UngroupCommand::redo()
 {
     scene_->deselect_all_items();
     scene_->removeItem(group_);
-    for (auto* item : members_)
+    for (auto* item : members_) {
         item->setSelected(true);
+    }
 }
 
 void UngroupCommand::undo()
@@ -812,14 +826,16 @@ RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
         for (int i = 0; i < memberUids_.size(); ++i) {
             auto* picture = dynamic_cast<PixmapItem*>(
                 scene->find_by_uid(memberUids_[i]));
-            if (!picture)
+            if (!picture) {
                 continue;
+            }
             for (QGraphicsItem* attachedItem :
                  scene->find_attached_items(picture->uid())) {
                 if (auto* attachedBase = dynamic_cast<IBaseItem*>(
                         attachedItem)) {
-                    if (!memberUids_.contains(attachedBase->uid()))
+                    if (!memberUids_.contains(attachedBase->uid())) {
                         memberUids_.append(attachedBase->uid());
+                    }
                 }
             }
         }
@@ -828,8 +844,9 @@ RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
 
 void RemoveFromGroupCommand::redo()
 {
-    for (const QUuid& uid : memberUids_)
+    for (const QUuid& uid : memberUids_) {
         group_->remove_child_id(uid);
+    }
     // Immediate refit, same reasoning as AddToGroupCommand::redo() (in
     // reverse) - otherwise the group's rect stays stale (too large,
     // still including the just-departed member's old footprint) until
@@ -841,8 +858,9 @@ void RemoveFromGroupCommand::redo()
 
 void RemoveFromGroupCommand::undo()
 {
-    for (const QUuid& uid : memberUids_)
+    for (const QUuid& uid : memberUids_) {
         group_->add_child_id(uid);
+    }
     group_->fit_to_contain_children();
 }
 
@@ -866,8 +884,9 @@ AddToGroupCommand::AddToGroupCommand(CanvasScene* scene,
     , reselectOnUndo_(reselectOnUndo)
 {
     for (auto* item : members_) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             memberUids_.append(baseItem->uid());
+        }
     }
 }
 
@@ -890,8 +909,9 @@ void AddToGroupCommand::redo()
         // separate case needed.
         QGraphicsItem* item = members_[i];
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
-            if (item->zValue() <= group_->zValue())
+            if (item->zValue() <= group_->zValue()) {
                 baseItem->set_z_value(group_->zValue() + scene_->Z_STEP);
+            }
         }
     }
     // fit_to_contain_children() (moveitem.h) otherwise only runs
@@ -910,8 +930,9 @@ void AddToGroupCommand::redo()
 void AddToGroupCommand::undo()
 {
     scene_->deselect_all_items();
-    for (const QUuid& uid : memberUids_)
+    for (const QUuid& uid : memberUids_) {
         group_->remove_child_id(uid);
+    }
     // Same reasoning as redo() above - shrink back down immediately
     // instead of leaving a stale, too-large rect until something else
     // happens to trigger the next refit.
@@ -922,14 +943,16 @@ void AddToGroupCommand::undo()
         // UngroupCommand::redo() both reselecting the members they
         // touched.
         group_->setSelected(true);
-        for (auto* item : members_)
+        for (auto* item : members_) {
             item->setSelected(true);
+        }
     } else {
         // Drag-drop path: just the dragged item(s), not the group and
         // not any attached notes with_attached_items() folded into
         // members_ - see constructor comment.
-        for (auto* item : primaryMembers_)
+        for (auto* item : primaryMembers_) {
             item->setSelected(true);
+        }
     }
 }
 

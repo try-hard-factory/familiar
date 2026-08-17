@@ -62,10 +62,12 @@ void CommandlineArgs::process(const QCoreApplication& app)
     parser.process(app);
 
     const QStringList positional = parser.positionalArguments();
-    if (!positional.isEmpty())
+    if (!positional.isEmpty()) {
         filename_ = positional.first();
-    if (parser.isSet(QStringLiteral("file")))
+    }
+    if (parser.isSet(QStringLiteral("file"))) {
         filename_ = parser.value(QStringLiteral("file"));
+    }
 
     settingsFile_ = parser.value(QStringLiteral("settings"));
     loglevel_ = parser.value(QStringLiteral("loglevel"));
@@ -81,15 +83,19 @@ void CommandlineArgs::parse(const QStringList& args)
     parser.parse(args); // does not exit on unknown options
 
     const QStringList positional = parser.positionalArguments();
-    if (!positional.isEmpty())
+    if (!positional.isEmpty()) {
         filename_ = positional.first();
-    if (parser.isSet(QStringLiteral("file")))
+    }
+    if (parser.isSet(QStringLiteral("file"))) {
         filename_ = parser.value(QStringLiteral("file"));
+    }
 
-    if (parser.isSet(QStringLiteral("settings")))
+    if (parser.isSet(QStringLiteral("settings"))) {
         settingsFile_ = parser.value(QStringLiteral("settings"));
-    if (parser.isSet(QStringLiteral("loglevel")))
+    }
+    if (parser.isSet(QStringLiteral("loglevel"))) {
         loglevel_ = parser.value(QStringLiteral("loglevel"));
+    }
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
     debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
     debugHandles_ = parser.isSet(QStringLiteral("debug-handles"));
@@ -233,8 +239,9 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
     const QJsonValue raw
         = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
                                                     keySubkey(key));
-    if (raw.isUndefined())
+    if (raw.isUndefined()) {
         return conf.defaultValue;
+    }
     QVariant val = raw.toVariant();
 
     if (conf.cast) {
@@ -244,8 +251,9 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
             return conf.defaultValue;
         }
     }
-    if (conf.validate && !conf.validate(val))
+    if (conf.validate && !conf.validate(val)) {
         return conf.defaultValue;
+    }
 
     return val;
 }
@@ -261,8 +269,9 @@ void FamSettings::restoreDefaults()
     SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Items"));
     for (const QString& key : fields().keys()) {
         const auto& conf = fields()[key];
-        if (conf.postSaveCallback)
+        if (conf.postSaveCallback) {
             conf.postSaveCallback(conf.defaultValue);
+        }
     }
     emit SettingsEvents::instance().restoreDefaults();
 }
@@ -286,8 +295,9 @@ void FamSettings::setValue(const QString& key, const QVariant& value)
                                                  keySubkey(key),
                                                  QJsonValue::fromVariant(value));
     const auto& f = fields();
-    if (f.contains(key) && f[key].postSaveCallback)
+    if (f.contains(key) && f[key].postSaveCallback) {
         f[key].postSaveCallback(value);
+    }
 }
 
 QVariant FamSettings::value(const QString& key,
@@ -304,8 +314,9 @@ void FamSettings::remove(const QString& key)
     SettingsHandler::getInstance()->removeJsonValue(keyGroup(key),
                                                     keySubkey(key));
     const auto& f = fields();
-    if (f.contains(key) && f[key].postSaveCallback)
+    if (f.contains(key) && f[key].postSaveCallback) {
         f[key].postSaveCallback(valueOrDefault(key));
+    }
 }
 
 void FamSettings::updateRecentFiles(const QString& filename)
@@ -315,8 +326,9 @@ void FamSettings::updateRecentFiles(const QString& filename)
     QStringList values = getRecentFiles();
     values.removeAll(abs);
     values.prepend(abs);
-    if (values.size() > 10)
+    if (values.size() > 10) {
         values = values.mid(0, 10);
+    }
 
     SettingsHandler::getInstance()->setRecentFilesRaw(values);
 }

@@ -97,8 +97,9 @@ QVariant jsonToVariant(const QJsonValue& v)
         const double d = v.toDouble();
         if (d == std::trunc(d)
             && std::abs(d)
-                   <= static_cast<double>(std::numeric_limits<int>::max()))
+                   <= static_cast<double>(std::numeric_limits<int>::max())) {
             return static_cast<int>(d);
+        }
         return d;
     }
     return v.toVariant();
@@ -152,8 +153,9 @@ void applySettingsMigrations(QJsonObject& doc)
     const auto& migrations = settingsMigrations();
     while (version < kSettingsSchemaVersion) {
         auto it = migrations.find(version);
-        if (it != migrations.end())
+        if (it != migrations.end()) {
             it.value()(doc);
+        }
         ++version;
     }
     doc[QLatin1String(kSchemaVersionKey)] = kSettingsSchemaVersion;
@@ -185,8 +187,9 @@ void SettingsHandler::loadDocument()
     QJsonObject doc;
     if (file.open(QIODevice::ReadOnly)) {
         const QJsonDocument parsed = QJsonDocument::fromJson(file.readAll());
-        if (parsed.isObject())
+        if (parsed.isObject()) {
             doc = parsed.object();
+        }
     }
     applySettingsMigrations(doc);
     document_ = doc;
@@ -245,16 +248,18 @@ QStringList SettingsHandler::recentFilesRaw() const
 {
     QStringList out;
     for (const QJsonValue& v :
-         document_.value(QStringLiteral("RecentFiles")).toArray())
+         document_.value(QStringLiteral("RecentFiles")).toArray()) {
         out.append(v.toString());
+    }
     return out;
 }
 
 void SettingsHandler::setRecentFilesRaw(const QStringList& files)
 {
     QJsonArray arr;
-    for (const QString& f : files)
+    for (const QString& f : files) {
         arr.append(f);
+    }
     document_.insert(QStringLiteral("RecentFiles"), arr);
     saveDocument();
 }
@@ -262,8 +267,9 @@ void SettingsHandler::setRecentFilesRaw(const QStringList& files)
 bool SettingsHandler::exportSettingsTo(const QString& path) const
 {
     QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         return false;
+    }
     file.write(QJsonDocument(document_).toJson(QJsonDocument::Indented));
     return true;
 }
@@ -271,11 +277,13 @@ bool SettingsHandler::exportSettingsTo(const QString& path) const
 bool SettingsHandler::importSettingsFrom(const QString& path)
 {
     QFile file(path);
-    if (!file.open(QIODevice::ReadOnly))
+    if (!file.open(QIODevice::ReadOnly)) {
         return false;
+    }
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
-    if (!doc.isObject())
+    if (!doc.isObject()) {
         return false;
+    }
     QJsonObject obj = doc.object();
     applySettingsMigrations(obj);
     document_ = obj;

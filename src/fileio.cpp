@@ -58,8 +58,9 @@ bool is_image_large(const QImage& img)
 // longer side, preserving aspect ratio. No-op if already within bounds.
 void downscale_to_limit(QImage& img)
 {
-    if (!is_image_large(img))
+    if (!is_image_large(img)) {
         return;
+    }
     img = img.scaled(kLargeImageMaxDimension,
                      kLargeImageMaxDimension,
                      Qt::KeepAspectRatio,
@@ -71,8 +72,9 @@ void downscale_to_limit(QImage& img)
 // file/data URI/download), so all three sources get the same treatment.
 bool is_animated(const QByteArray& bytes)
 {
-    if (bytes.isEmpty())
+    if (bytes.isEmpty()) {
         return false;
+    }
     QBuffer buf;
     buf.setData(bytes);
     buf.open(QIODevice::ReadOnly);

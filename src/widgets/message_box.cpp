@@ -130,42 +130,50 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     };
     QList<QMessageBox::StandardButton> order;
     for (QMessageBox::StandardButton b : kPriority) {
-        if (buttons & b)
+        if (buttons & b) {
             order.append(b);
+        }
     }
     QMessageBox::StandardButton primary = defaultButton;
-    if (primary == QMessageBox::NoButton && !order.isEmpty())
+    if (primary == QMessageBox::NoButton && !order.isEmpty()) {
         primary = order.last();
-    if (primary != QMessageBox::NoButton)
+    }
+    if (primary != QMessageBox::NoButton) {
         order.removeOne(primary);
+    }
 
     auto addButton = [&](QMessageBox::StandardButton id, bool isPrimary) {
         auto* btn = new QPushButton(buttonLabel(id), this);
         btn->setFocusPolicy(Qt::StrongFocus);
         btn->setDefault(isPrimary);
-        if (isPrimary)
+        if (isPrimary) {
             familiar::dialog_style::stylePrimaryButton(btn, accent);
-        else
+        } else {
             familiar::dialog_style::styleSecondaryButton(btn, textColor, border);
+        }
         connect(btn, &QPushButton::clicked, this, [this, id] { done(int(id)); });
         buttonRow->addWidget(btn);
-        if (isPrimary)
+        if (isPrimary) {
             btn->setFocus();
+        }
     };
 
-    for (QMessageBox::StandardButton id : order)
+    for (QMessageBox::StandardButton id : order) {
         addButton(id, false);
-    if (primary != QMessageBox::NoButton)
+    }
+    if (primary != QMessageBox::NoButton) {
         addButton(primary, true);
+    }
 
     outer->addLayout(buttonRow);
 
-    if (buttons & QMessageBox::Cancel)
+    if (buttons & QMessageBox::Cancel) {
         escapeButton_ = QMessageBox::Cancel;
-    else if (buttons & QMessageBox::No)
+    } else if (buttons & QMessageBox::No) {
         escapeButton_ = QMessageBox::No;
-    else
+    } else {
         escapeButton_ = defaultButton;
+    }
 
     setStyleSheet(familiar::dialog_style::panelStyleSheet("CustomMessageBox",
                                                           background,

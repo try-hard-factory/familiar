@@ -207,8 +207,9 @@ QVariant ColorList::process(const QVariant& val)
 {
     QMap<int, QColor> out;
     const QVariantList list = val.toList();
-    for (int i = 0; i < list.size(); ++i)
+    for (int i = 0; i < list.size(); ++i) {
         out[i] = QColor(list[i].toString());
+    }
     return QVariant::fromValue(out);
 }
 
@@ -221,8 +222,9 @@ QVariant ColorList::representation(const QVariant& val)
 {
     const auto map = val.value<QMap<int, QColor>>();
     QVariantList out;
-    for (int i = 0; i < map.size(); ++i)
+    for (int i = 0; i < map.size(); ++i) {
         out.append(map.value(i).name(QColor::HexArgb));
+    }
     return out;
 }
 
@@ -248,8 +250,9 @@ QVariant OpacityList::process(const QVariant& val)
 {
     QMap<int, int> out;
     const QVariantList list = val.toList();
-    for (int i = 0; i < list.size(); ++i)
+    for (int i = 0; i < list.size(); ++i) {
         out[i] = list[i].toInt();
+    }
     return QVariant::fromValue(out);
 }
 
@@ -262,8 +265,9 @@ QVariant OpacityList::representation(const QVariant& val)
 {
     const auto map = val.value<QMap<int, int>>();
     QVariantList out;
-    for (int i = 0; i < map.size(); ++i)
+    for (int i = 0; i < map.size(); ++i) {
         out.append(map.value(i));
+    }
     return out;
 }
 

@@ -20,12 +20,15 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
     };
 
     for (Action* action : getActions().all()) {
-        if (action->id.startsWith(QLatin1String("recent_files_")))
+        if (action->id.startsWith(QLatin1String("recent_files_"))) {
             continue;
-        if (action->text.isEmpty())
+        }
+        if (action->text.isEmpty()) {
             continue;
-        if (shownUnderControls.contains(action->id))
+        }
+        if (shownUnderControls.contains(action->id)) {
             continue;
+        }
         actionTargets_.append(new ActionBindingTarget(action));
     }
 
@@ -33,10 +36,13 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
         controlTargets_.append(
             new MouseConfigBindingTarget(&cfg, BindingTargetKind::MouseControl));
         if (cfg.id() == QLatin1String("zoom")) {
-            if (Action* zoomIn = getActions().find(QStringLiteral("zoom_in")))
+            if (Action* zoomIn = getActions().find(QStringLiteral("zoom_in"))) {
                 controlTargets_.append(new ActionBindingTarget(zoomIn));
-            if (Action* zoomOut = getActions().find(QStringLiteral("zoom_out")))
+            }
+            if (Action* zoomOut = getActions().find(
+                    QStringLiteral("zoom_out"))) {
                 controlTargets_.append(new ActionBindingTarget(zoomOut));
+            }
         }
     }
     for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheelActions()) {
@@ -118,10 +124,12 @@ bool KeyboardShortcutsPage::applySearchFilter(const QString& text)
     // Auto-expand a matching section while searching, so results aren't
     // hidden behind a chevron the user collapsed earlier.
     if (!text.isEmpty()) {
-        if (actionsMatch)
+        if (actionsMatch) {
             actionsSection_->setExpanded(true);
-        if (controlsMatch)
+        }
+        if (controlsMatch) {
             controlsSection_->setExpanded(true);
+        }
     }
     return actionsMatch || controlsMatch;
 }

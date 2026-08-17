@@ -161,8 +161,9 @@ public:
         // scrolled up to read something older.
         QScrollBar* scrollBar = log->verticalScrollBar();
         connect(scrollBar, &QScrollBar::rangeChanged, this, [this, scrollBar] {
-            if (followTail_)
+            if (followTail_) {
                 scrollBar->setValue(scrollBar->maximum());
+            }
         });
         connect(scrollBar, &QScrollBar::valueChanged, this, [this, scrollBar] {
             followTail_ = scrollBar->value() == scrollBar->maximum();
@@ -310,8 +311,9 @@ private slots:
         }
         // Only if something was actually restored - otherwise this is
         // the only tab left open, and closing it would leave zero.
-        if (restoredAny && blankTab)
+        if (restoredAny && blankTab) {
             fileActions_.closeTab(blankTab);
+        }
         close();
     }
 
@@ -326,10 +328,12 @@ private slots:
                 .arg(entries_.size()),
             QMessageBox::Discard | QMessageBox::Cancel,
             QMessageBox::Cancel);
-        if (reply != QMessageBox::Discard)
+        if (reply != QMessageBox::Discard) {
             return;
-        for (const familiar::recovery::Entry& e : entries_)
+        }
+        for (const familiar::recovery::Entry& e : entries_) {
             familiar::recovery::remove(e.id);
+        }
         close();
     }
 };
@@ -348,8 +352,9 @@ public:
         , defaultSize(defaultSize)
         , ignoreChange(false)
     {
-        if (defaultSize.width() > MAX_SIZE || defaultSize.width() >= MAX_SIZE)
+        if (defaultSize.width() > MAX_SIZE || defaultSize.width() >= MAX_SIZE) {
             defaultSize.scale(MAX_SIZE, MAX_SIZE, Qt::KeepAspectRatio);
+        }
 
         // See FileActions::openFile(): MainWindow's translucent/frameless
         // stylesheet cascades into this otherwise-unstyled top-level
@@ -826,8 +831,9 @@ public:
     {
         for (auto it = radioButtons.constBegin(); it != radioButtons.constEnd();
              ++it) {
-            if (it.value()->isChecked())
+            if (it.value()->isChecked()) {
                 return it.key();
+            }
         }
         return QStringLiteral("skip");
     }

@@ -71,8 +71,9 @@ void MouseControlsEditorBase::setModifiersNoModifier()
 void MouseControlsEditorBase::onModifiersChanged(const QString& modifier,
                                                  int value)
 {
-    if (ignoreOnChanged_)
+    if (ignoreOnChanged_) {
         return;
+    }
 
     const bool checked = (value == Qt::Checked);
     ignoreOnChanged_ = true;
@@ -82,8 +83,9 @@ void MouseControlsEditorBase::onModifiersChanged(const QString& modifier,
     }
 
     if (checked && modifier != QLatin1String("No Modifier")) {
-        if (checkboxes_.contains(QLatin1String("No Modifier")))
+        if (checkboxes_.contains(QLatin1String("No Modifier"))) {
             checkboxes_[QLatin1String("No Modifier")]->setChecked(false);
+        }
     }
 
     if (!checked && getModifiers(/*cleaned=*/false).isEmpty()) {
@@ -97,11 +99,13 @@ QStringList MouseControlsEditorBase::getModifiers(bool cleaned) const
 {
     QStringList result;
     for (const auto& [name, flag] : MouseConfigBase::modifierMap()) {
-        if (checkboxes_.contains(name) && checkboxes_[name]->isChecked())
+        if (checkboxes_.contains(name) && checkboxes_[name]->isChecked()) {
             result.append(name);
+        }
     }
-    if (cleaned && result.contains(QLatin1String("No Modifier")))
+    if (cleaned && result.contains(QLatin1String("No Modifier"))) {
         return {QStringLiteral("No Modifier")};
+    }
     return result;
 }
 
@@ -150,15 +154,17 @@ MouseControlsModelBase::MouseControlsModelBase(QList<int> columns,
 
 int MouseControlsModelBase::rowCount(const QModelIndex& parent) const
 {
-    if (parent.isValid())
+    if (parent.isValid()) {
         return 0;
+    }
     return actionCount();
 }
 
 int MouseControlsModelBase::columnCount(const QModelIndex& parent) const
 {
-    if (parent.isValid())
+    if (parent.isValid()) {
         return 0;
+    }
     return columns_.size();
 }
 
@@ -166,10 +172,12 @@ QVariant MouseControlsModelBase::headerData(int section,
                                             Qt::Orientation orientation,
                                             int role) const
 {
-    if (role != Qt::DisplayRole || orientation != Qt::Horizontal)
+    if (role != Qt::DisplayRole || orientation != Qt::Horizontal) {
         return {};
-    if (section < 0 || section >= columns_.size())
+    }
+    if (section < 0 || section >= columns_.size()) {
         return {};
+    }
 
     static const QMap<int, QString> headers = {
         {COL_ACTION, QStringLiteral("Action")},
@@ -183,22 +191,26 @@ QVariant MouseControlsModelBase::headerData(int section,
 
 Qt::ItemFlags MouseControlsModelBase::flags(const QModelIndex& index) const
 {
-    if (!index.isValid())
+    if (!index.isValid()) {
         return Qt::NoItemFlags;
+    }
 
     const int col = columns_.value(index.column(), -1);
     const Qt::ItemFlags base = Qt::ItemIsEnabled | Qt::ItemNeverHasChildren;
 
-    if (col == COL_ACTION || col == COL_CHANGED)
+    if (col == COL_ACTION || col == COL_CHANGED) {
         return base;
+    }
 
-    if (col == COL_BUTTON || col == COL_MODIFIERS)
+    if (col == COL_BUTTON || col == COL_MODIFIERS) {
         return base | Qt::ItemIsEditable;
+    }
 
     if (col == COL_INVERTED) {
         const int row = index.row();
-        if (actionInvertible(row) && actionConfigured(row))
+        if (actionInvertible(row) && actionConfigured(row)) {
             return base | Qt::ItemIsEditable | Qt::ItemIsUserCheckable;
+        }
         return base;
     }
 
@@ -207,8 +219,9 @@ Qt::ItemFlags MouseControlsModelBase::flags(const QModelIndex& index) const
 
 QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
 {
-    if (!index.isValid())
+    if (!index.isValid()) {
         return {};
+    }
     const int row = index.row();
     const int col = columns_.value(index.column(), -1);
 
@@ -223,8 +236,9 @@ QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
         case COL_MODIFIERS:
             return actionModifiers(row).join(QStringLiteral(" + "));
         case COL_INVERTED:
-            if (actionConfigured(row) && actionInvertible(row))
+            if (actionConfigured(row) && actionInvertible(row)) {
                 return actionInverted(row) ? tr("Yes") : tr("No");
+            }
             return {};
         default:
             return {};
@@ -232,8 +246,9 @@ QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
     }
 
     if (role == Qt::ToolTipRole) {
-        if (!actionControlsChanged(row))
+        if (!actionControlsChanged(row)) {
             return {};
+        }
         switch (col) {
         case COL_CHANGED:
             return tr("Changed from default");
@@ -243,9 +258,10 @@ QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
             return tr("Default: %1")
                 .arg(actionDefaultModifiers(row).join(QStringLiteral(" + ")));
         case COL_INVERTED:
-            if (actionInvertible(row))
+            if (actionInvertible(row)) {
                 return tr("Default: %1")
                     .arg(actionDefaultInverted(row) ? tr("Yes") : tr("No"));
+            }
             return {};
         default:
             return {};
@@ -254,8 +270,9 @@ QVariant MouseControlsModelBase::data(const QModelIndex& index, int role) const
 
     if (role == Qt::CheckStateRole) {
         if (col == COL_INVERTED && actionConfigured(row)
-            && actionInvertible(row))
+            && actionInvertible(row)) {
             return actionInverted(row) ? Qt::Checked : Qt::Unchecked;
+        }
     }
 
     return {};
@@ -273,20 +290,23 @@ bool MouseControlsModelBase::setDataEx(const QModelIndex& index,
                                        int role,
                                        int removeFromOtherRow)
 {
-    if (!index.isValid())
+    if (!index.isValid()) {
         return false;
+    }
 
     const int row = index.row();
     const int col = columns_.value(index.column(), -1);
 
     if (col == COL_INVERTED) {
-        if (role != Qt::CheckStateRole && role != Qt::EditRole)
+        if (role != Qt::CheckStateRole && role != Qt::EditRole) {
             return false;
+        }
         const bool inverted = (value.toInt() == Qt::Checked);
         setActionInverted(row, inverted);
     } else {
-        if (role != Qt::EditRole)
+        if (role != Qt::EditRole) {
             return false;
+        }
         setDataOnAction(row, value);
 
         if (removeFromOtherRow >= 0) {

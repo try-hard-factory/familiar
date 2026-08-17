@@ -171,8 +171,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // so the WM doesn't know it belongs above it - with Always On Top
     // enabled the main window would cover this modal window, leaving the
     // whole app looking frozen. Inherit the hint explicitly instead.
-    if (wm && wm->windowFlags().testFlag(Qt::WindowStaysOnTopHint))
+    if (wm && wm->windowFlags().testFlag(Qt::WindowStaysOnTopHint)) {
         setWindowFlag(Qt::WindowStaysOnTopHint, true);
+    }
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Settings"));
     // Not just resize() - there's no native resize border any more
@@ -265,10 +266,11 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
                                                           Qt::CaseInsensitive);
             const QString contentFilter = nameMatches ? QString() : text;
             bool contentMatches;
-            if (auto* kb = qobject_cast<KeyboardShortcutsPage*>(cat.page))
+            if (auto* kb = qobject_cast<KeyboardShortcutsPage*>(cat.page)) {
                 contentMatches = kb->applySearchFilter(contentFilter);
-            else
+            } else {
                 contentMatches = applyGroupFilter(cat.page, contentFilter);
+            }
 
             // Only the category's own name is a candidate for bolding here
             // - if nothing but its content matched, the name itself has
@@ -281,14 +283,17 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             const bool visible = nameMatches || contentMatches;
             cat.button->setVisible(visible);
             if (visible) {
-                if (!firstVisible)
+                if (!firstVisible) {
                     firstVisible = cat.button;
-                if (cat.button->isChecked())
+                }
+                if (cat.button->isChecked()) {
                     currentStillVisible = true;
+                }
             }
         }
-        if (!currentStillVisible && firstVisible)
+        if (!currentStillVisible && firstVisible) {
             firstVisible->click();
+        }
     });
     leftColumn->addWidget(searchBox_);
 
@@ -342,8 +347,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
                                                 tr("Import Settings"),
                                                 QString(),
                                                 tr("JSON files (*.json)"));
-        if (path.isEmpty())
+        if (path.isEmpty()) {
             return;
+        }
         if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
@@ -372,8 +378,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
                                                 tr("JSON files (*.json)"),
                                                 QStringLiteral(
                                                     "familiar-settings.json"));
-        if (path.isEmpty())
+        if (path.isEmpty()) {
             return;
+        }
         if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
@@ -418,8 +425,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // the next row down, disabled unless autosave is actually enabled
     // (it's meaningless on its own). A left margin on its own layout is
     // enough to read as "belongs to Autosave" without actual nesting.
-    if (auto* intervalLayout = autosaveInterval_->layout())
+    if (auto* intervalLayout = autosaveInterval_->layout()) {
         intervalLayout->setContentsMargins(24, 4, 0, 4);
+    }
     miscLayout->addWidget(autosaveInterval_);
     miscLayout->addStretch(1);
     autosaveInterval_->setControlEnabled(
@@ -464,8 +472,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
 void SettingsWindow::selectCategory(const QString& name)
 {
     for (int i = 0; i < categories_.size(); ++i) {
-        if (categories_[i].name != name)
+        if (categories_[i].name != name) {
             continue;
+        }
         // setChecked() alone doesn't fire idClicked (that's only
         // emitted on an actual user click) - the stack switch above is
         // wired to that signal, so it needs its own explicit call here,
