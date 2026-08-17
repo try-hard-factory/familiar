@@ -14,5 +14,8 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/core/held_buttons_tracker_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/controls_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/keyboard_settings_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/core/valuehandler_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utils/utils_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_checkbox_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_spinbox_test.cpp
 )

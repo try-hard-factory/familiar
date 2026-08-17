@@ -1,5 +1,9 @@
-find_package(QT NAMES Qt6 COMPONENTS Widgets Network REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network REQUIRED)
+# Test: NOT for its own test runner (GoogleTest is that, see main.cpp's
+# "-t" handling) - just for QSignalSpy/QTest::mouseClick/keyClick, the
+# synthetic-event helpers used by tests/widgets/*, plain utility
+# classes/functions usable from any test framework.
+find_package(QT NAMES Qt6 COMPONENTS Widgets Network Test REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Test REQUIRED)
 
 ##################
 #     DOXYGEN    #
@@ -47,7 +51,6 @@ set(PROJECT_SOURCES
         canvasscene.cpp
         canvasscene.h
         debug_macros.h
-        Vec2d.h
         log/log.h
         log/log.cpp
         log/qt_formatters.h
@@ -220,7 +223,11 @@ target_sources(familiar PRIVATE ${FamiliarTestsSrc})
 # Lets test files #include "support/settings_test_environment.h" and lets
 # main.cpp do the same, instead of a relative "../tests/support/..." path.
 target_include_directories(familiar PRIVATE ${PROJECT_SOURCE_DIR}/tests)
-target_link_libraries(familiar PRIVATE GTest::gtest GTest::gmock)
+target_link_libraries(familiar PRIVATE
+    GTest::gtest
+    GTest::gmock
+    Qt${QT_VERSION_MAJOR}::Test
+)
 
 
 
