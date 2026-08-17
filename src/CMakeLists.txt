@@ -32,8 +32,6 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
-message(${CMAKE_CURRENT_SOURCE_DIR}/include/kColorPicker/include/kColorPicker)
-include_directories(${CMAKE_SOURCE_DIR}/include/kColorPicker/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 message(${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories(${CMAKE_BINARY_DIR})
@@ -192,7 +190,6 @@ if (WIN32)
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
-        "${CMAKE_BINARY_DIR}\\include\\kColorPicker\\lib\\Release\\kColorPicker.lib"
     )
 elseif(APPLE)
 
@@ -202,7 +199,6 @@ else()
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
-        ${CMAKE_BINARY_DIR}/include/kColorPicker/lib/libkColorPicker.a
     )
 endif()
 
