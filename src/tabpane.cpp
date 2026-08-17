@@ -88,10 +88,12 @@ void TabPane::setCloseButtonTooltip_(int index)
 {
     // The close button can be docked on either side depending on the
     // active style, so try both rather than assuming RightSide.
-    if (QWidget* btn = tabs_->tabBar()->tabButton(index, QTabBar::RightSide))
+    if (QWidget* btn = tabs_->tabBar()->tabButton(index, QTabBar::RightSide)) {
         btn->setToolTip(tr("Close project"));
-    if (QWidget* btn = tabs_->tabBar()->tabButton(index, QTabBar::LeftSide))
+    }
+    if (QWidget* btn = tabs_->tabBar()->tabButton(index, QTabBar::LeftSide)) {
         btn->setToolTip(tr("Close project"));
+    }
 }
 
 void TabPane::setCurrentTabPath(const QString& path)

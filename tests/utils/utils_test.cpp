@@ -39,10 +39,10 @@ TEST(GetRectFromPointsTest, NormalizesRegardlessOfPointOrder)
     // Bottom-right-to-top-left drag (point1 "after" point2 on both axes)
     // - the rect it produces should be identical to the top-left-to-
     // bottom-right drag a user more usually makes.
-    const QRectF fromReverseDrag
-        = get_rect_from_points(QPointF(100, 80), QPointF(10, 20));
-    const QRectF fromForwardDrag
-        = get_rect_from_points(QPointF(10, 20), QPointF(100, 80));
+    const QRectF fromReverseDrag = get_rect_from_points(QPointF(100, 80),
+                                                        QPointF(10, 20));
+    const QRectF fromForwardDrag = get_rect_from_points(QPointF(10, 20),
+                                                        QPointF(100, 80));
 
     EXPECT_EQ(fromReverseDrag, fromForwardDrag);
     EXPECT_EQ(fromForwardDrag, QRectF(QPointF(10, 20), QPointF(100, 80)));

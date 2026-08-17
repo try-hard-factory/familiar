@@ -173,8 +173,9 @@ GroupToolbar::GroupToolbar(QWidget* parent)
             this,
             &GroupToolbar::onLockToggled_);
     connect(fillColorBtn_, &QToolButton::clicked, this, [this] {
-        if (!item_)
+        if (!item_) {
             return;
+        }
         const QColor oldColor = item_->fill_color();
         QColor initial = oldColor;
         initial.setAlpha(255);
@@ -230,14 +231,16 @@ void GroupToolbar::attach(GroupItem* item)
 
 void GroupToolbar::onLockToggled_(bool checked)
 {
-    if (item_)
+    if (item_) {
         item_->set_locked(checked);
+    }
 }
 
 void GroupToolbar::updateFillColorIcon_()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
     fillColorBtn_->setIcon(makeFillColorIcon(item_->fill_color(),
                                              iconGlyphColor_,
                                              devicePixelRatioF()));
@@ -245,8 +248,9 @@ void GroupToolbar::updateFillColorIcon_()
 
 void GroupToolbar::showSettingsPopup_()
 {
-    if (!item_)
+    if (!item_) {
         return;
+    }
 
     // Toggle, not just reuse-and-raise like GifPlaybackToolbar's speed
     // popup - clicking the chevron again while the popup is already open
@@ -297,8 +301,9 @@ void GroupToolbar::showSettingsPopup_()
     dragDropCheck->setChecked(item_->drag_drop_enabled());
     dragDropCheck->setFocusPolicy(Qt::NoFocus);
     connect(dragDropCheck, &QCheckBox::toggled, this, [this](bool checked) {
-        if (item_)
+        if (item_) {
             item_->set_drag_drop_enabled(checked);
+        }
     });
     lay->addWidget(dragDropCheck);
 

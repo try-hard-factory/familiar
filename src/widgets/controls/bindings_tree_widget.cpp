@@ -129,8 +129,9 @@ BindingsTreeWidget::BindingsTreeWidget(const QList<BindingTarget*>& targets,
 
 void BindingsTreeWidget::refreshAll()
 {
-    for (BindingTarget* target : targets_)
+    for (BindingTarget* target : targets_) {
         refreshTarget(target);
+    }
 }
 
 bool BindingsTreeWidget::applySearchFilter(const QString& text)
@@ -139,8 +140,9 @@ bool BindingsTreeWidget::applySearchFilter(const QString& text)
     bool anyVisible = false;
     for (BindingTarget* target : targets_) {
         QWidget* container = rowContainers_.value(target);
-        if (!container)
+        if (!container) {
             continue;
+        }
         const bool matches = text.isEmpty()
                              || target->text().contains(text,
                                                         Qt::CaseInsensitive);
@@ -156,8 +158,9 @@ bool BindingsTreeWidget::applySearchFilter(const QString& text)
 void BindingsTreeWidget::refreshTarget(BindingTarget* target)
 {
     QWidget* container = rowContainers_.value(target);
-    if (!container)
+    if (!container) {
         return;
+    }
 
     QLayout* rowLayout = container->layout();
     QLayoutItem* item;
@@ -193,8 +196,9 @@ void BindingsTreeWidget::refreshTarget(BindingTarget* target)
                                   /*showAdd=*/true,
                                   /*indent=*/false,
                                   extraContainer));
-    if (extraContainer)
+    if (extraContainer) {
         rowLayout->addWidget(extraContainer);
+    }
 }
 
 QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
@@ -264,8 +268,9 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         QStringList defaultChords;
         for (const Binding& b : target->defaultBindings()) {
             const QString dt = b.displayText();
-            if (!dt.isEmpty())
+            if (!dt.isEmpty()) {
                 defaultChords.append(dt);
+            }
         }
         nameLabel->setDefaultText(
             tr("Default: %1")

@@ -85,8 +85,9 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
     // header's comment for why NOT hand-drawn here) - only the arrows
     // are custom-painted.
     QColor fg = text_;
-    if (!enabled)
+    if (!enabled) {
         fg.setAlpha(110);
+    }
     p.setPen(Qt::NoPen);
     p.setBrush(fg);
 

@@ -222,8 +222,9 @@ protected:
             // gets silently reinterpreted as a resize/window-drag and the
             // dialog underneath never sees it.
             auto* w = qobject_cast<QWidget*>(watched);
-            if (!w || w->window() != this)
+            if (!w || w->window() != this) {
                 return QMainWindow::eventFilter(watched, event);
+            }
         }
 
         if (event->type() == QEvent::MouseMove) {
@@ -253,14 +254,18 @@ private:
     Qt::Edges resizeEdgesAt(const QPoint& pos) const
     {
         Qt::Edges edges;
-        if (pos.x() < kResizeBorder)
+        if (pos.x() < kResizeBorder) {
             edges |= Qt::LeftEdge;
-        if (pos.x() > width() - kResizeBorder)
+        }
+        if (pos.x() > width() - kResizeBorder) {
             edges |= Qt::RightEdge;
-        if (pos.y() < kResizeBorder)
+        }
+        if (pos.y() < kResizeBorder) {
             edges |= Qt::TopEdge;
-        if (pos.y() > height() - kResizeBorder)
+        }
+        if (pos.y() > height() - kResizeBorder) {
             edges |= Qt::BottomEdge;
+        }
         return edges;
     }
 
@@ -270,8 +275,9 @@ private:
     // selection for the same click.
     bool tryStartSystemResize(const QPoint& pos)
     {
-        if (!rect().contains(pos) || !windowHandle())
+        if (!rect().contains(pos) || !windowHandle()) {
             return false;
+        }
 
         // Запуск нативного изменения размера (доступно в Qt 5.15 и новее)
         const Qt::Edges edges = resizeEdgesAt(pos);
@@ -292,17 +298,18 @@ private:
         const Qt::Edges edges = resizeEdgesAt(pos);
 
         if ((edges & Qt::LeftEdge && edges & Qt::TopEdge)
-            || (edges & Qt::RightEdge && edges & Qt::BottomEdge))
+            || (edges & Qt::RightEdge && edges & Qt::BottomEdge)) {
             setCursor(Qt::SizeFDiagCursor);
-        else if ((edges & Qt::RightEdge && edges & Qt::TopEdge)
-                 || (edges & Qt::LeftEdge && edges & Qt::BottomEdge))
+        } else if ((edges & Qt::RightEdge && edges & Qt::TopEdge)
+                   || (edges & Qt::LeftEdge && edges & Qt::BottomEdge)) {
             setCursor(Qt::SizeBDiagCursor);
-        else if (edges & (Qt::LeftEdge | Qt::RightEdge))
+        } else if (edges & (Qt::LeftEdge | Qt::RightEdge)) {
             setCursor(Qt::SizeHorCursor);
-        else if (edges & (Qt::TopEdge | Qt::BottomEdge))
+        } else if (edges & (Qt::TopEdge | Qt::BottomEdge)) {
             setCursor(Qt::SizeVerCursor);
-        else
+        } else {
             unsetCursor();
+        }
     }
 
 private:

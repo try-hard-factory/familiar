@@ -36,19 +36,23 @@ QString keyEventToSequenceString(const QKeyEvent* event)
 QString Binding::displayText() const
 {
     QStringList parts;
-    if (!mouseButton.isEmpty())
+    if (!mouseButton.isEmpty()) {
         parts << mouseButton + QStringLiteral(" MB");
+    }
     if (!mouseModifiers.isEmpty()
-        && mouseModifiers != QStringList{QStringLiteral("No Modifier")})
+        && mouseModifiers != QStringList{QStringLiteral("No Modifier")}) {
         parts << mouseModifiers.join(QLatin1Char('+'));
-    if (!keySequence.isEmpty())
+    }
+    if (!keySequence.isEmpty()) {
         parts << keySequence;
+    }
 
     // A wheel binding with no button/key and "No Modifier" (scroll alone
     // triggers it) would otherwise display as empty, indistinguishable
     // from "not configured at all" - spell it out instead.
-    if (parts.isEmpty() && !mouseModifiers.isEmpty())
+    if (parts.isEmpty() && !mouseModifiers.isEmpty()) {
         parts << QStringLiteral("No Modifier");
+    }
 
     return parts.join(QStringLiteral(" + "));
 }
@@ -67,16 +71,21 @@ Binding Binding::deserialize(const QString& s)
 {
     const QStringList parts = s.split(QLatin1Char('|'));
     Binding b;
-    if (parts.size() > 0)
+    if (parts.size() > 0) {
         b.keySequence = parts[0];
-    if (parts.size() > 1)
+    }
+    if (parts.size() > 1) {
         b.mouseButton = parts[1];
-    if (parts.size() > 2 && !parts[2].isEmpty())
+    }
+    if (parts.size() > 2 && !parts[2].isEmpty()) {
         b.mouseModifiers = parts[2].split(QLatin1Char('+'));
-    if (parts.size() > 3)
+    }
+    if (parts.size() > 3) {
         b.inverted = parts[3] == QLatin1String("1");
-    if (parts.size() > 4)
+    }
+    if (parts.size() > 4) {
         b.systemGlobal = parts[4] == QLatin1String("1");
+    }
     return b;
 }
 
@@ -136,27 +145,31 @@ Qt::KeyboardModifiers MouseConfigBase::modifiersToQt(const QStringList& modifier
 QList<Binding> MouseConfigBase::getBindings() const
 {
     QStringList defaultSerialized;
-    for (const Binding& b : defaultBindings_)
+    for (const Binding& b : defaultBindings_) {
         defaultSerialized.append(b.serialize());
+    }
 
     const QStringList serialized
         = KeyboardSettings().getList(settingsGroup(),
                                      id_ + QStringLiteral("_bindings"),
                                      defaultSerialized);
     QList<Binding> out;
-    for (const QString& s : serialized)
+    for (const QString& s : serialized) {
         out.append(Binding::deserialize(s));
+    }
     return out;
 }
 
 void MouseConfigBase::setBindings(const QList<Binding>& bindings) const
 {
     QStringList serialized;
-    for (const Binding& b : bindings)
+    for (const Binding& b : bindings) {
         serialized.append(b.serialize());
+    }
     QStringList defaultSerialized;
-    for (const Binding& b : defaultBindings_)
+    for (const Binding& b : defaultBindings_) {
         defaultSerialized.append(b.serialize());
+    }
 
     KeyboardSettings().setList(settingsGroup(),
                                id_ + QStringLiteral("_bindings"),
@@ -172,8 +185,9 @@ QStringList MouseConfigBase::getModifiers() const
 void MouseConfigBase::setModifiers(const QStringList& values) const
 {
     QList<Binding> bindings = getBindings();
-    if (bindings.isEmpty())
+    if (bindings.isEmpty()) {
         bindings.append(Binding{});
+    }
     bindings[0].mouseModifiers = values;
     setBindings(bindings);
 }
@@ -186,8 +200,9 @@ bool MouseConfigBase::getInverted() const
 void MouseConfigBase::setInverted(bool value) const
 {
     QList<Binding> bindings = getBindings();
-    if (bindings.isEmpty())
+    if (bindings.isEmpty()) {
         bindings.append(Binding{});
+    }
     bindings[0].inverted = value;
     setBindings(bindings);
 }
@@ -232,8 +247,9 @@ std::optional<Binding> MouseWheelConfig::matchesEvent(
     const QWheelEvent* event) const
 {
     for (const Binding& b : getBindings()) {
-        if (b.mouseModifiers.isEmpty() && b.keySequence.isEmpty())
+        if (b.mouseModifiers.isEmpty() && b.keySequence.isEmpty()) {
             continue;
+        }
 
         Qt::KeyboardModifiers required = modifiersToQt(b.mouseModifiers);
         if (!b.keySequence.isEmpty()) {
@@ -245,12 +261,14 @@ std::optional<Binding> MouseWheelConfig::matchesEvent(
                     break;
                 }
             }
-            if (!isBareModifier)
+            if (!isBareModifier) {
                 continue;
+            }
         }
 
-        if (required == event->modifiers())
+        if (required == event->modifiers()) {
             return b;
+        }
     }
     return std::nullopt;
 }
@@ -280,8 +298,9 @@ QString MouseConfig::getButton() const
 void MouseConfig::setButton(const QString& value) const
 {
     QList<Binding> bindings = getBindings();
-    if (bindings.isEmpty())
+    if (bindings.isEmpty()) {
         bindings.append(Binding{});
+    }
     bindings[0].mouseButton = (value == QLatin1String("Not Configured"))
                                   ? QString()
                                   : value;
@@ -313,8 +332,9 @@ std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
 {
     const auto& bmap = buttonMap();
     for (const Binding& b : getBindings()) {
-        if (b.mouseButton.isEmpty())
+        if (b.mouseButton.isEmpty()) {
             continue;
+        }
         Qt::MouseButton btn = Qt::NoButton;
         for (const auto& [key, flag] : bmap) {
             if (key == b.mouseButton) {
@@ -322,8 +342,9 @@ std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
                 break;
             }
         }
-        if (btn != event->button())
+        if (btn != event->button()) {
             continue;
+        }
 
         // The Mouse buttons field only ever captures the button itself
         // (see MouseButtonCaptureField) - a modifier held during the
@@ -343,12 +364,14 @@ std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
             }
             // A real key (not a bare modifier) in keySequence isn't
             // something a mouse click alone can satisfy - skip it here.
-            if (!isBareModifier)
+            if (!isBareModifier) {
                 continue;
+            }
         }
 
-        if (required == event->modifiers())
+        if (required == event->modifiers()) {
             return b;
+        }
     }
     return std::nullopt;
 }
@@ -394,16 +417,18 @@ namespace {
 QJsonArray toJsonArray(const QStringList& values)
 {
     QJsonArray arr;
-    for (const QString& v : values)
+    for (const QString& v : values) {
         arr.append(v);
+    }
     return arr;
 }
 
 QStringList fromJsonArray(const QJsonValue& v)
 {
     QStringList out;
-    for (const QJsonValue& e : v.toArray())
+    for (const QJsonValue& e : v.toArray()) {
         out.append(e.toString());
+    }
     return out;
 }
 
@@ -424,10 +449,12 @@ QStringList KeyboardSettings::get_shortcuts(const QString& group,
                                             const QStringList& defaultValues)
 {
     const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
-    if (!v.isUndefined())
+    if (!v.isUndefined()) {
         return fromJsonArray(v);
-    if (saveUnknownShortcuts)
+    }
+    if (saveUnknownShortcuts) {
         setShortcuts(group, key, defaultValues);
+    }
     return defaultValues;
 }
 
@@ -436,12 +463,13 @@ void KeyboardSettings::setList(const QString& group,
                                const QStringList& values,
                                const QStringList& defaultValues)
 {
-    if (values == defaultValues)
+    if (values == defaultValues) {
         SettingsHandler::getInstance()->removeJsonValue(group, key);
-    else
+    } else {
         SettingsHandler::getInstance()->setJsonValue(group,
                                                      key,
                                                      toJsonArray(values));
+    }
 }
 
 QStringList KeyboardSettings::getList(const QString& group,
@@ -457,11 +485,12 @@ void KeyboardSettings::setScalar(const QString& group,
                                  const QVariant& value,
                                  const QVariant& defaultValue)
 {
-    if (value == defaultValue)
+    if (value == defaultValue) {
         SettingsHandler::getInstance()->removeJsonValue(group, key);
-    else
+    } else {
         SettingsHandler::getInstance()
             ->setJsonValue(group, key, QJsonValue::fromVariant(value));
+    }
 }
 
 QVariant KeyboardSettings::getScalar(const QString& group,
@@ -491,11 +520,13 @@ void KeyboardSettings::restoreDefaults()
     // here on their next launch, not pin them to today's default
     // forever).
     for (Action* action : getActions().all()) {
-        if (!action->qaction)
+        if (!action->qaction) {
             continue;
+        }
         QList<QKeySequence> seqs;
-        for (const QString& s : action->get_shortcuts())
+        for (const QString& s : action->get_shortcuts()) {
             seqs.append(QKeySequence(s));
+        }
         action->qaction->setShortcuts(seqs);
     }
     emit SettingsEvents::instance().restoreKeyboardDefaults();
@@ -505,8 +536,9 @@ std::optional<ControlMatch> KeyboardSettings::mousewheelActionForEvent(
     const QWheelEvent* event) const
 {
     for (const MouseWheelConfig& action : mousewheelActions()) {
-        if (auto binding = action.matchesEvent(event))
+        if (auto binding = action.matchesEvent(event)) {
             return ControlMatch{action.group(), binding->inverted};
+        }
     }
     return std::nullopt;
 }
@@ -515,8 +547,9 @@ std::optional<ControlMatch> KeyboardSettings::mouseActionForEvent(
     const QMouseEvent* event) const
 {
     for (const MouseConfig& action : mouseActions()) {
-        if (auto binding = action.matchesEvent(event))
+        if (auto binding = action.matchesEvent(event)) {
             return ControlMatch{action.group(), binding->inverted};
+        }
     }
     return std::nullopt;
 }
@@ -524,12 +557,14 @@ std::optional<ControlMatch> KeyboardSettings::mouseActionForEvent(
 int KeyboardSettings::findConflictingMouseGroup(const QString& excludeId,
                                                 const Binding& candidate) const
 {
-    if (candidate.mouseButton.isEmpty() && candidate.keySequence.isEmpty())
+    if (candidate.mouseButton.isEmpty() && candidate.keySequence.isEmpty()) {
         return -1;
+    }
     const auto& list = mouseActions();
     for (int i = 0; i < list.size(); ++i) {
-        if (list[i].id() == excludeId)
+        if (list[i].id() == excludeId) {
             continue;
+        }
         for (const Binding& b : list[i].getBindings()) {
             const bool mouseMatch
                 = !candidate.mouseButton.isEmpty()
@@ -540,8 +575,9 @@ int KeyboardSettings::findConflictingMouseGroup(const QString& excludeId,
                                           candidate.mouseModifiers.end());
             const bool keyMatch = !candidate.keySequence.isEmpty()
                                   && b.keySequence == candidate.keySequence;
-            if (mouseMatch || keyMatch)
+            if (mouseMatch || keyMatch) {
                 return i;
+            }
         }
     }
     return -1;
@@ -550,12 +586,14 @@ int KeyboardSettings::findConflictingMouseGroup(const QString& excludeId,
 int KeyboardSettings::findConflictingWheelGroup(const QString& excludeId,
                                                 const Binding& candidate) const
 {
-    if (candidate.mouseModifiers.isEmpty() && candidate.keySequence.isEmpty())
+    if (candidate.mouseModifiers.isEmpty() && candidate.keySequence.isEmpty()) {
         return -1;
+    }
     const auto& list = mousewheelActions();
     for (int i = 0; i < list.size(); ++i) {
-        if (list[i].id() == excludeId)
+        if (list[i].id() == excludeId) {
             continue;
+        }
         for (const Binding& b : list[i].getBindings()) {
             const bool modMatch
                 = !candidate.mouseModifiers.isEmpty()
@@ -565,8 +603,9 @@ int KeyboardSettings::findConflictingWheelGroup(const QString& excludeId,
                                           candidate.mouseModifiers.end());
             const bool keyMatch = !candidate.keySequence.isEmpty()
                                   && b.keySequence == candidate.keySequence;
-            if (modMatch || keyMatch)
+            if (modMatch || keyMatch) {
                 return i;
+            }
         }
     }
     return -1;

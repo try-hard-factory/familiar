@@ -249,8 +249,9 @@ void ColorsWidget::colorInit()
         colors_layout->addLayout(row_layout);
     }
 
-    for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i)
+    for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
         refreshSwatch_(static_cast<EPresetsColorIdx>(i));
+    }
 
     body_layout_->addLayout(colors_layout);
 }
@@ -296,8 +297,9 @@ void ColorsWidget::pickColor_(EPresetsColorIdx idx)
 void ColorsWidget::refreshSwatch_(EPresetsColorIdx idx)
 {
     QToolButton* swatch = colorSwatches_[idx];
-    if (!swatch)
+    if (!swatch) {
         return;
+    }
     const auto preset = SettingsHandler::getInstance()->getCurrentColorPreset();
     swatch->setIcon(makeSwatchIcon(preset[idx], devicePixelRatioF()));
 }
@@ -370,8 +372,9 @@ void ColorsWidget::updateComponents()
 {
     auto* settings = SettingsHandler::getInstance();
 
-    for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i)
+    for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
         refreshSwatch_(static_cast<EPresetsColorIdx>(i));
+    }
 
     opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
 

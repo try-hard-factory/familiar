@@ -144,8 +144,9 @@ bool HoverInfoLabel::event(QEvent* event)
 {
     if (event->type() == QEvent::ToolTip) {
         if (!infoHtml_.isEmpty()) {
-            if (!popup_)
+            if (!popup_) {
                 popup_ = new SettingInfoPopup(window());
+            }
             popup_->setContent(title_, infoHtml_, defaultText_, showResetHint_);
 
             QPoint pos = mapToGlobal(QPoint(0, height() + 4));
@@ -174,8 +175,9 @@ bool HoverInfoLabel::event(QEvent* event)
 void HoverInfoLabel::leaveEvent(QEvent* event)
 {
     QLabel::leaveEvent(event);
-    if (popup_)
+    if (popup_) {
         popup_->hide();
+    }
 }
 
 // ─── SettingRowBase ─────────────────────────────────────────────────────────
@@ -209,15 +211,17 @@ void SettingRowBase::updateLabel()
 {
     FamSettings settings;
     QString text = baseLabel_;
-    if (settings.valueChanged(key_))
+    if (settings.valueChanged(key_)) {
         text += QStringLiteral(" ") + QString::fromUtf8(CHANGED_SYMBOL);
+    }
     label_->setText(text);
 }
 
 void SettingRowBase::onValueChanged(const QVariant& value)
 {
-    if (ignoreValueChanged_)
+    if (ignoreValueChanged_) {
         return;
+    }
 
     FamSettings settings;
     const QVariant converted = convertValueFromQt(value);
@@ -290,8 +294,9 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     , options_(options)
 {
     FamSettings settings;
-    for (const ComboOption& opt : options_)
+    for (const ComboOption& opt : options_) {
         input_->addItem(opt.label);
+    }
     input_->setFixedWidth(kControlWidth);
     // setValue() (via setCurrentIndex) happens before this connect(), so
     // it can't fire onValueChanged() with nothing listening yet - no
@@ -304,8 +309,9 @@ ComboSettingRow::ComboSettingRow(const QString& label,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
             [this](int index) {
-                if (index >= 0 && index < options_.size())
+                if (index >= 0 && index < options_.size()) {
                     onValueChanged(options_[index].value);
+                }
             });
 
     // options_ (used by defaultValueDisplayText() below) is fully set by
@@ -329,8 +335,9 @@ QString ComboSettingRow::defaultValueDisplayText() const
 {
     const QString def = FamSettings().valueOrDefault(key_).toString();
     for (const ComboOption& opt : options_) {
-        if (opt.value == def)
+        if (opt.value == def) {
             return opt.label;
+        }
     }
     return def;
 }

@@ -51,8 +51,9 @@ void Action::setShortcuts(const QStringList& values)
         ->setShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, values);
     if (qaction) {
         QList<QKeySequence> seqs;
-        for (const QString& s : values)
+        for (const QString& s : values) {
             seqs.append(QKeySequence(s));
+        }
         qaction->setShortcuts(seqs);
     }
 }
@@ -60,8 +61,9 @@ void Action::setShortcuts(const QStringList& values)
 QKeySequence Action::getKeySequence(int index) const
 {
     const QStringList sc = get_shortcuts();
-    if (index < sc.size())
+    if (index < sc.size()) {
         return QKeySequence(sc[index]);
+    }
     return {};
 }
 
@@ -72,8 +74,9 @@ bool Action::shortcutsChanged() const
 
 QString Action::getDefaultShortcut(int index) const
 {
-    if (index < shortcuts.size())
+    if (index < shortcuts.size()) {
         return shortcuts[index];
+    }
     return {};
 }
 
@@ -84,16 +87,18 @@ QList<Binding> Action::get_mouse_bindings() const
                                      id + QStringLiteral("_mouse"),
                                      {});
     QList<Binding> out;
-    for (const QString& s : serialized)
+    for (const QString& s : serialized) {
         out.append(Binding::deserialize(s));
+    }
     return out;
 }
 
 void Action::setMouseBindings(const QList<Binding>& values)
 {
     QStringList serialized;
-    for (const Binding& b : values)
+    for (const Binding& b : values) {
         serialized.append(b.serialize());
+    }
     KeyboardSettings().setList(QString::fromLatin1(SETTINGS_GROUP),
                                id + QStringLiteral("_mouse"),
                                serialized,
@@ -114,8 +119,9 @@ QString Action::displayText() const
 void ActionRegistry::add(Action action)
 {
     const QString id = action.id;
-    if (!map_.contains(id))
+    if (!map_.contains(id)) {
         order_.append(id);
+    }
     map_[id] = std::move(action);
 }
 
@@ -145,21 +151,25 @@ QList<Action*> ActionRegistry::all()
 {
     QList<Action*> result;
     result.reserve(order_.size());
-    for (const QString& id : order_)
+    for (const QString& id : order_) {
         result.append(&map_[id]);
+    }
     return result;
 }
 
 Action* ActionRegistry::findByShortcut(const QString& excludeId,
                                        const QString& shortcut)
 {
-    if (shortcut.isEmpty())
+    if (shortcut.isEmpty()) {
         return nullptr;
+    }
     for (Action* a : all()) {
-        if (a->id == excludeId)
+        if (a->id == excludeId) {
             continue;
-        if (a->get_shortcuts().contains(shortcut))
+        }
+        if (a->get_shortcuts().contains(shortcut)) {
             return a;
+        }
     }
     return nullptr;
 }
@@ -167,15 +177,18 @@ Action* ActionRegistry::findByShortcut(const QString& excludeId,
 Action* ActionRegistry::findByMouseBinding(const QString& excludeId,
                                            const Binding& candidate)
 {
-    if (candidate.mouseButton.isEmpty())
+    if (candidate.mouseButton.isEmpty()) {
         return nullptr;
+    }
     for (Action* a : all()) {
-        if (a->id == excludeId)
+        if (a->id == excludeId) {
             continue;
+        }
         for (const Binding& b : a->get_mouse_bindings()) {
             if (b.mouseButton == candidate.mouseButton
-                && sameModifiers(b.mouseModifiers, candidate.mouseModifiers))
+                && sameModifiers(b.mouseModifiers, candidate.mouseModifiers)) {
                 return a;
+            }
         }
     }
     return nullptr;

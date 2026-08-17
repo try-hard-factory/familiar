@@ -112,11 +112,13 @@ void FlatComboBox::showPopup()
     QComboBox::showPopup();
 
     QWidget* container = view()->window();
-    if (!container || container == this)
+    if (!container || container == this) {
         return;
+    }
 
-    if (auto* frame = qobject_cast<QFrame*>(container))
+    if (auto* frame = qobject_cast<QFrame*>(container)) {
         frame->setFrameShape(QFrame::NoFrame);
+    }
 
     container->setWindowFlags(Qt::Popup | Qt::FramelessWindowHint
                               | Qt::NoDropShadowWindowHint);
@@ -174,8 +176,9 @@ void FlatComboBox::paintEvent(QPaintEvent*)
                                                    this);
 
     QColor fg = text_;
-    if (!enabled)
+    if (!enabled) {
         fg.setAlpha(110);
+    }
 
     p.setPen(fg);
     const QRect textRect = editRect.adjusted(4, 0, -4, 0);

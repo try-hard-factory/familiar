@@ -67,10 +67,11 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override
     {
         QModelIndex index = indexAt(event->position().toPoint());
-        if (index.isValid())
+        if (index.isValid()) {
             setCursor(Qt::PointingHandCursor);
-        else
+        } else {
             setCursor(Qt::ArrowCursor);
+        }
 
         QListView::mouseMoveEvent(event);
     }

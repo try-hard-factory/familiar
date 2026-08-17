@@ -31,8 +31,9 @@ void GamutPainterThread::run()
     painter.drawEllipse(center, RADIUS, RADIUS);
 
     for (auto it = gamut.constBegin(); it != gamut.constEnd(); ++it) {
-        if (it.value() < m_threshold)
+        if (it.value() < m_threshold) {
             continue;
+        }
         int hue = it.key().first;
         int saturation = it.key().second;
         double hypotenuse = saturation / 255.0 * RADIUS;
@@ -72,8 +73,9 @@ int GamutWidget::threshold() const
 void GamutWidget::updateValues()
 {
     m_worker->setThreshold(threshold());
-    if (!m_worker->isRunning())
+    if (!m_worker->isRunning()) {
         m_worker->start();
+    }
 }
 
 void GamutWidget::onImageReady(const QImage& image)

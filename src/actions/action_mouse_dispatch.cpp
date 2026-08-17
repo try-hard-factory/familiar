@@ -23,8 +23,9 @@ namespace {
 QString buttonNameFor(Qt::MouseButton btn)
 {
     for (const auto& pair : MouseConfigBase::buttonMap()) {
-        if (pair.second == btn && pair.second != Qt::NoButton)
+        if (pair.second == btn && pair.second != Qt::NoButton) {
             return pair.first;
+        }
     }
     return {};
 }
@@ -32,16 +33,18 @@ QString buttonNameFor(Qt::MouseButton btn)
 Qt::MouseButton buttonFlagFor(const QString& name)
 {
     for (const auto& pair : MouseConfigBase::buttonMap()) {
-        if (pair.first == name)
+        if (pair.first == name) {
             return pair.second;
+        }
     }
     return Qt::NoButton;
 }
 
 void invoke(QWidget* target, const Action* action)
 {
-    if (action->callback.isEmpty())
+    if (action->callback.isEmpty()) {
         return;
+    }
     QMetaObject::invokeMethod(target,
                               action->callback.toUtf8().constData(),
                               Qt::DirectConnection);
@@ -66,8 +69,9 @@ void releasePressTargetBeforeAction(QWidget* invokeTarget,
     CanvasView* canvasView = mainWindow ? mainWindow->tabPane().currentWidget()
                                         : nullptr;
     QWidget* releaseTarget = canvasView ? canvasView->viewport() : nullptr;
-    if (!releaseTarget)
+    if (!releaseTarget) {
         return;
+    }
 
     const QPoint globalPos = QCursor::pos();
     QMouseEvent release(QEvent::MouseButtonRelease,
@@ -84,8 +88,9 @@ void releasePressTargetBeforeAction(QWidget* invokeTarget,
 bool focusIsTextInput()
 {
     QWidget* focused = qApp->focusWidget();
-    if (!focused)
+    if (!focused) {
         return false;
+    }
     return qobject_cast<QLineEdit*>(focused)
            || qobject_cast<QTextEdit*>(focused)
            || qobject_cast<QPlainTextEdit*>(focused);
@@ -111,23 +116,27 @@ ActionMouseDispatcher::ActionMouseDispatcher(QWidget* invokeTarget,
 bool ActionMouseDispatcher::eventFilter(QObject* watched, QEvent* event)
 {
     Q_UNUSED(watched)
-    if (event->type() == QEvent::MouseButtonPress)
+    if (event->type() == QEvent::MouseButtonPress) {
         return tryMousePress(static_cast<QMouseEvent*>(event));
-    if (event->type() == QEvent::KeyPress)
+    }
+    if (event->type() == QEvent::KeyPress) {
         return tryKeyPress(static_cast<QKeyEvent*>(event));
+    }
     return false;
 }
 
 bool ActionMouseDispatcher::tryMousePress(QMouseEvent* event)
 {
     const QString btn = buttonNameFor(event->button());
-    if (btn.isEmpty())
+    if (btn.isEmpty()) {
         return false;
+    }
 
     for (Action* action : getActions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
-            if (!b.isMouseOnly() || b.mouseButton != btn)
+            if (!b.isMouseOnly() || b.mouseButton != btn) {
                 continue;
+            }
             if (MouseConfigBase::modifiersToQt(b.mouseModifiers)
                 == event->modifiers()) {
                 invoke(target_, action);
@@ -145,21 +154,25 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
     // at all (QKeySequence has no "modifier alone" concept), so they're
     // dispatched here regardless of whether a mouse button is held. Tried
     // first since it doesn't depend on HeldButtonsTracker state.
-    if (tryBareModifierAction(event))
+    if (tryBareModifierAction(event)) {
         return true;
+    }
 
     const Qt::MouseButtons held = HeldButtonsTracker::instance().current();
-    if (held == Qt::NoButton)
+    if (held == Qt::NoButton) {
         return false;
+    }
 
     // Don't hijack normal typing (e.g. a filename field) just because the
     // user happens to be holding a mouse button incidentally.
-    if (focusIsTextInput())
+    if (focusIsTextInput()) {
         return false;
+    }
 
     const QString pressed = keyEventToSequenceString(event);
-    if (pressed.isEmpty())
+    if (pressed.isEmpty()) {
         return false;
+    }
 
     FLOG_DEBUG(familiar::log::Ch::UI,
                "tryKeyPress: held={} pressed='{}'",
@@ -168,8 +181,9 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
 
     for (Action* action : getActions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
-            if (!b.isMixed() || b.keySequence != pressed)
+            if (!b.isMixed() || b.keySequence != pressed) {
                 continue;
+            }
             const Qt::MouseButton flag = buttonFlagFor(b.mouseButton);
             if (flag != Qt::NoButton && (held & flag)) {
                 FLOG_DEBUG(familiar::log::Ch::UI,
@@ -189,10 +203,12 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
 bool ActionMouseDispatcher::tryBareModifierAction(QKeyEvent* event)
 {
     const QString pressed = keyEventToSequenceString(event);
-    if (!bareModifierNames().contains(pressed))
+    if (!bareModifierNames().contains(pressed)) {
         return false;
-    if (focusIsTextInput())
+    }
+    if (focusIsTextInput()) {
         return false;
+    }
 
     // Plain keyboard shortcuts (Action::get_shortcuts(), the same list
     // QAction::setShortcuts() reads) - not action->get_mouse_bindings(),

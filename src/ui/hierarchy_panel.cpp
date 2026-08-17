@@ -130,10 +130,11 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
 void collectGroupPictures(GroupItem* group, QList<PixmapItem*>& out)
 {
     for (QGraphicsItem* child : group->resolve_children()) {
-        if (auto* picture = dynamic_cast<PixmapItem*>(child))
+        if (auto* picture = dynamic_cast<PixmapItem*>(child)) {
             out.append(picture);
-        else if (auto* nested = dynamic_cast<GroupItem*>(child))
+        } else if (auto* nested = dynamic_cast<GroupItem*>(child)) {
             collectGroupPictures(nested, out);
+        }
     }
 }
 
@@ -180,8 +181,9 @@ protected:
         // thing that ever deletes tree nodes.
         event->setDropAction(Qt::IgnoreAction);
         event->accept();
-        if (dragged && onDrop)
+        if (dragged && onDrop) {
             onDrop(dragged, target);
+        }
     }
 };
 
@@ -462,15 +464,17 @@ void HierarchyPanel::scheduleRefresh()
     // arm the timer if it isn't already pending; further calls while
     // it's running are coalesced into the rebuild it's already going to
     // do.
-    if (!rebuildTimer_->isActive())
+    if (!rebuildTimer_->isActive()) {
         rebuildTimer_->start();
+    }
 }
 
 void HierarchyPanel::showEvent(QShowEvent* event)
 {
     QDockWidget::showEvent(event);
-    if (dirty_)
+    if (dirty_) {
         rebuild_();
+    }
 }
 
 void HierarchyPanel::rebuild_()
@@ -480,12 +484,14 @@ void HierarchyPanel::rebuild_()
     // clear() deletes the QTreeWidgetItems they close over - a
     // still-live QMovie::frameChanged firing into a dangling node
     // pointer would be a use-after-free.
-    for (const QMetaObject::Connection& c : gifIconConnections_)
+    for (const QMetaObject::Connection& c : gifIconConnections_) {
         QObject::disconnect(c);
+    }
     gifIconConnections_.clear();
     tree_->clear();
-    if (!scene_)
+    if (!scene_) {
         return;
+    }
 
     // Every uid that's either a group's child or an attached item's own
     // uid is "consumed" - it gets added as a NESTED node from its
@@ -496,25 +502,30 @@ void HierarchyPanel::rebuild_()
     QSet<QUuid> consumed;
     const QList<QGraphicsItem*> allItems = scene_->items();
     for (QGraphicsItem* item : allItems) {
-        if (!scene_->itemAddByUser(item))
+        if (!scene_->itemAddByUser(item)) {
             continue;
+        }
         if (auto* group = dynamic_cast<GroupItem*>(item)) {
-            for (const QUuid& childId : group->child_ids())
+            for (const QUuid& childId : group->child_ids()) {
                 consumed.insert(childId);
+            }
         }
         if (auto* base = dynamic_cast<IBaseItem*>(item)) {
-            if (!base->attachedToUid().isNull())
+            if (!base->attachedToUid().isNull()) {
                 consumed.insert(base->uid());
+            }
         }
     }
 
     QSet<QUuid> added;
     for (QGraphicsItem* item : allItems) {
-        if (!scene_->itemAddByUser(item))
+        if (!scene_->itemAddByUser(item)) {
             continue;
+        }
         auto* base = dynamic_cast<IBaseItem*>(item);
-        if (!base || consumed.contains(base->uid()))
+        if (!base || consumed.contains(base->uid())) {
             continue;
+        }
         addItemNode_(nullptr, item, added);
     }
     tree_->expandAll();
@@ -525,27 +536,32 @@ void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
                                   QSet<QUuid>& added)
 {
     auto* base = dynamic_cast<IBaseItem*>(item);
-    if (!base || added.contains(base->uid()))
+    if (!base || added.contains(base->uid())) {
         return; // already placed via some other relationship - see rebuild_()'s comment
+    }
     added.insert(base->uid());
 
     QTreeWidgetItem* node = makeNode_(item);
-    if (parent)
+    if (parent) {
         parent->addChild(node);
-    else
+    } else {
         tree_->addTopLevelItem(node);
+    }
 
     if (auto* group = dynamic_cast<GroupItem*>(item)) {
-        for (QGraphicsItem* child : group->resolve_children())
+        for (QGraphicsItem* child : group->resolve_children()) {
             addItemNode_(node, child, added);
+        }
     }
     if (auto* picture = dynamic_cast<PixmapItem*>(
             item)) { // GifItem IS-A PixmapItem
-        for (QGraphicsItem* note : scene_->find_attached_items(picture->uid()))
+        for (QGraphicsItem* note : scene_->find_attached_items(picture->uid())) {
             addItemNode_(node, note, added);
+        }
     }
-    if (auto* gif = dynamic_cast<GifItem*>(item))
+    if (auto* gif = dynamic_cast<GifItem*>(item)) {
         connectGifAnimation_(node, gif);
+    }
 }
 
 void HierarchyPanel::connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif)
@@ -595,31 +611,36 @@ QTreeWidgetItem* HierarchyPanel::makeNode_(QGraphicsItem* item)
     auto* node = new QTreeWidgetItem();
     node->setText(0, label);
     node->setIcon(0, icon);
-    if (auto* base = dynamic_cast<IBaseItem*>(item))
+    if (auto* base = dynamic_cast<IBaseItem*>(item)) {
         node->setData(0, kUidRole, base->uid());
+    }
     return node;
 }
 
 void HierarchyPanel::onItemClicked_(QTreeWidgetItem* node)
 {
-    if (!scene_ || syncingSelection_)
+    if (!scene_ || syncingSelection_) {
         return;
+    }
     const QUuid uid = node->data(0, kUidRole).toUuid();
     QGraphicsItem* item = scene_->find_by_uid(uid);
-    if (!item)
+    if (!item) {
         return;
+    }
     scene_->deselect_all_items();
     item->setSelected(true);
 }
 
 void HierarchyPanel::onItemDoubleClicked_(QTreeWidgetItem* node)
 {
-    if (!scene_ || !view_)
+    if (!scene_ || !view_) {
         return;
+    }
     const QUuid uid = node->data(0, kUidRole).toUuid();
     QGraphicsItem* item = scene_->find_by_uid(uid);
-    if (!item)
+    if (!item) {
         return;
+    }
 
     scene_->deselect_all_items();
     item->setSelected(true);
@@ -636,12 +657,14 @@ void HierarchyPanel::onItemDoubleClicked_(QTreeWidgetItem* node)
 void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
                                      QTreeWidgetItem* target)
 {
-    if (!scene_ || dragged == target)
+    if (!scene_ || dragged == target) {
         return;
+    }
     QGraphicsItem* draggedItem = scene_->find_by_uid(
         dragged->data(0, kUidRole).toUuid());
-    if (!draggedItem)
+    if (!draggedItem) {
         return;
+    }
 
     if (!target) {
         // Dropped on empty space below the last root row - makes it
@@ -655,8 +678,9 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
 
     QGraphicsItem* targetItem = scene_->find_by_uid(
         target->data(0, kUidRole).toUuid());
-    if (!targetItem)
+    if (!targetItem) {
         return;
+    }
 
     if (auto* targetGroup = dynamic_cast<GroupItem*>(targetItem)) {
         // An attached item's group membership is derived from its
@@ -668,8 +692,9 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
         // A whole GroupItem can't be "attached" (attach means one
         // riding-along item, not a cluster) - only offer this for a
         // non-group dragged item.
-        if (!dynamic_cast<GroupItem*>(draggedItem))
+        if (!dynamic_cast<GroupItem*>(draggedItem)) {
             scene_->attach_item_to(draggedItem, targetPicture->uid());
+        }
     }
     // Dropped on a TextItem node: nothing attaches to a note - no-op.
 }
@@ -677,17 +702,20 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
 void HierarchyPanel::showContextMenu_(const QPoint& pos)
 {
     QTreeWidgetItem* node = tree_->itemAt(pos);
-    if (!node || !scene_)
+    if (!node || !scene_) {
         return;
+    }
     QGraphicsItem* item = scene_->find_by_uid(node->data(0, kUidRole).toUuid());
-    if (!item)
+    if (!item) {
         return;
+    }
 
     auto* picture = dynamic_cast<PixmapItem*>(item);
     auto* group = dynamic_cast<GroupItem*>(item);
     auto* text = dynamic_cast<TextItem*>(item);
-    if (!picture && !group && !text)
+    if (!picture && !group && !text) {
         return; // nothing actionable for this node type
+    }
 
     QMenu menu(this);
     QAction* renameAction = nullptr;
@@ -696,11 +724,13 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
         renameAction->setShortcut(QKeySequence(Qt::Key_F2));
     }
     QAction* editAction = nullptr;
-    if (text)
+    if (text) {
         editAction = menu.addAction(tr("Edit"));
+    }
     QAction* exportAction = nullptr;
-    if (picture || group)
+    if (picture || group) {
         exportAction = menu.addAction(tr("Export..."));
+    }
 
     // Same reasoning as FileBrowserDialog::showContextMenu_() - QMenu is
     // a separate top-level popup, not a plain child widget, so this
@@ -746,8 +776,9 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
     // `chosen == editAction` true via nullptr == nullptr, running the
     // Edit branch's text->enter_edit_mode() on a null `text` and
     // crashing.
-    if (!chosen)
+    if (!chosen) {
         return;
+    }
     if (chosen == renameAction) {
         startRename_(node);
     } else if (chosen == editAction) {
@@ -761,39 +792,45 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
         text->enter_edit_mode();
         text->setFocus();
     } else if (chosen == exportAction) {
-        if (!view_)
+        if (!view_) {
             return;
+        }
         // Single picture -> just itself; a group -> every picture among
         // its own members, recursively through nested subgroups
         // (collectGroupPictures()).
         QList<PixmapItem*> pictures;
-        if (picture)
+        if (picture) {
             pictures.append(picture);
-        else if (group)
+        } else if (group) {
             collectGroupPictures(group, pictures);
+        }
         view_->exportPictures(pictures);
     }
 }
 
 void HierarchyPanel::startRename_(QTreeWidgetItem* node)
 {
-    if (!node || !scene_)
+    if (!node || !scene_) {
         return;
+    }
     auto* picture = dynamic_cast<PixmapItem*>(
         scene_->find_by_uid(node->data(0, kUidRole).toUuid()));
-    if (!picture)
+    if (!picture) {
         return; // F2/Rename only meaningful for a picture row
+    }
 
     RenameDialog dlg(node->text(0), this);
-    if (dlg.exec() != QDialog::Accepted)
+    if (dlg.exec() != QDialog::Accepted) {
         return;
+    }
 
     const QString currentLabel = picture->filename_.isEmpty()
                                      ? tr("Untitled")
                                      : QFileInfo(picture->filename_).fileName();
     const QString newName = dlg.text().trimmed();
-    if (newName.isEmpty() || newName == currentLabel)
+    if (newName.isEmpty() || newName == currentLabel) {
         return;
+    }
 
     FLOG_DEBUG(Ch::UI,
                "startRename_: '{}' -> '{}'",
@@ -805,22 +842,26 @@ void HierarchyPanel::startRename_(QTreeWidgetItem* node)
 
 void HierarchyPanel::syncSelectionFromScene()
 {
-    if (!scene_)
+    if (!scene_) {
         return;
+    }
     syncingSelection_ = true;
     QSet<QUuid> selectedUids;
     for (QGraphicsItem* item : scene_->selectedItems(true)) {
-        if (auto* base = dynamic_cast<IBaseItem*>(item))
+        if (auto* base = dynamic_cast<IBaseItem*>(item)) {
             selectedUids.insert(base->uid());
+        }
     }
 
     std::function<void(QTreeWidgetItem*)> walk = [&](QTreeWidgetItem* node) {
         const QUuid uid = node->data(0, kUidRole).toUuid();
         node->setSelected(selectedUids.contains(uid));
-        for (int i = 0; i < node->childCount(); ++i)
+        for (int i = 0; i < node->childCount(); ++i) {
             walk(node->child(i));
+        }
     };
-    for (int i = 0; i < tree_->topLevelItemCount(); ++i)
+    for (int i = 0; i < tree_->topLevelItemCount(); ++i) {
         walk(tree_->topLevelItem(i));
+    }
     syncingSelection_ = false;
 }

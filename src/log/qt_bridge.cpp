@@ -46,15 +46,17 @@ Level levelFromQt(QtMsgType type)
 std::string shortFunctionName(std::string_view prettyName)
 {
     const size_t parenPos = prettyName.find('(');
-    if (parenPos == std::string_view::npos)
+    if (parenPos == std::string_view::npos) {
         return std::string(prettyName);
+    }
 
     const std::string_view beforeParen = prettyName.substr(0, parenPos);
     const size_t spacePos = beforeParen.rfind(' ');
     const size_t begin = (spacePos == std::string_view::npos) ? 0
                                                               : spacePos + 1;
-    if (begin > parenPos)
+    if (begin > parenPos) {
         return std::string(prettyName);
+    }
 
     return std::string(prettyName.substr(begin, parenPos - begin));
 }

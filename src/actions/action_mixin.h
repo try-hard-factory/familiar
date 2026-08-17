@@ -31,8 +31,9 @@ public:
     // Enable/disable every QAction belonging to the named group.
     void actiongroup_set_enabled(const QString& group, bool enabled)
     {
-        for (QAction* a : actionGroups_.value(group))
+        for (QAction* a : actionGroups_.value(group)) {
             a->setEnabled(enabled);
+        }
     }
 
     // Build all QActions and populate contextMenu_ / toplevelMenus_.
@@ -61,8 +62,9 @@ public:
     QMenuBar* create_menubar()
     {
         QMenuBar* bar = new QMenuBar();
-        for (QMenu* m : toplevelMenus_)
+        for (QMenu* m : toplevelMenus_) {
             bar->addMenu(m);
+        }
         return bar;
     }
 
@@ -80,12 +82,14 @@ public:
     // nesting depth.
     void refresh_menu_style()
     {
-        if (!contextMenu_)
+        if (!contextMenu_) {
             return;
+        }
         const QString sheet = menuStyleSheet_();
         contextMenu_->setStyleSheet(sheet);
-        for (QMenu* sub : contextMenu_->findChildren<QMenu*>())
+        for (QMenu* sub : contextMenu_->findChildren<QMenu*>()) {
             sub->setStyleSheet(sheet);
+        }
     }
 
 private:
@@ -194,8 +198,9 @@ private:
             const QStringList shortcuts = action->get_shortcuts();
             if (!shortcuts.isEmpty()) {
                 QList<QKeySequence> seqs;
-                for (const QString& s : shortcuts)
+                for (const QString& s : shortcuts) {
                     seqs.append(QKeySequence(s));
+                }
                 qaction->setShortcuts(seqs);
             }
 
@@ -253,8 +258,9 @@ private:
         for (const MenuNode& node : nodes) {
             switch (node.type) {
             case MenuNode::Type::Action:
-                if (Action* a = getActions().find(node.id))
+                if (Action* a = getActions().find(node.id)) {
                     menu->addAction(a->qaction);
+                }
                 break;
             case MenuNode::Type::Separator:
                 menu->addSeparator();
@@ -263,8 +269,9 @@ private:
                 QMenu* sub = menu->addMenu(node.label);
                 sub->setAttribute(Qt::WA_TranslucentBackground);
                 sub->setStyleSheet(menuStyleSheet_());
-                if (menu == contextMenu_)
+                if (menu == contextMenu_) {
                     toplevelMenus_.append(sub);
+                }
                 _create_menu(sub, node.children);
                 break;
             }
@@ -277,12 +284,14 @@ private:
 
     void _build_recent_files(QMenu* menu = nullptr)
     {
-        if (menu)
+        if (menu) {
             recentFilesSubmenu_ = menu;
+        }
         _clear_recent_files();
 
-        if (!recentFilesSubmenu_)
+        if (!recentFilesSubmenu_) {
             return;
+        }
 
         const QStringList files = SettingsHandler::getInstance()->getRecentFiles(
             /*existingOnly=*/true);
@@ -310,8 +319,9 @@ private:
 
                 const QStringList sc = getActions()[aid].get_shortcuts();
                 QList<QKeySequence> seqs;
-                for (const QString& s : sc)
+                for (const QString& s : sc) {
                     seqs.append(QKeySequence(s));
+                }
                 qa->setShortcuts(seqs);
 
                 QObject::connect(qa,
@@ -333,15 +343,18 @@ private:
 
     void _clear_recent_files()
     {
-        if (!recentFilesSubmenu_)
+        if (!recentFilesSubmenu_) {
             return;
-        for (QAction* a : recentFilesSubmenu_->actions())
+        }
+        for (QAction* a : recentFilesSubmenu_->actions()) {
             static_cast<T*>(this)->removeAction(a);
+        }
         recentFilesSubmenu_->clear();
 
         for (const QString& k : getActions().keys()) {
-            if (k.startsWith(QLatin1String("recent_files_")))
+            if (k.startsWith(QLatin1String("recent_files_"))) {
                 getActions()[k].qaction = nullptr;
+            }
         }
     }
 

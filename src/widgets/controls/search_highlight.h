@@ -11,11 +11,13 @@
 // both bold the matched substring of whatever the search box found.
 inline QString highlightSearchMatch(const QString& text, const QString& query)
 {
-    if (query.isEmpty())
+    if (query.isEmpty()) {
         return text.toHtmlEscaped();
+    }
     const int idx = text.indexOf(query, 0, Qt::CaseInsensitive);
-    if (idx < 0)
+    if (idx < 0) {
         return text.toHtmlEscaped();
+    }
     return text.left(idx).toHtmlEscaped() + QStringLiteral("<b>")
            + text.mid(idx, query.length()).toHtmlEscaped()
            + QStringLiteral("</b>")

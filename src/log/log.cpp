@@ -257,15 +257,17 @@ void init(const Options& options)
 
 void shutdown()
 {
-    if (quill::Logger* core = channelLogger(Ch::Core))
+    if (quill::Logger* core = channelLogger(Ch::Core)) {
         core->flush_log();
+    }
     quill::Backend::stop();
 }
 
 void setChannelLevel(Ch channel, Level level)
 {
-    if (quill::Logger* logger = channelLogger(channel))
+    if (quill::Logger* logger = channelLogger(channel)) {
         logger->set_log_level(detail::toQuillLevel(level));
+    }
 }
 
 quill::Logger* channelLogger(Ch channel)

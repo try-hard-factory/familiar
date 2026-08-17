@@ -80,8 +80,9 @@ void applyFormatMigrations(QJsonObject& root, int fromVersion)
     const auto& migrations = formatMigrations();
     for (int v = fromVersion; v < kFormatVersion; ++v) {
         auto it = migrations.find(v);
-        if (it != migrations.end())
+        if (it != migrations.end()) {
             it.value()(root);
+        }
     }
     root[QStringLiteral("formatVersion")] = kFormatVersion;
 }
@@ -188,8 +189,9 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     // No-op today (formatVersion is always already kFormatVersion, since
     // it's never been bumped) - see applyFormatMigrations() above for why
     // this is here regardless.
-    if (formatVersion < kFormatVersion)
+    if (formatVersion < kFormatVersion) {
         applyFormatMigrations(root, formatVersion);
+    }
 
     Manifest manifest;
     manifest.formatVersion = kFormatVersion;

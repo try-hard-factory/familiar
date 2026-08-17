@@ -33,8 +33,9 @@ namespace {
 // window" without reaching for a heavier IPC-based liveness check.
 bool acquireSingleInstanceLock(QSharedMemory& guard)
 {
-    if (guard.attach())
+    if (guard.attach()) {
         guard.detach();
+    }
     return guard.create(1);
 }
 
@@ -47,8 +48,9 @@ int main(int argc, char* argv[])
     // The Wayland QPA plugin has been unreliable/slow on this app; xcb
     // (X11, via XWayland where needed) is the known-good path. Only
     // applies if the user hasn't already chosen a platform themselves.
-    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM"))
+    if (qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) {
         qputenv("QT_QPA_PLATFORM", "xcb");
+    }
 #endif
 
     qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");

@@ -10,8 +10,8 @@ TEST(CommandlineArgsTest, FileOptionOverridesPositionalArgument)
     EXPECT_EQ(args.filename(), QStringLiteral("/tmp/scene.fml"));
 
     args.parse({QStringLiteral("familiar"),
-               QStringLiteral("/tmp/scene.fml"),
-               QStringLiteral("--file"),
-               QStringLiteral("/tmp/other.fml")});
+                QStringLiteral("/tmp/scene.fml"),
+                QStringLiteral("--file"),
+                QStringLiteral("/tmp/other.fml")});
     EXPECT_EQ(args.filename(), QStringLiteral("/tmp/other.fml"));
 }

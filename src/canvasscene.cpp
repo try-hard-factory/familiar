@@ -107,11 +107,13 @@ CanvasScene::~CanvasScene()
     // ~QGraphicsScene() runs, so attachedItems_ releases its shared_ptr
     // references properly instead of racing Qt's own direct-delete of
     // whatever's still attached.
-    if (rubberband_item_->scene())
+    if (rubberband_item_->scene()) {
         removeItem(rubberband_item_);
+    }
     delete rubberband_item_;
-    if (multiselect_item_->scene())
+    if (multiselect_item_->scene()) {
         removeItem(multiselect_item_);
+    }
     delete multiselect_item_;
     detachAllItems();
 
@@ -229,22 +231,26 @@ QList<QGraphicsItem*> CanvasScene::with_related_items(
     QSet<QGraphicsItem*> seen;
     std::function<void(QGraphicsItem*)> addWithRelated =
         [&](QGraphicsItem* item) {
-            if (seen.contains(item))
+            if (seen.contains(item)) {
                 return;
+            }
             seen.insert(item);
             expanded.append(item);
             if (auto* group = dynamic_cast<GroupItem*>(item)) {
-                for (QGraphicsItem* child : group->resolve_children())
+                for (QGraphicsItem* child : group->resolve_children()) {
                     addWithRelated(child);
+                }
             }
             if (auto* base = dynamic_cast<IBaseItem*>(item)) {
                 for (QGraphicsItem* attachedItem :
-                     find_attached_items(base->uid()))
+                     find_attached_items(base->uid())) {
                     addWithRelated(attachedItem);
+                }
             }
         };
-    for (QGraphicsItem* item : items)
+    for (QGraphicsItem* item : items) {
         addWithRelated(item);
+    }
     return expanded;
 }
 
@@ -269,8 +275,9 @@ void CanvasScene::copy_selection_to_internal_clipboard()
     // gathered here is still the ORIGINAL live items, shared via
     // acquireShared(), not copies yet.
     for (QGraphicsItem* item : with_related_items(selectedItems(true))) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             internal_clipboard.append(baseItem->acquireShared());
+        }
     }
 }
 
@@ -300,8 +307,9 @@ QList<IBaseItem*> CanvasScene::clone_with_remap_(
             QList<QUuid> remapped;
             for (const QUuid& oldChildUid : group->child_ids()) {
                 auto it = oldToNewUid.find(oldChildUid);
-                if (it != oldToNewUid.end())
+                if (it != oldToNewUid.end()) {
                     remapped.append(it.value());
+                }
                 // else: that member wasn't part of THIS clone operation
                 // (shouldn't normally happen given how both callers
                 // already pull in every descendant - but drop it rather
@@ -336,11 +344,13 @@ void CanvasScene::duplicate_selection()
     // this never disturbs whatever the user separately Ctrl+C'd.
     QList<std::shared_ptr<IBaseItem>> sources;
     for (QGraphicsItem* item : with_related_items(selectedItems(true))) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             sources.append(baseItem->acquireShared());
+        }
     }
-    if (sources.isEmpty())
+    if (sources.isEmpty()) {
         return;
+    }
 
     QList<IBaseItem*> copies = clone_with_remap_(sources);
 
@@ -353,8 +363,9 @@ void CanvasScene::duplicate_selection()
     // as "duplicated right next to the original" instead of "pasted
     // here".
     QList<QGraphicsItem*> copyGraphicsItems;
-    for (IBaseItem* copy : copies)
+    for (IBaseItem* copy : copies) {
         copyGraphicsItems.append(dynamic_cast<QGraphicsItem*>(copy));
+    }
     const QRectF bounds = itemsBoundingRect(false, copyGraphicsItems);
     // Scene units are real image pixels here, not screen pixels - a flat
     // offset (e.g. 24) is imperceptible next to a typical multi-hundred-
@@ -393,8 +404,9 @@ void CanvasScene::raise_selection_to_front()
     QList<QGraphicsItem*> ordered;
     std::function<void(QGraphicsItem*)> appendCluster =
         [&](QGraphicsItem* item) {
-            if (seen.contains(item))
+            if (seen.contains(item)) {
                 return;
+            }
             seen.insert(item);
             ordered.append(item);
             if (auto* group = dynamic_cast<GroupItem*>(item)) {
@@ -404,32 +416,38 @@ void CanvasScene::raise_selection_to_front()
                           [](QGraphicsItem* a, QGraphicsItem* b) {
                               return a->zValue() < b->zValue();
                           });
-                for (QGraphicsItem* child : children)
+                for (QGraphicsItem* child : children) {
                     appendCluster(child);
+                }
             }
         };
 
     const QList<QGraphicsItem*> initialSelected = selectedItems(true);
     QList<QGraphicsItem*> roots = with_attached_items(initialSelected);
     for (QGraphicsItem* item : initialSelected) {
-        if (dynamic_cast<GroupItem*>(item))
+        if (dynamic_cast<GroupItem*>(item)) {
             continue;
+        }
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (!baseItem)
+        if (!baseItem) {
             continue;
-        if (GroupItem* owner = find_owning_group(baseItem->uid()))
+        }
+        if (GroupItem* owner = find_owning_group(baseItem->uid())) {
             roots.append(owner);
+        }
     }
     std::sort(roots.begin(),
               roots.end(),
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return a->zValue() < b->zValue();
               });
-    for (QGraphicsItem* root : roots)
+    for (QGraphicsItem* root : roots) {
         appendCluster(root);
+    }
 
-    if (ordered.isEmpty())
+    if (ordered.isEmpty()) {
         return;
+    }
 
     qreal z = max_z + Z_STEP;
     for (QGraphicsItem* item : ordered) {
@@ -460,8 +478,9 @@ void CanvasScene::lower_to_bottom()
 void CanvasScene::group_selection()
 {
     QList<QGraphicsItem*> selected = selectedItems(true);
-    if (selected.size() < 2)
+    if (selected.size() < 2) {
         return;
+    }
 
     // If exactly one of the selected items is already a group, and every
     // other selected item is a loose (not-yet-grouped) item, "Group"
@@ -483,8 +502,9 @@ void CanvasScene::group_selection()
         } else {
             loose.append(item);
             auto* baseItem = dynamic_cast<IBaseItem*>(item);
-            if (baseItem && find_owning_group(baseItem->uid()))
+            if (baseItem && find_owning_group(baseItem->uid())) {
                 looseAlreadyGrouped = true;
+            }
         }
     }
 
@@ -496,8 +516,9 @@ void CanvasScene::group_selection()
     QList<QUuid> ids;
     for (QGraphicsItem* item : selected) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (!baseItem)
+        if (!baseItem) {
             continue;
+        }
         // Skip an item whose OWNING group is ALSO part of this same
         // selection - a rubber-band sweep can catch both an unlocked
         // group AND (redundantly) its own individual members at once,
@@ -510,25 +531,30 @@ void CanvasScene::group_selection()
         // via testing). It's already covered transitively through its own
         // group's membership, which IS in `ids` below.
         if (auto* owner = find_owning_group(baseItem->uid())) {
-            if (selected.contains(owner))
+            if (selected.contains(owner)) {
                 continue;
+            }
         }
         ids.append(baseItem->uid());
     }
-    if (ids.size() < 2)
+    if (ids.size() < 2) {
         return;
+    }
 
     QList<QGraphicsItem*> members = selected;
     for (int i = 0; i < ids.size(); ++i) {
         auto* picture = dynamic_cast<PixmapItem*>(find_by_uid(ids[i]));
-        if (!picture)
+        if (!picture) {
             continue;
+        }
         for (QGraphicsItem* attachedItem : find_attached_items(picture->uid())) {
             auto* attachedBase = dynamic_cast<IBaseItem*>(attachedItem);
-            if (attachedBase && !ids.contains(attachedBase->uid()))
+            if (attachedBase && !ids.contains(attachedBase->uid())) {
                 ids.append(attachedBase->uid());
-            if (!members.contains(attachedItem))
+            }
+            if (!members.contains(attachedItem)) {
                 members.append(attachedItem);
+            }
         }
     }
 
@@ -551,12 +577,14 @@ void CanvasScene::group_selection()
 void CanvasScene::ungroup_selection()
 {
     QList<QGraphicsItem*> selected = selectedItems(true);
-    if (selected.size() != 1)
+    if (selected.size() != 1) {
         return;
+    }
 
     auto* baseItem = dynamic_cast<IBaseItem*>(selected.first());
-    if (!baseItem)
+    if (!baseItem) {
         return;
+    }
 
     // Ownership (leaving whatever outer group this item is a member of,
     // if any) takes priority over dissolving - a nested subgroup that's
@@ -589,14 +617,17 @@ GroupItem* CanvasScene::find_drop_target_group(
     qreal targetZ = 0;
     for (QGraphicsItem* other : items()) {
         auto* group = dynamic_cast<GroupItem*>(other);
-        if (!group || !group->drag_drop_enabled() || group->locked())
+        if (!group || !group->drag_drop_enabled() || group->locked()) {
             continue;
-        if (excluded.contains(group))
+        }
+        if (excluded.contains(group)) {
             continue;
+        }
         const QRectF groupSceneRect = group->mapRectToScene(
             group->bounding_rect_unselected());
-        if (!groupSceneRect.contains(scenePos))
+        if (!groupSceneRect.contains(scenePos)) {
             continue;
+        }
         if (!target || group->zValue() > targetZ) {
             target = group;
             targetZ = group->zValue();
@@ -611,14 +642,16 @@ QSet<GroupItem*> CanvasScene::forbidden_drop_targets(
     QSet<GroupItem*> forbidden;
     for (QGraphicsItem* item : draggedItems) {
         auto* group = dynamic_cast<GroupItem*>(item);
-        if (!group)
+        if (!group) {
             continue;
+        }
         // selection_action_items() is `this` + every descendant,
         // recursively (moveitem.h) - exactly the subtree that would
         // become a cycle if offered back as a drop target.
         for (QGraphicsItem* nested : group->selection_action_items()) {
-            if (auto* nestedGroup = dynamic_cast<GroupItem*>(nested))
+            if (auto* nestedGroup = dynamic_cast<GroupItem*>(nested)) {
                 forbidden.insert(nestedGroup);
+            }
         }
     }
     return forbidden;
@@ -640,8 +673,9 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     // itself - dragging a whole subgroup onto another group nests it
     // the same way "select both + Ctrl+G" would
     QList<QGraphicsItem*> candidates = movedItems;
-    if (candidates.isEmpty())
+    if (candidates.isEmpty()) {
         return;
+    }
 
     // One target for the whole drag, chosen by the CURSOR alone - not
     // per item. forbidden_drop_targets(): never offer a dragged group
@@ -650,8 +684,9 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     GroupItem* target = find_drop_target_group(cursorScenePos,
                                                forbidden_drop_targets(
                                                    candidates));
-    if (!target)
+    if (!target) {
         return;
+    }
 
     // Loose (ungrouped) candidates all get batched into one
     // AddToGroupCommand, same as before. A candidate that's ALREADY a
@@ -665,11 +700,13 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     bool changed = false;
     for (QGraphicsItem* item : candidates) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (!baseItem)
+        if (!baseItem) {
             continue;
+        }
         GroupItem* currentOwner = find_owning_group(baseItem->uid());
-        if (currentOwner == target)
+        if (currentOwner == target) {
             continue;
+        }
         if (currentOwner) {
             undo_stack_->beginMacro(tr("Move to group"));
             undo_stack_->push(
@@ -696,31 +733,36 @@ void CanvasScene::maybe_add_dropped_items_to_group(
 
     // Whatever just got added/transferred should visually land on top -
     // same reasoning as raise_selection_to_front() elsewhere.
-    if (changed)
+    if (changed) {
         raise_group_cluster_to_front(target);
+    }
 }
 
 void CanvasScene::add_to_group(QGraphicsItem* item, GroupItem* target)
 {
     auto* base = dynamic_cast<IBaseItem*>(item);
-    if (!base || !target || item == target)
+    if (!base || !target || item == target) {
         return;
+    }
     // Attached items don't take a group
     // membership independently of their anchor - CanvasScene::
     // attach_item_to() is what keeps that invariant, this call is only
     // for a plain grouped/loose item or a nested subgroup.
-    if (!base->attachedToUid().isNull())
+    if (!base->attachedToUid().isNull()) {
         return;
+    }
     // Same cycle guard as the canvas drag-drop path - dragging a group
     // onto itself or one of its own descendants would nest it inside its
     // own subtree. forbidden_drop_targets() is a no-op set for a
     // non-group item, so this is safe to call unconditionally.
-    if (forbidden_drop_targets({item}).contains(target))
+    if (forbidden_drop_targets({item}).contains(target)) {
         return;
+    }
 
     GroupItem* currentOwner = find_owning_group(base->uid());
-    if (currentOwner == target)
+    if (currentOwner == target) {
         return; // already a member here
+    }
 
     if (currentOwner) {
         undo_stack_->beginMacro(tr("Move to group"));
@@ -767,8 +809,9 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
         QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         values.append(mode == "width" ? rect.width() : rect.height());
     }
-    if (values.size() < 2)
+    if (values.size() < 2) {
         return;
+    }
     qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
                 / values.size();
     FLOG_DEBUG(Ch::Scene, "Calculated average {} {}", mode, avg);
@@ -802,8 +845,9 @@ void CanvasScene::normalize_size()
         QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         sizes.append(rect.width() * rect.height());
     }
-    if (sizes.size() < 2)
+    if (sizes.size() < 2) {
         return;
+    }
     qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
                 / sizes.size();
     FLOG_DEBUG(Ch::Scene, "Calculated average size {}", avg);
@@ -820,14 +864,15 @@ void CanvasScene::normalize_size()
 void CanvasScene::arrange_default()
 {
     const QString mode = SettingsHandler::getInstance()->arrangeDefault();
-    if (mode == QLatin1String("horizontal"))
+    if (mode == QLatin1String("horizontal")) {
         arrange(false);
-    else if (mode == QLatin1String("vertical"))
+    } else if (mode == QLatin1String("vertical")) {
         arrange(true);
-    else if (mode == QLatin1String("square"))
+    } else if (mode == QLatin1String("square")) {
         arrange_square();
-    else // "optimal"
+    } else { // "optimal"
         arrange_optimal();
+    }
 }
 // ============================================================================
 // Rectangle Packer для arrange_optimal
@@ -938,8 +983,9 @@ void CanvasScene::arrange(bool vertical)
     cancel_active_modes();
 
     QList<QGraphicsItem*> items = selectedItems(true);
-    if (items.size() < 2)
+    if (items.size() < 2) {
         return;
+    }
 
     qreal gap = SettingsHandler::getInstance()->arrangeGap();
     QPointF center = get_selection_center();
@@ -1011,8 +1057,9 @@ void CanvasScene::arrange_optimal()
     cancel_active_modes();
 
     QList<QGraphicsItem*> items = selectedItems(true);
-    if (items.size() < 2)
+    if (items.size() < 2) {
         return;
+    }
 
     qreal gap = SettingsHandler::getInstance()->arrangeGap();
 
@@ -1066,8 +1113,9 @@ void CanvasScene::arrange_square()
     qreal gap = SettingsHandler::getInstance()->arrangeGap();
     QList<QGraphicsItem*> items = sort_by_filename(selectedItems(true));
 
-    if (items.size() < 2)
+    if (items.size() < 2) {
         return;
+    }
 
     for (QGraphicsItem* item : items) {
         QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
@@ -1111,10 +1159,11 @@ void CanvasScene::flip_items(bool vertical)
     QSet<QGraphicsItem*> seen;
     for (QGraphicsItem* item : selectedItems(true)) {
         QList<QGraphicsItem*> expanded;
-        if (auto* group = dynamic_cast<GroupItem*>(item))
+        if (auto* group = dynamic_cast<GroupItem*>(item)) {
             expanded = group->selection_action_items();
-        else
+        } else {
             expanded = {item};
+        }
         for (QGraphicsItem* member : expanded) {
             if (!seen.contains(member)) {
                 seen.insert(member);
@@ -1128,8 +1177,9 @@ void CanvasScene::flip_items(bool vertical)
 
 void CanvasScene::crop_items()
 {
-    if (crop_item)
+    if (crop_item) {
         return;
+    }
     if (has_single_image_selection()) {
         IBaseItem* item = dynamic_cast<IBaseItem*>(selectedItems(true).first());
         Q_ASSERT_X(item, "CanvasScene::crop_items", "item == null");
@@ -1193,11 +1243,13 @@ bool CanvasScene::has_single_image_selection()
 
 bool CanvasScene::has_group_selected()
 {
-    if (!has_single_selection())
+    if (!has_single_selection()) {
         return false;
+    }
     QGraphicsItem* item = selectedItems(true).first();
-    if (dynamic_cast<GroupItem*>(item))
+    if (dynamic_cast<GroupItem*>(item)) {
         return true;
+    }
     auto* baseItem = dynamic_cast<IBaseItem*>(item);
     return baseItem && find_owning_group(baseItem->uid()) != nullptr;
 }
@@ -1206,8 +1258,9 @@ QGraphicsItem* CanvasScene::find_by_uid(const QUuid& uid) const
 {
     for (QGraphicsItem* item : items()) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (baseItem && baseItem->uid() == uid)
+        if (baseItem && baseItem->uid() == uid) {
             return item;
+        }
     }
     return nullptr;
 }
@@ -1216,8 +1269,9 @@ GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
 {
     for (QGraphicsItem* item : items()) {
         if (auto* group = dynamic_cast<GroupItem*>(item)) {
-            if (group->child_ids().contains(memberUid))
+            if (group->child_ids().contains(memberUid)) {
                 return group;
+            }
         }
     }
     return nullptr;
@@ -1229,8 +1283,9 @@ QList<QGraphicsItem*> CanvasScene::find_attached_items(
     QList<QGraphicsItem*> attached;
     for (QGraphicsItem* item : items()) {
         auto* base = dynamic_cast<IBaseItem*>(item);
-        if (base && base->attachedToUid() == pictureUid)
+        if (base && base->attachedToUid() == pictureUid) {
             attached.append(item);
+        }
     }
     return attached;
 }
@@ -1249,11 +1304,13 @@ QList<QGraphicsItem*> CanvasScene::with_attached_items(
     QList<QGraphicsItem*> expanded = items;
     for (int i = 0; i < expanded.size(); ++i) {
         auto* picture = dynamic_cast<PixmapItem*>(expanded[i]);
-        if (!picture)
+        if (!picture) {
             continue;
+        }
         for (QGraphicsItem* attachedItem : find_attached_items(picture->uid())) {
-            if (!expanded.contains(attachedItem))
+            if (!expanded.contains(attachedItem)) {
                 expanded.append(attachedItem);
+            }
         }
     }
     return expanded;
@@ -1262,15 +1319,18 @@ QList<QGraphicsItem*> CanvasScene::with_attached_items(
 bool CanvasScene::wouldCreateAttachCycle(const QUuid& itemUid,
                                          const QUuid& targetUid) const
 {
-    if (itemUid == targetUid)
+    if (itemUid == targetUid) {
         return true;
+    }
     QUuid cursor = targetUid;
     QSet<QUuid> seen;
     while (!cursor.isNull()) {
-        if (cursor == itemUid)
+        if (cursor == itemUid) {
             return true;
-        if (seen.contains(cursor))
+        }
+        if (seen.contains(cursor)) {
             break; // already-corrupt chain elsewhere - bail rather than spin forever
+        }
         seen.insert(cursor);
         auto* base = dynamic_cast<IBaseItem*>(find_by_uid(cursor));
         cursor = base ? base->attachedToUid() : QUuid();
@@ -1281,15 +1341,19 @@ bool CanvasScene::wouldCreateAttachCycle(const QUuid& itemUid,
 void CanvasScene::attach_item_to(QGraphicsItem* item, const QUuid& targetUid)
 {
     auto* base = dynamic_cast<IBaseItem*>(item);
-    if (!base)
+    if (!base) {
         return;
+    }
     auto* target = dynamic_cast<PixmapItem*>(find_by_uid(targetUid));
-    if (!target)
+    if (!target) {
         return; // can only attach to a picture - see IBaseItem::attachedToUid()'s comment
-    if (base->attachedToUid() == targetUid)
+    }
+    if (base->attachedToUid() == targetUid) {
         return; // already attached here
-    if (wouldCreateAttachCycle(base->uid(), targetUid))
+    }
+    if (wouldCreateAttachCycle(base->uid(), targetUid)) {
         return;
+    }
 
     GroupItem* oldGroup = find_owning_group(base->uid());
     GroupItem* newGroup = find_owning_group(targetUid);
@@ -1304,11 +1368,13 @@ void CanvasScene::attach_item_to(QGraphicsItem* item, const QUuid& targetUid)
     undo_stack_->push(
         new SetAttachedToCommand(base, base->attachedToUid(), targetUid));
     if (oldGroup != newGroup) {
-        if (oldGroup)
+        if (oldGroup) {
             undo_stack_->push(new RemoveFromGroupCommand(oldGroup, base->uid()));
-        if (newGroup)
+        }
+        if (newGroup) {
             undo_stack_->push(
                 new AddToGroupCommand(this, newGroup, {item}, false));
+        }
     }
     undo_stack_->endMacro();
 }
@@ -1316,19 +1382,23 @@ void CanvasScene::attach_item_to(QGraphicsItem* item, const QUuid& targetUid)
 void CanvasScene::detach_item(QGraphicsItem* item)
 {
     auto* base = dynamic_cast<IBaseItem*>(item);
-    if (!base)
+    if (!base) {
         return;
+    }
     const bool wasAttached = !base->attachedToUid().isNull();
     GroupItem* owner = find_owning_group(base->uid());
-    if (!wasAttached && !owner)
+    if (!wasAttached && !owner) {
         return; // already fully top-level
+    }
 
     undo_stack_->beginMacro(tr("Detach"));
-    if (wasAttached)
+    if (wasAttached) {
         undo_stack_->push(
             new SetAttachedToCommand(base, base->attachedToUid(), QUuid()));
-    if (owner)
+    }
+    if (owner) {
         undo_stack_->push(new RemoveFromGroupCommand(owner, base->uid()));
+    }
     undo_stack_->endMacro();
 }
 
@@ -1343,18 +1413,18 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         auto* item_at_pos = itemAt(event_start, views().first()->transform());
 
         if (edit_item) {
-            if (item_at_pos != edit_item)
+            if (item_at_pos != edit_item) {
                 edit_item->exit_edit_mode();
-            else {
+            } else {
                 QGraphicsScene::mousePressEvent(event);
                 return;
             }
         }
 
         if (crop_item) {
-            if (item_at_pos != crop_item)
+            if (item_at_pos != crop_item) {
                 cancel_crop_mode();
-            else {
+            } else {
                 QGraphicsScene::mousePressEvent(event);
                 return;
             }
@@ -1520,8 +1590,9 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
     if (userOnly) {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : items) {
-            if (itemAddByUser(item))
+            if (itemAddByUser(item)) {
                 userItems.append(item);
+            }
         }
         return userItems;
     }
@@ -1533,8 +1604,9 @@ QList<QGraphicsItem*> CanvasScene::items_by_type(const std::string& type)
     QList<QGraphicsItem*> itemsl;
     for (QGraphicsItem* item : items()) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        if (baseItem && baseItem->get_type() == type)
+        if (baseItem && baseItem->get_type() == type) {
             itemsl.append(item);
+        }
     }
     return itemsl;
 }
@@ -1543,8 +1615,9 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
 {
     QList<QGraphicsItem*> userItems;
     for (QGraphicsItem* item : items(Qt::AscendingOrder)) {
-        if (itemAddByUser(item))
+        if (itemAddByUser(item)) {
             userItems.append(item);
+        }
     }
 
     return userItems;
@@ -1553,8 +1626,9 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
 void CanvasScene::on_view_scale_change()
 {
     for (QGraphicsItem* item : selectedItems()) {
-        if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             baseItem->on_view_scale_change();
+        }
     }
 }
 
@@ -1565,8 +1639,9 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
         [this](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : itemList) {
-            if (this->itemAddByUser(item))
+            if (this->itemAddByUser(item)) {
                 userItems.append(item);
+            }
         }
         return userItems;
     };
@@ -1691,8 +1766,9 @@ void CanvasScene::on_change()
     // already fits, so this is cheap on the (common) frame where nothing
     // changed.
     for (QGraphicsItem* item : items()) {
-        if (auto* group = dynamic_cast<GroupItem*>(item))
+        if (auto* group = dynamic_cast<GroupItem*>(item)) {
             group->fit_to_contain_children();
+        }
     }
 }
 
@@ -1737,8 +1813,9 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 // "crop" and "attached_to" -
                 // see PixmapItem::apply_extra_save_data() (moveitem.h).
                 QVariant extraData = data.value("data");
-                if (extraData.isValid())
+                if (extraData.isValid()) {
                     pixmapItem->apply_extra_save_data(extraData.toMap());
+                }
                 item = pixmapItem;
             }
         } else if (typ == "gif") {
@@ -1753,8 +1830,9 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 // GIF-specific "speed" - all live under the same "data"
                 // extra-map.
                 QVariant extraData = data.value("data");
-                if (extraData.isValid())
+                if (extraData.isValid()) {
                     gifItem->apply_extra_save_data(extraData.toMap());
+                }
                 item = gifItem;
             }
         } else if (typ == "text") {
@@ -1834,8 +1912,9 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                     // A saved-as-selected group must NOT jump in front
                     // of its own members - see GroupItem's class comment
                     // (moveitem.h) on why it never bring_to_front()s.
-                    if (typ != "group")
+                    if (typ != "group") {
                         baseItem->bring_to_front();
+                    }
                 }
 
                 addedItems.append(baseItem);

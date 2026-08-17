@@ -21,14 +21,17 @@ public:
 
     QVariant data(const QModelIndex& index, int role) const override
     {
-        if (!index.isValid())
+        if (!index.isValid()) {
             return QVariant();
+        }
 
-        if (index.row() < 0 || index.row() >= files_.size())
+        if (index.row() < 0 || index.row() >= files_.size()) {
             return QVariant();
+        }
 
-        if (role == Qt::DisplayRole)
+        if (role == Qt::DisplayRole) {
             return QFileInfo(files_[index.row()]).fileName();
+        }
 
         if (role == Qt::FontRole) {
             QFont font;
