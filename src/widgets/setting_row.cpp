@@ -348,21 +348,6 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
                                        QWidget* parent)
     : SettingRowBase(label, key, parent)
     , input_([&] {
-          // FlatCheckBox (widgets/flat_checkbox.h) - hand-painted, not a
-          // plain QCheckBox (QSS on a QCheckBox with no ::indicator rule
-          // kills native indicator rendering outright). Deliberately
-          // NOT settings_style::palette().border for the unchecked
-          // outline either: FlatCheckBox halves whatever color it's
-          // given again internally for the unchecked state, and
-          // border's already-light #D8D8D8 at that combined alpha was
-          // all but invisible on the white page (Max, by screenshot -
-          // "сейчас сливается"). text survives that second alpha cut
-          // and actually reads as a checkbox. No label text of its own
-          // - the row's own HoverInfoLabel is the only label. Checked
-          // fill is navSelectedBg (gray), not accent (orange) - Max:
-          // the orange read as an error/warning color here, wanted the
-          // same neutral gray the rest of this window's "on" states use
-          // (sidebar's selected row, etc.) instead of an accent color.
           const auto& sp = familiar::settings_style::palette();
           return new FlatCheckBox(QString(),
                                   sp.text,

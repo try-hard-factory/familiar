@@ -382,13 +382,6 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     connect(rebuildTimer_, &QTimer::timeout, this, &HierarchyPanel::refresh);
 
     applyColorStyle_();
-    // Live-updates on preset/color change - applyColorStyle_() alone only
-    // covers the panel's own QSS (background/text/border/selection);
-    // refresh() (rebuild_()) is also needed because node icons
-    // (makeNode_()/addItemNode_()) bake the text color into a QPixmap at
-    // build time rather than reading it via QSS, so a plain
-    // setStyleSheet() elsewhere never touches them (Max: it "only
-    // applies after a restart").
     connect(SettingsHandler::getInstance(),
             &SettingsHandler::settingsChanged,
             this,

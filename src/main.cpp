@@ -2,37 +2,40 @@
 
 #include <QApplication>
 #include <QIcon>
+#include <QMessageBox>
 #include <QMetaType>
+#include <QSharedMemory>
 
 #include "core/settings.h"
 #include "log/log.h"
 using namespace familiar::log;
 
-/*!
- * \~russian \mainpage RU
- *
- * \~russian \section intro_sec Introduction
- *
- * \~russian This is the introduction.
- *
- * \~russian \section install_sec Installation
- *
- * \~russian \subsection step1 Step 1: Opening the box
- *
- * \~russian etc...
- *
- * \~english \mainpage ENG
- *
- * \~english \section intro_sec Introduction
- *
- * \~english This is the introduction.
- *
- * \~english \section install_sec Installation
- *
- * \~english \subsection step1 Step 1: Opening the box
- *
- * \~english etc...
- */
+namespace {
+
+// Single-instance guard. QSharedMemory is the
+// standard cross-platform "is another copy of me already running"
+// primitive - unlike a plain lock file, the OS reclaims it if the owning
+// process is killed outright (SIGKILL, power loss), so a genuinely dead
+// instance doesn't permanently wedge future launches.
+//
+// One known rough edge, Linux/Unix-specific: if the FIRST instance
+// crashes (not killed, not a clean exit - e.g. segfault) without ever
+// detaching, the underlying System V segment can occasionally survive
+// with no live owner, which would make create() below keep failing even
+// though nothing is actually running. attach()-then-detach() first is
+// the standard mitigation (forces Qt to re-examine/release a segment
+// nothing is really attached to any more) - not a 100% guarantee on
+// every platform/Qt version, but good enough for "don't start a second
+// window" without reaching for a heavier IPC-based liveness check.
+bool acquireSingleInstanceLock(QSharedMemory& guard)
+{
+    if (guard.attach())
+        guard.detach();
+    return guard.create(1);
+}
+
+} // namespace
+
 
 int main(int argc, char* argv[])
 {
@@ -56,6 +59,30 @@ int main(int argc, char* argv[])
     // AppConfigLocation under BOTH organizationName and applicationName
     // when both are set, which produced ".config/familiar/familiar/".
     a.setApplicationName(QStringLiteral("familiar"));
+
+    // Declared here (not in a narrower scope) so it stays alive - and
+    // the lock held - for the whole process lifetime, releasing only
+    // when main() itself returns. Key is fixed, not derived from
+    // anything user-configurable (e.g. --settings <path>) - two
+    // instances pointed at two different settings files are still two
+    // windows, which is exactly what this guards against.
+    QSharedMemory singleInstanceGuard(
+        QStringLiteral("familiar-single-instance-9f3b2c7a"));
+    if (!acquireSingleInstanceLock(singleInstanceGuard)) {
+        // Plain native QMessageBox, not this app's own custom-chrome one
+        // (widgets/message_box.h) - this fires before SettingsHandler/
+        // the color preset system are initialized at all, and exiting
+        // right after is the whole point of this path; not worth
+        // standing up the themed dialog machinery just for this one
+        // early, rare message.
+        QMessageBox::information(
+            nullptr,
+            QObject::tr("Familiar is already running"),
+            QObject::tr(
+                "Another instance of Familiar is already open. Only one "
+                "window is supported right now."));
+        return 0;
+    }
 
     // Must run before anything below reads a CommandlineArgs getter (log
     // level, filename to open, ...) - see CommandlineArgs::process().
