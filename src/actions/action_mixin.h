@@ -68,6 +68,26 @@ public:
 
     QMenu* context_menu() const { return contextMenu_; }
 
+    // menuStyleSheet_() only ever runs once, at build_menu_and_actions()
+    // time - it bakes in whatever the current color preset was THEN, so
+    // changing e.g. UI Text Color afterward (ui/colors_widget.cpp) left
+    // every menu stuck on the old color. Call from a live settings-change
+    // handler (MainWindow::settingsChangedSlot()) to keep them in sync.
+    // contextMenu_ parents every QMenu _create_menu() ever builds
+    // (menu->addMenu(QString) reparents the new submenu to `menu`), so
+    // findChildren<QMenu*>() recursively covers all of them - toplevelMenus_
+    // (the menu bar's own File/Edit/... dropdowns) included, regardless of
+    // nesting depth.
+    void refresh_menu_style()
+    {
+        if (!contextMenu_)
+            return;
+        const QString sheet = menuStyleSheet_();
+        contextMenu_->setStyleSheet(sheet);
+        for (QMenu* sub : contextMenu_->findChildren<QMenu*>())
+            sub->setStyleSheet(sheet);
+    }
+
 private:
     // QMenu paints its own popup window (no inherited widget background),
     // so give it an explicit stylesheet built from the current color

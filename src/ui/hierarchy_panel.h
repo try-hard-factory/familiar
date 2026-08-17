@@ -11,6 +11,7 @@ class GifItem;
 class CanvasScene;
 class CanvasView;
 class QGraphicsItem;
+class QLabel;
 class QTimer;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -92,6 +93,14 @@ protected:
     void showEvent(QShowEvent* event) override;
 
 private:
+    // The panel's own background/text/border/selection QSS
+    // (QTreeWidget + QDockWidget::title) - split out of the constructor
+    // so it can also be called from a SettingsHandler::settingsChanged
+    // connection (live-updates on preset/color change, not just at
+    // construction). Node icons themselves are baked from the color
+    // preset too (makeNode_()/addItemNode_()) but those already refresh
+    // for free on the refresh() call the same connection also makes.
+    void applyColorStyle_();
     void rebuild_();
     void addItemNode_(QTreeWidgetItem* parent,
                       QGraphicsItem* item,
@@ -125,6 +134,17 @@ private:
     void startRename_(QTreeWidgetItem* node);
 
     QTreeWidget* tree_ = nullptr;
+    // Custom titleBarWidget() (see the constructor) - "QDockWidget::title
+    // { color: ... }" QSS didn't actually change the native title text
+    // color on this style (Max, by screenshot: still dark after
+    // applyColorStyle_() ran) - same native-subcontrol-ignores-QSS
+    // pattern this app's FlatCheckBox/FlatSpinBox/FlatComboBox already
+    // exist for, just for QDockWidget's title instead of a form control.
+    // A plain QLabel inside a plain QWidget takes a "color:" QSS rule
+    // reliably (used everywhere else in this app), so that's the actual
+    // fix - see applyColorStyle_().
+    QWidget* titleBar_ = nullptr;
+    QLabel* titleLabel_ = nullptr;
     CanvasScene* scene_ = nullptr;
     CanvasView* view_ = nullptr;
     QTimer* rebuildTimer_ = nullptr;
