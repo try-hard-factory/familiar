@@ -285,4 +285,35 @@ QString filledButtonStyleSheet()
              p.navSelectedBg.name());
 }
 
+QString sliderStyleSheet()
+{
+    const Palette& p = palette();
+    // Same 4px groove / 14px round handle proportions as
+    // ChangeOpacityDialog's own slider (widgets/dialogs.h), but
+    // navSelectedBg (gray) for the filled portion/handle there, not
+    // accent (orange) - same swap CheckboxSettingRow's checked fill
+    // already made (widgets/setting_row.cpp): the orange read as an
+    // error/warning color on this page, Max wanted the same neutral gray
+    // this window's other "on" states use instead.
+    return QStringLiteral("QSlider::groove:horizontal {"
+                          "  height: 4px;"
+                          "  background: %1;"
+                          "  border-radius: 2px;"
+                          "}"
+                          "QSlider::sub-page:horizontal {"
+                          "  height: 4px;"
+                          "  background: %2;"
+                          "  border-radius: 2px;"
+                          "}"
+                          "QSlider::handle:horizontal {"
+                          "  width: 14px;"
+                          "  height: 14px;"
+                          "  margin: -5px 0;"
+                          "  border-radius: 7px;"
+                          "  background: %2;"
+                          "  border: 1px solid %2;"
+                          "}")
+        .arg(p.border.name(), p.navSelectedBg.name());
+}
+
 } // namespace familiar::settings_style
