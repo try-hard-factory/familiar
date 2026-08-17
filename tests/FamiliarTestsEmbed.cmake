@@ -12,5 +12,6 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/core/commandline_args_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/famsettings_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/held_buttons_tracker_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/core/controls_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utils/utils_test.cpp
 )
