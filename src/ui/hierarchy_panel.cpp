@@ -315,6 +315,21 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     // main window's dock areas.
     setFeatures(QDockWidget::DockWidgetMovable);
 
+    // Custom title bar - see titleLabel_'s own comment (hierarchy_panel.h)
+    // for why: QDockWidget's native title text didn't reliably follow
+    // "QDockWidget::title { color: ... }" QSS on this style. A plain
+    // QWidget/QLabel does, and still gets QDockWidget's own drag-to-move
+    // handling for free (that's generic to whatever titleBarWidget() is,
+    // native or not) - DockWidgetMovable above still works.
+    titleBar_ = new QWidget(this);
+    titleBar_->setAttribute(Qt::WA_StyledBackground);
+    auto* titleLayout = new QHBoxLayout(titleBar_);
+    titleLayout->setContentsMargins(8, 5, 8, 5);
+    titleLabel_ = new QLabel(tr("Hierarchy"), titleBar_);
+    titleLayout->addWidget(titleLabel_);
+    titleLayout->addStretch(1);
+    setTitleBarWidget(titleBar_);
+
     auto* tree = new HierarchyTreeWidget(this);
     tree_ = tree;
     tree_->setHeaderHidden(true);
@@ -366,10 +381,28 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     rebuildTimer_->setInterval(150);
     connect(rebuildTimer_, &QTimer::timeout, this, &HierarchyPanel::refresh);
 
+    applyColorStyle_();
+    // Live-updates on preset/color change - applyColorStyle_() alone only
+    // covers the panel's own QSS (background/text/border/selection);
+    // refresh() (rebuild_()) is also needed because node icons
+    // (makeNode_()/addItemNode_()) bake the text color into a QPixmap at
+    // build time rather than reading it via QSS, so a plain
+    // setStyleSheet() elsewhere never touches them (Max: it "only
+    // applies after a restart").
+    connect(SettingsHandler::getInstance(),
+            &SettingsHandler::settingsChanged,
+            this,
+            [this] {
+                applyColorStyle_();
+                refresh();
+            });
+}
+
+void HierarchyPanel::applyColorStyle_()
+{
     auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
     setStyleSheet(
         QStringLiteral("QTreeWidget {"
@@ -378,17 +411,31 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
                        "  border: none;"
                        "}"
                        "QTreeWidget::item { padding: 3px 2px; }"
-                       "QTreeWidget::item:selected { background-color: %3; }"
-                       "QDockWidget::title {"
-                       "  background-color: %1;"
-                       "  color: %2;"
-                       "  padding: 5px;"
-                       "  border-bottom: 1px solid %4;"
-                       "}")
-            .arg(background.name(),
-                 text.name(),
-                 selection.name(),
-                 border.name()));
+                       "QTreeWidget::item:selected { background-color: %3; }")
+            .arg(background.name(), text.name(), selection.name()));
+
+    // Custom title bar (see the constructor's own comment for why this
+    // isn't "QDockWidget::title { ... }" QSS any more) - same colors,
+    // applied directly to the real widgets instead.
+    if (titleBar_) {
+        titleBar_->setStyleSheet(
+            QStringLiteral("background-color: %1;").arg(background.name()));
+    }
+    if (titleLabel_) {
+        titleLabel_->setStyleSheet(
+            QStringLiteral("color: %1;").arg(text.name()));
+        // Belt-and-suspenders alongside the stylesheet line above, not a
+        // replacement for it - this app has already hit more than one
+        // case this session where a QSS "color:" rule quietly didn't
+        // take (QDockWidget::title itself, the reason this custom title
+        // bar exists at all). QPalette::WindowText/Text is what QLabel
+        // actually paints from when nothing overrides it - setting both
+        // roles directly removes any doubt.
+        QPalette pal = titleLabel_->palette();
+        pal.setColor(QPalette::WindowText, text);
+        pal.setColor(QPalette::Text, text);
+        titleLabel_->setPalette(pal);
+    }
 }
 
 void HierarchyPanel::setScene(CanvasScene* scene, CanvasView* view)
@@ -693,6 +740,17 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
     // triggered() handlers - QMenu is still mid-close/ungrab at the
     // moment a handler fires from inside its own nested event loop.
     QAction* chosen = menu.exec(tree_->viewport()->mapToGlobal(pos));
+    // Dismissing the menu without picking anything (Escape, click
+    // elsewhere) returns nullptr from exec() - without this guard that
+    // matched whichever of renameAction/editAction/exportAction wasn't
+    // actually added for this node's type (still nullptr, never
+    // reassigned above), so e.g. right-clicking a picture (no Edit
+    // action - that's text-only) and dismissing the menu made
+    // `chosen == editAction` true via nullptr == nullptr, running the
+    // Edit branch's text->enter_edit_mode() on a null `text` and
+    // crashing.
+    if (!chosen)
+        return;
     if (chosen == renameAction) {
         startRename_(node);
     } else if (chosen == editAction) {

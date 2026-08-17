@@ -387,6 +387,13 @@ private:
     void applyMenubarState_();
     void updateMenubarGeometry();
     void updateWindowControlsStyle_();
+    // The QMenuBar strip itself (File/Edit/... labels) - separate from
+    // updateWindowControlsStyle_() above, which only covers the
+    // always-on-top/minimize/maximize/close corner widget living inside
+    // it. QMenuBar has its own subcontrols (::item etc.), unrelated to
+    // QMenu's (action_mixin.h's menuStyleSheet_()) despite the similar
+    // native-native chrome.
+    void updateMenubarStyle_();
     void startUiFade_(bool visible);
     void onUiHideTimeout_();
     void handleUiHover_(const QPoint& pos);

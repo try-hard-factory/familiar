@@ -35,7 +35,7 @@ static QMap<int, QColor> darkColorPresetDef
     = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
        {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
        {kBorderColor, QColor({13, 13, 13})},       // kBorderColor
-       {kTextColor, QColor({122, 122, 122})},      // kTextColor
+       {kTextColor, QColor({255, 255, 255})},      // kTextColor - white
        {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
 static QMap<int, QColor> lightColorPresetDef
     = {{kBackgroundColor, QColor({224, 224, 224})},

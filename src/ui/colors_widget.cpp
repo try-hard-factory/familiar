@@ -24,11 +24,21 @@ namespace {
 
 constexpr int kSwatchDiameter = 30;
 
+// Fixed mid-gray, not settings_style::palette().border (#D8D8D8) - that
+// value is tuned for hairlines against this window's own fixed white
+// background, too close to white to read as an outline against a swatch
+// whose fill also happens to be light/white (e.g. a default "Background
+// color" preset value) - the ring all but disappeared (Max, by
+// screenshot). This is the swatch's own edge against the page, not a
+// window-chrome hairline, so it gets its own darker constant instead of
+// reusing that one.
+const QColor kSwatchBorderColor(0xB0, 0xB0, 0xB0);
+
 // Round color swatch icon - PureRef's own Colors page uses round
 // swatches, not KColorPicker's old square button chrome (or
 // GroupToolbar's rounded-rect fill icon, ui/group_toolbar.cpp's
 // makeFillColorIcon() - same idea, different shape for this page).
-QIcon makeSwatchIcon(const QColor& color, const QColor& borderColor, qreal dpr)
+QIcon makeSwatchIcon(const QColor& color, qreal dpr)
 {
     QPixmap pm(QSize(kSwatchDiameter, kSwatchDiameter) * dpr);
     pm.setDevicePixelRatio(dpr);
@@ -36,8 +46,8 @@ QIcon makeSwatchIcon(const QColor& color, const QColor& borderColor, qreal dpr)
 
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
-    QPen border(borderColor);
-    border.setWidthF(1.2);
+    QPen border(kSwatchBorderColor);
+    border.setWidthF(1.5);
     p.setPen(border);
     p.setBrush(color);
     p.drawEllipse(
@@ -216,7 +226,7 @@ void ColorsWidget::colorInit()
         {tr("Background color: "), EPresetsColorIdx::kBackgroundColor},
         {tr("Canvas color: "), EPresetsColorIdx::kCanvasColor},
         {tr("Border color: "), EPresetsColorIdx::kBorderColor},
-        {tr("Text color: "), EPresetsColorIdx::kTextColor},
+        {tr("UI Text Color: "), EPresetsColorIdx::kTextColor},
         {tr("Selection color: "), EPresetsColorIdx::kSelectionColor},
     };
 
@@ -266,7 +276,7 @@ void ColorsWidget::pickColor_(EPresetsColorIdx idx)
         {EPresetsColorIdx::kBackgroundColor, tr("Background color")},
         {EPresetsColorIdx::kCanvasColor, tr("Canvas color")},
         {EPresetsColorIdx::kBorderColor, tr("Border color")},
-        {EPresetsColorIdx::kTextColor, tr("Text color")},
+        {EPresetsColorIdx::kTextColor, tr("UI Text Color")},
         {EPresetsColorIdx::kSelectionColor, tr("Selection color")},
     };
 
@@ -300,9 +310,7 @@ void ColorsWidget::refreshSwatch_(EPresetsColorIdx idx)
     if (!swatch)
         return;
     const auto preset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    swatch->setIcon(makeSwatchIcon(preset[idx],
-                                   familiar::settings_style::palette().border,
-                                   devicePixelRatioF()));
+    swatch->setIcon(makeSwatchIcon(preset[idx], devicePixelRatioF()));
 }
 
 

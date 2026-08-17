@@ -201,6 +201,16 @@ MainWindow::MainWindow(QWidget* parent)
     // mainwindow.ui used to set this via its geometry property (800x600);
     // now that ui->setupUi() is gone, set a sane default size explicitly.
     resize(800, 600);
+    // Below this, the menu bar (File/Edit/.../Settings + the window
+    // control icons) runs out of room and QMenuBar falls back to its own
+    // built-in "»" overflow popup - which, over this frameless/
+    // translucent window, paints as a solid black plate the instant it's
+    // shown (no public hook to style/fix that popup itself - Max, by
+    // screenshot). Simplest real fix: never let the window get that
+    // narrow in the first place. Approximate, not measured against the
+    // exact current font/DPI - nudge up if "»" still shows up at this
+    // width.
+    setMinimumWidth(850);
     statusBar()->hide();
 
     setMouseTracking(true);
@@ -480,6 +490,8 @@ void MainWindow::settingsChangedSlot()
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
     updateWindowControlsStyle_();
+    updateMenubarStyle_();
+    refresh_menu_style();
     update();
 }
 
@@ -713,6 +725,7 @@ void MainWindow::ensureMenubar_()
 
     menubar_ = create_menubar();
     menubar_->setParent(this);
+    updateMenubarStyle_();
 
     // Window controls in the top-right corner. They live inside the menu
     // bar on purpose: with show_menubar off the app is a "clean" overlay
@@ -852,6 +865,50 @@ void MainWindow::updateWindowControlsStyle_()
                  rgba(selection, 170),
                  background.name(),
                  border.name()));
+}
+
+void MainWindow::updateMenubarStyle_()
+{
+    if (!menubar_)
+        return;
+
+    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto rgba = [](const QColor& c, int alpha) {
+        return QStringLiteral("rgba(%1, %2, %3, %4)")
+            .arg(c.red())
+            .arg(c.green())
+            .arg(c.blue())
+            .arg(alpha);
+    };
+
+    // Opaque background (not transparent like windowControls_'s own
+    // QToolButtons) - this bar is the one thing at the very top of the
+    // frameless/translucent window that should read as a solid strip,
+    // same as tabpane_'s own QTabBar::tab fill just below it
+    // (settingsChangedSlot() above).
+    menubar_->setStyleSheet(
+        QStringLiteral("QMenuBar {"
+                       "  background-color: %1;"
+                       "  color: %2;"
+                       "}"
+                       "QMenuBar::item {"
+                       "  background: transparent;"
+                       "  color: %2;"
+                       "  padding: 4px 6px;"
+                       "}"
+                       "QMenuBar::item:selected {"
+                       "  background-color: %3;"
+                       "}"
+                       "QMenuBar::item:pressed {"
+                       "  background-color: %4;"
+                       "}")
+            .arg(background.name(),
+                 text.name(),
+                 rgba(selection, 90),
+                 rgba(selection, 170)));
 }
 
 void MainWindow::applyMenubarState_()
