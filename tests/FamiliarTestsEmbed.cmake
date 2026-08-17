@@ -8,6 +8,7 @@
 # correct regardless of which CMakeLists.txt does the include().
 
 list(APPEND FamiliarTestsSrc
+    ${CMAKE_CURRENT_LIST_DIR}/support/log_test_environment.h
     ${CMAKE_CURRENT_LIST_DIR}/support/settings_test_environment.h
     ${CMAKE_CURRENT_LIST_DIR}/core/commandline_args_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/famsettings_test.cpp
@@ -18,4 +19,6 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/utils/utils_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_checkbox_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_spinbox_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_combobox_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/setting_row_test.cpp
 )

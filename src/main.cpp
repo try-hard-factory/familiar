@@ -12,6 +12,7 @@ using namespace familiar::log;
 
 #include <gtest/gtest.h>
 
+#include "support/log_test_environment.h"
 #include "support/settings_test_environment.h"
 
 namespace {
@@ -67,7 +68,11 @@ int main(int argc, char* argv[])
             ::testing::InitGoogleTest(&argc, argv);
             // Owned by GoogleTest from here on (::testing::Environment's
             // documented contract - it deletes registered environments
-            // itself during RUN_ALL_TESTS() teardown), not leaked.
+            // itself during RUN_ALL_TESTS() teardown), not leaked. Log
+            // registered first - SetUp() runs in registration order, and
+            // nothing should run before logging is safe to call (see
+            // LogTestEnvironment's own comment for the crash this avoids).
+            ::testing::AddGlobalTestEnvironment(new LogTestEnvironment());
             ::testing::AddGlobalTestEnvironment(new SettingsTestEnvironment());
             return RUN_ALL_TESTS();
         }
