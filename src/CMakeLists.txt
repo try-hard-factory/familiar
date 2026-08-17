@@ -211,9 +211,15 @@ endif()
 # FetchContent that provides GTest::gtest/GTest::gmock.
 # GTest::gtest_main/gmock_main deliberately NOT linked - those provide
 # their own main(), which would collide with familiar's own.
-target_sources(familiar PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../tests/core/commandline_args_test.cpp
-)
+# core/held_buttons_tracker.cpp and utils/utils.cpp (which
+# held_buttons_tracker_test.cpp/utils_test.cpp exercise) are already
+# compiled into `familiar` via PROJECT_SOURCES above - not re-listed in
+# FamiliarTestsEmbed.cmake, that would duplicate the object.
+include(${PROJECT_SOURCE_DIR}/tests/FamiliarTestsEmbed.cmake)
+target_sources(familiar PRIVATE ${FamiliarTestsSrc})
+# Lets test files #include "support/settings_test_environment.h" and lets
+# main.cpp do the same, instead of a relative "../tests/support/..." path.
+target_include_directories(familiar PRIVATE ${PROJECT_SOURCE_DIR}/tests)
 target_link_libraries(familiar PRIVATE GTest::gtest GTest::gmock)
 
 

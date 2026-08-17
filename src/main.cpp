@@ -12,6 +12,8 @@ using namespace familiar::log;
 
 #include <gtest/gtest.h>
 
+#include "support/settings_test_environment.h"
+
 namespace {
 
 // Single-instance guard. QSharedMemory is the
@@ -61,6 +63,10 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i) {
         if (QString::fromLocal8Bit(argv[i]) == QStringLiteral("-t")) {
             ::testing::InitGoogleTest(&argc, argv);
+            // Owned by GoogleTest from here on (::testing::Environment's
+            // documented contract - it deletes registered environments
+            // itself during RUN_ALL_TESTS() teardown), not leaked.
+            ::testing::AddGlobalTestEnvironment(new SettingsTestEnvironment());
             return RUN_ALL_TESTS();
         }
     }
