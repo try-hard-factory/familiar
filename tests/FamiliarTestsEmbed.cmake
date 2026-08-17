@@ -27,4 +27,8 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/widgets/settings_style_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/binding_dialogs_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/search_highlight_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/binding_target_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/bindings_tree_widget_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/actions/action_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/actions/action_registry_test.cpp
 )
