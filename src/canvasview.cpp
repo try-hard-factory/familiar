@@ -802,20 +802,38 @@ void CanvasView::resizeEvent(QResizeEvent* event)
     // fight our own zoom-under-cursor math in zoom(). But that also
     // means a drastic resize (entering/exiting fullscreen) visibly
     // shifts previously-centered content toward the bottom-right edge.
-    // Recompute where the OLD center was (scrollbar position/transform
-    // haven't changed yet at this point, only the geometry) and re-center
-    // on it once the resize is done, so content stays visually in place.
-    QPointF oldCenter;
-    if (!previousTransform_) {
-        oldCenter = mapToScene(QPoint(event->oldSize().width() / 2,
-                                      event->oldSize().height() / 2));
+    //
+    // Compensated by shifting both scrollbars by exactly half the size
+    // delta, in their OWN unit (view/scrollbar pixels) - NOT by
+    // round-tripping through mapToScene()/centerOn() (scene-coordinate
+    // space), which an earlier version of this fix did. At this app's
+    // usual very-zoomed-out scale (confirmed via logging: transform
+    // scale ~0.0336, i.e. 1 scrollbar pixel worth ~30 scene units), that
+    // round-trip's rounding gets amplified ~30x on every single
+    // resizeEvent - and a live interactive drag-resize fires dozens of
+    // these events per second, so the error compounded into a large,
+    // visible drift within about a second, even on axes that didn't
+    // change at all (logged: height identical old vs. new on every
+    // event, yet the vertical scene position still drifted by a
+    // constant ~29.7 - exactly 1/scale - each time; Max: "уезжает
+    // куда-то вниз"). Working in scrollbar units instead is exact
+    // integer arithmetic with no scene-coordinate detour, so a delta of
+    // 0 (e.g. height genuinely unchanged) produces exactly zero drift.
+    const QSize oldSize = event->oldSize();
+    const QSize newSize = event->size();
+    int dx = 0;
+    int dy = 0;
+    if (oldSize.isValid() && newSize.isValid()) {
+        dx = (oldSize.width() - newSize.width()) / 2;
+        dy = (oldSize.height() - newSize.height()) / 2;
     }
 
     QGraphicsView::resizeEvent(event);
     recalcSceneRect();
-    if (!previousTransform_) {
-        centerOn(oldCenter);
-    }
+    if (dx != 0)
+        horizontalScrollBar()->setValue(horizontalScrollBar()->value() + dx);
+    if (dy != 0)
+        verticalScrollBar()->setValue(verticalScrollBar()->value() + dy);
     welcomeOverlay_->resize(size());
     updateTextToolbarPos_();
     updateGifToolbarPos_();
