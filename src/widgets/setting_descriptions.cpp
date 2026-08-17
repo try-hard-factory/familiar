@@ -8,7 +8,7 @@ namespace {
 
 // TODOLATER: Performance page rows (Undo History Size, Auto Optimize
 // Imported Images, Autosave) and every Keyboard Shortcuts row still fall
-// back to this - real copy for those is a follow-up, per Max.
+// back to this - real copy for those is a follow-up.
 const QString& placeholder()
 {
     static const QString text = QStringLiteral("Description coming soon.");
@@ -24,8 +24,7 @@ const QMap<QString, QString>& settingsTable()
 {
     static const QMap<QString, QString> table = {
         {QStringLiteral("Items/arrange_gap"),
-         QStringLiteral(
-             "The gap between images when using arrange actions.")},
+         QStringLiteral("The gap between images when using arrange actions.")},
         {QStringLiteral("Items/image_allocation_limit"),
          QStringLiteral(
              "The maximum image size that can be loaded (in megabytes)."

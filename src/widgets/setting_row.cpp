@@ -35,7 +35,7 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     setAttribute(Qt::WA_TransparentForMouseEvents);
     // A plain QWidget (this isn't a QFrame) doesn't auto-paint a QSS
     // background-color at all without this - without it the panel fell
-    // back to a solid black plate (Max, by screenshot) instead of white.
+    // back to a solid black plate (confirmed visually) instead of white.
     // Same attribute every dialog_style::panelStyleSheet() consumer sets
     // (ChangeOpacityDialog etc., widgets/dialogs.h) - missed here at
     // first.
@@ -45,7 +45,7 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     // Square, not dialog_style::panelStyleSheet()'s usual rounded panel
     // (border-radius baked into that shared helper, paired with
     // applyRoundedMask() to clip the actual window shape to match) -
-    // Max saw the same square-window-under-a-rounded-QSS-paint artifact
+    // this hit the same square-window-under-a-rounded-QSS-paint artifact
     // this whole app's dialogs already ran into once (see
     // SettingsWindow's own history: rounded corners reverted to square
     // for the same reason), so this popup just skips rounding outright
@@ -243,8 +243,7 @@ QString SettingRowBase::defaultValueDisplayText() const
 
 void SettingRowBase::refreshInfoPopup()
 {
-    label_->setDefaultText(
-        tr("Default: %1").arg(defaultValueDisplayText()));
+    label_->setDefaultText(tr("Default: %1").arg(defaultValueDisplayText()));
     label_->setShowResetHint(true);
 }
 
@@ -282,12 +281,12 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     , input_([&] {
         const auto& sp = familiar::settings_style::palette();
         FLOG_DEBUG(Ch::UI, "popupItemHover {}", sp.popupItemHover);
-          return new FlatComboBox(sp.chipBackground,
-                                  sp.text,
-                                  sp.popupItemHover,
-                                  sp.mutedText,
-                                  this);
-      }())
+        return new FlatComboBox(sp.chipBackground,
+                                sp.text,
+                                sp.popupItemHover,
+                                sp.mutedText,
+                                this);
+    }())
     , options_(options)
 {
     FamSettings settings;
@@ -348,13 +347,13 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
                                        QWidget* parent)
     : SettingRowBase(label, key, parent)
     , input_([&] {
-          const auto& sp = familiar::settings_style::palette();
-          return new FlatCheckBox(QString(),
-                                  sp.text,
-                                  sp.text,
-                                  sp.navSelectedBg,
-                                  this);
-      }())
+        const auto& sp = familiar::settings_style::palette();
+        return new FlatCheckBox(QString(),
+                                sp.text,
+                                sp.text,
+                                sp.navSelectedBg,
+                                this);
+    }())
 {
     // QCheckBox::sizeHint() with an empty label came out degenerate (a
     // sliver, not a square) - the indicator+spacing+text-width math it
@@ -392,7 +391,7 @@ QVariant CheckboxSettingRow::convertValueFromQt(const QVariant& value)
 QString CheckboxSettingRow::defaultValueDisplayText() const
 {
     return FamSettings().valueOrDefault(key_).toBool() ? tr("Checked")
-                                                        : tr("Unchecked");
+                                                       : tr("Unchecked");
 }
 
 void CheckboxSettingRow::setControlEnabled(bool enabled)
@@ -402,19 +401,16 @@ void CheckboxSettingRow::setControlEnabled(bool enabled)
 
 // ─── IntegerSettingRow ──────────────────────────────────────────────────────
 
-IntegerSettingRow::IntegerSettingRow(const QString& label,
-                                     const QString& key,
-                                     int min,
-                                     int max,
-                                     QWidget* parent)
+IntegerSettingRow::IntegerSettingRow(
+    const QString& label, const QString& key, int min, int max, QWidget* parent)
     : SettingRowBase(label, key, parent)
     , input_([&] {
-          const auto& sp = familiar::settings_style::palette();
-          return new FlatSpinBox(sp.chipBackground,
-                                 sp.text,
-                                 sp.chipBackground.darker(112),
-                                 this);
-      }())
+        const auto& sp = familiar::settings_style::palette();
+        return new FlatSpinBox(sp.chipBackground,
+                               sp.text,
+                               sp.chipBackground.darker(112),
+                               this);
+    }())
 {
     FamSettings settings;
     input_->setRange(min, max);
@@ -451,30 +447,30 @@ UndoHistorySizeRow::UndoHistorySizeRow(QWidget* parent)
 {}
 
 AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
-    : ComboSettingRow(
-          QStringLiteral("Auto Optimize Imported Images"),
-          QStringLiteral("Items/auto_optimize_imported_images"),
-          {
-              {QStringLiteral("off"), QStringLiteral("Off")},
-              {QStringLiteral("warn"), QStringLiteral("Large image warning")},
-              {QStringLiteral("optimize_large"),
-               QStringLiteral("Optimize large images")},
-          },
-          parent)
+    : ComboSettingRow(QStringLiteral("Auto Optimize Imported Images"),
+                      QStringLiteral("Items/auto_optimize_imported_images"),
+                      {
+                          {QStringLiteral("off"), QStringLiteral("Off")},
+                          {QStringLiteral("warn"),
+                           QStringLiteral("Large image warning")},
+                          {QStringLiteral("optimize_large"),
+                           QStringLiteral("Optimize large images")},
+                      },
+                      parent)
 {}
 
 AutosaveEnabledRow::AutosaveEnabledRow(QWidget* parent)
     : CheckboxSettingRow(QStringLiteral("Enable Autosave"),
-                        QStringLiteral("Save/autosave_enabled"),
-                        parent)
+                         QStringLiteral("Save/autosave_enabled"),
+                         parent)
 {}
 
 AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Autosave Interval (seconds)"),
-                       QStringLiteral("Save/autosave_interval_seconds"),
-                       1,
-                       3600,
-                       parent)
+                        QStringLiteral("Save/autosave_interval_seconds"),
+                        1,
+                        3600,
+                        parent)
 {}
 
 // ─── Concrete Images & Items-page rows ──────────────────────────────────────
@@ -496,17 +492,16 @@ MaximumImageSizeRow::MaximumImageSizeRow(QWidget* parent)
 {}
 
 ArrangeDefaultRow::ArrangeDefaultRow(QWidget* parent)
-    : ComboSettingRow(
-          QStringLiteral("Default Arrange Method"),
-          QStringLiteral("Items/arrange_default"),
-          {
-              {QStringLiteral("optimal"), QStringLiteral("Optimal")},
-              {QStringLiteral("horizontal"),
-               QStringLiteral("Horizontal (by filename)")},
-              {QStringLiteral("vertical"),
-               QStringLiteral("Vertical (by filename)")},
-              {QStringLiteral("square"),
-               QStringLiteral("Square (by filename)")},
-          },
-          parent)
+    : ComboSettingRow(QStringLiteral("Default Arrange Method"),
+                      QStringLiteral("Items/arrange_default"),
+                      {
+                          {QStringLiteral("optimal"), QStringLiteral("Optimal")},
+                          {QStringLiteral("horizontal"),
+                           QStringLiteral("Horizontal (by filename)")},
+                          {QStringLiteral("vertical"),
+                           QStringLiteral("Vertical (by filename)")},
+                          {QStringLiteral("square"),
+                           QStringLiteral("Square (by filename)")},
+                      },
+                      parent)
 {}

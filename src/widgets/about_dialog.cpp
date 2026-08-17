@@ -109,10 +109,9 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     // CPACK_PACKAGE_VENDOR (CMakeLists.txt) - the one place this
     // project's own organization name is actually recorded; GPLv3 per
     // the repo's own top-level LICENSE file.
-    auto* copyrightLabel = new QLabel(
-        tr("© %1 try-hard-factory · GPLv3")
-            .arg(QDate::currentDate().year()),
-        this);
+    auto* copyrightLabel = new QLabel(tr("© %1 try-hard-factory · GPLv3")
+                                          .arg(QDate::currentDate().year()),
+                                      this);
     copyrightLabel->setAlignment(Qt::AlignCenter);
     copyrightLabel->setStyleSheet(
         QStringLiteral("color: %1;").arg(dimText.name(QColor::HexArgb)));

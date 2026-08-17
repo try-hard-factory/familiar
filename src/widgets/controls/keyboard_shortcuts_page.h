@@ -7,7 +7,7 @@ class BindingTarget;
 class BindingsTreeWidget;
 class CollapsibleSection;
 
-// PureRef-style unified page: "Actions" (menu commands, actions/actions.h)
+// Unified page: "Actions" (menu commands, actions/actions.h)
 // and "Controls" (canvas mouse/wheel interactions, core/controls.h)
 // collapsible sections, each a BindingsTreeWidget over the same alias
 // model (widgets/controls/binding_target.h).

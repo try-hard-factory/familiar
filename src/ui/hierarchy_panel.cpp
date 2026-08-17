@@ -137,7 +137,7 @@ void collectGroupPictures(GroupItem* group, QList<PixmapItem*>& out)
     }
 }
 
-// Interactive drag-and-drop (current, PureRef-style). Qt's own
+// Interactive drag-and-drop (current). Qt's own
 // InternalMove drag-drop mode is used only to get the press/drag/drop
 // GESTURE for free - the QTreeWidgetItem reparenting it would normally do on drop
 // is discarded entirely (dropEvent() below never calls the base class
@@ -197,8 +197,8 @@ protected:
 // own single-letter tool shortcuts, H/V/R/G/S/1/2 (actions.cpp), instead
 // of reaching the editor), then a plain hand-positioned QLineEdit child
 // widget (isVisible()/hasFocus() both true, even with a loud debug
-// stylesheet applied - never actually appeared on screen at all,
-// confirmed with Max). Neither was ever root-caused; a genuine top-level
+// stylesheet applied - never actually appeared on screen at all).
+// Neither was ever root-caused; a genuine top-level
 // window sidesteps both, since it has its own independent backing
 // store/compositing, unlike a child widget layered inside this app's
 // translucent frameless MainWindow.
@@ -214,9 +214,11 @@ public:
         setWindowModality(Qt::ApplicationModal);
         setFixedWidth(320);
 
-        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        auto colorPreset
+            = SettingsHandler::getInstance()->getCurrentColorPreset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& background
+            = colorPreset[EPresetsColorIdx::kBackgroundColor];
         const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
@@ -244,7 +246,9 @@ public:
         auto* buttonRow = new QHBoxLayout();
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-        familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+                                                     textColor,
+                                                     border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("Rename"), this);
@@ -263,19 +267,18 @@ public:
         // to fall back to MainWindow's app-wide "background: transparent"
         // with nothing underneath to actually paint (rendered solid
         // black, stale content visibly not clearing while typing).
-        setStyleSheet(
-            familiar::dialog_style::panelStyleSheet("QDialog",
-                                                    background,
-                                                    border,
-                                                    textColor)
-            + QStringLiteral("QLineEdit {"
-                             "  background-color: rgba(0, 0, 0, 20);"
-                             "  color: %1;"
-                             "  border: 1px solid %2;"
-                             "  border-radius: 4px;"
-                             "  padding: 6px 8px;"
-                             "}")
-                  .arg(textColor.name(), border.name()));
+        setStyleSheet(familiar::dialog_style::panelStyleSheet("QDialog",
+                                                              background,
+                                                              border,
+                                                              textColor)
+                      + QStringLiteral("QLineEdit {"
+                                       "  background-color: rgba(0, 0, 0, 20);"
+                                       "  color: %1;"
+                                       "  border: 1px solid %2;"
+                                       "  border-radius: 4px;"
+                                       "  padding: 6px 8px;"
+                                       "}")
+                            .arg(textColor.name(), border.name()));
     }
 
     QString text() const { return edit_->text(); }
@@ -335,7 +338,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     tree_->setHeaderHidden(true);
     tree_->setIndentation(14);
     tree_->setUniformRowHeights(true);
-    // Interactive drag-and-drop (current, PureRef-style) - InternalMove
+    // Interactive drag-and-drop (current) - InternalMove
     // for the press/drag/drop gesture only, see HierarchyTreeWidget's
     // own comment for why the actual reparenting it would do is discarded in favor of a CanvasScene
     // call. Single-item drag only (v1) - SingleSelection keeps
@@ -710,24 +713,25 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
     const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
-    menu.setStyleSheet(
-        QStringLiteral("QMenu {"
-                       "  background-color: %1;"
-                       "  color: %2;"
-                       "  border: 1px solid %3;"
-                       "  border-radius: 6px;"
-                       "  padding: 4px;"
-                       "}"
-                       "QMenu::item {"
-                       "  padding: 4px 20px;"
-                       "  border-radius: 4px;"
-                       "}"
-                       "QMenu::item:selected {"
-                       "  background-color: %4;"
-                       "  color: white;"
-                       "}")
-            .arg(menuBg.name(), menuText.name(), menuBorder.name(),
-                menuAccent.name()));
+    menu.setStyleSheet(QStringLiteral("QMenu {"
+                                      "  background-color: %1;"
+                                      "  color: %2;"
+                                      "  border: 1px solid %3;"
+                                      "  border-radius: 6px;"
+                                      "  padding: 4px;"
+                                      "}"
+                                      "QMenu::item {"
+                                      "  padding: 4px 20px;"
+                                      "  border-radius: 4px;"
+                                      "}"
+                                      "QMenu::item:selected {"
+                                      "  background-color: %4;"
+                                      "  color: white;"
+                                      "}")
+                           .arg(menuBg.name(),
+                                menuText.name(),
+                                menuBorder.name(),
+                                menuAccent.name()));
 
     // Acted on AFTER exec() returns, not from the actions' own
     // triggered() handlers - QMenu is still mid-close/ungrab at the
@@ -792,9 +796,9 @@ void HierarchyPanel::startRename_(QTreeWidgetItem* node)
         return;
 
     FLOG_DEBUG(Ch::UI,
-              "startRename_: '{}' -> '{}'",
-              currentLabel.toStdString(),
-              newName.toStdString());
+               "startRename_: '{}' -> '{}'",
+               currentLabel.toStdString(),
+               newName.toStdString());
     scene_->undo_stack_->push(
         new RenamePictureCommand(picture, picture->filename_, newName));
 }

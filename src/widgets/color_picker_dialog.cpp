@@ -278,8 +278,8 @@ void SwatchRow::setCurrent(const QColor& color)
 // the swatch itself (so cells narrower than kSwatchSize just draw a
 // smaller square with more surrounding gap, rather than overflowing
 // past the dialog's edge - fixed per-swatch pixel math clipped the last
-// couple of swatches off the right side of the panel, confirmed by Max
-// via screenshot).
+// couple of swatches off the right side of the panel, confirmed
+// visually).
 QRectF SwatchRow::cellRect_(int index) const
 {
     const int count = colors_.size();
@@ -483,7 +483,7 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
         });
     }
     connect(hexEdit_, &QLineEdit::editingFinished, this, [this] {
-        // No leading "#" in the field itself (Max) - QColor's own
+        // No leading "#" in the field itself - QColor's own
         // string parsing needs it, so it's added back here rather than
         // shown to the user.
         QColor c(QStringLiteral("#") + hexEdit_->text());

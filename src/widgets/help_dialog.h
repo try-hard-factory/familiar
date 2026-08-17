@@ -6,8 +6,8 @@ class MainWindow;
 class QMouseEvent;
 class QResizeEvent;
 
-// "Help" (F1, the "help" action) - PureRef-style two-section layout
-// (Controls + Support), adapted from a PureRef reference screenshot.
+// "Help" (F1, the "help" action) - two-section layout
+// (Controls + Support), adapted from a reference.
 // Its own external links (handbook, keyboard shortcuts web page, FAQ,
 // forums) are all skipped - no site yet - replaced where a real in-app
 // equivalent exists (Settings' Keyboard Shortcuts page, the Debug Log

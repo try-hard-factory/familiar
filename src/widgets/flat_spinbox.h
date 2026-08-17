@@ -35,9 +35,9 @@ class FlatSpinBox : public QSpinBox
     Q_OBJECT
 public:
     FlatSpinBox(const QColor& background,
-               const QColor& text,
-               const QColor& hoverBackground,
-               QWidget* parent = nullptr);
+                const QColor& text,
+                const QColor& hoverBackground,
+                QWidget* parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent* event) override;

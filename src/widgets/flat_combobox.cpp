@@ -33,9 +33,8 @@ void FlatComboItemDelegate::paint(QPainter* painter,
 
     // State_Selected covers both an actual mouse hover over a row and
     // the popup's initial "this is the current value" highlight - one
-    // solid pill for both, matching PureRef's own popup (Max's
-    // reference screenshot), just this window's gray instead of its
-    // blue.
+    // solid pill for both, matching the reference app's own
+    // popup, just this window's gray instead of its blue.
     const bool highlighted = option.state
                              & (QStyle::State_Selected
                                 | QStyle::State_MouseOver);
@@ -84,7 +83,7 @@ FlatComboBox::FlatComboBox(const QColor& background,
     // "QComboBox QAbstractItemView" (settings_style.cpp), which only
     // styles the box-model border, not the frame's own native drawFrame()
     // pass. That bevel is what showed up as stray horizontal lines top
-    // and bottom of the popup (Max, by screenshot).
+    // and bottom of the popup (confirmed visually).
     view()->setFrameShape(QFrame::NoFrame);
     // view() (QAbstractItemView) paints its own rounded background fine
     // via the QSS on "QComboBox QAbstractItemView" (settings_style.cpp),
@@ -92,7 +91,7 @@ FlatComboBox::FlatComboBox(const QColor& background,
     // OWN background as a plain square, sitting on top - same class of
     // bug as titleBar overpainting SettingsWindow's rounded corners
     // (ui/settings_window.cpp) - a square patch was showing through
-    // behind the rounded pill/corners (Max, by screenshot). Letting the
+    // behind the rounded pill/corners (confirmed visually). Letting the
     // view's own rounded background show through instead.
     view()->viewport()->setAutoFillBackground(false);
 }

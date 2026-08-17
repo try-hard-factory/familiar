@@ -42,9 +42,9 @@ bool applyGroupFilter(QWidget* page, const QString& text)
 {
     bool anyVisible = false;
     for (SettingRowBase* row : page->findChildren<SettingRowBase*>()) {
-        const bool matches
-            = text.isEmpty()
-              || row->objectName().contains(text, Qt::CaseInsensitive);
+        const bool matches = text.isEmpty()
+                             || row->objectName().contains(text,
+                                                           Qt::CaseInsensitive);
         row->setVisible(matches);
         anyVisible = anyVisible || matches;
     }
@@ -181,7 +181,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // MSWindowsFixedSizeDialogHint's intent).
     setFixedSize(760, 480);
 
-    // Fixed PureRef-style white palette - always this scheme, unlike
+    // Fixed white palette - always this scheme, unlike
     // the rest of the app which follows the user's chosen accent-color
     // preset (see settings_style.h's own comment).
     setStyleSheet(familiar::settings_style::rootStyleSheet());
@@ -225,8 +225,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     closeBtn->setObjectName(QStringLiteral("settingsCloseBtn"));
     const familiar::settings_style::Palette& sp
         = familiar::settings_style::palette();
-    closeBtn->setStyleSheet(familiar::dialog_style::closeButtonStyleSheet(
-        "settingsCloseBtn", sp.text, sp.accent));
+    closeBtn->setStyleSheet(
+        familiar::dialog_style::closeButtonStyleSheet("settingsCloseBtn",
+                                                      sp.text,
+                                                      sp.accent));
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     titleBarLayout->addWidget(closeBtn);
     outer->addWidget(titleBar);
@@ -248,7 +250,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
 
     searchBox_->setPlaceholderText(tr("Search"));
     searchBox_->setClearButtonEnabled(true);
-    // PureRef-style search: a category's nav button stays visible if its
+    // Search: a category's nav button stays visible if its
     // own name matches OR any item inside it does; the page itself is
     // filtered down to just the matching items (whole page shown
     // unfiltered when the category name itself is what matched). If the
@@ -299,8 +301,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         familiar::settings_style::sidebarButtonStyleSheet());
     auto* categoryLayout = new QVBoxLayout(categoryPanel_);
     // Visible gaps between the filled boxes + a little breathing room
-    // around the whole stack - PureRef's own sidebar isn't a flush
-    // edge-to-edge list, each category reads as its own block.
+    // around the whole stack - not a flush edge-to-edge list, each
+    // category reads as its own block.
     categoryLayout->setContentsMargins(4, 4, 4, 4);
     categoryLayout->setSpacing(6);
     categoryButtons_->setExclusive(true);
@@ -406,8 +408,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     };
 
     // Performance - a flat column of rows (widgets/setting_row.h) - see
-    // setting_row.h's own comment for why (PureRef reference: description
-    // on hover, not an always-visible paragraph).
+    // setting_row.h's own comment for why: description
+    // on hover, not an always-visible paragraph.
     auto* miscLayout = new QVBoxLayout(miscPage_);
     miscLayout->addWidget(undoHistorySize_);
     miscLayout->addWidget(autoOptimizeImportedImages_);
@@ -431,7 +433,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     addCategory(tr("Performance"), miscPage_);
 
     // Images & Items - flat column of rows, same shape as Performance
-    // above (Items/image_storage_format's own UI dropped here per Max;
+    // above (Items/image_storage_format's own UI dropped here;
     // the setting/facade/get_imgformat() usage elsewhere is untouched).
     auto* imagesLayout = new QVBoxLayout(imagesPage_);
     imagesLayout->addWidget(allocationLimit_);
@@ -480,4 +482,3 @@ void SettingsWindow::keyPressEvent(QKeyEvent* e)
         close();
     }
 }
-

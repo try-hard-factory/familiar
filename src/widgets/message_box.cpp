@@ -48,7 +48,7 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     // NOT translucent, despite the rounded corners below - see
     // dialog_style::panelStyleSheet()'s own comment for why (confirmed
-    // by Max via screenshot: WA_TranslucentBackground on a genuinely
+    // visually: WA_TranslucentBackground on a genuinely
     // top-level, QSS-auto-painted widget left the whole panel see-
     // through instead of just rounding the corners).
     setAttribute(Qt::WA_TranslucentBackground, false);

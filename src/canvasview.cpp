@@ -447,8 +447,8 @@ void CanvasView::updateGifToolbarPos_()
 {
     if (!gifToolbar_ || !gifToolbar_->isVisible() || !gifToolbar_->item())
         return;
-    // Below the item and horizontally centered under it (PureRef's own
-    // placement). Near the edge of the visible canvas, the qBound() clamp
+    // Below the item and horizontally centered under it. Near the edge
+    // of the visible canvas, the qBound() clamp
     // below takes over and slides the toolbar to stay on-screen - that's
     // the only case it should ever look "snapped" rather than centered.
     const QRectF itemRect = gifToolbar_->item()->sceneBoundingRect();

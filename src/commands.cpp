@@ -120,8 +120,7 @@ void DeleteItemsCommand::redo()
         // alive - kept around for undo, see ownedRefs_) straight back
         // into the tree via the group's stale cache. Only reproduced for
         // a GROUPED item, never a top-level one (which rebuild_() reads
-        // straight off scene_->items(), no cache involved) - confirmed
-        // with Max.
+        // straight off scene_->items(), no cache involved).
         if (GroupItem* group = owningGroups_[i]) {
             if (auto* baseItem = dynamic_cast<IBaseItem*>(item))
                 group->remove_child_id(baseItem->uid());

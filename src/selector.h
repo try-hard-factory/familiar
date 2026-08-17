@@ -89,7 +89,7 @@ public:
     // un-selected members behind with only a crude position-cascade via
     // itemChange() (which never applies scale/rotation, only a plain
     // translate), visibly shearing/misaligning them relative to the rest
-    // of the rotated/scaled selection (confirmed with Max). Not pure -
+    // of the rotated/scaled selection (confirmed via testing). Not pure -
     // deliberately has a safe default body rather than requiring every
     // IBaseItem implementor to define it, since only GroupItem actually
     // needs non-trivial behavior here.
@@ -505,7 +505,7 @@ public:
 
         // Hide the handle dots (not the outline itself) while this item
         // is actively being scaled/rotated via one of its OWN handles,
-        // or moved as a plain body drag - Max found them distracting
+        // or moved as a plain body drag - they read as distracting
         // mid-operation. active_mode_ covers the scale/rotate case
         // directly; a plain body drag doesn't set THIS item's own
         // active_mode_ (see GroupItem::itemChange()'s own comment on
@@ -527,7 +527,7 @@ public:
         if (static_cast<Mixin*>(this)->has_selection_handles() == true
             && !suppressHandles) {
             // Edit mode (TextItem, mid-typing): square caps - the visual
-            // cue (matching PureRef) that a corner only resizes now, it
+            // cue that a corner only resizes now, it
             // won't rotate (see hoverMoveEvent()/mousePressEvent() below).
             const bool resizeOnly
                 = static_cast<Mixin*>(this)->paints_edit_mode_handles();

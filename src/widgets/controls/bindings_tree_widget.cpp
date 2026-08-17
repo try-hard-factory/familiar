@@ -59,9 +59,7 @@ protected:
             // call stack. QTimer::singleShot(0, ...) runs it on a fresh
             // stack frame right after, once nothing above us still
             // expects `this` to be alive.
-            QTimer::singleShot(0, this, [callback = onReset_]() {
-                callback();
-            });
+            QTimer::singleShot(0, this, [callback = onReset_]() { callback(); });
             return;
         }
         QWidget::mouseDoubleClickEvent(event);
@@ -90,7 +88,8 @@ CollapsibleSection::CollapsibleSection(const QString& title,
     headerBtn_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     headerBtn_->setArrowType(Qt::DownArrow);
     headerBtn_->setStyleSheet(
-        QStringLiteral("QToolButton { border: none; font-weight: bold; color: %1; }")
+        QStringLiteral(
+            "QToolButton { border: none; font-weight: bold; color: %1; }")
             .arg(familiar::settings_style::palette().text.name()));
     connect(headerBtn_, &QToolButton::toggled, this, [this](bool checked) {
         content_->setVisible(checked);
@@ -171,9 +170,8 @@ void BindingsTreeWidget::refreshTarget(BindingTarget* target)
     const bool hasAliases = bindings.size() > 1;
 
     // Extra aliases (index 1+) live in their own sub-container so the
-    // primary row's chevron can show/hide all of them at once - matches
-    // PureRef: a row only gets a chevron once it has more than one
-    // binding.
+    // primary row's chevron can show/hide all of them at once - a row
+    // only gets a chevron once it has more than one binding.
     QWidget* extraContainer = nullptr;
     if (hasAliases) {
         extraContainer = new QWidget(container);
@@ -209,15 +207,15 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     // showAdd is only true for a target's primary row (see refreshTarget()'s
     // two buildRow() call sites) - BindingRowWidget's Ctrl+double-click
     // reset gesture only makes sense there (see its own comment above).
-    QWidget* row
-        = showAdd ? new BindingRowWidget(
-              [this, target]() {
-                  target->setBindings(target->defaultBindings());
-                  refreshTarget(target);
-                  emit bindingsChanged();
-              },
-              this)
-                  : new QWidget(this);
+    QWidget* row = showAdd
+                       ? new BindingRowWidget(
+                             [this, target]() {
+                                 target->setBindings(target->defaultBindings());
+                                 refreshTarget(target);
+                                 emit bindingsChanged();
+                             },
+                             this)
+                       : new QWidget(this);
     auto* layout = new QHBoxLayout(row);
     layout->setContentsMargins(indent ? 24 : 4, 2, 4, 2);
 
@@ -254,9 +252,8 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     // target->id() - same single-source-of-truth table those pages'
     // own rows read from (currently still a shared placeholder for
     // every id here, real per-action/control copy is a follow-up).
-    auto* nameLabel = new HoverInfoLabel(highlightSearchMatch(label,
-                                                              searchFilter_),
-                                         row);
+    auto* nameLabel
+        = new HoverInfoLabel(highlightSearchMatch(label, searchFilter_), row);
     nameLabel->setInfoText(
         familiar::setting_descriptions::forBindingTargetId(target->id()));
     // "Default: X" / the reset-gesture footer hint only apply to the
@@ -272,9 +269,9 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         }
         nameLabel->setDefaultText(
             tr("Default: %1")
-                .arg(defaultChords.isEmpty() ? tr("(none)")
-                                             : defaultChords.join(
-                                                   QStringLiteral(", "))));
+                .arg(defaultChords.isEmpty()
+                         ? tr("(none)")
+                         : defaultChords.join(QStringLiteral(", "))));
         nameLabel->setShowResetHint(true);
     }
     layout->addWidget(nameLabel);

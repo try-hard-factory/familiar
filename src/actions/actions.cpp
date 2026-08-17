@@ -314,7 +314,10 @@ static ActionRegistry buildRegistry()
                   false,
                   false,
                   "active_when_selection"));
-    r.add(A::make("zoom_in", "Zoom In", "on_action_zoom_in", {"Ctrl++", "Ctrl+="}));
+    r.add(A::make("zoom_in",
+                  "Zoom In",
+                  "on_action_zoom_in",
+                  {"Ctrl++", "Ctrl+="}));
     r.add(A::make("zoom_out", "Zoom Out", "on_action_zoom_out", {"Ctrl+-"}));
     r.add(A::make("fullscreen",
                   "Fullscreen",
@@ -372,11 +375,8 @@ static ActionRegistry buildRegistry()
                   "on_action_insert_images",
                   {"Ctrl+I"}));
     // Was Ctrl+T - freed up for the new "transparent_to_mouse" action
-    // above (Ctrl+T there matches PureRef's own binding for it).
-    r.add(A::make("insert_text",
-                  "Text",
-                  "on_action_insert_text",
-                  {"Ctrl+N"}));
+    // above (Ctrl+T there matches a reference app's own binding for it).
+    r.add(A::make("insert_text", "Text", "on_action_insert_text", {"Ctrl+N"}));
 
     // ── Transform ─────────────────────────────────────────────────────────────
     r.add(A::make("crop",
@@ -520,10 +520,7 @@ static ActionRegistry buildRegistry()
                   "active_when_items_in_scene"));
 
     // ── Settings ──────────────────────────────────────────────────────────────
-    r.add(A::make("settings",
-                  "Settings",
-                  "on_action_settings",
-                  {"Ctrl+U"}));
+    r.add(A::make("settings", "Settings", "on_action_settings", {"Ctrl+U"}));
     r.add(A::make("open_settings_dir",
                   "Open Settings Folder",
                   "on_action_open_settings_dir"));

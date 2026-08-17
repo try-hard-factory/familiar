@@ -16,7 +16,7 @@ namespace familiar::dialog_style {
 // meant for a WA_TranslucentBackground widget: combining
 // WA_TranslucentBackground with an auto-painted QSS background on a
 // genuinely top-level widget left the whole panel see-through instead
-// of just rounding the corners (confirmed via screenshot, see
+// of just rounding the corners (confirmed visually, see
 // CustomMessageBox's own history) - opaque + border-radius alone reads
 // as very slightly squared corners on some window managers, but
 // actually paints.
@@ -40,7 +40,7 @@ void styleSecondaryButton(QPushButton* button,
 // Hover fill is the preset's accent color (same one the rubberband/
 // selection outline uses) at the same alpha this app's other hover
 // states already use (MainWindow::updateWindowControlsStyle_()) - was
-// a flat white tint before, Max wanted it to match the accent instead.
+// a flat white tint before, changed to match the accent instead.
 QString closeButtonStyleSheet(const char* objectName,
                               const QColor& text,
                               const QColor& accent);
@@ -61,7 +61,7 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr);
 // within the rounded outline, it doesn't reshape the window itself, so
 // an opaque (non-translucent - see panelStyleSheet()'s comment) window
 // still has real, visible square corners of raw window canvas poking
-// out past the rounded panel (confirmed by Max via screenshot: solid
+// out past the rounded panel (confirmed visually: solid
 // black triangles under the rounded corners). setMask() works without
 // any compositor/alpha-channel support, unlike WA_TranslucentBackground
 // - call from the dialog's own resizeEvent() override so the mask

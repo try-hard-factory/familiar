@@ -62,7 +62,7 @@ public:
 
     // Draw square (not round) corner markers instead of the interactive
     // scale handles - TextItem returns true while in edit mode
-    // (PureRef-style visual cue that clicks now edit text, not resize).
+    // (visual cue that clicks now edit text, not resize).
     virtual bool paints_edit_mode_handles() const { return false; }
 
     // Edit-mode (square-handle) drag target: resize the FIELD itself
@@ -774,7 +774,7 @@ public:
     // flip included), which needs its own suppression here too, or
     // attached items would still get nudged by that.
     void do_flip(bool vertical = false,
-                const QPointF& anchor = QPointF(0, 0)) override
+                 const QPointF& anchor = QPointF(0, 0)) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene)
@@ -810,7 +810,8 @@ public:
         if (scene) {
             const QPointF pictureDelta = this->pos() - posBefore;
             if (!pictureDelta.isNull()) {
-                for (QGraphicsItem* note : scene->find_attached_items(this->uid())) {
+                for (QGraphicsItem* note :
+                     scene->find_attached_items(this->uid())) {
                     if (note->isSelected()
                         && (note->flags() & QGraphicsItem::ItemIsMovable))
                         continue;
@@ -1134,7 +1135,8 @@ public:
         movie_->jumpToFrame(qBound(0, index, frameThumbnails_.size() - 1));
     }
     // QMovie's own convention: 100 = normal speed, 25 = x0.25, 200 = x2 -
-    // matches PureRef's playback-speed steps directly, no remapping.
+    // matches the x0.25-x2 steps this app's own UI displays directly, no
+    // remapping needed.
     void set_speed_percent(int percent)
     {
         if (movie_)
@@ -1205,7 +1207,7 @@ public:
     QString old_html;
 
     // Default note fill - the backdrop TextItem always painted, now
-    // per-item and persisted (PureRef-style notes).
+    // per-item and persisted.
     static QColor default_fill_color() { return QColor(0, 0, 0, 40); }
 
     TextItem(const QString& text = QString(),
@@ -1467,7 +1469,7 @@ public:
         updatedOption.state = QStyle::State_Enabled;
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
 
-        // Attached-note indicator (step 25, Max): while the picture this
+        // Attached-note indicator: while the picture this
         // note is attached to is selected, outline the note itself too,
         // so it reads as "belongs to that picture" even though the note
         // isn't part of the selection. Same color/alpha/width convention
@@ -1567,8 +1569,8 @@ public:
 
     bool has_selection_handles() const override
     {
-        // Handles stay live in edit mode too - PureRef lets you resize a
-        // note while typing. paints_edit_mode_handles() below switches
+        // Handles stay live in edit mode too - a note can be resized
+        // while typing. paints_edit_mode_handles() below switches
         // corners to resize-only/square (see selector.h paint_selectable/
         // hoverMoveEvent/mousePressEvent/shape()) instead of disabling
         // them outright, which used to make clicking near the item's
@@ -1675,10 +1677,10 @@ public:
     // CanvasScene::group_selection() (initial fit, on creation) and
     // fit_to_contain_children() below (continuous refit). A flat scene-
     // unit constant looked fine for small test images but was
-    // effectively invisible against multi-thousand-unit photos (confirmed
-    // with Max - PureRef-style content wants the margin to always read
-    // as a small but visible border, regardless of how big the grouped
-    // images actually are) - so this is proportional to the group's own
+    // effectively invisible against multi-thousand-unit photos - the
+    // margin should always read as a small but visible
+    // border, regardless of how big the grouped
+    // images actually are - so this is proportional to the group's own
     // content size, with a floor for tiny groups.
     static constexpr qreal kMinPadding = 20.0;
     static constexpr qreal kPaddingRatio = 0.03;
@@ -1938,7 +1940,7 @@ public:
         // perfect lockstep via itemChange()'s cascade, so this group's
         // footprint relative to them hasn't actually changed and a
         // refit is a no-op at best. At worst (confirmed via a live
-        // debug capture with Max), this setPos() call still perturbs
+        // debug capture), this setPos() call still perturbs
         // this SAME item's position mid-drag, which fights with Qt's
         // own native drag-delta bookkeeping for whichever item is
         // currently grabbed and produces visible jitter (the delta
@@ -2185,7 +2187,7 @@ public:
     void add_child_id(const QUuid& id)
     {
         if (!childIds_.contains(id)) {
-            // Diagnostic (see conversation with Max about the "clicking
+            // Diagnostic (added while chasing a "clicking
             // an unrelated item turns everything black" report) - if
             // this uid is ALREADY listed by some OTHER group, it's about
             // to be a member of two groups at once, which nothing else
@@ -2251,8 +2253,7 @@ public:
     // deleted-but-still-alive-for-undo item's C++ object kept getting
     // returned here and re-added to HierarchyPanel's tree, even though
     // find_by_uid() itself already correctly stopped finding it (only
-    // reproduced for a GROUPED member, never a top-level item - confirmed
-    // with Max).
+    // reproduced for a GROUPED member, never a top-level item.
     QList<QGraphicsItem*> resolve_children()
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -2284,7 +2285,7 @@ public:
     // without recursing, resizing an outer group only rescaled its
     // direct subgroup children and left the actual leaf images at their
     // old size, just shifted in position by the subgroup's own
-    // itemChange() cascade (confirmed with Max - visibly broken/
+    // itemChange() cascade (confirmed via testing - visibly broken/
     // mismatched sizing after a nested-group resize).
     QList<QGraphicsItem*> selection_action_items() override
     {
@@ -2332,7 +2333,7 @@ public:
         // border around MYSELF, right here, as part of MY OWN paint()
         // call - so it sits at MY OWN z, always below my own members
         // (the group-behind-its-members invariant), never covering my
-        // own images. Two things were tried and rejected first (Max):
+        // own images. Two things were tried and rejected first:
         // drawing it from the OUTER group's paint() instead (sits at
         // the outer's z, so a sibling subgroup's opaque fill can cover
         // it where their rects overlap) and a separate always-on-top
@@ -2369,7 +2370,7 @@ public:
         // isSelected() (see highlighted()'s own comment for why: no
         // corner handles just from hovering a potential drop target).
         // Same color as RubberbandItem's own selection-color fill
-        // (selector.h) - Max wanted the two to visually match, full
+        // (selector.h) - the two should visually match, full
         // opacity here since this is a border, not a translucent fill.
         if (highlighted_) {
             auto colorPreset
@@ -2425,9 +2426,9 @@ protected:
         // children would get double-transformed: once correctly via
         // their OWN entry in that same recursive list, and again via
         // this cascade's plain moveBy() (which doesn't even apply the
-        // scale/rotation, just a position delta - confirmed with Max as
-        // "resized fine but children didn't resize, everything's
-        // wrong"). !autoExpanding_ - see fit_to_contain_children() above:
+        // scale/rotation, just a position delta - confirmed via testing:
+        // resized fine but children didn't resize, everything ended up
+        // wrong). !autoExpanding_ - see fit_to_contain_children() above:
         // that method's own setPos() is repositioning the group TO catch
         // up with a member that already moved, not a body drag that
         // should carry members along.

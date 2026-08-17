@@ -31,8 +31,9 @@ private:
 // this opens. Deliberately a plain QWidget/QVBoxLayout, not a
 // QTreeWidget/QTableView: those manage their own scrolling viewport,
 // which meant every section scrolled independently instead of the whole
-// page sharing one scrollbar (PureRef reference: a single page-level
-// scrollbar, sections are just expand/collapse within that one flow).
+// page sharing one scrollbar (matches the reference app: a single
+// page-level scrollbar, sections are just expand/collapse within that
+// one flow).
 // Targets are not owned - the caller (KeyboardShortcutsPage) must
 // outlive this widget.
 class BindingsTreeWidget : public QWidget

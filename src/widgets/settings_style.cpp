@@ -54,8 +54,8 @@ QString rootStyleSheet()
                           // two rounds of trying (width/background,
                           // then explicit ::up-arrow/::down-arrow too)
                           // both left the buttons and their arrows
-                          // invisible outside hover (Max, by
-                          // screenshot). This QSS engine only seems to
+                          // invisible outside hover (confirmed
+                          // visually). This QSS engine only seems to
                           // draw those sub-controls from an explicit
                           // "image:" (an external asset, against this
                           // app's own convention of drawing icons in
@@ -75,7 +75,7 @@ QString rootStyleSheet()
                           // overriding FlatSpinBox's own per-instance
                           // "selection looks like normal text" fix
                           // (widgets/flat_spinbox.cpp) with this orange
-                          // accent instead (Max, by screenshot).
+                          // accent instead (confirmed visually).
                           "QSpinBox {"
                           "  border: none;"
                           "  border-radius: 6px;"
@@ -104,8 +104,8 @@ QString rootStyleSheet()
                           // own "color:" both proved unreliable for text
                           // specifically (items kept coming out in a
                           // stray native link-blue no matter which
-                          // selector it was pinned on - Max, by
-                          // screenshot, more than once).
+                          // selector it was pinned on - confirmed
+                          // visually, more than once).
                           "QComboBox QAbstractItemView {"
                           "  border: none;"
                           "  background: %8;"
@@ -232,7 +232,7 @@ QString outlineButtonStyleSheet()
     // regardless of an unqualified "color:" rule, which is how these
     // ended up blue instead of the fixed dark text color. "outline:
     // none" additionally drops the dotted native focus rectangle, which
-    // has no equivalent in the PureRef reference either.
+    // has no equivalent in the reference design either.
     return QStringLiteral("QPushButton {"
                           "  background-color: transparent;"
                           "  color: %1;"
@@ -293,8 +293,8 @@ QString sliderStyleSheet()
     // navSelectedBg (gray) for the filled portion/handle there, not
     // accent (orange) - same swap CheckboxSettingRow's checked fill
     // already made (widgets/setting_row.cpp): the orange read as an
-    // error/warning color on this page, Max wanted the same neutral gray
-    // this window's other "on" states use instead.
+    // error/warning color on this page - the same neutral gray
+    // this window's other "on" states use reads better instead.
     return QStringLiteral("QSlider::groove:horizontal {"
                           "  height: 4px;"
                           "  background: %1;"

@@ -504,40 +504,41 @@ void FileBrowserDialog::showContextMenu_(const QPoint& pos)
     // to actually paint, rendering solid black. Same root cause as
     // dialog_style::panelStyleSheet()'s QToolTip rule, just for a widget
     // type that rule doesn't cover.
-    const auto colorPreset = SettingsHandler::getInstance()
-                                 ->getCurrentColorPreset();
+    const auto colorPreset
+        = SettingsHandler::getInstance()->getCurrentColorPreset();
     const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
     QMenu menu(this);
-    menu.setStyleSheet(
-        QStringLiteral("QMenu {"
-                       "  background-color: %1;"
-                       "  color: %2;"
-                       "  border: 1px solid %3;"
-                       "  border-radius: 6px;"
-                       "  padding: 4px;"
-                       "}"
-                       "QMenu::item {"
-                       "  padding: 4px 20px;"
-                       "  border-radius: 4px;"
-                       "}"
-                       "QMenu::item:selected {"
-                       "  background-color: %4;"
-                       "  color: white;"
-                       "}"
-                       "QMenu::item:disabled {"
-                       "  color: rgba(128, 128, 128, 150);"
-                       "}"
-                       "QMenu::separator {"
-                       "  height: 1px;"
-                       "  background-color: %3;"
-                       "  margin: 4px 6px;"
-                       "}")
-            .arg(menuBg.name(), menuText.name(), menuBorder.name(),
-                menuAccent.name()));
+    menu.setStyleSheet(QStringLiteral("QMenu {"
+                                      "  background-color: %1;"
+                                      "  color: %2;"
+                                      "  border: 1px solid %3;"
+                                      "  border-radius: 6px;"
+                                      "  padding: 4px;"
+                                      "}"
+                                      "QMenu::item {"
+                                      "  padding: 4px 20px;"
+                                      "  border-radius: 4px;"
+                                      "}"
+                                      "QMenu::item:selected {"
+                                      "  background-color: %4;"
+                                      "  color: white;"
+                                      "}"
+                                      "QMenu::item:disabled {"
+                                      "  color: rgba(128, 128, 128, 150);"
+                                      "}"
+                                      "QMenu::separator {"
+                                      "  height: 1px;"
+                                      "  background-color: %3;"
+                                      "  margin: 4px 6px;"
+                                      "}")
+                           .arg(menuBg.name(),
+                                menuText.name(),
+                                menuBorder.name(),
+                                menuAccent.name()));
     menu.addAction(tr("New Folder"), this, &FileBrowserDialog::createFolder_);
     menu.addSeparator();
     QAction* renameAction = menu.addAction(tr("Rename"),

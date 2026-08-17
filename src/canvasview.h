@@ -314,7 +314,7 @@ private:
     // sceneEverHadItems_ above) only for a tab that never had content in
     // the first place - deliberately does stay stuck at the largest-ever
     // item bounds otherwise now, which is what a previous fix here
-    // avoided in general (see git history) but Max wants specifically
+    // avoided in general (see git history), but deliberately kept
     // for "this project's tab, now emptied out" (2026-07-26). Updated in
     // on_scene_changed().
     QRectF canvasRect_;

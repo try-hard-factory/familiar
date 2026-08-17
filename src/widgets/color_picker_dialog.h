@@ -13,7 +13,7 @@ class QResizeEvent;
 // Saturation/value square for a fixed hue - horizontal axis is
 // saturation (white -> full hue color), vertical is value (fully lit
 // at top -> black at bottom), same layout every SV picker uses (GIMP/
-// Photoshop/PureRef alike). Drag anywhere (mouse press OR move-while-
+// Photoshop and the like). Drag anywhere (mouse press OR move-while-
 // pressed) to pick; setHue()/setSv() reposition it programmatically
 // (typing a hex value, clicking a preset swatch) without re-emitting
 // svChanged() itself - the caller already knows the color it just set.

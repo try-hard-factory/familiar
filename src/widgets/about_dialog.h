@@ -6,10 +6,10 @@ class MainWindow;
 class QMouseEvent;
 class QResizeEvent;
 
-// "About" (the "about" action) - PureRef-style layout, adapted from a
-// reference screenshot Max provided: app name/version centered, a
-// short description, copyright. PureRef's own screenshot also has
-// "www.pureref.com"/"Changelog"/"Licenses" links - all skipped here,
+// "About" (the "about" action) - layout adapted from a
+// reference: app name/version centered, a
+// short description, copyright. That reference also has its
+// own site/changelog/licenses links - all skipped here,
 // same reasoning as HelpDialog (no site yet).
 class AboutDialog : public QDialog
 {

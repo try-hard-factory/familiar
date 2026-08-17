@@ -102,7 +102,7 @@ public:
     // interleaving with a sibling subgroup's (a flat sort-by-z of
     // everything at once doesn't guarantee that if stale z values from
     // an earlier interaction left a subgroup's members not already
-    // contiguous - confirmed with Max via a debug capture). Called from
+    // contiguous - confirmed via a debug capture). Called from
     // on_selection_change() - pre-existing per-item bring-to-front
     // (ItemMixin::on_selected_change()) only ever raised the FIRST item
     // of a new selection (guarded on "nothing was already selected"), so
@@ -290,7 +290,7 @@ public:
     // anchor, its anchor's anchor, etc.: if itemUid ever turns up there,
     // targetUid already (transitively) depends on itemUid, so attaching
     // itemUid TO targetUid would close the loop. Chains were impossible
-    // before a picture could attach to another picture (Max) - a
+    // before a picture could attach to another picture - a
     // TextItem note is always a leaf (nothing attaches to a note), so
     // this never mattered until now. Guards against the resulting
     // infinite recursion in PixmapItem::itemChange()/set_rotation()/
@@ -300,7 +300,7 @@ public:
     // construction, which this is the one gate that guarantees.
     bool wouldCreateAttachCycle(const QUuid& itemUid,
                                 const QUuid& targetUid) const;
-    // Hierarchy panel drag-and-drop (current, PureRef-style interactive
+    // Hierarchy panel drag-and-drop (current, interactive
     // tree): re-anchors item to targetUid (a PixmapItem/GifItem uid) as
     // one undo step, syncing item's group membership to match the
     // target's group so "an attached item always lives in the same

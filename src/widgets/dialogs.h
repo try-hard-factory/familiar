@@ -463,9 +463,11 @@ public:
         setWindowModality(Qt::WindowModal);
         setFixedWidth(280);
 
-        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        auto colorPreset
+            = SettingsHandler::getInstance()->getCurrentColorPreset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& background
+            = colorPreset[EPresetsColorIdx::kBackgroundColor];
         const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
@@ -492,7 +494,10 @@ public:
         closeBtn->setCursor(Qt::PointingHandCursor);
         closeBtn->setFocusPolicy(Qt::NoFocus);
         closeBtn->setObjectName(QStringLiteral("changeOpacityCloseBtn"));
-        connect(closeBtn, &QPushButton::clicked, this, &ChangeOpacityDialog::reject);
+        connect(closeBtn,
+                &QPushButton::clicked,
+                this,
+                &ChangeOpacityDialog::reject);
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
 
@@ -515,44 +520,51 @@ public:
         familiar::dialog_style::styleSecondaryButton(cancelBtn,
                                                      textColor,
                                                      border);
-        connect(cancelBtn, &QPushButton::clicked, this, &ChangeOpacityDialog::reject);
+        connect(cancelBtn,
+                &QPushButton::clicked,
+                this,
+                &ChangeOpacityDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("OK"), this);
         familiar::dialog_style::stylePrimaryButton(okBtn, accent);
         okBtn->setDefault(true);
-        connect(okBtn, &QPushButton::clicked, this, &ChangeOpacityDialog::accept);
+        connect(okBtn,
+                &QPushButton::clicked,
+                this,
+                &ChangeOpacityDialog::accept);
         buttonRow->addWidget(okBtn);
         outer->addLayout(buttonRow);
 
         setStyleSheet(
-            familiar::dialog_style::panelStyleSheet(
-                "ChangeOpacityDialog", background, border, textColor)
+            familiar::dialog_style::panelStyleSheet("ChangeOpacityDialog",
+                                                    background,
+                                                    border,
+                                                    textColor)
             + familiar::dialog_style::closeButtonStyleSheet(
-                  "changeOpacityCloseBtn", textColor, accent)
+                "changeOpacityCloseBtn", textColor, accent)
             // Explicit ::groove/::handle rules, not just a bare QSlider
             // color rule - same reasoning as QRadioButton's ::indicator
             // in ExportImagesFileExistsDialog: QSS with no sub-control
             // rule kills the native rendering rather than just recoloring
             // it.
-            + QStringLiteral(
-                  "QSlider::groove:horizontal {"
-                  "  height: 4px;"
-                  "  background: %1;"
-                  "  border-radius: 2px;"
-                  "}"
-                  "QSlider::sub-page:horizontal {"
-                  "  height: 4px;"
-                  "  background: %2;"
-                  "  border-radius: 2px;"
-                  "}"
-                  "QSlider::handle:horizontal {"
-                  "  width: 14px;"
-                  "  height: 14px;"
-                  "  margin: -5px 0;"
-                  "  border-radius: 7px;"
-                  "  background: %2;"
-                  "  border: 1px solid %2;"
-                  "}")
+            + QStringLiteral("QSlider::groove:horizontal {"
+                             "  height: 4px;"
+                             "  background: %1;"
+                             "  border-radius: 2px;"
+                             "}"
+                             "QSlider::sub-page:horizontal {"
+                             "  height: 4px;"
+                             "  background: %2;"
+                             "  border-radius: 2px;"
+                             "}"
+                             "QSlider::handle:horizontal {"
+                             "  width: 14px;"
+                             "  height: 14px;"
+                             "  margin: -5px 0;"
+                             "  border-radius: 7px;"
+                             "  background: %2;"
+                             "  border: 1px solid %2;"
+                             "}")
                   .arg(border.name(), accent.name()));
 
         show();
@@ -713,9 +725,11 @@ public:
         setWindowModality(Qt::ApplicationModal);
         setFixedWidth(380);
 
-        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        auto colorPreset
+            = SettingsHandler::getInstance()->getCurrentColorPreset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& background
+            = colorPreset[EPresetsColorIdx::kBackgroundColor];
         const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
@@ -746,8 +760,9 @@ public:
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
 
-        auto* messageLabel = new QLabel(
-            tr("This file already exists:\n%1").arg(filename), this);
+        auto* messageLabel
+            = new QLabel(tr("This file already exists:\n%1").arg(filename),
+                         this);
         messageLabel->setWordWrap(true);
         outer->addWidget(messageLabel);
 
@@ -784,7 +799,7 @@ public:
             familiar::dialog_style::panelStyleSheet(
                 "ExportImagesFileExistsDialog", background, border, textColor)
             + familiar::dialog_style::closeButtonStyleSheet(
-                  "exportExistsCloseBtn", textColor, accent)
+                "exportExistsCloseBtn", textColor, accent)
             // Explicit ::indicator rules, not just a bare QRadioButton
             // color rule - QSS on a QRadioButton/QCheckBox with no
             // ::indicator rule of its own kills the native indicator

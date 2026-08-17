@@ -37,8 +37,8 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
     // for that, and the compiler silently picked QColor as the common
     // type (Qt::NoBrush's underlying 0 implicitly became QRgb 0 ->
     // QColor(0) -> OPAQUE BLACK, not "no brush"), so the unchecked box
-    // painted as a solid black square instead of an outline (Max,
-    // confirmed via screenshot - alpha tweaks on the border color did
+    // painted as a solid black square instead of an outline (confirmed
+    // visually - alpha tweaks on the border color did
     // nothing because the BRUSH, not the pen, was the real culprit).
     if (isChecked()) {
         const QColor fill = underMouse() ? accent_.lighter(115) : accent_;

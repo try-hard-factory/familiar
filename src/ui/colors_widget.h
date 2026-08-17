@@ -27,16 +27,7 @@ private:
     void saveResetBtnsInit();
     void showPresetSaveWindow();
 
-    // Opens ColorPickerDialog (widgets/color_picker_dialog.h) for `idx` -
-    // replaces the old per-swatch KColorPicker. Live-updates the preset
-    // (and this swatch's own icon) while dragging via colorChanged(),
-    // reverts on cancel - same live-preview-then-commit-or-revert
-    // convention GroupToolbar/TextEditToolbar's own color buttons use
-    // (ui/group_toolbar.cpp, ui/text_edit_toolbar.cpp).
     void pickColor_(EPresetsColorIdx idx);
-    // Redraws colorSwatches_[idx]'s icon from the current preset - shared
-    // by pickColor_() and updateComponents() (preset switched out from
-    // under this page, e.g. via the preset buttons or Restore Defaults).
     void refreshSwatch_(EPresetsColorIdx idx);
 
 public slots:

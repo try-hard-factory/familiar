@@ -501,7 +501,7 @@ void TextEditToolbar::applyLink(const QString& href)
         SettingsHandler::getInstance()
             ->getCurrentColorPreset()[EPresetsColorIdx::kSelectionColor]);
 
-    // Inserts href AS the visible link text (PureRef-style) rather than
+    // Inserts href AS the visible link text rather than
     // formatting whatever's currently selected - a selection is replaced
     // (like typing normally would), not preserved-and-wrapped.
     QTextCursor cursor = item_->textCursor();

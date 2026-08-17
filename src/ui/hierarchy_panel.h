@@ -29,7 +29,7 @@ class QTreeWidgetItem;
 // wherever that anchor itself ends up (top-level or inside a group),
 // not as a flat sibling of the anchor's other group-mates.
 //
-// Interactive (current, PureRef-style) - dragging a row onto a Group
+// Interactive (current) - dragging a row onto a Group
 // node adds/transfers it there (CanvasScene::add_to_group()), onto a
 // picture node attaches it (CanvasScene::attach_item_to()), onto empty
 // space detaches AND/OR leaves its group, landing it top-level
@@ -136,7 +136,7 @@ private:
     QTreeWidget* tree_ = nullptr;
     // Custom titleBarWidget() (see the constructor) - "QDockWidget::title
     // { color: ... }" QSS didn't actually change the native title text
-    // color on this style (Max, by screenshot: still dark after
+    // color on this style (confirmed visually: still dark after
     // applyColorStyle_() ran) - same native-subcontrol-ignores-QSS
     // pattern this app's FlatCheckBox/FlatSpinBox/FlatComboBox already
     // exist for, just for QDockWidget's title instead of a form control.

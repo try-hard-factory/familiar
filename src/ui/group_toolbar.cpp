@@ -250,7 +250,7 @@ void GroupToolbar::showSettingsPopup_()
 
     // Toggle, not just reuse-and-raise like GifPlaybackToolbar's speed
     // popup - clicking the chevron again while the popup is already open
-    // should close it (Max), not just refocus it. close() triggers
+    // should close it, not just refocus it. close() triggers
     // WA_DeleteOnClose, whose destroyed() connection below resets
     // settingsPopup_ to nullptr.
     if (settingsPopup_) {
@@ -267,7 +267,7 @@ void GroupToolbar::showSettingsPopup_()
     // gives click-outside-to-dismiss for free - a manual WindowDeactivate
     // eventFilter was tried first and didn't actually fire reliably
     // (Qt::Tool windows don't get independent activation from every
-    // window manager - confirmed with Max it silently did nothing).
+    // window manager - confirmed it silently did nothing).
     auto* popup = new QWidget(nullptr, Qt::Popup);
     popup->setAttribute(Qt::WA_DeleteOnClose);
     popup->setAttribute(Qt::WA_TranslucentBackground, false);

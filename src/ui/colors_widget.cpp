@@ -28,16 +28,12 @@ constexpr int kSwatchDiameter = 30;
 // value is tuned for hairlines against this window's own fixed white
 // background, too close to white to read as an outline against a swatch
 // whose fill also happens to be light/white (e.g. a default "Background
-// color" preset value) - the ring all but disappeared (Max, by
-// screenshot). This is the swatch's own edge against the page, not a
+// color" preset value) - the ring all but disappeared (confirmed
+// visually). This is the swatch's own edge against the page, not a
 // window-chrome hairline, so it gets its own darker constant instead of
 // reusing that one.
 const QColor kSwatchBorderColor(0xB0, 0xB0, 0xB0);
 
-// Round color swatch icon - PureRef's own Colors page uses round
-// swatches, not KColorPicker's old square button chrome (or
-// GroupToolbar's rounded-rect fill icon, ui/group_toolbar.cpp's
-// makeFillColorIcon() - same idea, different shape for this page).
 QIcon makeSwatchIcon(const QColor& color, qreal dpr)
 {
     QPixmap pm(QSize(kSwatchDiameter, kSwatchDiameter) * dpr);
@@ -163,25 +159,23 @@ void ColorsWidget::presetsInit()
         // QPushButton::setText()'s native layout, so it never needed
         // breathing room from QSS. This button does rely on native text
         // layout, so without this "Custom 1" etc. came out clipped
-        // against the button edges (Max, by screenshot). NOT
+        // against the button edges (confirmed visually). NOT
         // CategoryNavButton's own 38px min-height though - six of these
         // stacked in this narrower column at that height ran into each
-        // other with zero visible gap (Max, by screenshot) - same
+        // other with zero visible gap (confirmed visually) - same
         // min-height/padding as filledButtonStyleSheet()'s buttons
-        // instead (Restore Defaults etc., which read at a normal size in
-        // that same screenshot).
+        // instead (Restore Defaults etc., which read at a normal size).
         // Also overrides sidebarButtonStyleSheet()'s own "text-align:
         // left" (matches the sidebar's icon+label list convention) -
         // this column is short standalone preset names, not a list of
-        // longer category labels, so centered reads better (Max). Same
+        // longer category labels, so centered reads better. Same
         // selector, appended after the base sheet in this one combined
         // string - later wins on a tie, no separate stylesheet needed.
-        btn->setStyleSheet(
-            familiar::settings_style::sidebarButtonStyleSheet()
-            + QStringLiteral("QPushButton#categoryButton {"
-                             "  padding: 4px 14px;"
-                             "  text-align: center;"
-                             "}"));
+        btn->setStyleSheet(familiar::settings_style::sidebarButtonStyleSheet()
+                           + QStringLiteral("QPushButton#categoryButton {"
+                                            "  padding: 4px 14px;"
+                                            "  text-align: center;"
+                                            "}"));
         btn->setMinimumHeight(22);
         btn->setMinimumWidth(110);
         btn->setCheckable(true);
@@ -239,11 +233,6 @@ void ColorsWidget::colorInit()
         row_layout->addWidget(color_lbl);
 
         auto* swatch = new QToolButton(this);
-        // Round, not KColorPicker's old square swatch button - matches
-        // PureRef's own Colors page. Flat/borderless chrome of its own -
-        // the icon (makeSwatchIcon() above) draws its own circular
-        // border, so a QSS border around the button itself would double
-        // up with it.
         swatch->setFixedSize(kSwatchDiameter, kSwatchDiameter);
         swatch->setAutoRaise(true);
         swatch->setCursor(Qt::PointingHandCursor);
@@ -347,7 +336,8 @@ void ColorsWidget::saveResetBtnsInit()
     // (Restore Defaults/Import/Export, ui/settings_window.cpp) - not
     // dialog_style::styleSecondaryButton()'s outline look, which is for
     // separate modal dialogs, not buttons living inside this window.
-    QPushButton* save_to_preset_btn = new QPushButton(tr("Save to preset"), this);
+    QPushButton* save_to_preset_btn = new QPushButton(tr("Save to preset"),
+                                                      this);
     save_to_preset_btn->setStyleSheet(
         familiar::settings_style::filledButtonStyleSheet());
     connect(save_to_preset_btn,
@@ -356,7 +346,7 @@ void ColorsWidget::saveResetBtnsInit()
             &ColorsWidget::showPresetSaveWindow);
 
     QPushButton* reset_to_default_btn = new QPushButton(tr("Reset to default"),
-                                                         this);
+                                                        this);
     reset_to_default_btn->setStyleSheet(
         familiar::settings_style::filledButtonStyleSheet());
     connect(reset_to_default_btn,
@@ -385,8 +375,8 @@ void ColorsWidget::updateComponents()
 
     opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
 
-    if (QAbstractButton* checked
-        = presetButtons_->button(settings->currentPreset())) {
+    if (QAbstractButton* checked = presetButtons_->button(
+            settings->currentPreset())) {
         checked->setChecked(true);
     }
 

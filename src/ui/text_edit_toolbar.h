@@ -3,8 +3,8 @@
 
 /**
  *  @file   text_edit_toolbar.h
- *  \~russian @brief  Плавающая панель форматирования текстового айтема
- *                    (PureRef-стиль): цвет текста/заливки, B/I/U, размер,
+ *  \~russian @brief  Плавающая панель форматирования текстового айтема:
+ *                    цвет текста/заливки, B/I/U, размер,
  *                    шрифт. Показывается CanvasView'ом над айтемом, пока
  *                    тот в режиме редактирования.
  */
@@ -43,7 +43,7 @@ private:
     // QTextCharFormat, so it doesn't go through applyCharFormat().
     void toggleListStyle(int style);
     // Small popup (URL field + browse-for-local-file + apply) anchored
-    // under linkBtn_, PureRef-style - see the .cpp for the widget itself.
+    // under linkBtn_ - see the .cpp for the widget itself.
     void showLinkPopup();
     // Applies (or, if href is empty, does nothing - the popup's Apply
     // button already guards against that) an anchor format to the

@@ -16,8 +16,8 @@
 #include <QTabBar>
 #include <QTimer>
 #include <QToolButton>
-#include <QVariantAnimation>
 #include <QVBoxLayout>
+#include <QVariantAnimation>
 #include <QWindow>
 
 #include "canvasscene.h"
@@ -43,9 +43,9 @@ using namespace familiar::log;
 
 namespace {
 
-// PureRef-style confirmation before entering transparent-to-mouse mode
+// Confirmation before entering transparent-to-mouse mode
 // (MainWindow::on_action_transparent_to_mouse()) - shown every time, no
-// "don't show again" (Max explicitly didn't want one): it's the one
+// "don't show again" (deliberately no such option): it's the one
 // place explaining the escape hatch, and skipping it after the first
 // time would mean a user who forgot could turn this on with no idea how
 // to get back. Same custom-chrome convention as every other dialog in
@@ -67,9 +67,11 @@ public:
         setWindowModality(Qt::ApplicationModal);
         setFixedWidth(360);
 
-        auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+        auto colorPreset
+            = SettingsHandler::getInstance()->getCurrentColorPreset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-        const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& background
+            = colorPreset[EPresetsColorIdx::kBackgroundColor];
         const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
 
@@ -124,13 +126,12 @@ public:
         buttonRow->addWidget(okBtn);
         outer->addLayout(buttonRow);
 
-        setStyleSheet(
-            familiar::dialog_style::panelStyleSheet("QDialog",
-                                                    background,
-                                                    border,
-                                                    textColor)
-            + familiar::dialog_style::closeButtonStyleSheet(
-                  "transparentConfirmCloseBtn", textColor, accent));
+        setStyleSheet(familiar::dialog_style::panelStyleSheet("QDialog",
+                                                              background,
+                                                              border,
+                                                              textColor)
+                      + familiar::dialog_style::closeButtonStyleSheet(
+                          "transparentConfirmCloseBtn", textColor, accent));
     }
 
 protected:
@@ -205,8 +206,8 @@ MainWindow::MainWindow(QWidget* parent)
     // control icons) runs out of room and QMenuBar falls back to its own
     // built-in "»" overflow popup - which, over this frameless/
     // translucent window, paints as a solid black plate the instant it's
-    // shown (no public hook to style/fix that popup itself - Max, by
-    // screenshot). Simplest real fix: never let the window get that
+    // shown (no public hook to style/fix that popup itself - confirmed
+    // visually). Simplest real fix: never let the window get that
     // narrow in the first place. Approximate, not measured against the
     // exact current font/DPI - nudge up if "»" still shows up at this
     // width.
@@ -384,7 +385,7 @@ void MainWindow::showOrOfferRecovery(const QString& startupFile)
     // click, so a recovery snapshot for that exact file raced its own
     // restore: whichever tab processOpenFile() had already claimed for
     // it was no longer "blank" by the time Restore ran, so restoring
-    // landed in a SECOND, duplicate tab instead (Max). Deferring here
+    // landed in a SECOND, duplicate tab instead. Deferring here
     // instead lets processOpenFile()'s own existing "already open ->
     // switch to that tab" dedup (see its top) do the right thing
     // either way: if the user restored it, that tab already exists and
@@ -633,7 +634,7 @@ void MainWindow::on_action_always_on_top(bool checked)
 
 void MainWindow::on_action_transparent_to_mouse(bool checked)
 {
-    // Click-through overlay mode - PureRef-style tracing over another
+    // Click-through overlay mode - for tracing over another
     // app (Photoshop etc.): the window stays visible (and, combined with
     // Always On Top below, stays on screen above everything) but every
     // mouse event passes straight through to whatever's underneath, as
@@ -657,7 +658,7 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
             }
             return;
         }
-        // PureRef always forces this on alongside transparent-to-mouse -
+        // Always forced on alongside transparent-to-mouse -
         // without it, the window can just as easily end up buried under
         // whatever you're tracing over instead of staying visible above
         // it. Routed through the real action (not setWindowFlag()
@@ -889,26 +890,25 @@ void MainWindow::updateMenubarStyle_()
     // frameless/translucent window that should read as a solid strip,
     // same as tabpane_'s own QTabBar::tab fill just below it
     // (settingsChangedSlot() above).
-    menubar_->setStyleSheet(
-        QStringLiteral("QMenuBar {"
-                       "  background-color: %1;"
-                       "  color: %2;"
-                       "}"
-                       "QMenuBar::item {"
-                       "  background: transparent;"
-                       "  color: %2;"
-                       "  padding: 4px 6px;"
-                       "}"
-                       "QMenuBar::item:selected {"
-                       "  background-color: %3;"
-                       "}"
-                       "QMenuBar::item:pressed {"
-                       "  background-color: %4;"
-                       "}")
-            .arg(background.name(),
-                 text.name(),
-                 rgba(selection, 90),
-                 rgba(selection, 170)));
+    menubar_->setStyleSheet(QStringLiteral("QMenuBar {"
+                                           "  background-color: %1;"
+                                           "  color: %2;"
+                                           "}"
+                                           "QMenuBar::item {"
+                                           "  background: transparent;"
+                                           "  color: %2;"
+                                           "  padding: 4px 6px;"
+                                           "}"
+                                           "QMenuBar::item:selected {"
+                                           "  background-color: %3;"
+                                           "}"
+                                           "QMenuBar::item:pressed {"
+                                           "  background-color: %4;"
+                                           "}")
+                                .arg(background.name(),
+                                     text.name(),
+                                     rgba(selection, 90),
+                                     rgba(selection, 170)));
 }
 
 void MainWindow::applyMenubarState_()
@@ -1473,7 +1473,7 @@ void MainWindow::changeEvent(QEvent* event)
             tabpane_->widgetAt(i)->updateSelectionVisibility();
         }
 
-        // PureRef-style auto-exit from transparent-to-mouse: regaining
+        // Auto-exit from transparent-to-mouse: regaining
         // window focus (Alt-Tab back, clicking the taskbar entry, ...)
         // is the documented way out (TransparentToMouseConfirmDialog's
         // own message), no re-pressing the shortcut needed. Gated on a

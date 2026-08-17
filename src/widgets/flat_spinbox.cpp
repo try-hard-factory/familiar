@@ -39,9 +39,9 @@ void FlatSpinBox::resizeEvent(QResizeEvent* event)
     QStyleOptionSpinBox opt;
     initStyleOption(&opt);
     const QRect editRect = style()->subControlRect(QStyle::CC_SpinBox,
-                                                    &opt,
-                                                    QStyle::SC_SpinBoxEditField,
-                                                    this);
+                                                   &opt,
+                                                   QStyle::SC_SpinBoxEditField,
+                                                   this);
     lineEdit()->setGeometry(editRect.left(), 0, editRect.width(), height());
 }
 
@@ -73,13 +73,13 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
     QStyleOptionSpinBox opt;
     initStyleOption(&opt);
     const QRect upRect = style()->subControlRect(QStyle::CC_SpinBox,
-                                                  &opt,
-                                                  QStyle::SC_SpinBoxUp,
-                                                  this);
+                                                 &opt,
+                                                 QStyle::SC_SpinBoxUp,
+                                                 this);
     const QRect downRect = style()->subControlRect(QStyle::CC_SpinBox,
-                                                    &opt,
-                                                    QStyle::SC_SpinBoxDown,
-                                                    this);
+                                                   &opt,
+                                                   QStyle::SC_SpinBoxDown,
+                                                   this);
 
     // Text itself is the real QLineEdit's own native rendering (see the
     // header's comment for why NOT hand-drawn here) - only the arrows

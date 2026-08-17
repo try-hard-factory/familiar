@@ -5,10 +5,10 @@
 
 namespace familiar::settings_style {
 
-// Fixed, PureRef-style white palette for the Settings window
+// Fixed white palette for the Settings window
 // (ui/settings_window.cpp and everything it hosts) - deliberately NOT
 // sourced from SettingsHandler::getCurrentColorPreset() like
-// dialog_style.h's helpers. Max wants this one window to always render
+// dialog_style.h's helpers. This one window always renders
 // in the same scheme regardless of the user's chosen app-wide accent.
 struct Palette
 {
@@ -18,12 +18,12 @@ struct Palette
     QColor border;
     QColor hoverBg;
     QColor accent;
-    QColor chipBackground; // shortcut chip box (see shortcutChipStyleSheet())
-    QColor navIdleBg;      // sidebar button, unselected
-    QColor navHoverBg;     // sidebar button, unselected + hovered
-    QColor navSelectedBg;  // sidebar button, selected
+    QColor chipBackground;  // shortcut chip box (see shortcutChipStyleSheet())
+    QColor navIdleBg;       // sidebar button, unselected
+    QColor navHoverBg;      // sidebar button, unselected + hovered
+    QColor navSelectedBg;   // sidebar button, selected
     QColor popupBackground; // dropdown popup panel (FlatComboBox)
-    QColor popupItemHover;  // dropdown row under the cursor (FlatComboItemDelegate)
+    QColor popupItemHover; // dropdown row under the cursor (FlatComboItemDelegate)
 };
 
 const Palette& palette();
@@ -40,15 +40,16 @@ QString rootStyleSheet();
 // CategoryNavButton (ui/settings_window.cpp) chrome: every row is a
 // filled gray box (not just the selected one) - navIdleBg normally,
 // navHoverBg on hover, navSelectedBg when checked/selected. Matches
-// PureRef's own Configuration sidebar (every category is its own
-// button-shaped block, distinguished by shade). Text color itself is
+// the reference design's own Configuration sidebar (every category
+// is its own button-shaped block, distinguished by shade). Text color
+// itself is
 // painted directly in CategoryNavButton::paintEvent() (not through this
 // QSS - see that class for why).
 QString sidebarButtonStyleSheet();
 
 // Shortcut "chip" (widgets/controls/bindings_tree_widget.cpp): a gray
-// rounded box around the shortcut text, matching PureRef's own
-// Configuration window - hover darkens the box slightly.
+// rounded box around the shortcut text, matching the reference
+// design's own Configuration window - hover darkens the box slightly.
 QString shortcutChipStyleSheet();
 
 // Small square +/- alias buttons next to a chip: white bg, thin border,

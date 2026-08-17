@@ -9,7 +9,7 @@
 #include <QString>
 #include <QWidget>
 
-// PureRef-style rich hover popup (widgets/setting_row.cpp): bold title +
+// Rich hover popup (widgets/setting_row.cpp): bold title +
 // body copy, an optional muted "Default: X" line, and an optional
 // "Ctrl + Dbl click to restore default" footer hint - opaque white panel,
 // square corners (NOT dialog_style::panelStyleSheet()/applyRoundedMask() -
@@ -43,21 +43,21 @@ private:
     QLabel* hintLabel_ = nullptr;
 };
 
-// A settings-row label that shows an info tooltip on hover - PureRef's
+// A settings-row label that shows an info tooltip on hover - this app's
 // own Performance/Images & Items pages drop the always-visible help
 // paragraph the old QGroupBox-based settings widgets (settings_dialog.h,
 // removed once every page had migrated to this row shape) printed under
 // every group box, in favor of a flat list of rows whose description
-// only shows up on hover. The popup is SettingInfoPopup above (custom,
-// PureRef-styled), not native QToolTip - setToolTip() is still called
+// only shows up on hover. The popup is SettingInfoPopup above (custom),
+// not native QToolTip - setToolTip() is still called
 // (setInfoText() below) so the text survives for accessibility/anything
 // else that reads QWidget::toolTip(), but QEvent::ToolTip is intercepted
 // (see event() override) to show SettingInfoPopup instead of letting Qt
 // render it natively. The body text itself isn't a constructor
 // parameter anywhere in this file any more - SettingRowBase looks it up
 // from widgets/setting_descriptions.h by settings key, the one place all
-// of it lives now (some entries are still a shared placeholder there,
-// per Max - real copy for those is a follow-up).
+// of it lives now (some entries are still a shared placeholder there -
+// real copy for those is a follow-up).
 class HoverInfoLabel : public QLabel
 {
     Q_OBJECT

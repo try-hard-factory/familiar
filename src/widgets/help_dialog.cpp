@@ -30,8 +30,8 @@ struct ControlRow
 // mouseDoubleClickEvent() (select/focus), CanvasView::wheelEvent()
 // (plain-scroll zoom, hardcoded, not user-configurable), MainWindow::
 // tryStartWindowDrag_() (empty menu/tab bar drag). Deliberately NOT a
-// copy of PureRef's own table (its reference screenshot), which
-// differs in real ways: PureRef pans via a scroll-click drag and moves
+// copy of the reference app's own table, which
+// differs in real ways: that app pans via a scroll-click drag and moves
 // its window via a right-click drag; familiar's are Alt+Left drag and
 // an empty-chrome left-drag respectively, and right-click is currently
 // unused on this app's canvas (no context menu here at all).
@@ -63,11 +63,10 @@ QLabel* makeInlineLinkParagraph(const QString& before,
                                 const QColor& accent)
 {
     const QString prefix = before.isEmpty() ? QString() : before + QChar(' ');
-    auto* label = new QLabel(
-        QStringLiteral("%1<a href=\"#\" style=\"color:%2; "
-                      "text-decoration:none;\">%3</a>%4")
-            .arg(prefix, accent.name(), linkText, after),
-        parent);
+    auto* label = new QLabel(QStringLiteral("%1<a href=\"#\" style=\"color:%2; "
+                                            "text-decoration:none;\">%3</a>%4")
+                                 .arg(prefix, accent.name(), linkText, after),
+                             parent);
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextBrowserInteraction);
     label->setCursor(Qt::PointingHandCursor);
@@ -131,16 +130,15 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     controlsHeading->setFont(headingFont);
     outer->addWidget(controlsHeading);
 
-    // Bordered box, matching PureRef's own reference-screenshot layout
+    // Bordered box, matching the reference app's own layout
     // - a simple 2-column grid (action label / gesture), right column
     // right-aligned so it reads as a clean table even without real grid
     // lines.
     auto* box = new QFrame(this);
     box->setObjectName(QStringLiteral("hdControlsBox"));
-    box->setStyleSheet(
-        QStringLiteral("#hdControlsBox { border: 1px solid %1; "
-                      "border-radius: 6px; }")
-            .arg(border.name()));
+    box->setStyleSheet(QStringLiteral("#hdControlsBox { border: 1px solid %1; "
+                                      "border-radius: 6px; }")
+                           .arg(border.name()));
     auto* grid = new QGridLayout(box);
     grid->setContentsMargins(14, 10, 14, 10);
     grid->setHorizontalSpacing(18);
@@ -157,12 +155,12 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     }
     outer->addWidget(box);
 
-    auto* shortcutsLabel = makeInlineLinkParagraph(
-        tr("To see or change every shortcut, open"),
-        tr("Keyboard Shortcuts"),
-        QString(),
-        this,
-        accent);
+    auto* shortcutsLabel
+        = makeInlineLinkParagraph(tr("To see or change every shortcut, open"),
+                                  tr("Keyboard Shortcuts"),
+                                  QString(),
+                                  this,
+                                  accent);
     // Opens the settings window already on that specific category
     // (SettingsWindow::selectCategory()), not just wherever
     // settingsWindow() would otherwise land by default.
@@ -189,8 +187,11 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
 
     outer->addSpacing(8);
 
-    auto* aboutLabel = makeInlineLinkParagraph(
-        QString(), tr("About Familiar"), QString(), this, accent);
+    auto* aboutLabel = makeInlineLinkParagraph(QString(),
+                                               tr("About Familiar"),
+                                               QString(),
+                                               this,
+                                               accent);
     aboutLabel->setAlignment(Qt::AlignHCenter);
     connect(aboutLabel,
             &QLabel::linkActivated,

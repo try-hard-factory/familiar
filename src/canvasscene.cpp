@@ -238,7 +238,8 @@ QList<QGraphicsItem*> CanvasScene::with_related_items(
                     addWithRelated(child);
             }
             if (auto* base = dynamic_cast<IBaseItem*>(item)) {
-                for (QGraphicsItem* attachedItem : find_attached_items(base->uid()))
+                for (QGraphicsItem* attachedItem :
+                     find_attached_items(base->uid()))
                     addWithRelated(attachedItem);
             }
         };
@@ -360,8 +361,9 @@ void CanvasScene::duplicate_selection()
     // or thousand-pixel-wide picture, and way too much for something
     // tiny. Scale with the duplicated selection's own size instead (15%
     // of its average dimension), clamped to stay visible either way.
-    const qreal offset = std::clamp(
-        (bounds.width() + bounds.height()) * 0.15, 40.0, 400.0);
+    const qreal offset = std::clamp((bounds.width() + bounds.height()) * 0.15,
+                                    40.0,
+                                    400.0);
     const QPointF position = bounds.center() + QPointF(offset, offset);
 
     undo_stack_->push(new InsertItemsCommand(this, copies, position));
@@ -387,31 +389,6 @@ void CanvasScene::raise_to_top()
 
 void CanvasScene::raise_selection_to_front()
 {
-    // A selected GroupItem's children are NOT individually Qt-selected
-    // (only the group itself is - see GroupItem's class comment,
-    // moveitem.h) - expand each selected group into its own cluster
-    // (group + members) here, or this would raise the group ALONE,
-    // above its own (untouched) members, breaking the "group always
-    // sits behind its members" invariant the instant it's clicked.
-    //
-    // Order matters as much as membership here, not just "which items
-    // are included": an earlier version collected items via a flat BFS,
-    // then sorted the WHOLE flat list by current z in one pass - that
-    // does NOT guarantee a nested subgroup's members stay together as
-    // one contiguous block. If a sibling subgroup's OWN member happened
-    // to have an in-between z value from some earlier, unrelated
-    // interaction, that stale z survived the flat sort and interleaved
-    // it between the OTHER subgroup and ITS members, splitting a
-    // subgroup's cluster in two (confirmed with Max via a debug capture:
-    // one sibling's member ended up sorted below the other subgroup's
-    // whole cluster, another ended up above it). Building the list via
-    // pre-order DFS instead - each group immediately followed by all of
-    // its own descendants, direct children sorted among themselves by
-    // their current z the same way top-level roots are - keeps every
-    // subgroup's cluster contiguous no matter what stale z values were
-    // lying around; z is then assigned directly in that DFS order, no
-    // further re-sort (a second flat sort would just undo the ordering
-    // this exists to establish).
     QSet<QGraphicsItem*> seen;
     QList<QGraphicsItem*> ordered;
     std::function<void(QGraphicsItem*)> appendCluster =
@@ -530,7 +507,7 @@ void CanvasScene::group_selection()
         // simultaneously - two independent cascades (itemChange()/
         // fit_to_contain_children()) then fight over its position,
         // visibly desyncing it from the rest during a drag (confirmed
-        // with Max). It's already covered transitively through its own
+        // via testing). It's already covered transitively through its own
         // group's membership, which IS in `ids` below.
         if (auto* owner = find_owning_group(baseItem->uid())) {
             if (selected.contains(owner))
@@ -584,8 +561,8 @@ void CanvasScene::ungroup_selection()
     // Ownership (leaving whatever outer group this item is a member of,
     // if any) takes priority over dissolving - a nested subgroup that's
     // itself a member of an outer group should just LEAVE that outer
-    // group and stay intact as a group, the exact same "same logic as
-    // ungrouping a single element" Max asked for: a plain member leaving
+    // group and stay intact as a group, the exact same logic as
+    // ungrouping a single element: a plain member leaving
     // its group doesn't get dissolved either, it just stops being a
     // member. Only a TOP-LEVEL group (no owner) actually dissolves via
     // UngroupCommand.
@@ -702,8 +679,8 @@ void CanvasScene::maybe_add_dropped_items_to_group(
             // (CanvasScene::mouseReleaseEvent) - forcing a
             // group+item selection here would just get immediately
             // overwritten by whatever ran before it in that macro's
-            // undo anyway, and is exactly the "everything lights up
-            // like a rubber-band" Max reported.
+            // undo anyway, and is exactly the bug where everything lit up
+            // like a rubber-band.
             undo_stack_->push(
                 new AddToGroupCommand(this, target, {item}, false));
             undo_stack_->endMacro();
@@ -718,7 +695,7 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     }
 
     // Whatever just got added/transferred should visually land on top -
-    // same reasoning as raise_selection_to_front() elsewhere (Max).
+    // same reasoning as raise_selection_to_front() elsewhere.
     if (changed)
         raise_group_cluster_to_front(target);
 }
@@ -1129,7 +1106,7 @@ void CanvasScene::flip_items(bool vertical)
     // path: FlipItemsCommand flips each item in the list independently
     // around the SAME shared anchor, so without expanding here, only
     // the group's own fill rect would flip and its members would stay
-    // exactly where they were (Max).
+    // exactly where they were.
     QList<QGraphicsItem*> items;
     QSet<QGraphicsItem*> seen;
     for (QGraphicsItem* item : selectedItems(true)) {
@@ -1402,8 +1379,8 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
         // turned OFF (see GroupItem::set_locked(), moveitem.h) so a
         // plain click falls through to the group underneath instead of
         // selecting the member directly - but a double-click is an
-        // explicit "drill into this specific item" request (PureRef-
-        // style), so force those flags back on right here, before
+        // explicit "drill into this specific item" request, so force
+        // those flags back on right here, before
         // selecting it (setSelected() on a non-ItemIsSelectable item is
         // a silent no-op). Left on only while the item stays selected -
         // restore_drilled_in_members_() (called from on_selection_change())
@@ -1513,7 +1490,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             // pushing an AddToGroupCommand/RemoveFromGroupCommand pair
             // on a transfer). Without the macro, Ctrl+Z only unwound the
             // group join and left the item wherever it was dropped
-            // instead of back where the drag started (Max).
+            // instead of back where the drag started.
             undo_stack_->beginMacro(tr("Move"));
             undo_stack_->push(
                 new MoveItemsByCommand(selectedItems(), delta, true));
