@@ -40,6 +40,17 @@ public:
 
     QSize sizeHint() const override
     {
+        // *std::max_element(...) below is UB on an empty range (returns
+        // end(), dereferencing it) - WelcomeOverlay constructs this with
+        // an empty files list up front (widgets/welcome_overlay.cpp) and
+        // a fresh install/cleared recent-files list keeps it empty, so
+        // this isn't a hypothetical edge case - confirmed real crash
+        // (EXCEPTION_ACCESS_VIOLATION) triggered by Ctrl+N (insert_text)
+        // while the welcome overlay with zero recent files was showing.
+        if (files.isEmpty()) {
+            return QSize(0, 0);
+        }
+
         int height = std::accumulate(
             files.begin(), files.end(), 0, [this](int sum, const QString& file) {
                 return sum

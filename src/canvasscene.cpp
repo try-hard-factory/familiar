@@ -462,6 +462,16 @@ void CanvasScene::lower_to_bottom()
 {
     cancel_active_modes();
     QList<QGraphicsItem*> items = selectedItems(true);
+    if (items.isEmpty()) {
+        // raise_to_top() (above) guards the same way via ordered.isEmpty()
+        // - *std::max_element() below is UB on an empty range (dereferences
+        // end()). The "active_when_selection" action group normally keeps
+        // this unreachable with nothing selected, but that's a UI-level
+        // guard, not a real one - not worth trusting alone (see
+        // widgets/recent_files_view.h's own sizeHint(), unguarded and
+        // confirmed to actually crash this way).
+        return;
+    }
     std::vector<double> z_values;
     std::transform(items.begin(),
                    items.end(),
