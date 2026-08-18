@@ -6,6 +6,19 @@
 #include <vector>
 
 #ifdef _WIN32
+// NOMINMAX: without it, <Windows.h> #defines min/max as raw text-
+// substitution macros - textually alive for the REST of this
+// translation unit, silently mangling every later `max(...)`/`.max()`
+// call, including ones deep inside quill's own headers (quill/Backend.h
+// below pulls in quill/backend/BackendWorker.h, which has several -
+// confirmed via a real CI failure: dozens of cascading C2059/C2143/C4003
+// syntax errors inside BackendWorker.h that made no sense until traced
+// back to this). WIN32_LEAN_AND_MEAN trims <Windows.h> itself down
+// (skips winsock/gdi/etc. headers this file has no use for) - not
+// strictly required for the min/max fix, but standard practice
+// alongside NOMINMAX and harmless here.
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
 #include <io.h>
 #include <Windows.h>
 #include <DbgHelp.h>
