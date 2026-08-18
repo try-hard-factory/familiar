@@ -4,7 +4,6 @@
 
 class MainWindow;
 class QMouseEvent;
-class QResizeEvent;
 
 // "About" (the "about" action) - layout adapted from a
 // reference: app name/version centered, a
@@ -20,5 +19,4 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
 };

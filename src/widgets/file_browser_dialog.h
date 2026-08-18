@@ -14,7 +14,6 @@ class QListWidget;
 class QModelIndex;
 class QMouseEvent;
 class QPushButton;
-class QResizeEvent;
 class QTreeView;
 
 
@@ -65,7 +64,6 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
 
 private:
     void setDirectory_(const QString& path);

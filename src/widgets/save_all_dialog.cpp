@@ -156,7 +156,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     setStyleSheet(familiar::dialog_style::panelStyleSheet("SaveAllDialog",
                                                           background,
                                                           border,
-                                                          textColor)
+                                                          textColor,
+                                                          /*radiusPx=*/0)
                   + familiar::dialog_style::closeButtonStyleSheet("sadCloseBtn",
                                                                   textColor,
                                                                   accent));
@@ -176,12 +177,6 @@ void SaveAllDialog::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void SaveAllDialog::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    familiar::dialog_style::applyRoundedMask(this, 10);
 }
 
 void SaveAllDialog::onCloseWithoutSave_()

@@ -7,11 +7,14 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <Windows.h>
+#include <DbgHelp.h>
 #else
 #include <unistd.h>
 #endif
 
 #include <QApplication>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -49,6 +52,180 @@ constexpr std::array<const char*, 10> kChannelNames = {
 std::array<quill::Logger*, kChannelNames.size()> g_loggers{};
 RingSink* g_ringSink = nullptr;
 QString g_filePath;
+
+#ifdef _WIN32
+// quill's own SetUnhandledExceptionFilter (installed by
+// quill::Backend::start() below, see include/quill/backend/
+// SignalHandler.h's init_exception_handler()/on_exception()) already
+// logs the exception code/name to familiar.log on a crash - real and
+// useful (confirmed: "EXCEPTION_ACCESS_VIOLATION Code 3221225477" from a
+// real crash), but gives no idea WHERE it happened. installCrashDumpHandler()
+// below layers a real minidump on top - same EXCEPTION_POINTERS Windows
+// already handed us, dumped via the plain WinAPI (Dbghelp.lib, no vcpkg
+// dependency) instead of pulling in Breakpad/Crashpad for this. Chains
+// to whatever filter was installed before it (quill's) so both still
+// run - SetUnhandledExceptionFilter only keeps ONE filter active at a
+// time, calling it again REPLACES the previous one rather than adding a
+// second independent hook.
+LPTOP_LEVEL_EXCEPTION_FILTER g_previousExceptionFilter = nullptr;
+
+// Symbol-resolved call stack at the point of the crash - quill's own
+// "backtrace" feature (LoggerImpl::init_backtrace(), see
+// docs/backtrace_logging.rst) is a different thing entirely: a ring
+// buffer of recent LOG MESSAGES flushed on error, not a C++ call stack.
+// This walks the frames from the exception's own CONTEXT record via
+// StackWalk64 - CaptureStackBackTrace() alone would only capture the
+// CURRENT stack (this filter function's own frames, several levels
+// above the actual fault inside Windows' own exception dispatch
+// machinery), not where the crash happened.
+QString captureStackTrace(CONTEXT* context)
+{
+    const HANDLE process = GetCurrentProcess();
+    const HANDLE thread = GetCurrentThread();
+
+    STACKFRAME64 frame = {};
+    DWORD machineType = 0;
+#if defined(_M_X64)
+    machineType = IMAGE_FILE_MACHINE_AMD64;
+    frame.AddrPC.Offset = context->Rip;
+    frame.AddrFrame.Offset = context->Rbp;
+    frame.AddrStack.Offset = context->Rsp;
+#elif defined(_M_IX86)
+    machineType = IMAGE_FILE_MACHINE_I386;
+    frame.AddrPC.Offset = context->Eip;
+    frame.AddrFrame.Offset = context->Ebp;
+    frame.AddrStack.Offset = context->Esp;
+#elif defined(_M_ARM64)
+    machineType = IMAGE_FILE_MACHINE_ARM64;
+    frame.AddrPC.Offset = context->Pc;
+    frame.AddrFrame.Offset = context->Fp;
+    frame.AddrStack.Offset = context->Sp;
+#endif
+    frame.AddrPC.Mode = AddrModeFlat;
+    frame.AddrFrame.Mode = AddrModeFlat;
+    frame.AddrStack.Mode = AddrModeFlat;
+
+    QStringList lines;
+    // Sanity cap - a corrupted stack (the whole reason we're here) can
+    // otherwise walk garbage frames indefinitely.
+    constexpr int kMaxFrames = 64;
+    for (int i = 0; machineType != 0 && i < kMaxFrames; ++i) {
+        if (!StackWalk64(machineType,
+                         process,
+                         thread,
+                         &frame,
+                         context,
+                         nullptr,
+                         SymFunctionTableAccess64,
+                         SymGetModuleBase64,
+                         nullptr)
+            || frame.AddrPC.Offset == 0) {
+            break;
+        }
+
+        QString line = QStringLiteral("#%1  0x%2")
+                          .arg(i)
+                          .arg(frame.AddrPC.Offset, 0, 16);
+
+        alignas(SYMBOL_INFO) char symbolBuffer[sizeof(SYMBOL_INFO)
+                                               + MAX_SYM_NAME];
+        auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbolBuffer);
+        symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+        symbol->MaxNameLen = MAX_SYM_NAME;
+        DWORD64 symDisplacement = 0;
+        if (SymFromAddr(process, frame.AddrPC.Offset, &symDisplacement, symbol)) {
+            line += QStringLiteral(" %1+0x%2")
+                       .arg(QString::fromLocal8Bit(symbol->Name,
+                                                    int(symbol->NameLen)))
+                       .arg(symDisplacement, 0, 16);
+
+            IMAGEHLP_LINE64 srcLine = {};
+            srcLine.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
+            DWORD lineDisplacement = 0;
+            if (SymGetLineFromAddr64(process,
+                                     frame.AddrPC.Offset,
+                                     &lineDisplacement,
+                                     &srcLine)) {
+                line += QStringLiteral(" (%1:%2)")
+                           .arg(QString::fromLocal8Bit(srcLine.FileName))
+                           .arg(srcLine.LineNumber);
+            }
+        } else {
+            line += QStringLiteral(" <no symbol - PDB not found/loaded?>");
+        }
+        lines << line;
+    }
+    return lines.isEmpty() ? QStringLiteral("<stack walk produced no frames>")
+                           : lines.join(QStringLiteral("\n"));
+}
+
+LONG WINAPI writeMiniDumpAndChain(EXCEPTION_POINTERS* exceptionPointers)
+{
+    if (quill::Logger* core = channelLogger(Ch::Core)) {
+        const QString trace = captureStackTrace(
+            exceptionPointers->ContextRecord);
+        FLOG_CRITICAL(Ch::Core, "Crash call stack:\n{}", trace.toStdString());
+        core->flush_log(0);
+    }
+
+    const QString dumpDir = QFileInfo(g_filePath).absolutePath();
+    const QString dumpPath
+        = dumpDir + QStringLiteral("/crash_")
+          + QDateTime::currentDateTime().toString(
+              QStringLiteral("yyyyMMdd_HHmmss"))
+          + QStringLiteral(".dmp");
+
+    const HANDLE file = CreateFileW(
+        reinterpret_cast<LPCWSTR>(dumpPath.utf16()),
+        GENERIC_WRITE,
+        0,
+        nullptr,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+    if (file != INVALID_HANDLE_VALUE) {
+        MINIDUMP_EXCEPTION_INFORMATION mdei;
+        mdei.ThreadId = GetCurrentThreadId();
+        mdei.ExceptionPointers = exceptionPointers;
+        mdei.ClientPointers = FALSE;
+        // WithDataSegs, not a full/Complete dump - enough for a real
+        // call stack with the RelWithDebInfo PDBs, without shipping
+        // every byte of process memory back for a bug report.
+        MiniDumpWriteDump(GetCurrentProcess(),
+                          GetCurrentProcessId(),
+                          file,
+                          MiniDumpWithDataSegs,
+                          &mdei,
+                          nullptr,
+                          nullptr);
+        CloseHandle(file);
+    }
+
+    if (g_previousExceptionFilter) {
+        return g_previousExceptionFilter(exceptionPointers);
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+// Must run AFTER quill::Backend::start() (init() below) - that call is
+// what installs quill's own filter in the first place, which this needs
+// to capture as g_previousExceptionFilter to chain to.
+void installCrashDumpHandler()
+{
+    // Loads once, up front, while things are calm - not from inside the
+    // exception filter itself, where doing this for the first time would
+    // add unnecessary risk/latency to an already-crashing process.
+    // SYMOPT_DEFERRED_LOADS keeps this call itself fast: each module's
+    // actual symbol table only loads on its first SymFromAddr()/
+    // SymGetLineFromAddr64() call, i.e. lazily, right when
+    // captureStackTrace() needs it.
+    SymSetOptions(SYMOPT_LOAD_LINES | SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+    SymInitialize(GetCurrentProcess(), nullptr, TRUE);
+
+    g_previousExceptionFilter = SetUnhandledExceptionFilter(
+        writeMiniDumpAndChain);
+}
+#endif
 
 // Derives "<dir>/<base>_old.<ext>" from "<dir>/<base>.<ext>" (e.g.
 // "familiar.log" -> "familiar_old.log"). Falls back to a plain "_old"
@@ -193,6 +370,9 @@ void init(const Options& options)
     signalOptions.logger = kChannelNames[static_cast<size_t>(Ch::Core)];
 
     quill::Backend::start<quill::FrontendOptions>(backendOptions, signalOptions);
+#ifdef _WIN32
+    installCrashDumpHandler();
+#endif
 
     std::vector<std::shared_ptr<quill::Sink>> sinks;
 
@@ -266,6 +446,12 @@ void shutdown()
         core->flush_log();
     }
     quill::Backend::stop();
+#ifdef _WIN32
+    // Symmetric with installCrashDumpHandler()'s SymInitialize() - not
+    // load-bearing for a normal exit (the process is going away anyway),
+    // just tidy.
+    SymCleanup(GetCurrentProcess());
+#endif
 }
 
 void setChannelLevel(Ch channel, Level level)

@@ -52,13 +52,22 @@ void TabPane::addNewTab(const QString& path)
 {
     int count = tabs_->count();
 
+    // CanvasView(MainWindow&, QWidget* parent = nullptr) - canvasView has
+    // NO parent yet at this point, so calling show() here (like this
+    // used to) shows it as a genuine standalone top-level OS window for
+    // the one frame before tabs_->addTab() below reparents it into the
+    // tab stack - visible as a real separate window flashing on screen
+    // (default title bar/background, no frameless/translucent styling)
+    // whenever a tab is created, confirmed on Windows. QTabWidget
+    // handles showing/hiding its pages itself once they're actually
+    // added - no need to show() a widget that isn't parented into
+    // anything real yet.
     CanvasView* canvasView = new CanvasView(mainwindow_);
     project_settings* ps = new project_settings(this, canvasView);
 
     ps->path(path);
     ps->projectName(QFileInfo(path).fileName());
     canvasView->setProjectSettings(ps);
-    canvasView->show();
 
     tabs_->addTab(canvasView, QFileInfo(path).fileName());
     setCloseButtonTooltip_(count);
@@ -74,10 +83,10 @@ void TabPane::addNewUntitledTab()
 {
     int count = tabs_->count();
 
+    // No premature show() here either - see addNewTab()'s own comment.
     CanvasView* canvasWidget = new CanvasView(mainwindow_);
     project_settings* ps = new project_settings(this, canvasWidget);
     canvasWidget->setProjectSettings(ps);
-    canvasWidget->show();
 
     tabs_->addTab(canvasWidget, "untitled");
     setCloseButtonTooltip_(count);

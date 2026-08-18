@@ -25,6 +25,22 @@ TEST(DialogStyleTest, PanelStyleSheetIncludesClassNameAndColors)
     EXPECT_TRUE(qss.contains(QStringLiteral("MyDialog")));
     EXPECT_TRUE(qss.contains(background.name()));
     EXPECT_TRUE(qss.contains(border.name()));
+    // Default radius (unspecified 5th arg) - the usual rounded-panel
+    // look every custom dialog gets unless it opts out (CustomMessageBox
+    // does, via radiusPx=0 - see dialog_style.h's own comment).
+    EXPECT_TRUE(qss.contains(QStringLiteral("border-radius: 10px")));
+}
+
+TEST(DialogStyleTest, PanelStyleSheetRadiusPxOverridesTheDefault)
+{
+    const QString qss = panelStyleSheet("MyDialog",
+                                        QColor(Qt::black),
+                                        QColor(Qt::black),
+                                        QColor(Qt::black),
+                                        /*radiusPx=*/0);
+
+    EXPECT_TRUE(qss.contains(QStringLiteral("border-radius: 0px")));
+    EXPECT_FALSE(qss.contains(QStringLiteral("border-radius: 10px")));
 }
 
 TEST(DialogStyleTest, CloseButtonStyleSheetIncludesObjectNameAndTextColor)

@@ -10,7 +10,7 @@ class QWidget;
 
 namespace familiar::dialog_style {
 
-// Rounded, OPAQUE preset-colored panel QSS for a top-level, frameless,
+// OPAQUE preset-colored panel QSS for a top-level, frameless,
 // WA_StyledBackground dialog - `className` must be the dialog's own
 // metaObject()->className() (a QSS type selector). Deliberately NOT
 // meant for a WA_TranslucentBackground widget: combining
@@ -20,10 +20,16 @@ namespace familiar::dialog_style {
 // CustomMessageBox's own history) - opaque + border-radius alone reads
 // as very slightly squared corners on some window managers, but
 // actually paints.
+// `radiusPx` defaults to the usual rounded-panel look every other
+// custom dialog uses - pass 0 for a dialog that should read as square
+// (CustomMessageBox does; still needs applyRoundedMask() skipped too at
+// its own call site, or the window's actual clipped shape stays rounded
+// regardless of what this QSS paints).
 QString panelStyleSheet(const char* className,
                         const QColor& background,
                         const QColor& border,
-                        const QColor& text);
+                        const QColor& text,
+                        int radiusPx = 10);
 
 // Accent-filled pill button - the single "primary" action in a dialog
 // (rightmost/most prominent by this app's convention).
