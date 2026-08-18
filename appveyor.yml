@@ -1,53 +1,31 @@
 image:
-  - Visual Studio 2019
+  - Visual Studio 2022
 clone_folder: c:\projects\source
 
 environment:
-  Qt6_INSTALL_DIR: 'C:\Qt\6.2.4\msvc2019_64'
-  PATH: '%Qt6_INSTALL_DIR%\bin;%PATH%'  
+  Qt6_INSTALL_DIR: 'C:\Qt\6.10.3\msvc2022_64'
+  PATH: '%Qt6_INSTALL_DIR%\bin;%PATH%'
 
 build_script:
-- cmd: >-
-
-    ls 'C:\Qt'
-
-    mkdir build
-
-    cd build
-    
+  # Build installer (non-portable)
+- cmd: |-
     set QTDIR=%Qt6_INSTALL_DIR%
-
-    set QT_DIR=%Qt6_INSTALL_DIR%
-
-    set "VCINSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC"
-
+    set "VCINSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC"
     set "OPENSSL_ROOT_DIR=C:/OpenSSL-v111-Win64"
-
-    cmake c:\projects\source -G "Visual Studio 16 2019" -DCMAKE_BUILD_TYPE:STRING=Release -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=OFF
-
-    cmake --build . --parallel 2 --config "Release"
- 
-    cpack -G WIX -B package
-
-    mkdir artifact
-    
-    ls
-
-    ls package
-
-    ls Release
-
-    cp package/*.msi artifact/.
-
-    cp Release/*.exe artifact/.
-
-    7z a -tzip artifact.zip artifact/
+    cmake -S C:\projects\source -B C:\projects\source\build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=OFF
+    cmake --build C:\projects\source\build --parallel 2 --config RelWithDebInfo
+- cmd: cpack --config C:\projects\source\build\CPackConfig.cmake -G WIX -C RelWithDebInfo -B C:\projects\source\build\package
+  # Build portable exe
+- cmd: |-
+    cmake -S C:\projects\source -B C:\projects\source\build-portable -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENABLE_OPENSSL=ON -DRUN_IN_PLACE=ON
+    cmake --build C:\projects\source\build-portable --parallel 2 --config RelWithDebInfo
+  # Combine both into artifact.zip
+- cmd: |-
+    mkdir C:\projects\source\build\artifact
+    copy C:\projects\source\build\package\*.msi C:\projects\source\build\artifact\.
+    copy C:\projects\source\build-portable\src\RelWithDebInfo\*.exe C:\projects\source\build\artifact\.
+    7z a -tzip C:\projects\source\build\artifact.zip C:\projects\source\build\artifact\
 
 artifacts:
-- path: build\package\*.msi
-  name: installer
-- path: build\src\Release\*.exe
-  name: executable
 - path: build\artifact.zip
-  name: archive
-
+  name: artifact

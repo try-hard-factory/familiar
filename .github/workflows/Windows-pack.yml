@@ -13,35 +13,35 @@ env:
 
 jobs:
   windows-pack:
-    name: VS 2019 ${{ matrix.config.arch }}-${{ matrix.type }}
-    runs-on: windows-2019
+    name: VS 2022 ${{ matrix.config.arch }}-${{ matrix.type }}
+    runs-on: windows-2022
     env:
-      VCINSTALLDIR: C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/
+      VCINSTALLDIR: C:/Program Files (x86)/Microsoft Visual Studio/2022/Enterprise/VC/
       Qt6_DIR: ${{ github.workspace }}\build\Qt\${{ matrix.qt_ver }}\${{ matrix.config.qt_arch_install }}\lib\cmake\Qt6\
       QTDIR: ${{ github.workspace }}\build\Qt\${{ matrix.qt_ver }}\${{ matrix.config.qt_arch_install }}\
-      # 2022.06.15.1
-      VCPKG_VERSION: cef0b3ec767df6e83806899fe9525f6cf8d7bc91
+      # 2025.02.14
+      VCPKG_VERSION: d5ec528843d29e3a52d745a64b469f810b2cedbf
       VCPKG_PACKAGES: openssl-windows
       OPENSSL_ROOT_DIR: ${{ github.workspace }}\vcpkg\installed\${{ matrix.config.vcpkg_triplet }}\
     strategy:
       fail-fast: false
       matrix:
-        qt_ver: [6.2.4]
+        qt_ver: [6.10.3]
         qt_target: [desktop]
         config:
           - {
             arch: x64,
-            generator: "-G'Visual Studio 16 2019' -A x64",
+            generator: "-G'Visual Studio 17 2022' -A x64",
             vcpkg_triplet: x64-windows,
-            qt_arch: win64_msvc2019_64,
-            qt_arch_install: msvc2019_64,
+            qt_arch: win64_msvc2022_64,
+            qt_arch_install: msvc2022_64,
             pak_arch: win64
           }
         type: [portable, installer]
     steps:
       - name: Checkout Source code
         if: github.event_name == 'push'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: true
@@ -61,7 +61,7 @@ jobs:
           #echo "VERSION=${last_committed_tag:1}" >> $GITHUB_ENV
           echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
       - name: Restore from cache and run vcpkg
-        uses: lukka/run-vcpkg@v4
+        uses: lukka/run-vcpkg@v11
         with:
           vcpkgArguments: ${{env.VCPKG_PACKAGES}}
           vcpkgDirectory: '${{ github.workspace }}\vcpkg'
@@ -69,22 +69,16 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_VERSION }}
           vcpkgTriplet: ${{ matrix.config.vcpkg_triplet }}
 
-      - name: Cache Qt
-        id: cache-qt
-        uses: actions/cache@v3
-        with:
-          path: ./build/Qt/${{ matrix.qt_ver }}/${{ matrix.config.qt_arch_install }}
-          key: ${{ runner.os }}-QtCache/${{ matrix.qt_ver }}/${{ matrix.config.qt_arch }}
-
       - name: Install Qt
-        uses: jurplel/install-qt-action@v2
+        uses: jurplel/install-qt-action@v4
         with:
           version: ${{ matrix.qt_ver }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ matrix.qt_ver }}
           target:  ${{ matrix.qt_target }}
           arch: ${{ matrix.config.qt_arch }}
           dir: '${{ github.workspace }}/build/'
-          modules: 'qtscript'
-          cached: ${{ steps.cache-qt.outputs.cache-hit }}
+          modules: 'qtimageformats'
 
       - name: Configure
         working-directory: build
@@ -93,12 +87,12 @@ jobs:
           ls && cmake ..  ${{matrix.config.generator}}  `
           -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"  `
           -DENABLE_OPENSSL=ON `
-          -DCMAKE_BUILD_TYPE=Release  `
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo  `
           -DRUN_IN_PLACE=${{ contains(matrix.type, 'portable') }}
       - name: Compile
         working-directory: build
         shell: pwsh
-        run: cmake --build . --parallel 2 --config Release
+        run: cmake --build . --parallel 2 --config RelWithDebInfo
 
       - name: CPack
         working-directory: build
@@ -106,11 +100,11 @@ jobs:
         run: |
           If ($env:TYPE -eq "installer")
           {
-            cpack -G WIX -B "$env:GITHUB_WORKSPACE\build\Package"
+            cpack -G WIX -C RelWithDebInfo -B "$env:GITHUB_WORKSPACE\build\Package"
           }
           ElseIf($env:TYPE -eq "portable")
           {
-            cpack -G ZIP -B "$env:GITHUB_WORKSPACE\build\Package"
+            cpack -G ZIP -C RelWithDebInfo -B "$env:GITHUB_WORKSPACE\build\Package"
           }
         env:
           TYPE: ${{matrix.type}}
@@ -168,9 +162,9 @@ jobs:
           echo $(python $GITHUB_WORKSPACE/scripts/upload_services/transferwee.py upload $GITHUB_WORKSPACE/build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip)
           echo "=====no operation for you can see link in the log console====="
       - name: Artifact Upload
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v7
         with:
-          name: Windows-artifact
+          name: Windows-artifact-${{ matrix.type }}
           path: ${{ github.workspace }}/build/Package/*
       - name: Ls build portable
         shell: bash

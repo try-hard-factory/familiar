@@ -1,10 +1,4 @@
 #!/bin/sh
-# 
-# File:   change_log_prepend.sh
-# Author: Kirill Scherba <kirill@scherba.ru>
-#
-# Created on Feb 29, 2016, 4:34:03 PM
-#
 
 die () {
     echo >&2 "$@"
