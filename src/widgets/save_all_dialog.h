@@ -8,7 +8,6 @@
 class MainWindow;
 class QCheckBox;
 class QMouseEvent;
-class QResizeEvent;
 class QVBoxLayout;
 
 class SaveAllDialog : public QDialog
@@ -25,7 +24,6 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
 
 private:
     void onCloseWithoutSave_();

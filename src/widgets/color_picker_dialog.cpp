@@ -527,7 +527,8 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     setStyleSheet(familiar::dialog_style::panelStyleSheet("ColorPickerDialog",
                                                           background,
                                                           border,
-                                                          textColor)
+                                                          textColor,
+                                                          /*radiusPx=*/0)
                   + familiar::dialog_style::closeButtonStyleSheet("cpdCloseBtn",
                                                                   textColor,
                                                                   accent)
@@ -608,12 +609,6 @@ void ColorPickerDialog::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void ColorPickerDialog::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    familiar::dialog_style::applyRoundedMask(this, 10);
 }
 
 QColor showColorPickerDialog(QWidget* parent,

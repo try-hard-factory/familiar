@@ -193,6 +193,7 @@ if (WIN32)
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        Dbghelp # MiniDumpWriteDump - log/log.cpp's crash-dump handler
     )
 elseif(APPLE)
 

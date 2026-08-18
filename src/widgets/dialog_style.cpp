@@ -33,7 +33,8 @@ QColor severityColor(QMessageBox::Icon icon, const QColor& accent)
 QString panelStyleSheet(const char* className,
                         const QColor& background,
                         const QColor& border,
-                        const QColor& text)
+                        const QColor& text,
+                        int radiusPx)
 {
     // The QToolTip rule is here for the same reason every other
     // tooltip-capable control in this app needs one explicitly
@@ -44,7 +45,7 @@ QString panelStyleSheet(const char* className,
     return QStringLiteral("%1 {"
                           "  background-color: %2;"
                           "  border: 1px solid %3;"
-                          "  border-radius: 10px;"
+                          "  border-radius: %5px;"
                           "}"
                           "QLabel { background: transparent; color: %4; }"
                           "QToolTip {"
@@ -55,7 +56,8 @@ QString panelStyleSheet(const char* className,
         .arg(QString::fromUtf8(className),
              background.name(),
              border.name(),
-             text.name());
+             text.name())
+        .arg(radiusPx);
 }
 
 void stylePrimaryButton(QPushButton* button, const QColor& accent)

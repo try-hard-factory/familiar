@@ -202,7 +202,8 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     setStyleSheet(familiar::dialog_style::panelStyleSheet("HelpDialog",
                                                           background,
                                                           border,
-                                                          textColor)
+                                                          textColor,
+                                                          /*radiusPx=*/0)
                   + familiar::dialog_style::closeButtonStyleSheet("hdCloseBtn",
                                                                   textColor,
                                                                   accent));
@@ -224,10 +225,4 @@ void HelpDialog::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void HelpDialog::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    familiar::dialog_style::applyRoundedMask(this, 12);
 }

@@ -4,7 +4,6 @@
 
 class MainWindow;
 class QMouseEvent;
-class QResizeEvent;
 
 // "Help" (F1, the "help" action) - two-section layout
 // (Controls + Support), adapted from a reference.
@@ -22,7 +21,6 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
 
 private:
     MainWindow* window_;

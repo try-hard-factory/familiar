@@ -23,7 +23,6 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
-#include <QResizeEvent>
 #include <QShortcut>
 #include <QShowEvent>
 #include <QTimer>
@@ -272,7 +271,8 @@ public:
         setStyleSheet(familiar::dialog_style::panelStyleSheet("QDialog",
                                                               background,
                                                               border,
-                                                              textColor)
+                                                              textColor,
+                                                              /*radiusPx=*/0)
                       + QStringLiteral("QLineEdit {"
                                        "  background-color: rgba(0, 0, 0, 20);"
                                        "  color: %1;"
@@ -294,12 +294,6 @@ protected:
             return;
         }
         QDialog::mousePressEvent(event);
-    }
-
-    void resizeEvent(QResizeEvent* event) override
-    {
-        QDialog::resizeEvent(event);
-        familiar::dialog_style::applyRoundedMask(this, 10);
     }
 
 private:

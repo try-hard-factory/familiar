@@ -129,7 +129,8 @@ public:
         setStyleSheet(familiar::dialog_style::panelStyleSheet("QDialog",
                                                               background,
                                                               border,
-                                                              textColor)
+                                                              textColor,
+                                                              /*radiusPx=*/0)
                       + familiar::dialog_style::closeButtonStyleSheet(
                           "transparentConfirmCloseBtn", textColor, accent));
     }
@@ -143,12 +144,6 @@ protected:
             return;
         }
         QDialog::mousePressEvent(event);
-    }
-
-    void resizeEvent(QResizeEvent* event) override
-    {
-        QDialog::resizeEvent(event);
-        familiar::dialog_style::applyRoundedMask(this, 10);
     }
 };
 

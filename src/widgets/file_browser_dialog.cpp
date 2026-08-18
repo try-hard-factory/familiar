@@ -297,7 +297,8 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     setStyleSheet(familiar::dialog_style::panelStyleSheet("FileBrowserDialog",
                                                           background,
                                                           border,
-                                                          textColor)
+                                                          textColor,
+                                                          /*radiusPx=*/0)
                   + familiar::dialog_style::closeButtonStyleSheet("fbdCloseBtn",
                                                                   textColor,
                                                                   accent)
@@ -684,12 +685,6 @@ void FileBrowserDialog::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void FileBrowserDialog::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    familiar::dialog_style::applyRoundedMask(this, 10);
 }
 
 // ============================================================================

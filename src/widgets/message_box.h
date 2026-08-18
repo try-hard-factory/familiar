@@ -6,7 +6,6 @@
 
 class QLabel;
 class QMouseEvent;
-class QResizeEvent;
 
 class CustomMessageBox : public QDialog
 {
@@ -27,7 +26,6 @@ public:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
     void reject() override;
 
 private:

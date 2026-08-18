@@ -46,7 +46,8 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     , icon_(icon)
 {
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
-    // NOT translucent, despite the rounded corners below - see
+    // NOT translucent (unrelated to the square corners below, still
+    // true even for an opaque panel) - see
     // dialog_style::panelStyleSheet()'s own comment for why (confirmed
     // visually: WA_TranslucentBackground on a genuinely
     // top-level, QSS-auto-painted widget left the whole panel see-
@@ -178,7 +179,8 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     setStyleSheet(familiar::dialog_style::panelStyleSheet("CustomMessageBox",
                                                           background,
                                                           border,
-                                                          textColor)
+                                                          textColor,
+                                                          /*radiusPx=*/0)
                   + familiar::dialog_style::closeButtonStyleSheet("cmbCloseBtn",
                                                                   textColor,
                                                                   accent));
@@ -206,12 +208,6 @@ void CustomMessageBox::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void CustomMessageBox::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    familiar::dialog_style::applyRoundedMask(this, 10);
 }
 
 void CustomMessageBox::reject()

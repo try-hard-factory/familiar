@@ -120,7 +120,8 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     setStyleSheet(familiar::dialog_style::panelStyleSheet("AboutDialog",
                                                           background,
                                                           border,
-                                                          textColor)
+                                                          textColor,
+                                                          /*radiusPx=*/0)
                   + familiar::dialog_style::closeButtonStyleSheet("adCloseBtn",
                                                                   textColor,
                                                                   accent));
@@ -140,10 +141,4 @@ void AboutDialog::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void AboutDialog::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    familiar::dialog_style::applyRoundedMask(this, 12);
 }

@@ -8,7 +8,6 @@ class QLabel;
 class QLineEdit;
 class QMouseEvent;
 class QPaintEvent;
-class QResizeEvent;
 
 // Saturation/value square for a fixed hue - horizontal axis is
 // saturation (white -> full hue color), vertical is value (fully lit
@@ -146,7 +145,6 @@ signals:
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
 
 private:
     // `source` is skipped when re-syncing every OTHER control, so the
