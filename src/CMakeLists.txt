@@ -324,10 +324,24 @@ endif ()
 # windeployqt
 if (WIN32)
     if (EXISTS $ENV{QTDIR}/bin/windeployqt.exe)
-        if (CMAKE_BUILD_TYPE MATCHES Release)
-            set(BINARIES_TYPE --release)
-        else ()
+        # MATCHES is a REGEX match, not equality - "RelWithDebInfo" does
+        # NOT contain the substring "Release", so this used to silently
+        # fall into the else() branch (--debug) for every build type
+        # except a literal "Release" - harmless while the project always
+        # built Release, but as soon as CMAKE_BUILD_TYPE moved to
+        # RelWithDebInfo (its own project default, see
+        # cmake/StandardProjectSettings.cmake) windeployqt started
+        # deploying the DEBUG Qt DLLs (Qt6Widgetsd.dll, "d" suffix)
+        # instead of the release ones alongside a release-linked
+        # familiar.exe - confirmed by a portable build missing
+        # Qt6Widgets.dll but shipping Qt6Widgetsd.dll. Debug is the
+        # actually narrow/special case here (different CRT, "d"-suffixed
+        # Qt DLLs) - check for THAT instead of assuming every non-Debug
+        # config spells its name "Release".
+        if (CMAKE_BUILD_TYPE MATCHES Debug)
             set(BINARIES_TYPE --debug)
+        else ()
+            set(BINARIES_TYPE --release)
         endif ()
 
         add_custom_command(
