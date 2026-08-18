@@ -268,6 +268,21 @@ install(TARGETS familiar
         BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+if (WIN32)
+    # Without this, log/log.cpp's crash-dump handler (SymInitialize()/
+    # StackWalk64()) has no PDB to resolve familiar.exe's OWN frames
+    # against on a machine other than the one that built it - confirmed
+    # on a real crash: every frame inside familiar.exe itself (including
+    # the actual crash site) came back "<no symbol - PDB not found/
+    # loaded?>", while Qt's own frames resolved fine (Qt ships its DLLs'
+    # PDBs matched up via its own install). OPTIONAL - a from-source dev
+    # build the user runs straight out of the build directory already
+    # has the PDB sitting right next to the exe either way.
+    install(FILES $<TARGET_PDB_FILE:familiar>
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+            OPTIONAL)
+endif ()
+
 # Desktop entry + .fml file association (see data/img/app/familiar.svg).
 # Registers the app and gives .fml files their own icon in the file
 # manager once installed - Exec= has a %f placeholder for
