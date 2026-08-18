@@ -17,6 +17,7 @@
 #include <core/valuehandler.h>
 
 #include "log/log.h"
+#include "utils/utils.h"
 using namespace familiar::log;
 
 #define OPTION(KEY, TYPE) \
@@ -167,8 +168,11 @@ SettingsHandler::SettingsHandler()
 {
     settingsFilePath_ = CommandlineArgs::instance().settingsFile();
     if (settingsFilePath_.isEmpty()) {
-        const QString dir = QStandardPaths::writableLocation(
-            QStandardPaths::AppConfigLocation);
+        QString dir = portableDataDir();
+        if (dir.isEmpty()) {
+            dir = QStandardPaths::writableLocation(
+                QStandardPaths::AppConfigLocation);
+        }
         settingsFilePath_ = QDir(dir).filePath(QStringLiteral("settings.json"));
     }
     loadDocument();

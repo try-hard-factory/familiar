@@ -13,6 +13,7 @@
 #include <QStandardPaths>
 
 #include "log/log.h"
+#include "utils/utils.h"
 using namespace familiar::log;
 
 namespace familiar::recovery {
@@ -37,8 +38,12 @@ QString fmlPathFor(const QDir& dir, const QUuid& id)
 
 QString recoveryDir()
 {
-    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
-           + QStringLiteral("/recovery");
+    QString dir = portableDataDir();
+    if (dir.isEmpty()) {
+        dir = QStandardPaths::writableLocation(
+            QStandardPaths::AppLocalDataLocation);
+    }
+    return dir + QStringLiteral("/recovery");
 }
 
 void save(CanvasView* canvasView)

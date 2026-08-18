@@ -24,6 +24,8 @@
 #include "quill/sinks/ConsoleSink.h"
 #include "quill/sinks/FileSink.h"
 
+#include "utils/utils.h"
+
 namespace familiar::log {
 namespace {
 
@@ -205,9 +207,12 @@ void init(const Options& options)
 
     QString filePath = options.filePath;
     if (filePath.isEmpty()) {
-        filePath = QStandardPaths::writableLocation(
-                       QStandardPaths::AppLocalDataLocation)
-                   + "/" + qApp->applicationName() + ".log";
+        QString dir = portableDataDir();
+        if (dir.isEmpty()) {
+            dir = QStandardPaths::writableLocation(
+                QStandardPaths::AppLocalDataLocation);
+        }
+        filePath = dir + "/" + qApp->applicationName() + ".log";
     }
     g_filePath = filePath;
 

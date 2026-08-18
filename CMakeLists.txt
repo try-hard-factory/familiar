@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(FAMILIAR_VERSION 0.0.9)
+set(FAMILIAR_VERSION 0.0.10)
 
 set(GIT_API_URL "https://api.github.com/repos/try-hard-factory/familiar/releases/latest")
 
@@ -38,6 +38,14 @@ endif()
 set(RUN_IN_PLACE
         ${DEFAULT_RUN_IN_PLACE}
         CACHE BOOL "Run directly in source directory structure")
+# Lets C++ branch on this too (utils::portableDataDir()) - CMake-side
+# RUN_IN_PLACE only ever controlled CPack's packaging/install layout
+# (ZIP vs WIX below) until now; settings.json/recovery/the log file all
+# still wrote to the per-user AppData/.config location even in a
+# "portable" build, which isn't actually portable at all.
+if(RUN_IN_PLACE)
+  add_definitions(-DRUN_IN_PLACE)
+endif()
 
 #set(CMAKE_INCLUDE_CURRENT_DIR ON)
 option(GENERATE_TS "Regenerate translation source files" OFF)
@@ -67,6 +75,14 @@ FetchContent_Declare(
     googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
     GIT_TAG v1.18.0
+    # GIT_SHALLOW: single commit at the tag instead of full history -
+    # much less to transfer. GIT_PROGRESS: without it, ExternalProject's
+    # git clone step logs nothing at all until it finishes, so a slow
+    # link makes the build look hung with no way to tell it apart from
+    # an actually-stuck clone (confirmed hitting exactly this - see
+    # ExternalProject.cmake's own GIT_PROGRESS doc for the same words).
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
 )
 # Matches whatever CRT familiar itself links against on Windows; a
 # no-op on Linux/macOS. Set before FetchContent_MakeAvailable() so it
