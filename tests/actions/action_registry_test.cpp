@@ -110,3 +110,34 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
     SettingsHandler::getInstance()->removeJsonValue(
         QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
 }
+
+// getActions() is the app-wide registry (a function-local static, built
+// once from buildRegistry()'s ~350-line literal table of every action in
+// the app - actions/actions.cpp). It's otherwise never exercised by any
+// test in this binary (see keyboard_shortcuts_page_test.cpp's own
+// comment) - this doesn't check the table's actual contents (that would
+// break on every menu edit), just the structural invariants
+// ActionsMixin's QMetaObject::invokeMethod-by-name reflection and the
+// UI layer implicitly rely on: no action silently missing an id/text.
+// Calling getActions() here does permanently populate the process-wide
+// singleton for the rest of this test binary's run (unlike the ids used
+// throughout this file, which are cleaned up - there's no "un-build" for
+// a function-local static) - harmless, since nothing else in this binary
+// asserts the registry stays empty.
+TEST(GlobalActionRegistryTest, EveryRegisteredActionHasNonEmptyIdAndText)
+{
+    const QList<Action*> all = getActions().all();
+    EXPECT_FALSE(all.isEmpty());
+    for (const Action* a : all) {
+        EXPECT_FALSE(a->id.isEmpty());
+        EXPECT_FALSE(a->text.isEmpty()) << "action id: " << a->id.toStdString();
+        // Every default shortcut string must parse as a real QKeySequence -
+        // getKeySequence()/get_shortcuts() are how every keybinding path
+        // (ActionMouseDispatcher, KeyboardShortcutsPage) reads these back.
+        for (int i = 0; i < a->shortcuts.size(); ++i) {
+            EXPECT_FALSE(a->getKeySequence(i).isEmpty())
+                << "action id: " << a->id.toStdString();
+        }
+    }
+    EXPECT_EQ(getActions().keys().size(), all.size());
+}
