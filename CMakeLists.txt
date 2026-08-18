@@ -72,6 +72,19 @@ FetchContent_Declare(
 # no-op on Linux/macOS. Set before FetchContent_MakeAvailable() so it
 # takes before googletest's own CMakeLists.txt reads it.
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+# googletest's own CMakeLists.txt defaults INSTALL_GTEST to ON, adding
+# install(TARGETS gtest/gmock ...) rules tagged COMPONENT "gtest"/"gmock"
+# (see its cmake/internal_utils.cmake install_project()) - harmless on
+# its own, but CPack sweeps up every install() rule in the whole build
+# tree, and those two extra components change how the WiX generator
+# assigns component IDs to everything else, including familiar.exe
+# itself. Broke Windows packaging with "CPack Error: Some XML patch
+# fragments did not have matching IDs: 'CM_CP_bin.familiar.exe'"
+# (fml-file-association.xml, CPACK_WIX_PATCH_FILE below, patches that
+# exact ID in). gtest/gmock are statically linked straight into familiar
+# itself (see main.cpp's "-t" handling) - nothing outside this build ever
+# needs them installed separately.
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/quill)
