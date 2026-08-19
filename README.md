@@ -3,12 +3,6 @@
 Reference board for 2D/3D artists — a canvas for collecting, arranging,
 and annotating reference images. Qt6/C++.
 
-## NEW! TABS!
-https://user-images.githubusercontent.com/9413534/132137667-e4bb966c-191d-4e1d-b89d-6fd50d6387b5.mp4
-
-## Example
-https://user-images.githubusercontent.com/9413534/129893087-aacb513a-322b-4bdb-b9e8-8482acb09689.mp4
-
 ## Building
 
 Requires Qt6 (Widgets + Network) and CMake. Build via `./build.sh`, not
