@@ -1,5 +1,15 @@
 # familiar
 
+![Build](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/build_cmake.yml?label=build)
+![Windows Pack](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/Windows-pack.yml?label=windows%20package)
+![Release](https://img.shields.io/github/v/release/try-hard-factory/familiar)
+![Downloads](https://img.shields.io/github/downloads/try-hard-factory/familiar/total)
+![License](https://img.shields.io/github/license/try-hard-factory/familiar)
+![Issues](https://img.shields.io/github/issues/try-hard-factory/familiar)
+![Stars](https://img.shields.io/github/stars/try-hard-factory/familiar)
+![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)
+![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)
+
 Reference board for 2D/3D artists — a canvas for collecting, arranging,
 and annotating reference images. Qt6/C++.
 
