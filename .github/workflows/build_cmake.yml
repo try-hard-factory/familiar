@@ -126,25 +126,20 @@ jobs:
         run: xvfb-run -a ctest -C $BUILD_TYPE --output-on-failure
 
   windows-build:
-    # Explicit name - without one, GitHub auto-generates one from every
-    # matrix key concatenated together and truncates it at 100 chars
-    # with "...", ending up unstable/ugly as a branch-protection
-    # required-check name. linux-build/macos-build already avoid this
-    # the same way (name: ${{ matrix.os }} / name: macOS).
     name: Windows
-    runs-on: ${{ matrix.config.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-        - {
-            name: "Windows 2022 MSVC",
-            artifact: "Windows-MSVC.tar.xz",
-            os: windows-2022,
-            cc: "cl", cxx: "cl",
-            environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat",
-            qt_ver: '6.10.3'
-          }
+    runs-on: windows-2022
+    env:
+      # A one-item strategy.matrix used to sit here just to carry this
+      # value (plus name/artifact/cc/cxx/environment_script, all
+      # unused anywhere in this job - dead, presumably copy-pasted from
+      # a template). GitHub Actions always appends every matrix field
+      # to the job's displayed/check-run name in parens, with no way
+      # to suppress it via a custom `name:` (confirmed - a known,
+      # documented-nowhere-official limitation) - a real problem for a
+      # branch-protection required-check name, since it made this job
+      # show up as a 100-char auto-truncated string. Plain runs-on +
+      # env instead, since there was only ever one combination anyway.
+      WINDOWS_QT_VERSION: '6.10.3'
 
     steps:
       - uses: actions/checkout@v6
@@ -166,9 +161,9 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: ${{ matrix.config.qt_ver }}
+          version: ${{ env.WINDOWS_QT_VERSION }}
           cache: 'true'
-          cache-key-prefix: install-qt-action-${{ matrix.config.qt_ver }}
+          cache-key-prefix: install-qt-action-${{ env.WINDOWS_QT_VERSION }}
           target:  desktop
           dir: '${{ github.workspace }}/build/'
 
