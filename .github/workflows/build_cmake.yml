@@ -1,13 +1,28 @@
 name: Building(CMake)
 
 on:
-  push:
-    branches: '*'
+  # PR into develop - the actual gate: feature branches don't get their
+  # own run until a PR against develop exists (was `branches: '*'` on
+  # both triggers - fired on every bare push to any branch too, often
+  # twice over for the same commit once a PR opened. paths-ignore below
+  # still applies per-event).
+  pull_request:
+    branches:
+      - develop
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
-  pull_request:
-    branches: '*'
+  # develop: re-validates the exact merge commit after a PR lands (a PR
+  # branch's own head commit isn't necessarily identical to what
+  # actually ends up on develop, e.g. a squash merge). main: Max's own
+  # stated flow pushes straight to main once develop is stable - this
+  # is that build. Tag pushes (releases) are NOT branch pushes, so this
+  # never re-triggers them - that's what each *-pack.yml's own
+  # `run-tests` job is for, including hotfix/* tags this never sees.
+  push:
+    branches:
+      - develop
+      - main
     paths-ignore:
       - 'README.md'
       - 'LICENSE'
@@ -163,3 +178,49 @@ jobs:
         shell: powershell
         run: |
           cmake --build . --parallel 2 --config $env:BUILD_TYPE
+
+      - name: Test
+        # Was missing entirely - this job built familiar.exe but never
+        # ran the embedded GoogleTest suite (`-t`), unlike linux-build
+        # right above it. CMAKE_RUNTIME_OUTPUT_DIRECTORY (top-level
+        # CMakeLists.txt) pins the Visual Studio multi-config generator's
+        # output to build/<Config>/, not build/src/<Config>/ - confirmed
+        # the hard way already in Windows-pack.yml's own run-tests job,
+        # same path here.
+        working-directory: build
+        shell: powershell
+        run: .\$env:BUILD_TYPE\familiar.exe -t
+
+  # Was missing entirely from this file - macOS build+test only existed
+  # gated behind a tag push (MacOS-pack.yml's own run-tests job), so a
+  # PR/push to develop or main never actually validated macOS at all.
+  # Steps mirror that job (same brew/cmake/Qt6_DIR pattern) - not a
+  # packaging run, no .dmg, just build+test like linux-build/windows-build.
+  macos-build:
+    name: macOS
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Install Qt6
+        run: brew install qt@6
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DQt6_DIR="$(brew --prefix qt@6)/lib/cmake/Qt6"
+
+      - name: Compile
+        run: cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+
+      - name: Test
+        working-directory: build
+        # Same defensive `find` as MacOS-pack.yml's run-tests - the .app
+        # bundle's exact path under build/ isn't worth hardcoding a
+        # second guess for (see that job's own comment on why).
+        run: |
+          BINARY=$(find . -path "*.app/Contents/MacOS/familiar" | head -1)
+          "$BINARY" -t
