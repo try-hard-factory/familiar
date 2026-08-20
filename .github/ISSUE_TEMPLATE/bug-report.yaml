@@ -1,0 +1,82 @@
+name: Bug Report
+description: Found something you weren't expecting? Report it here!
+labels: ["bug"]
+assignees: ["angelskieglazki"]
+body:
+- type: markdown
+  attributes:
+    value: |
+      Thanks for taking the time to fill out this bug report.
+      NOTE: Please read the instructions below before filling the form.
+- type: markdown
+  attributes:
+    value: |
+      1. Please write in English, this is the language all maintainers can speak and write.
+      2. Please take a moment to check that your issue doesn't already exist and isn't already reported.
+      3. Please provide the information for each field as complete as possible.
+- type: input
+  id: familiar-ver
+  attributes:
+    label: Familiar Version
+    description: "Help > About shows the exact version."
+    placeholder: e.g. 0.0.16
+  validations:
+    required: true
+- type: dropdown
+  id: installation-type
+  attributes:
+    label: Installation Type
+    description: How did you install Familiar?
+    multiple: true
+    options:
+      - Windows installer (.msi)
+      - Windows portable (.zip)
+      - macOS (.dmg)
+      - Linux .deb package
+      - Linux .rpm package
+      - Linux AppImage
+      - Snap (Snap Store)
+      - Flatpak (from GitHub Releases)
+      - Linux tar.gz (portable)
+      - Compiled from source
+  validations:
+    required: true
+- type: input
+  id: os-ver
+  attributes:
+    label: Operating System type and version
+    description: "The operating system you are using Familiar on:"
+  validations:
+    required: true
+- type: textarea
+  id: description
+  attributes:
+    label: Description
+    description: |
+      Please describe the issue in detail. If you can, provide screenshots or a screen recording to demonstrate it.
+  validations:
+    required: true
+- type: textarea
+  id: steps-to-reproduce
+  attributes:
+    label: Steps to reproduce
+    description: Please write the steps we should take to reproduce this behaviour
+    placeholder: |
+      1. Open Familiar
+      2. Do '...'
+      3. See error
+  validations:
+    required: false
+- type: textarea
+  id: screenshots
+  attributes:
+    label: Screenshots or screen recordings
+    description: If it would help us understand the issue, attach a screenshot or screen recording here.
+- type: textarea
+  id: logs
+  attributes:
+    label: Logs
+    description: |
+      Help menu > Show Debug Log > Copy To Clipboard, then paste here - or just drag the log file itself into this box.
+  validations:
+    required: false

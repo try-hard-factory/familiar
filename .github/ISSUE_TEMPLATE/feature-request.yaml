@@ -1,0 +1,20 @@
+name: Feature Request
+description: Got an idea for a feature that can make Familiar even better? Propose your suggestion here!
+labels: ["enhancement"]
+assignees: ["angelskieglazki"]
+body:
+- type: markdown
+  attributes:
+    value: |
+      1. Please write in English, this is the language all maintainers can speak and write.
+      2. Please only use this form to submit feature requests and **not** bugs or questions.
+      3. Please take a moment to check that your feature hasn't already been suggested.
+      4. One picture is worth a thousand words - if a mockup or reference screenshot explains it better, consider attaching one.
+- type: textarea
+  id: description
+  attributes:
+    label: Feature Description
+    placeholder: |
+      I think it would be great if ...
+  validations:
+    required: true
