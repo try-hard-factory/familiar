@@ -190,7 +190,13 @@ jobs:
         # same path here.
         working-directory: build
         shell: powershell
-        run: .\$env:BUILD_TYPE\familiar.exe -t
+        # A bare `.\$env:BUILD_TYPE\familiar.exe` as the command name
+        # itself doesn't get $env: expanded by PowerShell (real CI
+        # failure this fixes - "term ... is not recognized", literally
+        # unexpanded) - PowerShell only expands variables like that
+        # inside a quoted string or via the call operator, not in a
+        # bareword command-name token. & plus a quoted path fixes it.
+        run: '& ".\$env:BUILD_TYPE\familiar.exe" -t'
 
   # Was missing entirely from this file - macOS build+test only existed
   # gated behind a tag push (MacOS-pack.yml's own run-tests job), so a
