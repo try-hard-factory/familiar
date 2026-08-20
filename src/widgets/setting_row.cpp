@@ -374,6 +374,15 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     hbox_->addWidget(input_);
     ignoreValueChanged_ = false;
 
+    // checkStateChanged(Qt::CheckState) only exists from Qt 6.9 on;
+    // stateChanged(int) is deprecated there but still present. This
+    // project's Linux packaging (deb/rpm) builds against each distro's
+    // own system Qt, which can be older (confirmed: Ubuntu 24.04's
+    // qt6-base-dev is ~6.4) - so both branches need to keep compiling.
+    // #ifdef instead of always using stateChanged() because -Werror is
+    // planned for later; once that lands, stateChanged()'s deprecation
+    // warning on Qt >= 6.9 would break the build.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     connect(input_,
             &QCheckBox::checkStateChanged,
             this,
@@ -381,6 +390,16 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
                 onValueChanged(QVariant::fromValue(state));
                 emit toggled(state == Qt::Checked);
             });
+#else
+    connect(input_,
+            &QCheckBox::stateChanged,
+            this,
+            [this](int stateInt) {
+                const Qt::CheckState state = Qt::CheckState(stateInt);
+                onValueChanged(QVariant::fromValue(state));
+                emit toggled(state == Qt::Checked);
+            });
+#endif
 
     refreshInfoPopup();
 }

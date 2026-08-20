@@ -1,0 +1,54 @@
+app-id: org.tryhardfactory.Familiar
+runtime: org.kde.Platform
+# KDE runtime tracks its own Qt version per branch - 6.10 bundles Qt
+# 6.10. 6.8 went EOL (confirmed via
+# https://discuss.kde.org/t/end-of-life-kde-runtimes-list/42566 - build
+# was warning "org.kde.Sdk is end-of-life" even though it still built).
+# Bump alongside whatever Qt familiar itself builds against (see
+# .github/workflows/*-pack.yml's own QT_VERSION) and re-check that link
+# for a newer non-EOL branch before the next bump.
+runtime-version: '6.10'
+sdk: org.kde.Sdk
+command: familiar
+finish-args:
+  # X11 + XShm access
+  - --share=ipc
+  - --socket=x11
+  # Wayland access
+  - --socket=wayland
+  - --device=dri
+  # Downloading images dropped/pasted as http(s) URLs (fileio.cpp's
+  # QNetworkAccessManager use) - the only network-touching feature.
+  - --share=network
+  # Opening/saving .fml projects and imported images from anywhere.
+  - --filesystem=host
+modules:
+  - name: familiar
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - -DRUN_IN_PLACE=OFF
+      # flatpak-builder's build sandbox has no network by design (a hard
+      # Flathub review requirement, not just a default) - CMakeLists.txt's
+      # own FetchContent_MakeAvailable(googletest) tries to `git clone`
+      # during configure and fails outright there (real CI failure this
+      # fixes: "Could not resolve host: github.com"). Pre-fetching
+      # googletest as its own module source below (fetched during the
+      # earlier "Downloading sources" phase, which DOES have network)
+      # and pointing FETCHCONTENT_SOURCE_DIR_<NAME> (uppercased dep name
+      # - CMake's own FetchContent convention) at it makes
+      # FetchContent_MakeAvailable() skip the clone entirely and use
+      # this directory as-is. /run/build/familiar is flatpak-builder's
+      # own fixed in-sandbox build path for this module (confirmed in
+      # the failing build's own CMake error output).
+      - -DFETCHCONTENT_SOURCE_DIR_GOOGLETEST=/run/build/familiar/googletest-vendor
+    sources:
+      - type: git
+        url: https://github.com/try-hard-factory/familiar.git
+        branch: main
+      # Pinned to the exact tag CMakeLists.txt's own FetchContent_Declare
+      # uses - keep these two in sync if that tag ever bumps.
+      - type: git
+        url: https://github.com/google/googletest.git
+        tag: v1.18.0
+        dest: googletest-vendor

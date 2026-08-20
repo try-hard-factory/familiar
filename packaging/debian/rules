@@ -3,7 +3,6 @@
 # output every command that modifies files on the build system.
 #export DH_VERBOSE = 1
 
-
 # see FEATURE AREAS in dpkg-buildflags(1)
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
@@ -13,12 +12,28 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 # package maintainers to append LDFLAGS
 export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
 
-export QT_SELECT := 5
-
 %:
-	dh $@ 
+	dh $@
 
+# debhelper (compat 13's cmake buildsystem) passes
+# -DFETCHCONTENT_FULLY_DISCONNECTED=ON by default - meant for a real
+# offline/reproducible Debian archive build. This project fetches
+# googletest via FetchContent unconditionally (see top-level
+# CMakeLists.txt - linked straight into familiar itself, not an
+# optional build), so that flag makes configure fail outright here.
+# Not a real archive build (no network-isolated buildd involved, just
+# our own CI with normal internet access) - override it back off.
 override_dh_auto_configure:
-	# The existence of an empty .git directory triggers syncqt.
-	mkdir .git || true
-	dh_auto_configure --
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DRUN_IN_PLACE=OFF -DFETCHCONTENT_FULLY_DISCONNECTED=OFF
+
+# dh_auto_test's plain `ctest` has no display - familiar -t is a real
+# QApplication (xcb platform plugin), not headless (real CI failure this
+# fixes: "could not connect to display"). xvfb-run, not
+# QT_QPA_PLATFORM=offscreen - see build_cmake.yml's own comment on the
+# identical run-tests step for why offscreen is worse here (synthetic
+# QTest::mouseClick/keyClick button press/release tracking). Worth
+# actually running here (not just relying on the separate run-tests CI
+# job) - this builds against the distro's OWN system Qt, not the pinned
+# version run-tests uses, so it's real extra coverage, not a duplicate.
+override_dh_auto_test:
+	xvfb-run -a dh_auto_test

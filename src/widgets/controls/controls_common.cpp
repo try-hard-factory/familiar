@@ -34,12 +34,26 @@ void MouseControlsEditorBase::initModifiersInput()
         QCheckBox* cb = new QCheckBox(name, box);
         checkboxes_[name] = cb;
         layout->addWidget(cb);
+        // Same Qt-6.9 checkStateChanged/stateChanged split as
+        // widgets/setting_row.cpp - see its comment for why this is an
+        // #ifdef and not just stateChanged() everywhere (planned
+        // -Werror would turn stateChanged()'s deprecation warning into
+        // a build failure on Qt >= 6.9).
+#if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
         connect(cb,
                 &QCheckBox::checkStateChanged,
                 this,
                 [this, name](Qt::CheckState state) {
                     onModifiersChanged(name, static_cast<int>(state));
                 });
+#else
+        connect(cb,
+                &QCheckBox::stateChanged,
+                this,
+                [this, name](int state) {
+                    onModifiersChanged(name, state);
+                });
+#endif
     }
 
     mainLayout_->addWidget(box);

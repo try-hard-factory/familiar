@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(FAMILIAR_VERSION 0.0.15)
+set(FAMILIAR_VERSION 0.0.16)
 
 set(GIT_API_URL "https://api.github.com/repos/try-hard-factory/familiar/releases/latest")
 
@@ -116,13 +116,23 @@ set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(INSTALL_PROJECT OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/miniz)
 
+# Lets CTest see the add_test() registered in src/CMakeLists.txt (needs
+# the familiar target to exist first, hence there and not here) - must
+# still be called at this top level, CTest ignores add_test() calls from
+# a directory enable_testing() never reached.
+enable_testing()
+
 add_subdirectory(src)
 
 # CPack
 set(CPACK_PACKAGE_VENDOR "try-hard-factory")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "For 2d and 3d artists.")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_PACKAGE_HOMEPAGE_URL "https://tryhardfactory.org")
+# tryhardfactory.org doesn't resolve (confirmed - DNS lookup fails, not
+# just "not live yet") - points at the actual repo instead until there's
+# a real site. Feeds both the .deb's Homepage: field and, on Windows,
+# the WiX installer's About/Help links (CPACK_WIX_PROPERTY_ARP* below).
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/try-hard-factory/familiar")
 set(CPACK_PACKAGE_CONTACT "max <mpano91@gmail.com>")
 set(CPACK_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/data/img/app/familiar_256.png") # TODO: Can any generator make
 # use of this?
@@ -154,8 +164,12 @@ if(WIN32)
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_SOURCE_DIR}/data/img/app/familiar.ico")
     # Supported languages can be found at http://wixtoolset.org/documentation/manual/v3/wixui/wixui_localization.html
     # set(CPACK_WIX_CULTURES "ar-SA,bg-BG,ca-ES,hr-HR,cs-CZ,da-DK,nl-NL,en-US,et-EE,fi-FI,fr-FR,de-DE")
-    set(CPACK_WIX_UI_BANNER "${CMAKE_SOURCE_DIR}/packaging/win-installer/Bitmaps/CPACK_WIX_UI_BANNER.BMP")
-    set(CPACK_WIX_UI_DIALOG "${CMAKE_SOURCE_DIR}/packaging/win-installer/Bitmaps/CPACK_WIX_UI_DIALOG.BMP")
+    # CPACK_WIX_UI_BANNER/UI_DIALOG deliberately unset - the bitmaps that
+    # used to be here were still Flameshot's own (flame logo + literal
+    # "Flameshot" text, confirmed by opening them), inherited from the
+    # fork and never replaced. Leaving these unset falls back to WiX's
+    # own plain default banner/dialog instead of shipping someone else's
+    # branding - revisit with real Familiar artwork later.
     set(CPACK_WIX_PROPERTY_ARPHELPLINK "${CPACK_PACKAGE_HOMEPAGE_URL}")
     set(CPACK_WIX_PROPERTY_ARPURLINFOABOUT "${CPACK_PACKAGE_HOMEPAGE_URL}")
     set(CPACK_WIX_ROOT_FEATURE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")

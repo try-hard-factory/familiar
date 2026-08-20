@@ -1,0 +1,137 @@
+name: Packaging(MacOS)
+
+on:
+  push:
+    tags:
+      - 'v[0-9].[0-9]+.[0-9]+'
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+
+env:
+  PRODUCT: familiar
+  MACOSX_DEPLOYMENT_TARGET: "10.15"
+
+jobs:
+  # Gates macos-pack via needs: - same reasoning as the identical job in
+  # Windows-pack.yml/Linux-pack.yml: build_cmake.yml never runs on a tag
+  # push at all (branch-only trigger), so nothing else tests this exact
+  # commit before it gets packaged and released. Runs once, on arm64
+  # only - not the full release matrix, just enough to catch a broken
+  # build/test before spending time on both architectures' DMGs.
+  run-tests:
+    name: Run test suite
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install Qt6
+        run: brew install qt@6
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DQt6_DIR="$(brew --prefix qt@6)/lib/cmake/Qt6"
+
+      - name: Compile
+        run: cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+
+      - name: Test
+        working-directory: build
+        # No explicit MACOSX_BUNDLE_BUNDLE_NAME override found in the
+        # CMake files (defaults to the target name, "familiar.app").
+        # CMAKE_RUNTIME_OUTPUT_DIRECTORY is pinned to the top-level
+        # ${CMAKE_BINARY_DIR} (CMakeLists.txt) - the bundle lands
+        # directly under build/, not build/src/ (confirmed the hard way
+        # on Windows: the equivalent build/src/... guess in
+        # Windows-pack.yml's own run-tests job was flat-out wrong per a
+        # real CI failure - same root cause applies here). Searching from
+        # "." instead of hardcoding either guess, still can't verify the
+        # exact path on an actual Mac.
+        run: |
+          BINARY=$(find . -path "*.app/Contents/MacOS/familiar" | head -1)
+          "$BINARY" -t
+
+  macos-pack:
+    name: Build macOS ${{ matrix.arch }}
+    needs: run-tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # x86_64/macos-13 dropped - macos-13 runner image is fully
+          # retired (GitHub killed it Dec 4 2025), and Intel Mac support
+          # in Actions altogether is on a clock anyway (last x86_64
+          # image, macos-15-intel, goes away Aug 2027 - Apple itself
+          # stopped making Intel Macs). No hardware to test an Intel
+          # build on either way - arm64 (Apple Silicon) covers the real
+          # target audience now.
+          - os: macos-15
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Install Qt6
+        run: brew install qt@6
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DQt6_DIR="$(brew --prefix qt@6)/lib/cmake/Qt6"
+
+      - name: Compile
+        run: cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+
+      - name: Build DMG
+        # create_dmg (src/CMakeLists.txt, packaging/macos/create_dmg.sh) -
+        # ad hoc code-signs the .app bundle either way (required just to
+        # run on Apple Silicon, not only to silence Gatekeeper) and wraps
+        # it in a signed .dmg with an /Applications symlink for drag-
+        # install. CODE_SIGN_IDENTITY/DMG_SIGN_IDENTITY default to empty
+        # (ad hoc) - pass real Developer ID values here via
+        # -DCODE_SIGN_IDENTITY=/-DDMG_SIGN_IDENTITY= in the Configure
+        # step above once this project has one.
+        run: cmake --build build --target create_dmg
+
+      - name: Rename to include architecture
+        working-directory: build/src
+        run: |
+          mv "familiar-${VERSION}.dmg" "familiar-${VERSION}-osx-${{ matrix.arch }}.dmg"
+
+      - name: SHA256Sum
+        working-directory: build/src
+        run: |
+          shasum -a 256 "familiar-${VERSION}-osx-${{ matrix.arch }}.dmg" | tee "familiar-${VERSION}-osx-${{ matrix.arch }}.dmg.sha256sum"
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-macos-${{ matrix.arch }}
+          path: |
+            build/src/familiar-${{ env.VERSION }}-osx-${{ matrix.arch }}.dmg
+            build/src/familiar-${{ env.VERSION }}-osx-${{ matrix.arch }}.dmg.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            build/src/familiar-${{ env.VERSION }}-osx-${{ matrix.arch }}.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

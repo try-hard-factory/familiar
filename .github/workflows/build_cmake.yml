@@ -54,7 +54,8 @@ jobs:
           sudo apt-get -y --no-install-recommends install \
             cmake \
             extra-cmake-modules \
-            build-essential
+            build-essential \
+            xvfb
 
       - name: Cache Qt
         id: cache-qt-linux
@@ -95,9 +96,19 @@ jobs:
       - name: Test
         working-directory: ${{runner.workspace}}/build
         shell: bash
-        # Execute tests defined by the CMake configuration.
-        # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-        run: ctest -C $BUILD_TYPE
+        # familiar -t (the actual GoogleTest suite, run via add_test() in
+        # src/CMakeLists.txt) still constructs a real QApplication - Qt
+        # Widgets, not headless. Without a display this fails to init and
+        # ctest reports "Subprocess aborted" in ~0.1s (confirmed: that's
+        # exactly what a bare `ctest -C $BUILD_TYPE` here does - nothing
+        # ever ran, not "0 tests passed"). QT_QPA_PLATFORM=offscreen was
+        # tried for individual widget tests earlier in this project and
+        # confirmed to fail HARDER than a real (virtual) display for
+        # synthetic QTest::mouseClick/keyClick button press/release
+        # tracking (see tests/widgets/flat_checkbox_test.cpp's own
+        # comment) - xvfb-run gives a real, if virtual, X11 server
+        # instead, which is what those tests actually need.
+        run: xvfb-run -a ctest -C $BUILD_TYPE --output-on-failure
 
   windows-build:
     runs-on: ${{ matrix.config.os }}

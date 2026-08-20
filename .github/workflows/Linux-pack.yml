@@ -1,0 +1,619 @@
+name: Packaging(Linux)
+
+on:
+  push:
+    tags:
+      - 'v[0-9].[0-9]+.[0-9]+'
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+
+env:
+  PRODUCT: familiar
+  # Same pin as build_cmake.yml's own Linux job - jobs below that aren't
+  # tied to a specific distro's own Qt (deb-pack/rpm-pack ARE, they build
+  # against each distro's real system Qt on purpose) use this instead of
+  # `apt-get install qt6-base-dev`. Real bug this fixes: Ubuntu 24.04's
+  # own qt6-base-dev is ~6.4 - old enough that the app itself failed to
+  # compile against it (QCheckBox::checkStateChanged is Qt 6.9+ only,
+  # confirmed by a real CI failure) even after that specific API got
+  # swapped for an older-compatible one in the app code - keeping every
+  # non-distro-pinned job on the same known-good version this project
+  # already builds and tests against everywhere else avoids hitting the
+  # next such mismatch blind.
+  QT_VERSION: '6.11.1'
+
+jobs:
+  # Gates every packaging job below via needs: - build_cmake.yml (which
+  # actually runs `familiar -t`) triggers on `push: branches: '*'` only;
+  # a tag push is NOT a branch push, GitHub Actions never matches one
+  # against the other, so build_cmake.yml never runs on the exact tag
+  # these packaging jobs build from. Without this job, a release could
+  # ship having never had its tests run on that commit at all - the
+  # entire point of the test suite as a safety net (see [[familiar
+  # next steps]] step 26) would be moot exactly when it matters most.
+  run-tests:
+    name: Run test suite
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install build tools
+        run: |
+          sudo apt-get -y -qq update
+          sudo apt-get -y --no-install-recommends install \
+            cmake build-essential xvfb
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ env.QT_VERSION }}
+          target: desktop
+          dir: '${{ github.workspace }}/qt/'
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DRUN_IN_PLACE=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Test
+        working-directory: build
+        # xvfb-run, not QT_QPA_PLATFORM=offscreen - see build_cmake.yml's
+        # own comment on the same step for why.
+        run: xvfb-run -a ctest --output-on-failure
+
+  # Plain tarball via the CPack TGZ generator already configured for
+  # UNIX/non-APPLE (CMakeLists.txt) - no packaging-format-specific
+  # tooling at all, works on any glibc-compatible distro close enough to
+  # the build image.
+  tarball-pack:
+    name: Build tar.gz
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Install build tools
+        run: |
+          sudo apt-get -y -qq update
+          sudo apt-get -y --no-install-recommends install \
+            cmake build-essential
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ env.QT_VERSION }}
+          target: desktop
+          dir: '${{ github.workspace }}/qt/'
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DRUN_IN_PLACE=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: CPack
+        working-directory: build
+        run: cpack -G TGZ -C RelWithDebInfo
+
+      - name: SHA256Sum
+        working-directory: build
+        run: |
+          sha256sum familiar-${VERSION}-linux.tar.gz | tee familiar-${VERSION}-linux.tar.gz.sha256sum
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-linux-tar.gz
+          path: |
+            build/familiar-${{ env.VERSION }}-linux.tar.gz
+            build/familiar-${{ env.VERSION }}-linux.tar.gz.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            build/familiar-${{ env.VERSION }}-linux.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Native .deb via dpkg-buildpackage against packaging/debian/, built
+  # inside each target distro's own container image so it links against
+  # that distro's real glibc/Qt6 - a .deb built on one distro isn't
+  # portable to an arbitrary older one (glibc/Qt ABI), so "one build for
+  # everyone" was never actually true; this matrix is a wider net, not
+  # universal coverage (AppImage is the actual "works anywhere" story).
+  deb-pack:
+    name: Build .deb (${{ matrix.dist.name }})
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        dist:
+          - { name: ubuntu-24.04, image: 'ubuntu:24.04' }
+          - { name: ubuntu-26.04, image: 'ubuntu:26.04' }
+          - { name: debian-12, image: 'debian:bookworm' }
+          - { name: debian-13, image: 'debian:trixie' }
+    container:
+      image: ${{ matrix.dist.image }}
+    steps:
+      # Must run BEFORE checkout, not after - a bare distro image has no
+      # git, so actions/checkout silently falls back to a REST-API
+      # tarball download instead, which flat-out rejects
+      # `submodules: true` ("Input 'submodules' not supported when
+      # falling back to download using the GitHub REST API" - a real CI
+      # failure this fixes). No sudo - already root in the container.
+      - name: Install git
+        run: |
+          apt-get -y -qq update
+          apt-get -y --no-install-recommends install git ca-certificates
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      # Same "dubious ownership" issue as rpm-pack's identical step -
+      # both jobs run inside `container:`, where the mounted
+      # $GITHUB_WORKSPACE's UID doesn't match what git considers safe.
+      # Wildcard, not just $GITHUB_WORKSPACE - the root CMakeLists.txt's
+      # FetchContent_MakeAvailable(googletest) does its OWN git clone
+      # into _deps/googletest-src during configure, a separate git repo
+      # with the same UID problem; a real CI failure this fixes (CMake
+      # Error "familiar" links to GTest::gtest but the target was not
+      # found - the FetchContent clone silently never happened, so
+      # googletest's own CMakeLists.txt, which is what actually defines
+      # GTest::gtest as an ALIAS, never ran).
+      - name: Mark workspace as a safe git directory
+        run: git config --global --add safe.directory '*'
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Install build dependencies
+        run: |
+          apt-get -y -qq update
+          apt-get -y --no-install-recommends install \
+            build-essential debhelper cmake qt6-base-dev python3 xvfb xauth
+
+      - name: Prepare debian/ directory
+        run: |
+          # dpkg-buildpackage looks for ./debian relative to cwd, not
+          # packaging/debian/ (real CI failure this fixes: "cannot open
+          # file debian/changelog"). Also regenerates changelog's first
+          # line from $VERSION instead of trusting the committed file's
+          # hardcoded "0.0.15-1" - that version drives the .deb's own
+          # version number, and packaging/debian/changelog isn't the
+          # same file misc/change_log_prepend.sh maintains (that one
+          # updates the plain-text top-level ChangeLog, unrelated
+          # format/purpose) - nothing else keeps this number in sync
+          # with CMakeLists.txt's FAMILIAR_VERSION otherwise.
+          cp -r packaging/debian debian
+          python3 - <<'PYEOF'
+          import datetime, os
+          version = os.environ["VERSION"]
+          date = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
+          with open("debian/changelog", "w") as f:
+              f.write(
+                  f"familiar ({version}-1) unstable; urgency=medium\n\n"
+                  f"  * See ChangeLog / GitHub releases for details.\n\n"
+                  f" -- try-hard-factory <mpano91@gmail.com>  {date}\n"
+              )
+          PYEOF
+
+      - name: Build .deb
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Move + SHA256Sum
+        run: |
+          mkdir -p build-artifacts
+          mv ../familiar_*.deb "build-artifacts/familiar-${VERSION}-${{ matrix.dist.name }}.amd64.deb"
+          cd build-artifacts
+          sha256sum familiar-${VERSION}-${{ matrix.dist.name }}.amd64.deb | tee familiar-${VERSION}-${{ matrix.dist.name }}.amd64.deb.sha256sum
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-deb-${{ matrix.dist.name }}
+          path: |
+            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.amd64.deb
+            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.amd64.deb.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.amd64.deb
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # .rpm via rpmbuild inside a Fedora container - packaging/rpm/
+  # familiar.spec already handles both Fedora/RHEL and openSUSE Leap
+  # branches, only Fedora is actually exercised here for now.
+  # fedora-43/44, not 41 - 41 is EOL as of this matrix (Fedora only
+  # maintains N and N-1, ~13 months each; verified against
+  # https://endoflife.date/fedora before picking these) so dnf against
+  # its repos would start failing as they roll off to fedora-archive.
+  rpm-pack:
+    name: Build .rpm (${{ matrix.dist.name }})
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        dist:
+          - { name: fedora-43, image: 'fedora:43' }
+          - { name: fedora-44, image: 'fedora:44' }
+    container:
+      image: ${{ matrix.dist.image }}
+    steps:
+      # Same reason as deb-pack's identical step - a bare fedora image
+      # has no git, so actions/checkout would fall back to a REST-API
+      # download that rejects `submodules: true`. Must run before
+      # checkout.
+      - name: Install git
+        run: dnf install -y git
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      # Container-mounted $GITHUB_WORKSPACE is owned by a UID git
+      # doesn't recognize as "ours" (CVE-2022-24765 mitigation) - git
+      # refuses everything on it, including the plain `git archive`
+      # below, until told to trust it explicitly (real CI failure this
+      # fixes: "detected dubious ownership in repository"). Only needed
+      # in this job and deb-pack - both use `container:`, unlike every
+      # other job here which runs directly on the runner where the UID
+      # already matches. Wildcard, not just $GITHUB_WORKSPACE - the root
+      # CMakeLists.txt's FetchContent_MakeAvailable(googletest) does its
+      # own git clone into _deps/googletest-src during configure, a
+      # separate nested git repo with the same UID problem (see
+      # deb-pack's identical step for the exact downstream failure this
+      # caused there: GTest::gtest "target not found").
+      - name: Mark workspace as a safe git directory
+        run: git config --global --add safe.directory '*'
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y rpm-build rpmdevtools cmake gcc-c++ \
+            qt6-qtbase-devel desktop-file-utils
+
+      - name: Build source tarball
+        run: |
+          rpmdev-setuptree
+          mkdir -p "/github/home/rpmbuild/SOURCES"
+          # Not `git archive` - it only records a submodule's gitlink
+          # (commit pointer), never its actual file content, so
+          # include/quill and include/miniz (both real submodules - see
+          # .gitmodules) came out as empty directories with no
+          # CMakeLists.txt (real CI failure this fixes). checkout's own
+          # `submodules: true` already populated them for real on disk,
+          # so just tar the working tree directly instead.
+          tar --exclude-vcs --transform "s,^\.,familiar-${VERSION}," \
+            -czf "$HOME/rpmbuild/SOURCES/familiar-${VERSION}.tar.gz" .
+
+      - name: Build .rpm
+        run: |
+          cp packaging/rpm/familiar.spec "$HOME/rpmbuild/SPECS/familiar.spec"
+          # The committed spec's "Version:" is just a placeholder (kept
+          # roughly current for anyone building it standalone) - patch it
+          # to the real $VERSION here, same as debian/changelog gets
+          # regenerated in deb-pack. Without this the spec's version and
+          # the tarball this job just created above
+          # (familiar-${VERSION}.tar.gz) can drift apart (real bug this
+          # fixes: spec said 0.0.15 while CMakeLists.txt/the tarball were
+          # already 0.0.16 - rpmbuild would look for
+          # familiar-0.0.15.tar.gz and fail to find it).
+          sed -i "s/^Version: .*/Version: ${VERSION}/" "$HOME/rpmbuild/SPECS/familiar.spec"
+          rpmbuild -bb "$HOME/rpmbuild/SPECS/familiar.spec"
+
+      - name: Move + SHA256Sum
+        run: |
+          mkdir -p build-artifacts
+          # rpmbuild always produces MULTIPLE familiar-*.rpm files - the
+          # real package plus familiar-debuginfo-*/familiar-debugsource-*
+          # (auto-generated by find-debuginfo.sh). The old glob matched
+          # all of them and -exec cp copied each into the SAME
+          # destination filename, one at a time - whichever matched last
+          # silently overwrote the others (real bug this fixes: on
+          # fedora-44 the debugsource package won a filename collision
+          # and got uploaded as "the" .rpm - contains only
+          # /usr/src/debug/..., no actual binary, confirmed by `rpm -qlp`
+          # on the real uploaded file). "familiar-[0-9]*.rpm" matches
+          # only the real package - familiar-debuginfo-*/
+          # familiar-debugsource-* have a letter right after the dash,
+          # not a version-number digit.
+          find "$HOME/rpmbuild/RPMS" -name "familiar-[0-9]*.rpm" \
+            -exec cp {} "build-artifacts/familiar-${VERSION}-${{ matrix.dist.name }}.x86_64.rpm" \;
+          cd build-artifacts
+          sha256sum familiar-${VERSION}-${{ matrix.dist.name }}.x86_64.rpm | tee familiar-${VERSION}-${{ matrix.dist.name }}.x86_64.rpm.sha256sum
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-rpm-${{ matrix.dist.name }}
+          path: |
+            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.x86_64.rpm
+            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.x86_64.rpm.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.x86_64.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Flatpak via packaging/flatpak/org.tryhardfactory.Familiar.yml -
+  # builds against the tag's own commit directly (no manifest sed
+  # needed - the manifest's own "sources: branch: main" only matters for
+  # a from-scratch checkout; flatpak-builder here builds from THIS
+  # checkout's working tree via a local "type: dir" source override).
+  flatpak-pack:
+    name: Build flatpak
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Point the manifest at this checkout instead of a fresh git clone
+        run: |
+          python3 - <<'PYEOF'
+          import yaml
+          path = "packaging/flatpak/org.tryhardfactory.Familiar.yml"
+          with open(path) as f:
+              manifest = yaml.safe_load(f)
+          # A "dir" source's path is relative to the MANIFEST's own
+          # directory (packaging/flatpak/), not the repo root or
+          # flatpak-builder's invocation cwd - confirmed against
+          # https://docs.flatpak.org/en/latest/module-sources.html.
+          # "." pointed at packaging/flatpak/ itself, which has no
+          # CMakeLists.txt (real CI failure this fixes: "Can't find
+          # CMakeLists.txt"); "../.." is the actual repo root from there.
+          # Only swap the FIRST source (the familiar repo itself) - the
+          # manifest's other source entries (e.g. the vendored googletest
+          # git source, needed because the build sandbox has no network)
+          # must survive this rewrite, not get wiped by replacing the
+          # whole list.
+          manifest["modules"][0]["sources"][0] = {"type": "dir", "path": "../.."}
+          with open(path, "w") as f:
+              yaml.safe_dump(manifest, f, sort_keys=False)
+          PYEOF
+
+      - name: Setup flatpak
+        run: |
+          sudo apt-get -y -qq update
+          sudo apt-get install -y flatpak flatpak-builder
+
+      - name: Setup Flathub
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y --noninteractive flathub org.kde.Sdk//6.10 org.kde.Platform//6.10
+
+      - name: Packaging flatpak
+        run: |
+          MANIFEST_PATH=$GITHUB_WORKSPACE/packaging/flatpak/org.tryhardfactory.Familiar.yml
+          RUNTIME_REPO="https://flathub.org/repo/flathub.flatpakrepo"
+          APP_ID="org.tryhardfactory.Familiar"
+
+          flatpak-builder --user --disable-rofiles-fuse --repo=repo --force-clean flatpak_app ${MANIFEST_PATH} --install-deps-from=flathub
+          flatpak build-bundle repo "${APP_ID}_${VERSION}_x86_64.flatpak" --runtime-repo=${RUNTIME_REPO} ${APP_ID}
+
+      - name: SHA256Sum
+        run: |
+          sha256sum org.tryhardfactory.Familiar_${VERSION}_x86_64.flatpak | tee org.tryhardfactory.Familiar_${VERSION}_x86_64.flatpak.sha256sum
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-flatpak
+          path: |
+            org.tryhardfactory.Familiar_${{ env.VERSION }}_x86_64.flatpak
+            org.tryhardfactory.Familiar_${{ env.VERSION }}_x86_64.flatpak.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            org.tryhardfactory.Familiar_${{ env.VERSION }}_x86_64.flatpak
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # AppImage via linuxdeploy + linuxdeploy-plugin-qt (both plain
+  # standalone AppImages themselves, downloaded fresh each run - "continuous"
+  # tag, not a pinned release, same as flameshot's own reference workflow
+  # does; a real (if small) flakiness risk if upstream ever ships a
+  # breaking continuous build). No store/account of any kind - the output
+  # file is the whole distribution, uploaded straight to the GH Release
+  # like every other artifact here.
+  appimage-pack:
+    name: Build AppImage
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Install build tools
+        run: |
+          sudo apt-get -y -qq update
+          sudo apt-get -y --no-install-recommends install \
+            cmake build-essential fuse libfuse2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ env.QT_VERSION }}
+          target: desktop
+          dir: '${{ github.workspace }}/qt/'
+
+      - name: Download linuxdeploy + Qt plugin
+        run: |
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Configure + build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=/usr -DRUN_IN_PLACE=OFF
+          cmake --build build --parallel "$(nproc)"
+
+      - name: Install into AppDir
+        run: |
+          mkdir -p AppDir
+          DESTDIR=$GITHUB_WORKSPACE/AppDir cmake --install build
+
+      - name: Build AppImage
+        run: |
+          # install-qt-action's own Qt tree names the binary "qmake"
+          # (upstream Qt's own naming) - "qmake6" was specific to apt's
+          # qt6-base-dev package (Debian/Ubuntu's own packaging
+          # convention), no longer installing Qt that way here.
+          export QMAKE="$(which qmake6 2>/dev/null || which qmake)"
+          # FUSE-mounting an AppImage is unreliable in GH-hosted CI
+          # containers - extract-and-run sidesteps that entirely, at the
+          # cost of a bit of startup time (irrelevant here, this only
+          # runs once per CI job).
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+
+      - name: Rename + SHA256Sum
+        run: |
+          APPIMAGE_FILE=$(find . -maxdepth 1 -iname "*.AppImage" ! -iname "linuxdeploy*")
+          mv "$APPIMAGE_FILE" "familiar-${VERSION}-x86_64.AppImage"
+          sha256sum "familiar-${VERSION}-x86_64.AppImage" | tee "familiar-${VERSION}-x86_64.AppImage.sha256sum"
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-appimage
+          path: |
+            familiar-${{ env.VERSION }}-x86_64.AppImage
+            familiar-${{ env.VERSION }}-x86_64.AppImage.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            familiar-${{ env.VERSION }}-x86_64.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Snap via snap/snapcraft.yaml - builds and uploads the .snap itself as
+  # a GH Release asset unconditionally. Publishing to the actual Snap
+  # Store is a SEPARATE, one-time-manual step only Max can do (claiming
+  # the "familiar" name requires his own Ubuntu One account -
+  # `snapcraft login` + `snapcraft register familiar` - nothing a CI job
+  # can do on his behalf) - the last step below only fires once he's set
+  # that up and added SNAPCRAFT_STORE_CREDENTIALS as a repo secret
+  # (`snapcraft export-login`), skipped entirely until then.
+  snap-pack:
+    name: Build snap
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    # Job-level, not step-level: the `secrets` context is flatly not
+    # allowed inside an `if:` expression anywhere (confirmed by a real
+    # "Unrecognized named-value: 'secrets'" workflow-parse error) - the
+    # documented workaround is mapping it through `env:` first, since
+    # `env` (unlike `secrets`) IS readable from `if:`. Job-level so it's
+    # available to the Publish step's own `if:` below, not just its
+    # `with:`/run context.
+    env:
+      SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Set env & Print familiar version
+        shell: bash
+        run: |
+          echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
+
+      - name: Build snap
+        uses: snapcore/action-build@v1
+        id: snapcraft
+
+      - name: Rename + SHA256Sum
+        run: |
+          cp "${{ steps.snapcraft.outputs.snap }}" "familiar-${VERSION}-amd64.snap"
+          sha256sum "familiar-${VERSION}-amd64.snap" | tee "familiar-${VERSION}-amd64.snap.sha256sum"
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ env.VERSION }}-snap
+          path: |
+            familiar-${{ env.VERSION }}-amd64.snap
+            familiar-${{ env.VERSION }}-amd64.snap.sha256sum
+          overwrite: true
+
+      - name: Github Release upload
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            familiar-${{ env.VERSION }}-amd64.snap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to Snap Store
+        if: startsWith(github.ref, 'refs/tags/') && env.SNAPCRAFT_STORE_CREDENTIALS != ''
+        uses: snapcore/action-publish@v1
+        with:
+          snap: familiar-${{ env.VERSION }}-amd64.snap
+          release: edge

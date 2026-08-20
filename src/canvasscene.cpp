@@ -22,7 +22,6 @@ using namespace familiar::log;
 
 #include "commands.h"
 #include <QUndoStack>
-#include <qassert.h>
 
 #include <algorithm>
 #include <cmath>

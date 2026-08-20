@@ -30,7 +30,6 @@
 #include <QVariantMap>
 #include <QWheelEvent>
 #include <QtGlobal>
-#include <qassert.h>
 
 #include "log/log.h"
 

@@ -12,8 +12,55 @@ env:
   PRODUCT: familiar
 
 jobs:
+  # Gates windows-pack via needs: - build_cmake.yml (which runs
+  # `familiar -t`) only triggers on `push: branches: '*'`; a tag push
+  # doesn't match a branch filter at all, so it never runs on the exact
+  # tag this workflow packages from. Windows GH-hosted runners come with
+  # a real desktop session already (unlike Linux's headless containers),
+  # so unlike the Linux equivalent of this job, no xvfb-style display
+  # setup is needed here.
+  run-tests:
+    name: Run test suite
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.10.3
+          cache: 'true'
+          cache-key-prefix: install-qt-action-6.10.3
+          target: desktop
+          dir: '${{ github.workspace }}/build/'
+
+      - name: Configure
+        working-directory: build
+        shell: pwsh
+        run: cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=RelWithDebInfo -DRUN_IN_PLACE=OFF
+
+      - name: Compile
+        working-directory: build
+        shell: pwsh
+        run: cmake --build . --parallel 2 --config RelWithDebInfo
+
+      - name: Test
+        working-directory: build
+        shell: pwsh
+        # CMAKE_RUNTIME_OUTPUT_DIRECTORY is pinned to the top-level
+        # ${CMAKE_BINARY_DIR} (CMakeLists.txt), not left at its per-
+        # subdirectory default - the actual binary lands in
+        # build/RelWithDebInfo/, not build/src/RelWithDebInfo/ (that
+        # would only be true if CMAKE_RUNTIME_OUTPUT_DIRECTORY were
+        # unset). Confirmed by a real CI failure - "term not recognized".
+        run: .\RelWithDebInfo\familiar.exe -t
+
   windows-pack:
     name: VS 2022 ${{ matrix.config.arch }}-${{ matrix.type }}
+    needs: run-tests
     runs-on: windows-2022
     env:
       VCINSTALLDIR: C:/Program Files (x86)/Microsoft Visual Studio/2022/Enterprise/VC/

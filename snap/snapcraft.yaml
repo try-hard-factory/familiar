@@ -1,0 +1,49 @@
+name: familiar
+base: core24
+adopt-info: familiar
+summary: Reference board for 2D/3D artists
+description: |
+  Familiar is a canvas for collecting, arranging, and annotating
+  reference images - built for 2D/3D artists who need a fast,
+  board of source material next to their main work
+  surface.
+grade: stable
+confinement: strict
+
+apps:
+  familiar:
+    command: usr/bin/familiar
+    desktop: usr/share/applications/org.tryhardfactory.Familiar.desktop
+    # kde-neon-6: the Qt6/KDE-Frameworks-6 extension (core22/core24) -
+    # connects the snap to the Qt6/KDE-Frameworks runtime content snaps
+    # instead of vendoring Qt inside the snap itself, and sets
+    # CMAKE_PREFIX_PATH/CMAKE_FIND_ROOT_PATH at build time to the
+    # matching SDK content snap. familiar doesn't use any actual KDE
+    # Frameworks API (plain Qt6 Widgets) - this is still the standard,
+    # documented path for a C++/Qt6 app on Snapcraft, not KDE-specific
+    # in practice.
+    extensions: [kde-neon-6]
+    plugs:
+      - home
+      - removable-media
+      - network
+      - opengl
+      - wayland
+      - x11
+
+parts:
+  familiar:
+    plugin: cmake
+    source: .
+    source-type: local
+    cmake-parameters:
+      - -DCMAKE_BUILD_TYPE=RelWithDebInfo
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DRUN_IN_PLACE=OFF
+    # No AppStream metainfo.xml yet (only a .desktop + mime association -
+    # see docs/packaging notes) so no parse-info-based version adoption -
+    # pull the version the same way every other packaging workflow in
+    # this project already does, straight from CMakeLists.txt.
+    override-pull: |
+      craftctl default
+      craftctl set version="$(grep 'set.*(.*FAMILIAR_VERSION' CMakeLists.txt | sed 's/[^0-9.]*//' | sed 's/)//g')"

@@ -1,5 +1,5 @@
-flameshot (12.1.0-1) unstable; urgency=medium
+familiar (0.0.15-1) unstable; urgency=medium
 
-  * New stable release.
+  * Initial Debian packaging for familiar.
 
- -- Jeremy Borgman <borgman.jeremy@pm.me>  Sun, 7 Jul 2022 18:24:29 -0600
+ -- try-hard-factory <mpano91@gmail.com>  Wed, 19 Aug 2026 00:00:00 +0000

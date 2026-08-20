@@ -23,7 +23,7 @@ build_script:
 - cmd: |-
     mkdir C:\projects\source\build\artifact
     copy C:\projects\source\build\package\*.msi C:\projects\source\build\artifact\.
-    copy C:\projects\source\build-portable\src\RelWithDebInfo\*.exe C:\projects\source\build\artifact\.
+    copy C:\projects\source\build-portable\RelWithDebInfo\*.exe C:\projects\source\build\artifact\.
     7z a -tzip C:\projects\source\build\artifact.zip C:\projects\source\build\artifact\
 
 artifacts:

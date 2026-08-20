@@ -187,7 +187,6 @@ if (MSVC)
 endif()
 
 if (WIN32)
-    message(!!!!!!!!)
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
@@ -196,7 +195,12 @@ if (WIN32)
         Dbghelp # MiniDumpWriteDump - log/log.cpp's crash-dump handler
     )
 elseif(APPLE)
-
+    target_link_libraries(familiar PRIVATE
+        Qt${QT_VERSION_MAJOR}::Widgets
+        Qt${QT_VERSION_MAJOR}::Network
+        quill::quill
+        miniz
+    )
 else()
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
@@ -229,6 +233,14 @@ target_link_libraries(familiar PRIVATE
     GTest::gmock
     Qt${QT_VERSION_MAJOR}::Test
 )
+
+# Registers the embedded suite with CTest - `ctest` (build_cmake.yml's CI
+# check) was otherwise finding zero tests and silently passing regardless
+# of whether `familiar -t` itself would have failed, since nothing ever
+# called enable_testing()/add_test(). The real work happens inside the
+# already-linked GoogleTest suite (main.cpp's "-t" handling) - this just
+# gives CTest a way to invoke it and report the one aggregate result.
+add_test(NAME familiar_tests COMMAND familiar -t)
 
 
 
@@ -334,6 +346,72 @@ if (APPLE)
         message(WARNING "packaging/macos/familiar.icns not found - the app "
                 "bundle will use a generic icon until it's added (see "
                 "Info.plist's CFBundleIconFile / CFBundleTypeIconFile).")
+    endif ()
+
+    # Code signing settings - optional, set to empty string to skip signing.
+    # Leaving both empty (the default) still ad-hoc-signs the bundle below -
+    # required for Apple Silicon to run it at all, not just to silence
+    # Gatekeeper - but skips anything needing a real Developer ID.
+    set(CODE_SIGN_IDENTITY "" CACHE STRING "Code signing identity (leave empty to skip signing)")
+    set(DMG_SIGN_IDENTITY "" CACHE STRING "DMG signing identity (leave empty to skip signing)")
+
+    # `cmake --build . --target create_dmg` (or `ninja create_dmg`) - a
+    # signed-or-unsigned .dmg via packaging/macos/create_dmg.sh, same
+    # mechanism CPack's own APPLE ZIP generator (top-level CMakeLists.txt)
+    # doesn't cover (a .dmg isn't a CPack generator this project uses).
+    add_custom_target(create_dmg
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../packaging/macos/create_dmg.sh
+                "$<TARGET_BUNDLE_DIR:familiar>"
+                "${CMAKE_CURRENT_BINARY_DIR}/familiar-${PROJECT_VERSION}.dmg"
+                "${CODE_SIGN_IDENTITY}"
+                "${DMG_SIGN_IDENTITY}"
+        DEPENDS familiar
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Creating DMG"
+        VERBATIM
+    )
+
+    # macdeployqt - embeds Qt's own frameworks/plugins into the app
+    # bundle. Without this the bundle only has familiar's own binary +
+    # Resources - it only ran at all on a machine with the exact same
+    # Homebrew Qt6 install, which defeats the point of shipping a .dmg
+    # (real gap this fixes - noticed because the .dmg came out ~3MB,
+    # a dead giveaway next to Windows/AppImage/tar.gz/snap all being
+    # 30-58MB once they actually bundle Qt; windeployqt already does the
+    # equivalent job below for Windows, this was just never added here).
+    # POST_BUILD on familiar itself (same reasoning as codesign below),
+    # and registered BEFORE codesign - has to run first, since it adds
+    # files into the bundle that then need to be covered by the
+    # (--deep) signature, not the other way around.
+    get_filename_component(FAMILIAR_QT_BIN_DIR "${Qt6_DIR}/../../../bin" ABSOLUTE)
+    find_program(MACDEPLOYQT_EXECUTABLE macdeployqt HINTS "${FAMILIAR_QT_BIN_DIR}")
+    if (MACDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET familiar POST_BUILD
+            COMMAND ${MACDEPLOYQT_EXECUTABLE} "$<TARGET_BUNDLE_DIR:familiar>"
+            COMMENT "Deploying Qt frameworks into app bundle with macdeployqt"
+        )
+    else ()
+        message(WARNING "macdeployqt not found (looked in "
+                "${FAMILIAR_QT_BIN_DIR}) - the .app bundle/.dmg will NOT "
+                "be self-contained and will only run on machines with a "
+                "matching Qt6 install already present.")
+    endif ()
+
+    # Always sign the app bundle (either with identity or ad hoc) - a
+    # POST_BUILD step on familiar itself, not just create_dmg, so a plain
+    # `cmake --build .` bundle is runnable on Apple Silicon even if nobody
+    # asks for a .dmg at all.
+    if (CODE_SIGN_IDENTITY AND NOT CODE_SIGN_IDENTITY STREQUAL "")
+        add_custom_command(TARGET familiar POST_BUILD
+            COMMAND codesign --force --deep --sign "${CODE_SIGN_IDENTITY}"
+                    --options runtime --timestamp "$<TARGET_BUNDLE_DIR:familiar>"
+            COMMENT "Code signing app bundle with ${CODE_SIGN_IDENTITY}"
+        )
+    else ()
+        add_custom_command(TARGET familiar POST_BUILD
+            COMMAND codesign --force --deep --sign - "$<TARGET_BUNDLE_DIR:familiar>"
+            COMMENT "Ad hoc code signing app bundle (no identity required)"
+        )
     endif ()
 endif ()
 
