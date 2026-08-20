@@ -126,6 +126,12 @@ jobs:
         run: xvfb-run -a ctest -C $BUILD_TYPE --output-on-failure
 
   windows-build:
+    # Explicit name - without one, GitHub auto-generates one from every
+    # matrix key concatenated together and truncates it at 100 chars
+    # with "...", ending up unstable/ugly as a branch-protection
+    # required-check name. linux-build/macos-build already avoid this
+    # the same way (name: ${{ matrix.os }} / name: macOS).
+    name: Windows
     runs-on: ${{ matrix.config.os }}
     strategy:
       fail-fast: false
