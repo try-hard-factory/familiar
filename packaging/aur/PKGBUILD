@@ -1,0 +1,36 @@
+# This file belongs in its own AUR git repo (familiar.git, pushed to
+# ssh://aur@aur.archlinux.org/familiar.git) - kept here as a
+# draft/reference only. Needs .SRCINFO generated alongside it via
+# `makepkg --printsrcinfo > .SRCINFO` on an actual Arch machine before
+# pushing - not hand-written here, too easy to get subtly wrong without
+# the real tool.
+# Maintainer: try-hard-factory <mpano91@gmail.com>
+pkgname=familiar
+pkgver=0.0.16
+pkgrel=1
+pkgdesc="Reference board for 2D/3D artists"
+arch=('x86_64')
+url="https://github.com/try-hard-factory/familiar"
+license=('GPL3')
+depends=('qt6-base')
+makedepends=('cmake' 'git' 'ninja')
+source=("git+https://github.com/try-hard-factory/familiar.git#tag=v${pkgver}")
+sha256sums=('SKIP') # git source - makepkg verifies the tag itself, not a tarball hash
+
+prepare() {
+  cd "$pkgname"
+  git submodule update --init --recursive
+}
+
+build() {
+  cmake -S "$pkgname" -B build \
+    -GNinja \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DRUN_IN_PLACE=OFF
+  cmake --build build
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+}

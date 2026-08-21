@@ -1,6 +1,14 @@
 name: Building(CMake)
 
 on:
+  # PR into main - build+test only, no packaging (that's each
+  # *-pack.yml's own job, tag-triggered).
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
   push:
     branches:
       - main
