@@ -1,0 +1,382 @@
+name: Nightly
+
+# Builds from main's current HEAD, not a tag - a rolling snapshot, not a
+# release. Portable formats only, deliberately - no installers (no MSI,
+# no signed .dmg via create_dmg), no deb/rpm distro matrix, no Snap/
+# Flatpak store publishing. Just a plain archive per platform:
+# Windows .zip, macOS .zip (CPack's plain APPLE ZIP generator, not the
+# create_dmg/codesign target - see CMakeLists.txt's own ZIP generator
+# for APPLE), Linux .tar.gz + AppImage.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  QT_VERSION: '6.11.1'
+  WINDOWS_QT_VERSION: '6.10.3'
+  BUILD_TYPE: RelWithDebInfo
+  # Server-side layout: <DEPLOY_PATH>/nightly/<date>-<hash>/<files>,
+  # plus <DEPLOY_PATH>/nightly/latest.json. Nothing server-specific is
+  # hardcoded here - host/user/path/key all come from repo secrets, see
+  # each job's "Configure SSH" step for what needs to exist:
+  # NIGHTLY_SSH_KEY, NIGHTLY_SSH_HOST, NIGHTLY_SSH_USER,
+  # NIGHTLY_DEPLOY_PATH.
+  DEPLOY_SUBDIR: nightly
+
+jobs:
+  # Gate - same reasoning as every *-pack.yml's own run-tests: cheap
+  # insurance before spending Windows/macOS CI minutes on something that
+  # might not even compile. Also where $FULL_VERSION gets computed once
+  # and handed to every other job via outputs, so all of them agree on
+  # the exact same version/hash/date string for filenames + the
+  # manifest (computing it independently per job risks the date rolling
+  # over, or jobs disagreeing if they don't start at the exact same
+  # instant).
+  prep:
+    name: Prepare version + run tests
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      full_version: ${{ steps.ver.outputs.full_version }}
+      date: ${{ steps.ver.outputs.date }}
+      git_hash: ${{ steps.ver.outputs.git_hash }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Compute version
+        id: ver
+        shell: bash
+        run: |
+          VERSION="$(cat CMakeLists.txt | grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' | sed 's/)//g')"
+          GIT_HASH="$(git rev-parse --short HEAD)"
+          DATE="$(date -u +%Y-%m-%d)"
+          FULL_VERSION="${VERSION}+git-${GIT_HASH}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "git_hash=$GIT_HASH" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "full_version=$FULL_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install build tools
+        run: |
+          sudo apt-get -y -qq update
+          sudo apt-get -y --no-install-recommends install cmake build-essential xvfb
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ env.QT_VERSION }}
+          target: desktop
+          dir: '${{ github.workspace }}/qt/'
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DRUN_IN_PLACE=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: Test
+        working-directory: build
+        run: xvfb-run -a ctest --output-on-failure
+
+  windows-nightly:
+    name: Windows (portable)
+    needs: prep
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.WINDOWS_QT_VERSION }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ env.WINDOWS_QT_VERSION }}
+          target: desktop
+          dir: '${{ github.workspace }}/qt/'
+
+      - name: Configure
+        # RUN_IN_PLACE=TRUE - the portable tree (RUN_IN_PLACE=FALSE is
+        # the WIX-installer tree, not built here at all).
+        run: cmake -B build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DRUN_IN_PLACE=TRUE
+
+      - name: Build
+        run: cmake --build build --parallel 2 --config ${{ env.BUILD_TYPE }}
+
+      - name: CPack
+        working-directory: build
+        run: cpack -G ZIP -C ${{ env.BUILD_TYPE }}
+
+      - name: Rename + SHA256Sum
+        shell: pwsh
+        working-directory: build
+        run: |
+          $full = "${{ needs.prep.outputs.full_version }}"
+          Get-ChildItem -Filter "familiar-*-win64.zip" | Rename-Item -NewName "familiar-$full-win64.zip"
+          $hash = (Get-FileHash "familiar-$full-win64.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  familiar-$full-win64.zip" | Out-File -Encoding ascii "familiar-$full-win64.zip.sha256sum"
+
+      # SSH deploy disabled for now - NIGHTLY_SSH_KEY/HOST/USER/
+      # DEPLOY_PATH secrets don't exist yet. Uncomment once they're set
+      # (Settings > Secrets and variables > Actions) and remove the
+      # Artifact Upload step below. Kept here rather than deleted so
+      # there's nothing to re-derive later.
+      # - name: Configure SSH
+      #   shell: bash
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     echo "${{ secrets.NIGHTLY_SSH_KEY }}" > ~/.ssh/id_ed25519
+      #     ssh-keyscan -H "${{ secrets.NIGHTLY_SSH_HOST }}" >> ~/.ssh/known_hosts
+      #
+      # - name: Upload
+      #   shell: bash
+      #   working-directory: build
+      #   run: |
+      #     FULL="${{ needs.prep.outputs.full_version }}"
+      #     DIR="${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.git_hash }}"
+      #     DEST="${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}:${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/$DIR/"
+      #     ssh -i ~/.ssh/id_ed25519 "${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}" \
+      #       "mkdir -p ${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/$DIR"
+      #     scp -i ~/.ssh/id_ed25519 "familiar-$FULL-win64.zip" "familiar-$FULL-win64.zip.sha256sum" "$DEST"
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ needs.prep.outputs.full_version }}-windows
+          path: |
+            build/familiar-${{ needs.prep.outputs.full_version }}-win64.zip
+            build/familiar-${{ needs.prep.outputs.full_version }}-win64.zip.sha256sum
+          overwrite: true
+
+  macos-nightly:
+    name: macOS (portable)
+    needs: prep
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install Qt6
+        run: brew install qt@6
+
+      - name: Configure
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DQt6_DIR="$(brew --prefix qt@6)/lib/cmake/Qt6"
+
+      - name: Compile
+        run: cmake --build build --parallel "$(sysctl -n hw.ncpu)"
+
+      - name: CPack
+        # Plain zip of the .app bundle - CMakeLists.txt's own
+        # `elseif(APPLE) set(CPACK_GENERATOR ZIP)`, not create_dmg (that
+        # target is signed-installer territory, not portable). The .app
+        # itself is still ad-hoc-signed regardless (POST_BUILD on the
+        # familiar target itself, unconditional) - required just to run
+        # on Apple Silicon at all, separate from "is this an installer".
+        working-directory: build
+        run: cpack -G ZIP -C ${{ env.BUILD_TYPE }}
+
+      - name: Rename + SHA256Sum
+        working-directory: build
+        run: |
+          VERSION="${{ needs.prep.outputs.version }}"
+          FULL="${{ needs.prep.outputs.full_version }}"
+          mv "familiar-${VERSION}-osx.zip" "familiar-${FULL}-osx-arm64.zip"
+          shasum -a 256 "familiar-${FULL}-osx-arm64.zip" | tee "familiar-${FULL}-osx-arm64.zip.sha256sum"
+
+      # SSH deploy disabled for now - see windows-nightly's identical
+      # comment on why.
+      # - name: Configure SSH
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     echo "${{ secrets.NIGHTLY_SSH_KEY }}" > ~/.ssh/id_ed25519
+      #     chmod 600 ~/.ssh/id_ed25519
+      #     ssh-keyscan -H "${{ secrets.NIGHTLY_SSH_HOST }}" >> ~/.ssh/known_hosts
+      #
+      # - name: Upload
+      #   working-directory: build
+      #   run: |
+      #     FULL="${{ needs.prep.outputs.full_version }}"
+      #     DIR="${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.git_hash }}"
+      #     DEST="${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}:${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/$DIR/"
+      #     ssh -i ~/.ssh/id_ed25519 "${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}" \
+      #       "mkdir -p ${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/$DIR"
+      #     scp -i ~/.ssh/id_ed25519 "familiar-$FULL-osx-arm64.zip" "familiar-$FULL-osx-arm64.zip.sha256sum" "$DEST"
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ needs.prep.outputs.full_version }}-macos
+          path: |
+            build/familiar-${{ needs.prep.outputs.full_version }}-osx-arm64.zip
+            build/familiar-${{ needs.prep.outputs.full_version }}-osx-arm64.zip.sha256sum
+          overwrite: true
+
+  linux-nightly:
+    name: Linux (portable)
+    needs: prep
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Install build tools
+        run: |
+          sudo apt-get -y -qq update
+          sudo apt-get -y --no-install-recommends install cmake build-essential fuse libfuse2
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: 'true'
+          cache-key-prefix: install-qt-action-${{ env.QT_VERSION }}
+          target: desktop
+          dir: '${{ github.workspace }}/qt/'
+
+      # tar.gz via CPack
+      - name: Configure (tar.gz)
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DRUN_IN_PLACE=OFF
+
+      - name: Build
+        run: cmake --build build --parallel "$(nproc)"
+
+      - name: CPack
+        working-directory: build
+        run: cpack -G TGZ -C ${{ env.BUILD_TYPE }}
+
+      - name: Rename tar.gz
+        working-directory: build
+        run: |
+          VERSION="${{ needs.prep.outputs.version }}"
+          FULL="${{ needs.prep.outputs.full_version }}"
+          mv "familiar-${VERSION}-linux.tar.gz" "familiar-${FULL}-linux.tar.gz"
+          sha256sum "familiar-${FULL}-linux.tar.gz" | tee "familiar-${FULL}-linux.tar.gz.sha256sum"
+
+      # AppImage - separate install tree (CMAKE_INSTALL_PREFIX=/usr,
+      # matches every other AppImage job in this project)
+      - name: Download linuxdeploy + Qt plugin
+        run: |
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          wget -c -nv "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage"
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Configure + build (AppImage tree)
+        run: |
+          cmake -B build-appimage -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_INSTALL_PREFIX=/usr -DRUN_IN_PLACE=OFF
+          cmake --build build-appimage --parallel "$(nproc)"
+
+      - name: Install into AppDir
+        run: |
+          mkdir -p AppDir
+          DESTDIR=$GITHUB_WORKSPACE/AppDir cmake --install build-appimage
+
+      - name: Build AppImage
+        run: |
+          export QMAKE="$(which qmake6 2>/dev/null || which qmake)"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir --plugin qt --output appimage
+
+      - name: Rename AppImage
+        run: |
+          FULL="${{ needs.prep.outputs.full_version }}"
+          APPIMAGE_FILE=$(find . -maxdepth 1 -iname "*.AppImage" ! -iname "linuxdeploy*")
+          mv "$APPIMAGE_FILE" "familiar-${FULL}-x86_64.AppImage"
+          sha256sum "familiar-${FULL}-x86_64.AppImage" | tee "familiar-${FULL}-x86_64.AppImage.sha256sum"
+
+      # SSH deploy disabled for now - see windows-nightly's identical
+      # comment on why.
+      # - name: Configure SSH
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     echo "${{ secrets.NIGHTLY_SSH_KEY }}" > ~/.ssh/id_ed25519
+      #     chmod 600 ~/.ssh/id_ed25519
+      #     ssh-keyscan -H "${{ secrets.NIGHTLY_SSH_HOST }}" >> ~/.ssh/known_hosts
+      #
+      # - name: Upload
+      #   run: |
+      #     FULL="${{ needs.prep.outputs.full_version }}"
+      #     DIR="${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.git_hash }}"
+      #     DEST="${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}:${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/$DIR/"
+      #     ssh -i ~/.ssh/id_ed25519 "${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}" \
+      #       "mkdir -p ${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/$DIR"
+      #     scp -i ~/.ssh/id_ed25519 \
+      #       "build/familiar-$FULL-linux.tar.gz" "build/familiar-$FULL-linux.tar.gz.sha256sum" \
+      #       "familiar-$FULL-x86_64.AppImage" "familiar-$FULL-x86_64.AppImage.sha256sum" \
+      #       "$DEST"
+
+      - name: Artifact Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: familiar-${{ needs.prep.outputs.full_version }}-linux
+          path: |
+            build/familiar-${{ needs.prep.outputs.full_version }}-linux.tar.gz
+            build/familiar-${{ needs.prep.outputs.full_version }}-linux.tar.gz.sha256sum
+            familiar-${{ needs.prep.outputs.full_version }}-x86_64.AppImage
+            familiar-${{ needs.prep.outputs.full_version }}-x86_64.AppImage.sha256sum
+          overwrite: true
+
+  # Whole job disabled for now - entirely SSH-dependent (writes
+  # latest.json to the server + prunes old builds there), nothing left
+  # to do without NIGHTLY_SSH_KEY/HOST/USER/DEPLOY_PATH secrets. Meanwhile
+  # each platform job above uploads its own build as a plain GitHub
+  # Actions artifact instead (Actions tab > this run > Artifacts),
+  # downloadable manually. Uncomment once the secrets exist and the
+  # per-job "Artifact Upload" steps are swapped back for the commented-
+  # out SSH ones.
+  # publish-manifest:
+  #   name: Publish manifest + prune old builds
+  #   needs: [prep, windows-nightly, macos-nightly, linux-nightly]
+  #   runs-on: ubuntu-24.04
+  #   steps:
+  #     - name: Configure SSH
+  #       run: |
+  #         mkdir -p ~/.ssh
+  #         echo "${{ secrets.NIGHTLY_SSH_KEY }}" > ~/.ssh/id_ed25519
+  #         chmod 600 ~/.ssh/id_ed25519
+  #         ssh-keyscan -H "${{ secrets.NIGHTLY_SSH_HOST }}" >> ~/.ssh/known_hosts
+  #
+  #     - name: Build + upload latest.json
+  #       run: |
+  #         FULL="${{ needs.prep.outputs.full_version }}"
+  #         DIR="${{ needs.prep.outputs.date }}-${{ needs.prep.outputs.git_hash }}"
+  #         cat > latest.json <<EOF
+  #         {
+  #           "version": "${{ needs.prep.outputs.version }}",
+  #           "commit": "${{ needs.prep.outputs.git_hash }}",
+  #           "date": "${{ needs.prep.outputs.date }}",
+  #           "built_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  #           "assets": {
+  #             "windows-zip": "${{ env.DEPLOY_SUBDIR }}/$DIR/familiar-$FULL-win64.zip",
+  #             "macos-zip": "${{ env.DEPLOY_SUBDIR }}/$DIR/familiar-$FULL-osx-arm64.zip",
+  #             "linux-appimage": "${{ env.DEPLOY_SUBDIR }}/$DIR/familiar-$FULL-x86_64.AppImage",
+  #             "linux-targz": "${{ env.DEPLOY_SUBDIR }}/$DIR/familiar-$FULL-linux.tar.gz"
+  #           }
+  #         }
+  #         EOF
+  #         scp -i ~/.ssh/id_ed25519 latest.json \
+  #           "${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}:${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}/latest.json"
+  #
+  #     - name: Prune old nightly builds
+  #       # Keeps the newest 7 dated dirs, deletes the rest - `ls` sort
+  #       # works because the dir naming (YYYY-MM-DD-hash) sorts
+  #       # chronologically as a plain string.
+  #       run: |
+  #         ssh -i ~/.ssh/id_ed25519 "${{ secrets.NIGHTLY_SSH_USER }}@${{ secrets.NIGHTLY_SSH_HOST }}" '
+  #           cd "${{ secrets.NIGHTLY_DEPLOY_PATH }}/${{ env.DEPLOY_SUBDIR }}" || exit 0
+  #           ls -1d */ 2>/dev/null | sort | head -n -7 | xargs -r rm -rf --
+  #         '
