@@ -139,6 +139,8 @@ set(PROJECT_SOURCES
         widgets/file_browser_dialog.h
         widgets/save_all_dialog.cpp
         widgets/save_all_dialog.h
+        widgets/restore_defaults_dialog.cpp
+        widgets/restore_defaults_dialog.h
         widgets/help_dialog.cpp
         widgets/help_dialog.h
         widgets/about_dialog.cpp

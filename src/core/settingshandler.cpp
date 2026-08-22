@@ -248,6 +248,11 @@ void SettingsHandler::removeJsonGroup(const QString& group)
     saveDocument();
 }
 
+bool SettingsHandler::jsonGroupIsEmpty(const QString& group) const
+{
+    return document_.value(group).toObject().isEmpty();
+}
+
 QStringList SettingsHandler::recentFilesRaw() const
 {
     QStringList out;

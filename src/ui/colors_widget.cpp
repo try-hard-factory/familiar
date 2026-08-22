@@ -14,7 +14,6 @@ using namespace familiar::log;
 #include <QButtonGroup>
 #include <QIcon>
 #include <QLabel>
-#include <QMessageBox>
 #include <QPainter>
 #include <QPushButton>
 #include <QToolButton>
@@ -90,23 +89,6 @@ ColorsWidget::~ColorsWidget()
 {
     delete layout_;
 }
-
-void ColorsWidget::resetCurrentPreset()
-{
-    QMessageBox::StandardButton reply = showMessageBox(
-        QMessageBox::Question,
-        this,
-        tr("Confirm Reset"),
-        tr("Are you sure you want to reset the configuration?"),
-        QMessageBox::Yes | QMessageBox::No);
-    if (reply == QMessageBox::Yes) {
-        auto* settings = SettingsHandler::getInstance();
-        settings->setDefaultCurrentPreset();
-        //_updateComponents(true);
-        emit SettingsHandler::getInstance() -> presetsChanged();
-    }
-}
-
 
 void ColorsWidget::labelsInit()
 {
@@ -347,17 +329,11 @@ void ColorsWidget::saveResetBtnsInit()
             this,
             &ColorsWidget::showPresetSaveWindow);
 
-    QPushButton* reset_to_default_btn = new QPushButton(tr("Reset to default"),
-                                                        this);
-    reset_to_default_btn->setStyleSheet(
-        familiar::settings_style::filledButtonStyleSheet());
-    connect(reset_to_default_btn,
-            &QPushButton::clicked,
-            this,
-            &ColorsWidget::resetCurrentPreset);
-
+    // "Reset to default" used to live here too - redundant now that the
+    // window's own Restore Defaults button (settings_window.cpp) opens
+    // RestoreDefaultsDialog with a Colors category covering exactly the
+    // same reset, per-category checkbox and all. Max's call.
     bottom_layout_->addWidget(save_to_preset_btn);
-    bottom_layout_->addWidget(reset_to_default_btn);
 }
 
 void ColorsWidget::showPresetSaveWindow()
