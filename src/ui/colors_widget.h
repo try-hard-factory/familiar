@@ -19,7 +19,6 @@ public:
     ~ColorsWidget();
 
 private:
-    void resetCurrentPreset();
     void labelsInit();
     void presetsInit();
     void colorInit();

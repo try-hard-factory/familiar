@@ -9,6 +9,7 @@
 #include <widgets/dialog_style.h>
 #include <widgets/dialogs.h>
 #include <widgets/file_browser_dialog.h>
+#include <widgets/restore_defaults_dialog.h>
 #include <widgets/setting_row.h>
 #include <widgets/settings_style.h>
 #include <QAbstractTextDocumentLayout>
@@ -320,15 +321,72 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     resetBtn->setCursor(Qt::PointingHandCursor);
     resetBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
     connect(resetBtn, &QPushButton::clicked, this, [this]() {
-        const auto reply = showMessageBox(
-            QMessageBox::Question,
-            this,
-            tr("Restore defaults?"),
-            tr("Do you want to restore all settings to their default values?"),
-            QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
-            FamSettings().restoreDefaults();
+        // Stack-allocated, not `new` - RestoreDefaultsDialog deliberately
+        // doesn't set WA_DeleteOnClose (see its own constructor comment:
+        // that combined with exec() let Qt's nested event loop free the
+        // object before exec() even returned, a real crash reading
+        // checkedCategories() right after).
+        RestoreDefaultsDialog dialog(this);
+        if (dialog.exec() != QDialog::Accepted) {
+            return;
+        }
+        const QList<familiar::SettingsCategory> checked =
+            dialog.checkedCategories();
+
+        // "Performance"/"Images & Items" don't line up 1:1 with the
+        // "Save"/"Items" JSON groups underneath (e.g. Items/
+        // undo_history_size shows on the Performance page, not Images &
+        // Items) - reset by the exact keys each page actually shows
+        // instead of nuking a whole JSON group, so unchecking one
+        // category can't quietly wipe a setting that lives on another
+        // page. RestoreDefaultsDialog::famSettingsKeysFor() is the one
+        // place that list lives - keep IT in sync with the addWidget()
+        // calls above if either page's contents change, not here too.
+        if (checked.contains(familiar::SettingsCategory::Performance)) {
+            FamSettings settings;
+            for (const QString& key : RestoreDefaultsDialog::famSettingsKeysFor(
+                     familiar::SettingsCategory::Performance)) {
+                settings.setValue(key, FamSettings::fields()[key].defaultValue);
+            }
+        }
+        if (checked.contains(familiar::SettingsCategory::ImagesAndItems)) {
+            FamSettings settings;
+            for (const QString& key : RestoreDefaultsDialog::famSettingsKeysFor(
+                     familiar::SettingsCategory::ImagesAndItems)) {
+                settings.setValue(key, FamSettings::fields()[key].defaultValue);
+            }
+        }
+        if (checked.contains(familiar::SettingsCategory::Colors)) {
+            // Already resets the current preset's own opacity entry too
+            // (masterOpacity is a QMap<presetIndex, opacity> -
+            // setDefaultCurrentPreset()'s own setCurrentOpacity(255)
+            // call at the end only touches the CURRENT preset's slot in
+            // that map, same granularity as the color values it resets
+            // above it - not the whole map for every preset, which an
+            // earlier version of this fix wrongly did via a blanket
+            // remove("masterOpacity")).
+            SettingsHandler::getInstance()->setDefaultCurrentPreset();
+            // Neither setDefaultCurrentPreset() nor setCurrentOpacity()
+            // emits this on their own - ColorsWidget::updateComponents()
+            // (connected to it) is what actually repaints the color
+            // swatches/opacity slider from storage. Without this, the
+            // JSON value was already correct (Max confirmed: "мастер
+            // опасити сбросилось") but the visible slider stayed stale
+            // until the Settings window was closed and reopened -
+            // matches how colors_widget.cpp's own preset-switch/Import
+            // handlers already emit this same signal after changing
+            // anything here.
+            emit SettingsHandler::getInstance()->presetsChanged();
+        }
+        if (checked.contains(familiar::SettingsCategory::KeyboardShortcuts)) {
             KeyboardSettings().restoreDefaults();
+        }
+        // Every bound row already listens for this to re-read its value
+        // from storage (Import above relies on the same signal) - fired
+        // once regardless of which categories were picked, harmless for
+        // untouched pages since they just redisplay the same value.
+        if (!checked.isEmpty()) {
+            emit SettingsEvents::instance().restoreDefaults();
         }
     });
     bottomColumn->addWidget(resetBtn);

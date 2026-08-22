@@ -110,6 +110,11 @@ public:
                       const QJsonValue& value);
     void removeJsonValue(const QString& group, const QString& key);
     void removeJsonGroup(const QString& group);
+    // True if `group` has no stored keys at all (missing entirely, or
+    // present but empty) - i.e. "nothing here differs from the code
+    // defaults". Used by RestoreDefaultsDialog to pre-check only the
+    // categories that actually have something to restore.
+    bool jsonGroupIsEmpty(const QString& group) const;
     QStringList recentFilesRaw() const;
     void setRecentFilesRaw(const QStringList& files);
 
