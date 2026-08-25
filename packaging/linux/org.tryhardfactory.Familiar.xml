@@ -5,5 +5,24 @@
     <comment xml:lang="ru">Проект референс-борда Familiar</comment>
     <glob pattern="*.fml"/>
     <icon name="org.tryhardfactory.Familiar"/>
+    <!-- Same convention EPUB/ODF use for content-based detection of a
+         zip-based format (verified against shared-mime-info's own real
+         freedesktop.org.xml.in entries for application/epub+zip and
+         .opendocument.text) - a "mimetype" entry, stored uncompressed
+         with no extra field, as literally the first entry in the
+         archive (src/fml_archive.cpp's FmlArchive::save() writes it
+         first, for exactly this reason). Byte offsets are fixed by the
+         zip local file header format itself (30-byte header + 8-byte
+         "mimetype" name), not arbitrary. Glob above already handles
+         normal *.fml files - this only matters for extension-less/
+         renamed files or tools that sniff content over extension. \003
+         \004 are octal escapes for PK\x03\x04, not hex - shared-mime-info's own syntax, confirmed against real entries. -->
+    <magic priority="50">
+      <match type="string" value="PK\003\004" offset="0">
+        <match type="string" value="mimetype" offset="30">
+          <match type="string" value="application/x-familiar-fml" offset="38"/>
+        </match>
+      </match>
+    </magic>
   </mime-type>
 </mime-info>
