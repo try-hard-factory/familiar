@@ -1,80 +1,92 @@
 #
-# spec file for package familiar on fedora, rhel, opensuse leap 15.x
+# spec file for package familiar - wraps an already-built AppImage,
+# same approach PureRef's own .deb uses (see packaging/debian/control
+# for the sourced reference) - no compiling here, no per-distro Qt
+# BuildRequires, just installing files into %{buildroot}. Only real
+# runtime dependency is fuse-libs (Fedora's FUSE2 runtime package name -
+# verified via web search), needed to mount the AppImage.
 #
-
-# fedora >= 30, rhel >= 7
-%define is_rhel_or_fedora (0%{?fedora} && 0%{?fedora} >= 30) || (0%{?rhel} && 0%{?rhel} >= 7)
-# openSUSE Leap >= 15.2
-%define is_suse_leap (0%{?is_opensuse} && 0%{?sle_version} >= 150200)
 
 Name: familiar
 # Placeholder - Linux-pack.yml's rpm-pack job overwrites this with the
-# real $VERSION (from CMakeLists.txt) and appends the commit hash to
-# Release before building, so it never actually goes stale for a CI
-# build. Kept roughly current here for anyone building this spec
-# standalone.
+# real $VERSION (from CMakeLists.txt) before building, same as
+# packaging/debian/control's @VERSION@ placeholder gets sed'd. Kept
+# roughly current here for anyone building this spec standalone.
 Version: 0.0.16
-%if %{is_rhel_or_fedora}
 Release: 1%{?dist}
-%endif
-%if %{is_suse_leap}
-Release: 1
-%endif
 License: GPL-3.0-or-later
 Summary: Reference board for 2D/3D artists
 URL: https://github.com/try-hard-factory/familiar
-Source0: %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
-BuildRequires: cmake >= 3.16.0
-BuildRequires: gcc-c++ >= 9
-BuildRequires: desktop-file-utils
-BuildRequires: cmake(Qt6Core) >= 6.2.0
-BuildRequires: cmake(Qt6Gui) >= 6.2.0
-BuildRequires: cmake(Qt6Network) >= 6.2.0
-BuildRequires: cmake(Qt6Widgets) >= 6.2.0
+# All pre-built by the CI job before rpmbuild runs (or copied by hand
+# for a standalone build) - dropped straight into %{_sourcedir}, no
+# %prep/%build steps touch them.
+Source0: familiar-%{version}-x86_64.AppImage
+Source1: org.tryhardfactory.Familiar.desktop
+Source2: org.tryhardfactory.Familiar.xml
+Source3: familiar.svg
+Source4: familiar_256.png
+Source5: familiar_512.png
 
-Requires: hicolor-icon-theme
-%if %{is_rhel_or_fedora}
-Requires: qt6-qtbase >= 6.2.0
-%endif
-%if %{is_suse_leap}
-Requires: libQt6Core6 >= 6.2.0
-Requires: libQt6Widgets6 >= 6.2.0
-%endif
+Requires: fuse-libs
+
+# The AppImage in Source0 is one big ELF+embedded-squashfs blob, not
+# something rpm's automatic dependency scanner or its post-install
+# strip/debuginfo-extraction scripts (find-debuginfo.sh) know how to
+# handle safely - letting them run against it risks either a build
+# failure or, worse, a corrupted/stripped AppImage that silently no
+# longer runs. [Непроверено - based on documented rpm behavior around
+# these scripts, not confirmed yet against a real CI run of this exact
+# spec] Disabling both is the standard fix for "package wraps a
+# prebuilt/foreign binary" specs.
+%global debug_package %{nil}
+%global __os_install_post %{nil}
+%global _build_id_links none
+# Same reason - the automatic Requires: scanner would otherwise try to
+# ldd-style-inspect the AppImage and the desktop/mime files, and could
+# emit bogus auto-detected dependencies for a binary it doesn't
+# actually understand.
+AutoReqProv: no
 
 %description
-Familiar is a reference board for 2D/3D artists - a canvas for
-collecting, arranging, and annotating reference images.
+Familiar is a canvas for collecting, arranging, and annotating
+reference images - built for 2D/3D artists who need a fast, always-
+on-top board of source material next to their main work surface.
 
-%prep
-%autosetup -p1
-
-%build
-%if %{is_suse_leap}
-%cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DRUN_IN_PLACE=OFF
-%endif
-%if %{is_rhel_or_fedora}
-%cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo -DRUN_IN_PLACE=OFF
-%endif
-%cmake_build
+Wraps a self-contained AppImage build (same approach PureRef's own
+package uses) - no system Qt dependency, only fuse-libs to mount it.
 
 %install
-%cmake_install
+rm -rf %{buildroot}
 
-%check
-desktop-file-validate %{buildroot}%{_datadir}/applications/*.desktop
+install -Dm755 %{SOURCE0} %{buildroot}/opt/familiar/familiar.AppImage
+mkdir -p %{buildroot}%{_bindir}
+ln -s /opt/familiar/familiar.AppImage %{buildroot}%{_bindir}/familiar
+
+install -Dm644 %{SOURCE1} %{buildroot}%{_datadir}/applications/org.tryhardfactory.Familiar.desktop
+install -Dm644 %{SOURCE2} %{buildroot}%{_datadir}/mime/packages/org.tryhardfactory.Familiar.xml
+
+# Same desktop entry / mime-type / icon layout CMakeLists.txt's own
+# install() rules use for a from-source build (src/CMakeLists.txt,
+# `if (UNIX AND NOT APPLE)` block) and packaging/debian/build-deb.sh
+# mirrors on the .deb side - kept in sync by hand, since this spec no
+# longer runs that CMake code at all.
+install -Dm644 %{SOURCE3} %{buildroot}%{_datadir}/icons/hicolor/scalable/apps/org.tryhardfactory.Familiar.svg
+install -Dm644 %{SOURCE4} %{buildroot}%{_datadir}/icons/hicolor/256x256/apps/org.tryhardfactory.Familiar.png
+install -Dm644 %{SOURCE5} %{buildroot}%{_datadir}/icons/hicolor/512x512/apps/org.tryhardfactory.Familiar.png
+install -Dm644 %{SOURCE3} %{buildroot}%{_datadir}/icons/hicolor/scalable/mimetypes/org.tryhardfactory.Familiar.svg
+install -Dm644 %{SOURCE4} %{buildroot}%{_datadir}/icons/hicolor/256x256/mimetypes/org.tryhardfactory.Familiar.png
 
 %files
-%doc README.md
-%license LICENSE
-%{_bindir}/%{name}
+/opt/familiar/familiar.AppImage
+%{_bindir}/familiar
 %{_datadir}/applications/org.tryhardfactory.Familiar.desktop
 %{_datadir}/mime/packages/org.tryhardfactory.Familiar.xml
-%{_datadir}/icons/hicolor/*/apps/*.png
-%{_datadir}/icons/hicolor/*/apps/*.svg
-%{_datadir}/icons/hicolor/*/mimetypes/*.png
-%{_datadir}/icons/hicolor/*/mimetypes/*.svg
+%{_datadir}/icons/hicolor/scalable/apps/org.tryhardfactory.Familiar.svg
+%{_datadir}/icons/hicolor/256x256/apps/org.tryhardfactory.Familiar.png
+%{_datadir}/icons/hicolor/512x512/apps/org.tryhardfactory.Familiar.png
+%{_datadir}/icons/hicolor/scalable/mimetypes/org.tryhardfactory.Familiar.svg
+%{_datadir}/icons/hicolor/256x256/mimetypes/org.tryhardfactory.Familiar.png
 
 %changelog
-* Wed Aug 19 2026 try-hard-factory <mpano91@gmail.com> - 0.0.15-1
-- Initial RPM packaging for familiar.
+* See ChangeLog / GitHub releases for details.

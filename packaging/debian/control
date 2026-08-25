@@ -1,23 +1,15 @@
-Source: familiar
+Package: familiar
+Version: @VERSION@
 Section: graphics
 Priority: optional
+Architecture: amd64
+Depends: libfuse2
 Maintainer: try-hard-factory <mpano91@gmail.com>
-Build-Depends:
- cmake (>= 3.16~),
- debhelper-compat (= 13),
- qt6-base-dev (>= 6.2.0~),
-Standards-Version: 4.6.0
 Homepage: https://github.com/try-hard-factory/familiar
-Vcs-Browser: https://github.com/try-hard-factory/familiar
-Vcs-Git: https://github.com/try-hard-factory/familiar.git
-
-Package: familiar
-Architecture: any
-Depends:
- hicolor-icon-theme,
- ${shlibs:Depends},
- ${misc:Depends},
 Description: Reference board for 2D/3D artists
  Familiar is a canvas for collecting, arranging, and annotating
  reference images - built for 2D/3D artists who need a fast, always-
  on-top board of source material next to their main work surface.
+ .
+ Wraps a self-contained AppImage build (same approach PureRef's own
+ .deb uses) - no system Qt dependency, only libfuse2 to mount it.

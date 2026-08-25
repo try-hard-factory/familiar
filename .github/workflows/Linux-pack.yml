@@ -10,17 +10,19 @@ on:
 
 env:
   PRODUCT: familiar
-  # Same pin as build_cmake.yml's own Linux job - jobs below that aren't
-  # tied to a specific distro's own Qt (deb-pack/rpm-pack ARE, they build
-  # against each distro's real system Qt on purpose) use this instead of
-  # `apt-get install qt6-base-dev`. Real bug this fixes: Ubuntu 24.04's
-  # own qt6-base-dev is ~6.4 - old enough that the app itself failed to
-  # compile against it (QCheckBox::checkStateChanged is Qt 6.9+ only,
-  # confirmed by a real CI failure) even after that specific API got
-  # swapped for an older-compatible one in the app code - keeping every
-  # non-distro-pinned job on the same known-good version this project
-  # already builds and tests against everywhere else avoids hitting the
-  # next such mismatch blind.
+  # Same pin as build_cmake.yml's own Linux job - every job below that
+  # actually compiles (run-tests/tarball-pack/appimage-pack/flatpak-pack's
+  # SDK is separate) uses this instead of `apt-get install qt6-base-dev`.
+  # deb-pack/rpm-pack no longer compile at all - they just wrap
+  # appimage-pack's output - so this pin doesn't apply to them anymore.
+  # Real bug this fixes: Ubuntu 24.04's own qt6-base-dev is ~6.4 - old
+  # enough that the app itself failed to compile against it
+  # (QCheckBox::checkStateChanged is Qt 6.9+ only, confirmed by a real CI
+  # failure) even after that specific API got swapped for an
+  # older-compatible one in the app code - keeping every non-distro-pinned
+  # job on the same known-good version this project already builds and
+  # tests against everywhere else avoids hitting the next such mismatch
+  # blind.
   QT_VERSION: '6.11.1'
 
 jobs:
@@ -135,110 +137,58 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Native .deb via dpkg-buildpackage against packaging/debian/, built
-  # inside each target distro's own container image so it links against
-  # that distro's real glibc/Qt6 - a .deb built on one distro isn't
-  # portable to an arbitrary older one (glibc/Qt ABI), so "one build for
-  # everyone" was never actually true; this matrix is a wider net, not
-  # universal coverage (AppImage is the actual "works anywhere" story).
+  # .deb via packaging/debian/build-deb.sh, which wraps appimage-pack's
+  # already-built AppImage - same approach PureRef's own .deb uses (see
+  # packaging/debian/control's comment for the source verifying that).
+  # No compiling here at all anymore, so no per-distro matrix either -
+  # the old 4-way ubuntu/debian matrix existed to link against each
+  # distro's own glibc/Qt6, which no longer applies once the .deb just
+  # embeds a self-contained AppImage + declares one dependency
+  # (libfuse2) that's present on essentially every real Debian/Ubuntu
+  # install already. A single build now produces a .deb identical
+  # regardless of which distro built it. Runs directly on the runner,
+  # no `container:` needed - dpkg-deb ships on ubuntu-24.04 by default.
   deb-pack:
-    name: Build .deb (${{ matrix.dist.name }})
-    needs: run-tests
+    name: Build .deb
+    needs: [run-tests, appimage-pack]
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        dist:
-          - { name: ubuntu-24.04, image: 'ubuntu:24.04' }
-          - { name: ubuntu-26.04, image: 'ubuntu:26.04' }
-          - { name: debian-12, image: 'debian:bookworm' }
-          - { name: debian-13, image: 'debian:trixie' }
-    container:
-      image: ${{ matrix.dist.image }}
     steps:
-      # Must run BEFORE checkout, not after - a bare distro image has no
-      # git, so actions/checkout silently falls back to a REST-API
-      # tarball download instead, which flat-out rejects
-      # `submodules: true` ("Input 'submodules' not supported when
-      # falling back to download using the GitHub REST API" - a real CI
-      # failure this fixes). No sudo - already root in the container.
-      - name: Install git
-        run: |
-          apt-get -y -qq update
-          apt-get -y --no-install-recommends install git ca-certificates
-
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          submodules: true
-
-      # Same "dubious ownership" issue as rpm-pack's identical step -
-      # both jobs run inside `container:`, where the mounted
-      # $GITHUB_WORKSPACE's UID doesn't match what git considers safe.
-      # Wildcard, not just $GITHUB_WORKSPACE - the root CMakeLists.txt's
-      # FetchContent_MakeAvailable(googletest) does its OWN git clone
-      # into _deps/googletest-src during configure, a separate git repo
-      # with the same UID problem; a real CI failure this fixes (CMake
-      # Error "familiar" links to GTest::gtest but the target was not
-      # found - the FetchContent clone silently never happened, so
-      # googletest's own CMakeLists.txt, which is what actually defines
-      # GTest::gtest as an ALIAS, never ran).
-      - name: Mark workspace as a safe git directory
-        run: git config --global --add safe.directory '*'
+          submodules: false
 
       - name: Set env & Print familiar version
         shell: bash
         run: |
           echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
 
-      - name: Install build dependencies
-        run: |
-          apt-get -y -qq update
-          apt-get -y --no-install-recommends install \
-            build-essential debhelper cmake qt6-base-dev python3 xvfb xauth
-
-      - name: Prepare debian/ directory
-        run: |
-          # dpkg-buildpackage looks for ./debian relative to cwd, not
-          # packaging/debian/ (real CI failure this fixes: "cannot open
-          # file debian/changelog"). Also regenerates changelog's first
-          # line from $VERSION instead of trusting the committed file's
-          # hardcoded "0.0.15-1" - that version drives the .deb's own
-          # version number, and packaging/debian/changelog isn't the
-          # same file misc/change_log_prepend.sh maintains (that one
-          # updates the plain-text top-level ChangeLog, unrelated
-          # format/purpose) - nothing else keeps this number in sync
-          # with CMakeLists.txt's FAMILIAR_VERSION otherwise.
-          cp -r packaging/debian debian
-          python3 - <<'PYEOF'
-          import datetime, os
-          version = os.environ["VERSION"]
-          date = datetime.datetime.now(datetime.timezone.utc).strftime("%a, %d %b %Y %H:%M:%S +0000")
-          with open("debian/changelog", "w") as f:
-              f.write(
-                  f"familiar ({version}-1) unstable; urgency=medium\n\n"
-                  f"  * See ChangeLog / GitHub releases for details.\n\n"
-                  f" -- try-hard-factory <mpano91@gmail.com>  {date}\n"
-              )
-          PYEOF
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: familiar-${{ env.VERSION }}-appimage
+          path: appimage-download
 
       - name: Build .deb
-        run: dpkg-buildpackage -us -uc -b
-
-      - name: Move + SHA256Sum
         run: |
+          chmod +x "appimage-download/familiar-${VERSION}-x86_64.AppImage"
           mkdir -p build-artifacts
-          mv ../familiar_*.deb "build-artifacts/familiar-${VERSION}-${{ matrix.dist.name }}.amd64.deb"
-          cd build-artifacts
-          sha256sum familiar-${VERSION}-${{ matrix.dist.name }}.amd64.deb | tee familiar-${VERSION}-${{ matrix.dist.name }}.amd64.deb.sha256sum
+          ./packaging/debian/build-deb.sh \
+            "appimage-download/familiar-${VERSION}-x86_64.AppImage" \
+            "$VERSION" \
+            "build-artifacts/familiar-${VERSION}.amd64.deb"
+
+      - name: SHA256Sum
+        working-directory: build-artifacts
+        run: sha256sum familiar-${VERSION}.amd64.deb | tee familiar-${VERSION}.amd64.deb.sha256sum
 
       - name: Artifact Upload
         uses: actions/upload-artifact@v7
         with:
-          name: familiar-${{ env.VERSION }}-deb-${{ matrix.dist.name }}
+          name: familiar-${{ env.VERSION }}-deb
           path: |
-            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.amd64.deb
-            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.amd64.deb.sha256sum
+            build-artifacts/familiar-${{ env.VERSION }}.amd64.deb
+            build-artifacts/familiar-${{ env.VERSION }}.amd64.deb.sha256sum
           overwrite: true
 
       - name: Github Release upload
@@ -246,125 +196,87 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.amd64.deb
+            build-artifacts/familiar-${{ env.VERSION }}.amd64.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # .rpm via rpmbuild inside a Fedora container - packaging/rpm/
-  # familiar.spec already handles both Fedora/RHEL and openSUSE Leap
-  # branches, only Fedora is actually exercised here for now.
-  # fedora-43/44, not 41 - 41 is EOL as of this matrix (Fedora only
-  # maintains N and N-1, ~13 months each; verified against
-  # https://endoflife.date/fedora before picking these) so dnf against
-  # its repos would start failing as they roll off to fedora-archive.
+  # .rpm via rpmbuild against packaging/rpm/familiar.spec, which now
+  # just wraps appimage-pack's already-built AppImage (same reasoning
+  # as deb-pack's own comment above) - no compiling, no Fedora
+  # container, no per-Fedora-version matrix either, since the spec no
+  # longer needs that distro's own qt6-qtbase-devel. `rpm` is a real
+  # apt package on Ubuntu that provides rpmbuild itself (confirmed:
+  # https://manpages.ubuntu.com/manpages/jammy/man8/rpmbuild.8.html) -
+  # cross-building an .rpm from ubuntu-24.04 needs nothing Fedora-side
+  # at all once there's no compiling against Fedora's Qt.
   rpm-pack:
-    name: Build .rpm (${{ matrix.dist.name }})
-    needs: run-tests
+    name: Build .rpm
+    needs: [run-tests, appimage-pack]
     runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        dist:
-          - { name: fedora-43, image: 'fedora:43' }
-          - { name: fedora-44, image: 'fedora:44' }
-    container:
-      image: ${{ matrix.dist.image }}
     steps:
-      # Same reason as deb-pack's identical step - a bare fedora image
-      # has no git, so actions/checkout would fall back to a REST-API
-      # download that rejects `submodules: true`. Must run before
-      # checkout.
-      - name: Install git
-        run: dnf install -y git
-
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          submodules: true
-
-      # Container-mounted $GITHUB_WORKSPACE is owned by a UID git
-      # doesn't recognize as "ours" (CVE-2022-24765 mitigation) - git
-      # refuses everything on it, including the plain `git archive`
-      # below, until told to trust it explicitly (real CI failure this
-      # fixes: "detected dubious ownership in repository"). Only needed
-      # in this job and deb-pack - both use `container:`, unlike every
-      # other job here which runs directly on the runner where the UID
-      # already matches. Wildcard, not just $GITHUB_WORKSPACE - the root
-      # CMakeLists.txt's FetchContent_MakeAvailable(googletest) does its
-      # own git clone into _deps/googletest-src during configure, a
-      # separate nested git repo with the same UID problem (see
-      # deb-pack's identical step for the exact downstream failure this
-      # caused there: GTest::gtest "target not found").
-      - name: Mark workspace as a safe git directory
-        run: git config --global --add safe.directory '*'
+          submodules: false
 
       - name: Set env & Print familiar version
         shell: bash
         run: |
           echo "VERSION=$(cat CMakeLists.txt |grep 'set.*(.*FAMILIAR_VERSION' | sed 's/[^0-9.]*//' |sed 's/)//g')" >> $GITHUB_ENV
 
-      - name: Install build dependencies
-        run: |
-          dnf install -y rpm-build rpmdevtools cmake gcc-c++ \
-            qt6-qtbase-devel desktop-file-utils
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: familiar-${{ env.VERSION }}-appimage
+          path: appimage-download
 
-      - name: Build source tarball
+      - name: Install rpmbuild
         run: |
-          rpmdev-setuptree
-          mkdir -p "/github/home/rpmbuild/SOURCES"
-          # Not `git archive` - it only records a submodule's gitlink
-          # (commit pointer), never its actual file content, so
-          # include/quill and include/miniz (both real submodules - see
-          # .gitmodules) came out as empty directories with no
-          # CMakeLists.txt (real CI failure this fixes). checkout's own
-          # `submodules: true` already populated them for real on disk,
-          # so just tar the working tree directly instead.
-          tar --exclude-vcs --transform "s,^\.,familiar-${VERSION}," \
-            -czf "$HOME/rpmbuild/SOURCES/familiar-${VERSION}.tar.gz" .
+          sudo apt-get -y -qq update
+          sudo apt-get -y --no-install-recommends install rpm
 
       - name: Build .rpm
         run: |
-          cp packaging/rpm/familiar.spec "$HOME/rpmbuild/SPECS/familiar.spec"
+          # rpmdevtools' rpmdev-setuptree isn't reliably available on
+          # Ubuntu (not confirmed in its default repos), so just create
+          # the same standard tree by hand - rpmbuild only cares that
+          # these directories exist under ~/rpmbuild.
+          mkdir -p "$HOME/rpmbuild"/{SPECS,SOURCES,BUILD,RPMS,SRPMS,BUILDROOT}
+
+          chmod +x "appimage-download/familiar-${VERSION}-x86_64.AppImage"
+          cp "appimage-download/familiar-${VERSION}-x86_64.AppImage" \
+            "$HOME/rpmbuild/SOURCES/familiar-${VERSION}-x86_64.AppImage"
+          cp data/desktopEntry/package/org.tryhardfactory.Familiar.desktop "$HOME/rpmbuild/SOURCES/"
+          cp packaging/linux/org.tryhardfactory.Familiar.xml "$HOME/rpmbuild/SOURCES/"
+          cp data/img/app/familiar.svg "$HOME/rpmbuild/SOURCES/"
+          cp data/img/app/familiar_256.png "$HOME/rpmbuild/SOURCES/"
+          cp data/img/app/familiar_512.png "$HOME/rpmbuild/SOURCES/"
+
           # The committed spec's "Version:" is just a placeholder (kept
-          # roughly current for anyone building it standalone) - patch it
-          # to the real $VERSION here, same as debian/changelog gets
-          # regenerated in deb-pack. Without this the spec's version and
-          # the tarball this job just created above
-          # (familiar-${VERSION}.tar.gz) can drift apart (real bug this
-          # fixes: spec said 0.0.15 while CMakeLists.txt/the tarball were
-          # already 0.0.16 - rpmbuild would look for
-          # familiar-0.0.15.tar.gz and fail to find it).
-          sed -i "s/^Version: .*/Version: ${VERSION}/" "$HOME/rpmbuild/SPECS/familiar.spec"
+          # roughly current for anyone building it standalone) - patch
+          # it to the real $VERSION here, same as packaging/debian/control's
+          # @VERSION@ gets sed'd in build-deb.sh. Without this the spec's
+          # Source0 filename and the AppImage this job just downloaded
+          # above (familiar-${VERSION}-x86_64.AppImage) can drift apart.
+          sed "s/^Version: .*/Version: ${VERSION}/" packaging/rpm/familiar.spec \
+            > "$HOME/rpmbuild/SPECS/familiar.spec"
           rpmbuild -bb "$HOME/rpmbuild/SPECS/familiar.spec"
 
       - name: Move + SHA256Sum
         run: |
           mkdir -p build-artifacts
-          # rpmbuild always produces MULTIPLE familiar-*.rpm files - the
-          # real package plus familiar-debuginfo-*/familiar-debugsource-*
-          # (auto-generated by find-debuginfo.sh). The old glob matched
-          # all of them and -exec cp copied each into the SAME
-          # destination filename, one at a time - whichever matched last
-          # silently overwrote the others (real bug this fixes: on
-          # fedora-44 the debugsource package won a filename collision
-          # and got uploaded as "the" .rpm - contains only
-          # /usr/src/debug/..., no actual binary, confirmed by `rpm -qlp`
-          # on the real uploaded file). "familiar-[0-9]*.rpm" matches
-          # only the real package - familiar-debuginfo-*/
-          # familiar-debugsource-* have a letter right after the dash,
-          # not a version-number digit.
-          find "$HOME/rpmbuild/RPMS" -name "familiar-[0-9]*.rpm" \
-            -exec cp {} "build-artifacts/familiar-${VERSION}-${{ matrix.dist.name }}.x86_64.rpm" \;
+          find "$HOME/rpmbuild/RPMS" -name "familiar-*.rpm" \
+            -exec cp {} "build-artifacts/familiar-${VERSION}.x86_64.rpm" \;
           cd build-artifacts
-          sha256sum familiar-${VERSION}-${{ matrix.dist.name }}.x86_64.rpm | tee familiar-${VERSION}-${{ matrix.dist.name }}.x86_64.rpm.sha256sum
+          sha256sum familiar-${VERSION}.x86_64.rpm | tee familiar-${VERSION}.x86_64.rpm.sha256sum
 
       - name: Artifact Upload
         uses: actions/upload-artifact@v7
         with:
-          name: familiar-${{ env.VERSION }}-rpm-${{ matrix.dist.name }}
+          name: familiar-${{ env.VERSION }}-rpm
           path: |
-            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.x86_64.rpm
-            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.x86_64.rpm.sha256sum
+            build-artifacts/familiar-${{ env.VERSION }}.x86_64.rpm
+            build-artifacts/familiar-${{ env.VERSION }}.x86_64.rpm.sha256sum
           overwrite: true
 
       - name: Github Release upload
@@ -372,7 +284,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           files: |
-            build-artifacts/familiar-${{ env.VERSION }}-${{ matrix.dist.name }}.x86_64.rpm
+            build-artifacts/familiar-${{ env.VERSION }}.x86_64.rpm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -487,7 +399,7 @@ jobs:
         run: |
           sudo apt-get -y -qq update
           sudo apt-get -y --no-install-recommends install \
-            cmake build-essential fuse libfuse2
+            cmake build-essential fuse libfuse2 file
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4

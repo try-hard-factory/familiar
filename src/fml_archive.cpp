@@ -394,6 +394,31 @@ FmlResult FmlArchive::save(CanvasScene* scene,
         return result;
     }
 
+    // Same convention ODF (.odt/.ods/.odp) and EPUB use to make a
+    // zip-based format identifiable by content, not just by extension -
+    // verified against the OASIS ODF spec's own package rules
+    // (https://docs.oasis-open.org/office/v1.2/cs01/OpenDocument-v1.2-cs01-part3.html):
+    // a "mimetype" entry, STORED (no compression) and with no extra
+    // field, as the very FIRST entry in the archive. That pins its
+    // content to a fixed byte offset (30 for the 8-byte name "mimetype"
+    // itself, 38 for the content that follows - standard 30-byte PKZIP
+    // local file header + an 8-byte filename with no extra field), which
+    // is what makes it usable as a `file`/libmagic-style magic-number
+    // rule (see packaging/linux/org.tryhardfactory.Familiar.xml's own
+    // <magic> block). Purely additive - old readers (including this
+    // app's own FmlArchive::load(), which never looks for this entry)
+    // just ignore it, so no formatVersion bump. Must be written FIRST,
+    // before the item loop below, or the offset promise breaks.
+    static const char kMimetypeContent[] = "application/x-familiar-fml";
+    if (!mz_zip_writer_add_mem(zip.get(),
+                               "mimetype",
+                               kMimetypeContent,
+                               sizeof(kMimetypeContent) - 1, // no trailing NUL
+                               MZ_NO_COMPRESSION)) {
+        result.error = QStringLiteral("Could not write mimetype marker");
+        return result;
+    }
+
     Manifest manifest;
 #ifdef FAMILIAR_VERSION_STRING
     manifest.appVersion = QStringLiteral(FAMILIAR_VERSION_STRING);
