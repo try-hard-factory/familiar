@@ -7,6 +7,9 @@
 #include <QFileInfo>
 #include <QImageReader>
 
+#include <cstdio>
+#include <cstdlib>
+
 // ─── CommandlineArgs ──────────────────────────────────────────────────────────
 
 CommandlineArgs& CommandlineArgs::instance()
@@ -15,17 +18,39 @@ CommandlineArgs& CommandlineArgs::instance()
     return inst;
 }
 
+namespace {
+
+// A bare "-" is the getopt/QCommandLineParser convention for "not an
+// option" (other CLI tools often read it as stdin) - familiar has no
+// stdin project format, so it's not a real path either. "?" doesn't
+// start with '-' at all, so the parser can't flag it as a bad option on
+// its own - it looks exactly like any other (if wrong) filename to
+// QCommandLineParser. Both silently fell through to filename_ before,
+// only failing much later with a generic "file not found" from the
+// file-opening code - this catches the same "clearly not meant as a
+// path" case up front instead, with a proper CLI-style error.
+bool looksLikeAPlaceholderNotAPath(const QString& arg)
+{
+    const QString trimmed = arg.trimmed();
+    if (trimmed.isEmpty()) {
+        return true;
+    }
+    for (const QChar c : trimmed) {
+        if (c != QLatin1Char('-') && c != QLatin1Char('?')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+} // namespace
+
 static void addOptions(QCommandLineParser& parser)
 {
-    parser.addPositionalArgument(QStringLiteral("filename"),
-                                 QCoreApplication::tr(
-                                     "Familiar project file to open"),
-                                 QStringLiteral("[filename]"));
-
     parser.addOption(
         {QStringList{QStringLiteral("f"), QStringLiteral("file")},
          QCoreApplication::tr("Familiar project file to open "
-                              "(overrides the positional filename argument)"),
+                              "(takes priority over a bare path argument)"),
          QStringLiteral("path")});
 
     parser.addOption(
@@ -36,7 +61,7 @@ static void addOptions(QCommandLineParser& parser)
 
     parser.addOption(
         {QStringList{QStringLiteral("l"), QStringLiteral("loglevel")},
-         QCoreApplication::tr("Log level for console output"),
+         QCoreApplication::tr("Log level for console output (default: INFO)"),
          QStringLiteral("level"),
          QStringLiteral("INFO")});
 
@@ -56,13 +81,51 @@ static void addOptions(QCommandLineParser& parser)
 void CommandlineArgs::process(const QCoreApplication& app)
 {
     QCommandLineParser parser;
-    parser.addHelpOption();
-    parser.addVersionOption();
+    parser.setApplicationDescription(QCoreApplication::tr(
+        "A canvas for collecting, arranging, and annotating reference "
+        "images."));
+    const QCommandLineOption helpOption = parser.addHelpOption();
+    const QCommandLineOption versionOption = parser.addVersionOption();
     addOptions(parser);
-    parser.process(app);
+
+    // parser.parse() + manual handling below, not parser.process(app) -
+    // process() exits on error with Qt's own terse one-liner ("familiar:
+    // Unknown option 'x'.") and no help text at all, leaving the user to
+    // go look up the actual options themselves. This is the pattern
+    // Qt's own docs recommend for a customized error path
+    // (https://doc.qt.io/qt-6/qcommandlineparser.html's "complex
+    // applications" example: parse()+errorText(), not process()) - an
+    // unknown/malformed option now prints the same helpText() as -h,
+    // right under the specific error message. Long options already
+    // accept `--option=value` as well as `--option value` - that's
+    // QCommandLineParser's own native behavior, nothing to add for it.
+    if (!parser.parse(app.arguments())) {
+        std::fputs(qPrintable(parser.errorText()), stderr);
+        std::fputs("\n\n", stderr);
+        std::fputs(qPrintable(parser.helpText()), stderr);
+        std::exit(EXIT_FAILURE);
+    }
+    if (parser.isSet(versionOption)) {
+        std::printf("%s %s\n",
+                    qPrintable(QCoreApplication::applicationName()),
+                    qPrintable(QCoreApplication::applicationVersion()));
+        std::exit(EXIT_SUCCESS);
+    }
+    if (parser.isSet(helpOption)) {
+        std::fputs(qPrintable(parser.helpText()), stdout);
+        std::exit(EXIT_SUCCESS);
+    }
 
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty()) {
+        if (looksLikeAPlaceholderNotAPath(positional.first())) {
+            const QString msg = QStringLiteral("%1: Not a valid file path: \"%2\".\n\n")
+                                     .arg(QCoreApplication::applicationName(),
+                                          positional.first());
+            std::fputs(qPrintable(msg), stderr);
+            std::fputs(qPrintable(parser.helpText()), stderr);
+            std::exit(EXIT_FAILURE);
+        }
         filename_ = positional.first();
     }
     if (parser.isSet(QStringLiteral("file"))) {

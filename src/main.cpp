@@ -86,6 +86,13 @@ int main(int argc, char* argv[])
     // AppConfigLocation under BOTH organizationName and applicationName
     // when both are set, which produced ".config/familiar/familiar/".
     a.setApplicationName(QStringLiteral("familiar"));
+    // FAMILIAR_VERSION_STRING - CMakeLists.txt's own -D define (platform-
+    // independent, unlike the WIN32-only FAMILIAR_VERSION_MAJOR/MINOR/...
+    // block). Without this, QCommandLineParser::addVersionOption()'s
+    // --version prints an empty string - it reads
+    // QCoreApplication::applicationVersion(), which nothing else here
+    // ever sets (real bug this fixes).
+    a.setApplicationVersion(QStringLiteral(FAMILIAR_VERSION_STRING));
 
     // Declared here (not in a narrower scope) so it stays alive - and
     // the lock held - for the whole process lifetime, releasing only
