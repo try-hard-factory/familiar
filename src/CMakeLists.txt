@@ -149,8 +149,6 @@ set(PROJECT_SOURCES
         widgets/setting_descriptions.h
         widgets/color_gamut.cpp
         widgets/color_gamut.h
-        widgets/controls/controls_common.cpp
-        widgets/controls/controls_common.h
         widgets/controls/binding_target.cpp
         widgets/controls/binding_target.h
         widgets/controls/binding_dialogs.cpp
