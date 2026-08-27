@@ -87,8 +87,6 @@ set(PROJECT_SOURCES
         actions/menu_structure.h
         actions/action_mouse_dispatch.cpp
         actions/action_mouse_dispatch.h
-        core/qguiappcurrentscreen.cpp
-        core/qguiappcurrentscreen.h
         core/controls.cpp
         core/controls.h
         core/held_buttons_tracker.cpp

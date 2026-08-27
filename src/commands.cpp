@@ -5,6 +5,9 @@
 
 #include <QGraphicsScene>
 
+#include "log/log.h"
+using namespace familiar::log;
+
 // ============================================================================
 // InsertItemsCommand
 // ============================================================================
@@ -27,6 +30,7 @@ InsertItemsCommand::InsertItemsCommand(CanvasScene* scene,
 
 void InsertItemsCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "InsertItemsCommand::redo() ({} item(s))", items_.size());
     if (ignoreFirstRedo_) {
         ignoreFirstRedo_ = false;
         return;
@@ -70,6 +74,7 @@ void InsertItemsCommand::redo()
 
 void InsertItemsCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "InsertItemsCommand::undo() ({} item(s))", items_.size());
     scene_->deselect_all_items();
     for (auto* item : items_) {
         auto* graphicsItem = dynamic_cast<QGraphicsItem*>(item);
@@ -108,6 +113,7 @@ DeleteItemsCommand::DeleteItemsCommand(CanvasScene* scene,
 
 void DeleteItemsCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "DeleteItemsCommand::redo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         QGraphicsItem* item = items_[i];
         // Prune the group membership BEFORE removeItem() below, not
@@ -133,6 +139,7 @@ void DeleteItemsCommand::redo()
 
 void DeleteItemsCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "DeleteItemsCommand::undo() ({} item(s))", items_.size());
     // addItem() BEFORE setSelected(), not after - setSelected(true)
     // fires itemChange(ItemSelectedChange) synchronously, which reaches
     // ItemMixin::on_selected_change() (moveitem.h) and asserts this->
@@ -171,6 +178,7 @@ MoveItemsByCommand::MoveItemsByCommand(const QList<QGraphicsItem*>& items,
 
 void MoveItemsByCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "MoveItemsByCommand::redo() ({} item(s))", items_.size());
     if (ignoreFirstRedo_) {
         ignoreFirstRedo_ = false;
         return;
@@ -182,6 +190,7 @@ void MoveItemsByCommand::redo()
 
 void MoveItemsByCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "MoveItemsByCommand::undo() ({} item(s))", items_.size());
     for (auto* item : items_) {
         item->moveBy(-delta_.x(), -delta_.y());
     }
@@ -203,6 +212,7 @@ ScaleItemsByCommand::ScaleItemsByCommand(const QList<QGraphicsItem*>& items,
 
 void ScaleItemsByCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ScaleItemsByCommand::redo() ({} item(s))", items_.size());
     if (ignoreFirstRedo_) {
         ignoreFirstRedo_ = false;
         return;
@@ -230,6 +240,7 @@ void ScaleItemsByCommand::redo()
 
 void ScaleItemsByCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ScaleItemsByCommand::undo() ({} item(s))", items_.size());
     auto* scene = items_.isEmpty()
                       ? nullptr
                       : dynamic_cast<CanvasScene*>(items_.first()->scene());
@@ -262,6 +273,7 @@ RotateItemsByCommand::RotateItemsByCommand(const QList<QGraphicsItem*>& items,
 
 void RotateItemsByCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "RotateItemsByCommand::redo() ({} item(s))", items_.size());
     if (ignoreFirstRedo_) {
         ignoreFirstRedo_ = false;
         return;
@@ -285,6 +297,7 @@ void RotateItemsByCommand::redo()
 
 void RotateItemsByCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "RotateItemsByCommand::undo() ({} item(s))", items_.size());
     auto* scene = items_.isEmpty()
                       ? nullptr
                       : dynamic_cast<CanvasScene*>(items_.first()->scene());
@@ -313,6 +326,7 @@ NormalizeItemsCommand::NormalizeItemsCommand(const QList<QGraphicsItem*>& items,
 
 void NormalizeItemsCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "NormalizeItemsCommand::redo() ({} item(s))", items_.size());
     oldScaleFactors_.clear();
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
@@ -325,6 +339,7 @@ void NormalizeItemsCommand::redo()
 
 void NormalizeItemsCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "NormalizeItemsCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -346,6 +361,7 @@ FlipItemsCommand::FlipItemsCommand(const QList<QGraphicsItem*>& items,
 
 void FlipItemsCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "FlipItemsCommand::redo() ({} item(s))", items_.size());
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         baseItem->do_flip(vertical_, item->mapFromScene(anchor_));
@@ -354,6 +370,7 @@ void FlipItemsCommand::redo()
 
 void FlipItemsCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "FlipItemsCommand::undo() ({} item(s))", items_.size());
     // Flip is its own inverse, so redo() again
     redo();
 }
@@ -370,6 +387,7 @@ ResetScaleCommand::ResetScaleCommand(const QList<QGraphicsItem*>& items,
 
 void ResetScaleCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetScaleCommand::redo() ({} item(s))", items_.size());
     oldScaleFactors_.clear();
     for (auto* item : items_) {
         oldScaleFactors_.append(item->scale());
@@ -380,6 +398,7 @@ void ResetScaleCommand::redo()
 
 void ResetScaleCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetScaleCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -399,6 +418,7 @@ ResetRotationCommand::ResetRotationCommand(const QList<QGraphicsItem*>& items,
 
 void ResetRotationCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetRotationCommand::redo() ({} item(s))", items_.size());
     oldRotations_.clear();
     for (auto* item : items_) {
         oldRotations_.append(item->rotation());
@@ -409,6 +429,7 @@ void ResetRotationCommand::redo()
 
 void ResetRotationCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetRotationCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -428,6 +449,7 @@ ResetFlipCommand::ResetFlipCommand(const QList<QGraphicsItem*>& items,
 
 void ResetFlipCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetFlipCommand::redo() ({} item(s))", items_.size());
     oldFlips_.clear();
     for (auto* item : items_) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
@@ -441,6 +463,7 @@ void ResetFlipCommand::redo()
 
 void ResetFlipCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetFlipCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         if (oldFlips_[i] == -1) {
             auto* item = items_[i];
@@ -466,6 +489,7 @@ ResetCropCommand::ResetCropCommand(const QList<IBaseItem*>& items)
 
 void ResetCropCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetCropCommand::redo() ({} item(s))", items_.size());
     oldCrops_.clear();
     for (auto* item : items_) {
         oldCrops_.append(item->crop());
@@ -475,6 +499,7 @@ void ResetCropCommand::redo()
 
 void ResetCropCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetCropCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         items_[i]->set_crop(oldCrops_[i]);
     }
@@ -492,6 +517,7 @@ ResetTransformsCommand::ResetTransformsCommand(const QList<IBaseItem*>& items,
 
 void ResetTransformsCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetTransformsCommand::redo() ({} item(s))", items_.size());
     oldValues_.clear();
     for (auto* baseItem : items_) {
         auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
@@ -523,6 +549,7 @@ void ResetTransformsCommand::redo()
 
 void ResetTransformsCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResetTransformsCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         auto* baseItem = items_[i];
         auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
@@ -558,6 +585,7 @@ ArrangeItemsCommand::ArrangeItemsCommand(CanvasScene* scene,
 
 void ArrangeItemsCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ArrangeItemsCommand::redo() ({} item(s))", items_.size());
     oldPositions_.clear();
     for (int i = 0; i < items_.size(); ++i) {
         auto* item = items_[i];
@@ -573,6 +601,7 @@ void ArrangeItemsCommand::redo()
 
 void ArrangeItemsCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ArrangeItemsCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         items_[i]->setPos(oldPositions_[i]);
     }
@@ -589,12 +618,14 @@ CropItemCommand::CropItemCommand(PixmapItem* item, const QRectF& crop)
 
 void CropItemCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "CropItemCommand::redo()");
     oldCrop_ = item_->crop();
     item_->set_crop(crop_);
 }
 
 void CropItemCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "CropItemCommand::undo()");
     item_->set_crop(oldCrop_);
 }
 
@@ -616,6 +647,7 @@ ChangeOpacityCommand::ChangeOpacityCommand(const QList<QGraphicsItem*>& items,
 
 void ChangeOpacityCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ChangeOpacityCommand::redo() ({} item(s))", items_.size());
     if (ignoreFirstRedo_) {
         ignoreFirstRedo_ = false;
         return;
@@ -627,6 +659,7 @@ void ChangeOpacityCommand::redo()
 
 void ChangeOpacityCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ChangeOpacityCommand::undo() ({} item(s))", items_.size());
     for (int i = 0; i < items_.size(); ++i) {
         items_[i]->setOpacity(oldOpacities_[i]);
     }
@@ -656,6 +689,7 @@ ResizeTextFieldCommand::ResizeTextFieldCommand(TextItem* item,
 
 void ResizeTextFieldCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResizeTextFieldCommand::redo()");
     if (ignoreFirstRedo_) {
         ignoreFirstRedo_ = false;
         return;
@@ -665,6 +699,7 @@ void ResizeTextFieldCommand::redo()
 
 void ResizeTextFieldCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ResizeTextFieldCommand::undo()");
     item_->resize_field(oldWidth_, oldHeight_, anchorRight_, anchorBottom_);
 }
 
@@ -686,12 +721,14 @@ ChangeTextCommand::ChangeTextCommand(TextItem* item,
 
 void ChangeTextCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ChangeTextCommand::redo()");
     item_->setHtml(newHtml_);
     item_->set_fill_color(newFillColor_);
 }
 
 void ChangeTextCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ChangeTextCommand::undo()");
     item_->setHtml(oldHtml_);
     item_->set_fill_color(oldFillColor_);
 }
@@ -710,11 +747,13 @@ ChangeGroupFillColorCommand::ChangeGroupFillColorCommand(GroupItem* item,
 
 void ChangeGroupFillColorCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ChangeGroupFillColorCommand::redo()");
     item_->set_fill_color(newColor_);
 }
 
 void ChangeGroupFillColorCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ChangeGroupFillColorCommand::undo()");
     item_->set_fill_color(oldColor_);
 }
 
@@ -728,6 +767,7 @@ ToggleGrayscaleCommand::ToggleGrayscaleCommand(const QList<PixmapItem*>& items)
 
 void ToggleGrayscaleCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "ToggleGrayscaleCommand::redo() ({} item(s))", items_.size());
     for (auto* item : items_) {
         item->setGrayscale(!item->grayscale());
     }
@@ -735,6 +775,7 @@ void ToggleGrayscaleCommand::redo()
 
 void ToggleGrayscaleCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "ToggleGrayscaleCommand::undo() ({} item(s))", items_.size());
     // Self-inverse: applying the same per-item inversion again exactly
     // undoes it, like FlipItemsCommand.
     redo();
@@ -755,6 +796,7 @@ GroupCommand::GroupCommand(CanvasScene* scene,
 
 void GroupCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "GroupCommand::redo() ({} member(s))", members_.size());
     scene_->deselect_all_items();
     // Sits BEHIND every member it contains - set below their current z,
     // not bring_to_front() (InsertItemsCommand's usual move for newly
@@ -770,6 +812,7 @@ void GroupCommand::redo()
 
 void GroupCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "GroupCommand::undo() ({} member(s))", members_.size());
     scene_->deselect_all_items();
     scene_->removeItem(group_);
     for (auto* item : members_) {
@@ -790,6 +833,7 @@ UngroupCommand::UngroupCommand(CanvasScene* scene, GroupItem* group)
 
 void UngroupCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "UngroupCommand::redo() ({} member(s))", members_.size());
     scene_->deselect_all_items();
     scene_->removeItem(group_);
     for (auto* item : members_) {
@@ -799,6 +843,7 @@ void UngroupCommand::redo()
 
 void UngroupCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "UngroupCommand::undo() ({} member(s))", members_.size());
     scene_->deselect_all_items();
     scene_->addItem(group_);
     group_->setSelected(true);
@@ -844,6 +889,9 @@ RemoveFromGroupCommand::RemoveFromGroupCommand(GroupItem* group,
 
 void RemoveFromGroupCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo,
+              "RemoveFromGroupCommand::redo() ({} member uid(s))",
+              memberUids_.size());
     for (const QUuid& uid : memberUids_) {
         group_->remove_child_id(uid);
     }
@@ -858,6 +906,9 @@ void RemoveFromGroupCommand::redo()
 
 void RemoveFromGroupCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo,
+              "RemoveFromGroupCommand::undo() ({} member uid(s))",
+              memberUids_.size());
     for (const QUuid& uid : memberUids_) {
         group_->add_child_id(uid);
     }
@@ -892,6 +943,9 @@ AddToGroupCommand::AddToGroupCommand(CanvasScene* scene,
 
 void AddToGroupCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo,
+              "AddToGroupCommand::redo() ({} member(s))",
+              memberUids_.size());
     scene_->deselect_all_items();
     for (int i = 0; i < memberUids_.size(); ++i) {
         group_->add_child_id(memberUids_[i]);
@@ -929,6 +983,9 @@ void AddToGroupCommand::redo()
 
 void AddToGroupCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo,
+              "AddToGroupCommand::undo() ({} member(s))",
+              memberUids_.size());
     scene_->deselect_all_items();
     for (const QUuid& uid : memberUids_) {
         group_->remove_child_id(uid);
@@ -971,11 +1028,13 @@ SetAttachedToCommand::SetAttachedToCommand(IBaseItem* item,
 
 void SetAttachedToCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "SetAttachedToCommand::redo()");
     item_->set_attached_to(newUid_);
 }
 
 void SetAttachedToCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "SetAttachedToCommand::undo()");
     item_->set_attached_to(oldUid_);
 }
 
@@ -993,10 +1052,12 @@ RenamePictureCommand::RenamePictureCommand(PixmapItem* item,
 
 void RenamePictureCommand::redo()
 {
+    FLOG_DEBUG(Ch::Undo, "RenamePictureCommand::redo()");
     item_->filename_ = newName_;
 }
 
 void RenamePictureCommand::undo()
 {
+    FLOG_DEBUG(Ch::Undo, "RenamePictureCommand::undo()");
     item_->filename_ = oldName_;
 }

@@ -2257,11 +2257,11 @@ public:
                     }
                     auto* otherGroup = dynamic_cast<GroupItem*>(other);
                     if (otherGroup && otherGroup->child_ids().contains(id)) {
-                        FLOG_DEBUG(familiar::log::Ch::Items,
-                                   "GroupItem::add_child_id() WARNING: {} is "
-                                   "already a member of ANOTHER group ({}, "
-                                   "uid={}) - {} is about to become a SECOND "
-                                   "owner of it",
+                        FLOG_WARN(familiar::log::Ch::Items,
+                                  "GroupItem::add_child_id(): {} is "
+                                  "already a member of ANOTHER group ({}, "
+                                  "uid={}) - {} is about to become a SECOND "
+                                  "owner of it",
                                    id.toString(QUuid::WithoutBraces)
                                        .toStdString(),
                                    otherGroup->toString(),

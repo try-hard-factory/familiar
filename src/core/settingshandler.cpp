@@ -189,10 +189,21 @@ void SettingsHandler::loadDocument()
 {
     QFile file(settingsFilePath_);
     QJsonObject doc;
+    // Not open() failing on its own - that's the normal, expected first
+    // run (no settings.json yet), nothing worth warning about. Only a
+    // file that DID open but didn't parse as a JSON object is a real
+    // problem (corrupt settings.json) - silently falls back to an empty
+    // document/defaults either way (deliberate, see this function's own
+    // doc comment), but that fallback deserves a trace.
     if (file.open(QIODevice::ReadOnly)) {
         const QJsonDocument parsed = QJsonDocument::fromJson(file.readAll());
         if (parsed.isObject()) {
             doc = parsed.object();
+        } else {
+            FLOG_WARN(Ch::Settings,
+                      "{} did not parse as a JSON object - falling back to "
+                      "defaults",
+                      settingsFilePath_);
         }
     }
     applySettingsMigrations(doc);
@@ -277,6 +288,10 @@ bool SettingsHandler::exportSettingsTo(const QString& path) const
 {
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        FLOG_WARN(Ch::Settings,
+                  "exportSettingsTo: could not open {}: {}",
+                  path,
+                  file.errorString());
         return false;
     }
     file.write(QJsonDocument(document_).toJson(QJsonDocument::Indented));
@@ -287,10 +302,17 @@ bool SettingsHandler::importSettingsFrom(const QString& path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
+        FLOG_WARN(Ch::Settings,
+                  "importSettingsFrom: could not open {}: {}",
+                  path,
+                  file.errorString());
         return false;
     }
     const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
     if (!doc.isObject()) {
+        FLOG_WARN(Ch::Settings,
+                  "importSettingsFrom: {} did not parse as a JSON object",
+                  path);
         return false;
     }
     QJsonObject obj = doc.object();
