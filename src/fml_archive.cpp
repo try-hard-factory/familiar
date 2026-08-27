@@ -163,10 +163,12 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     if (parseError.error != QJsonParseError::NoError) {
         error = QStringLiteral("Invalid manifest.json: %1")
                     .arg(parseError.errorString());
+        FLOG_ERROR(Ch::IO, "{}", error);
         return std::nullopt;
     }
     if (!doc.isObject()) {
         error = QStringLiteral("manifest.json is not a JSON object");
+        FLOG_ERROR(Ch::IO, "{}", error);
         return std::nullopt;
     }
 
@@ -176,6 +178,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
         != QString::fromLatin1(kFormatMagic)) {
         error = QStringLiteral(
             "Not a familiar project file (missing format marker)");
+        FLOG_ERROR(Ch::IO, "{}", error);
         return std::nullopt;
     }
 
@@ -184,6 +187,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
         error = QStringLiteral("This file was created by a newer version of "
                                "familiar (formatVersion %1)")
                     .arg(formatVersion);
+        FLOG_ERROR(Ch::IO, "{}", error);
         return std::nullopt;
     }
     // No-op today (formatVersion is always already kFormatVersion, since
@@ -307,6 +311,7 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
     stream >> count;
     if (stream.status() != QDataStream::Ok || count < 0) {
         result.error = QStringLiteral("Not a valid familiar project file");
+        FLOG_ERROR(Ch::IO, "{}", result.error);
         return result;
     }
 
@@ -333,6 +338,7 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
         if (stream.status() != QDataStream::Ok) {
             result.itemErrors.append(
                 QStringLiteral("Item %1: truncated file").arg(i));
+            FLOG_WARN(Ch::IO, "load_legacy: item {} truncated file", i);
             break;
         }
 
@@ -342,6 +348,9 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
             result.itemErrors.append(
                 QStringLiteral("Item %1: could not decompress image data")
                     .arg(i));
+            FLOG_WARN(Ch::IO,
+                      "load_legacy: item {} could not decompress image data",
+                      i);
             if (worker) {
                 emit worker->progress(i);
             }
@@ -391,6 +400,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     ZipWriter zip;
     if (!zip.initHeap()) {
         result.error = QStringLiteral("Could not initialize zip writer");
+        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         return result;
     }
 
@@ -416,6 +426,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
                                sizeof(kMimetypeContent) - 1, // no trailing NUL
                                MZ_NO_COMPRESSION)) {
         result.error = QStringLiteral("Could not write mimetype marker");
+        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         return result;
     }
 
@@ -470,6 +481,10 @@ FmlResult FmlArchive::save(CanvasScene* scene,
                 result.itemErrors.append(
                     QStringLiteral("Could not store image for item %1")
                         .arg(idStr));
+                FLOG_WARN(Ch::IO,
+                          "FmlArchive::save: could not store gif image for "
+                          "item {}",
+                          idStr);
             }
         } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
             auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
@@ -485,6 +500,10 @@ FmlResult FmlArchive::save(CanvasScene* scene,
                 result.itemErrors.append(
                     QStringLiteral("Could not store image for item %1")
                         .arg(idStr));
+                FLOG_WARN(Ch::IO,
+                          "FmlArchive::save: could not store pixmap image "
+                          "for item {}",
+                          idStr);
             }
         }
 
@@ -509,6 +528,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
                                static_cast<size_t>(manifestJson.size()),
                                MZ_DEFAULT_LEVEL)) {
         result.error = QStringLiteral("Could not write manifest.json");
+        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         return result;
     }
 
@@ -516,6 +536,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     size_t size = 0;
     if (!mz_zip_writer_finalize_heap_archive(zip.get(), &buf, &size)) {
         result.error = QStringLiteral("Could not finalize archive");
+        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         return result;
     }
 
@@ -523,6 +544,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     if (!file.open(QIODevice::WriteOnly)) {
         result.error = QStringLiteral("Could not open %1 for writing: %2")
                            .arg(filename, file.errorString());
+        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         mz_free(buf);
         return result;
     }
@@ -532,6 +554,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     if (!file.commit()) {
         result.error = QStringLiteral("Could not save %1: %2")
                            .arg(filename, file.errorString());
+        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         return result;
     }
 
@@ -548,6 +571,7 @@ FmlResult FmlArchive::load(const QString& filename,
     if (!file.open(QIODevice::ReadOnly)) {
         result.error = QStringLiteral("Could not open %1: %2")
                            .arg(filename, file.errorString());
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
         return result;
     }
 
@@ -562,6 +586,7 @@ FmlResult FmlArchive::load(const QString& filename,
     if (!zip.initMem(bytes.constData(), static_cast<size_t>(bytes.size()))) {
         result.error
             = QStringLiteral("%1 is not a valid zip archive").arg(filename);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
         return result;
     }
 
@@ -569,6 +594,7 @@ FmlResult FmlArchive::load(const QString& filename,
         = mz_zip_reader_locate_file(zip.get(), "manifest.json", nullptr, 0);
     if (manifestIndex < 0) {
         result.error = QStringLiteral("%1 has no manifest.json").arg(filename);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
         return result;
     }
 
@@ -581,6 +607,7 @@ FmlResult FmlArchive::load(const QString& filename,
     if (!manifestBuf) {
         result.error = QStringLiteral("Could not read manifest.json from %1")
                            .arg(filename);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
         return result;
     }
     QByteArray manifestJson(static_cast<const char*>(manifestBuf),
@@ -671,6 +698,10 @@ FmlResult FmlArchive::load(const QString& filename,
                 result.itemErrors.append(
                     QStringLiteral("Could not load image for item %1")
                         .arg(mi.id.toString(QUuid::WithoutBraces)));
+                FLOG_WARN(Ch::IO,
+                          "FmlArchive::load: could not load image for item "
+                          "{}",
+                          mi.id.toString(QUuid::WithoutBraces));
                 if (worker) {
                     emit worker->progress(i);
                 }

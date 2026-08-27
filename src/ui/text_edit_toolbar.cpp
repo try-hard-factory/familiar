@@ -372,7 +372,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
 
     connect(fillColorBtn_, &QToolButton::clicked, this, [this] {
         if (!item_) {
-            FLOG_DEBUG(Ch::UI, "fillColorBtn_ clicked but item_ is null");
+            // Shouldn't be reachable - this toolbar only shows/enables
+            // this button while editing an active item_ - so a click
+            // getting here at all means that invariant broke somewhere.
+            FLOG_WARN(Ch::UI, "fillColorBtn_ clicked but item_ is null");
             return;
         }
         const QColor original = item_->fill_color();

@@ -7,6 +7,9 @@
 
 #include <core/settingshandler.h>
 
+#include "log/log.h"
+using namespace familiar::log;
+
 #include <QDir>
 #include <QFile>
 #include <QFont>
@@ -271,6 +274,10 @@ void SceneToSVGExporter::exportTo(const QString& filename, ThreadedIO* worker)
 
     QFile file(filename);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        FLOG_WARN(Ch::IO,
+                  "SceneToSVGExporter::exportTo: could not open {}: {}",
+                  filename,
+                  file.errorString());
         emitFinished(worker, filename, {file.errorString()});
         return;
     }

@@ -9,10 +9,6 @@
 
 namespace familiar::dialog_style {
 
-namespace {
-
-constexpr int kIconSize = 40;
-
 QColor severityColor(QMessageBox::Icon icon, const QColor& accent)
 {
     switch (icon) {
@@ -27,6 +23,10 @@ QColor severityColor(QMessageBox::Icon icon, const QColor& accent)
         return accent;
     }
 }
+
+namespace {
+
+constexpr int kIconSize = 40;
 
 } // namespace
 

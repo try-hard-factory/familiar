@@ -164,15 +164,20 @@ LoadedImage download_image(QNetworkAccessManager& manager,
     QImage img;
     QByteArray bytes;
     if (!reply->isFinished()) {
-        FLOG_DEBUG(Ch::IO,
-                   "Download aborted (timed out or canceled): {}",
-                   url.toString());
+        // Distinguishable via worker->canceled - a user-pressed Cancel is
+        // routine, not a failure; a real timeout (nothing else quit the
+        // loop) is worth a WARN.
+        if (worker->canceled) {
+            FLOG_DEBUG(Ch::Net, "Download canceled by user: {}", url.toString());
+        } else {
+            FLOG_WARN(Ch::Net, "Download timed out: {}", url.toString());
+        }
         reply->abort();
     } else if (reply->error() == QNetworkReply::NoError) {
         bytes = reply->readAll();
         img.loadFromData(bytes);
     } else {
-        FLOG_DEBUG(Ch::IO, "Downloading image failed: {}", reply->errorString());
+        FLOG_WARN(Ch::Net, "Downloading image failed: {}", reply->errorString());
     }
     reply->deleteLater();
     return {img, bytes};
@@ -252,7 +257,7 @@ void load_images(const QList<QUrl>& urls,
                 || url.scheme().compare(QStringLiteral("https"),
                                         Qt::CaseInsensitive)
                        == 0) {
-                FLOG_DEBUG(Ch::IO, "Downloading image from {}", label);
+                FLOG_DEBUG(Ch::Net, "Downloading image from {}", label);
                 if (!netManager) {
                     netManager = new QNetworkAccessManager();
                 }
@@ -267,7 +272,7 @@ void load_images(const QList<QUrl>& urls,
         emit worker->progress(i);
 
         if (img.isNull()) {
-            FLOG_DEBUG(Ch::IO, "Could not load {}", label);
+            FLOG_WARN(Ch::IO, "Could not load {}", label);
             errors.append(label);
             continue;
         }

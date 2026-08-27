@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QBrush>
+#include <QCheckBox>
 #include <QClipboard>
 #include <QColor>
 #include <QCoreApplication>
@@ -52,6 +53,7 @@
 #include "recovery.h"
 #include <core/settingshandler.h>
 #include <widgets/dialog_style.h>
+#include <widgets/flat_checkbox.h>
 
 class ProgressDialog : public QProgressDialog
 {
@@ -150,12 +152,85 @@ public:
         log = new QPlainTextEdit();
         log->setReadOnly(true);
         log->setLineWrapMode(QPlainTextEdit::NoWrap);
+
+        // ─── Level filter checkboxes ────────────────────────────────────
+        // FlatCheckBox (this app's own hand-painted checkbox - a plain
+        // QCheckBox + QSS silently loses its native indicator entirely,
+        // see widgets/flat_checkbox.h) instead of a bare QCheckBox, same
+        // as every other checkbox in this app. Colors come from this
+        // dialog's own live QPalette (this dialog still follows the OS
+        // theme, unlike e.g. the Settings window's fixed palette) - the
+        // accent per level reuses familiar::dialog_style::severityColor()'s
+        // established amber/red/blue rather than inventing new ones, so a
+        // checked box's own fill color already reads as that level's
+        // severity, no separate icon needed. All checked by default -
+        // unfiltered, same as before this was added. Unchecking one hides
+        // it from BOTH the already-buffered text and any new line that
+        // comes in at that level, without discarding it - allEntries_
+        // still keeps every line so toggling a box back on brings it
+        // right back.
+        auto* filterRow = new QHBoxLayout();
+        filterRow->addWidget(new QLabel(tr("Show:")));
+        const QColor text = palette().color(QPalette::WindowText);
+        const QColor border = palette().color(QPalette::Mid);
+        const QColor warnAccent
+            = familiar::dialog_style::severityColor(QMessageBox::Warning, border);
+        const QColor errorAccent
+            = familiar::dialog_style::severityColor(QMessageBox::Critical, border);
+        struct LevelEntry
+        {
+            familiar::log::Level level;
+            QString label;
+            QColor accent;
+        };
+        // Trace/Debug: no real "severity" of their own, so no color from
+        // severityColor() either (unlike Info/Warning/Error/Critical,
+        // which map onto its existing QMessageBox::Icon cases) - `text`
+        // (WindowText), not `border` (Mid): checked fills with the accent
+        // SOLID (see FlatCheckBox::paintEvent() - both pen and brush),
+        // and Mid has no contrast guarantee against Window on every
+        // style/theme (confirmed - it visually vanished into the
+        // dialog's own background on a real run). WindowText/Window are
+        // the one pair QPalette actually guarantees will contrast.
+        // Critical reuses Error's red, darkened - severityColor() itself
+        // has no separate "more severe than Critical" case to draw on.
+        const QList<LevelEntry> kLevels = {
+            {familiar::log::Level::Trace, tr("Trace"), text},
+            {familiar::log::Level::Debug, tr("Debug"), text},
+            {familiar::log::Level::Info,
+             tr("Info"),
+             familiar::dialog_style::severityColor(QMessageBox::Information,
+                                                   border)},
+            {familiar::log::Level::Warning, tr("Warning"), warnAccent},
+            {familiar::log::Level::Error, tr("Error"), errorAccent},
+            {familiar::log::Level::Critical,
+             tr("Critical"),
+             errorAccent.darker(130)},
+        };
+        for (const LevelEntry& entry : kLevels) {
+            const familiar::log::Level level = entry.level;
+            auto* box = new FlatCheckBox(entry.label,
+                                         text,
+                                         border,
+                                         entry.accent,
+                                         this);
+            box->setChecked(true);
+            visibleLevels_[level] = true;
+            connect(box, &QCheckBox::toggled, this, [this, level](bool on) {
+                visibleLevels_[level] = on;
+                refreshDisplay();
+            });
+            filterRow->addWidget(box);
+        }
+        filterRow->addStretch(1);
+
         if (familiar::log::RingSink* ring = familiar::log::ringSink()) {
-            log->setPlainText(ring->entries().join('\n'));
+            allEntries_ = ring->entries();
+            refreshDisplay();
             connect(ring,
                     &familiar::log::RingSink::entryAdded,
                     this,
-                    &DebugLogDialog::appendLine);
+                    &DebugLogDialog::appendEntry);
         }
         // Follow the tail as new lines come in, unless the user has
         // scrolled up to read something older.
@@ -184,6 +259,7 @@ public:
         QLabel* nameWidget = new QLabel(logPath);
         nameWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         layout->addWidget(nameWidget);
+        layout->addLayout(filterRow);
         layout->addWidget(log);
         layout->addWidget(buttons);
         show();
@@ -193,9 +269,37 @@ private:
     QPlainTextEdit* log;
     QPushButton* copyButton;
     bool followTail_ = true;
+    // Every line seen so far, unfiltered - refreshDisplay() re-derives
+    // what's actually shown from this plus visibleLevels_ below, so
+    // toggling a checkbox never loses anything already buffered.
+    QList<familiar::log::RingSink::Entry> allEntries_;
+    QMap<familiar::log::Level, bool> visibleLevels_;
 
 private slots:
-    void appendLine(const QString& line) { log->appendPlainText(line); }
+    // A single new line: cheap append instead of a full rebuild (the
+    // common case - most log lines arrive with every filter already
+    // settled, not mid-toggle).
+    void appendEntry(familiar::log::Level level, const QString& line)
+    {
+        allEntries_.append({level, line});
+        if (visibleLevels_.value(level, true)) {
+            log->appendPlainText(line);
+        }
+    }
+
+    // Full rebuild from allEntries_ - only needed right after a checkbox
+    // toggle (or the initial seed from the ring), not per-line.
+    void refreshDisplay()
+    {
+        QStringList visible;
+        visible.reserve(allEntries_.size());
+        for (const familiar::log::RingSink::Entry& entry : allEntries_) {
+            if (visibleLevels_.value(entry.level, true)) {
+                visible.append(entry.line);
+            }
+        }
+        log->setPlainText(visible.join('\n'));
+    }
 
     void copyToClipboard()
     {

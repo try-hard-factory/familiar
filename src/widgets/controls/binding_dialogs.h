@@ -67,11 +67,10 @@ private:
 // Shared UI/logic for "Add alias for X" / "Rebind X": Mouse buttons
 // (MouseButtonCaptureField, capturing button+modifiers together - shown
 // only for MouseControl targets; MouseWheelControl targets have no button
-// at all, so they get the plain modifier checkboxes instead, same
-// vocabulary as widgets/controls/controls_common.h's
-// MouseControlsEditorBase), Keyboard keys (KeySequenceCaptureField),
-// Invert direction (only shown when target->isInvertible()). Both fields
-// are always editable for every target kind.
+// at all, so they get the plain modifier checkboxes instead), Keyboard
+// keys (KeySequenceCaptureField), Invert direction (only shown when
+// target->isInvertible()). Both fields are always editable for every
+// target kind.
 class BindingEditorDialogBase : public QDialog
 {
     Q_OBJECT

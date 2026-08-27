@@ -51,6 +51,15 @@ QString closeButtonStyleSheet(const char* objectName,
                               const QColor& text,
                               const QColor& accent);
 
+// The fixed amber/red/blue severity colors severityIcon() below paints
+// with - exposed on its own (not just baked into severityIcon()) so
+// other severity-flavored controls that aren't a QPixmap icon (e.g.
+// DebugLogDialog's per-level filter checkboxes, widgets/dialogs.h) can
+// reuse the exact same colors instead of re-guessing their own. `accent`
+// is only used for QMessageBox::Question (and any other icon value),
+// which has no real "severity" of its own.
+QColor severityColor(QMessageBox::Icon icon, const QColor& accent);
+
 // Same drawn-icon approach as every other icon in this app
 // (group_toolbar.cpp, gif_playback_toolbar.cpp) - no external asset,
 // always matches the current DPI exactly. Warning is a triangle

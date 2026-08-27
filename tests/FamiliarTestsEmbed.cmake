@@ -17,7 +17,6 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/core/keyboard_settings_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/settingshandler_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/core/valuehandler_test.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/core/qguiappcurrentscreen_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/log/log_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utils/utils_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_checkbox_test.cpp

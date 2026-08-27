@@ -10,6 +10,9 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "log/log.h"
+using namespace familiar::log;
+
 // ─── CommandlineArgs ──────────────────────────────────────────────────────────
 
 CommandlineArgs& CommandlineArgs::instance()
@@ -311,10 +314,20 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
         try {
             val = conf.cast(val);
         } catch (...) {
+            FLOG_WARN(Ch::Settings,
+                      "{}: stored value {} threw during cast, falling back "
+                      "to default",
+                      key,
+                      val.toString());
             return conf.defaultValue;
         }
     }
     if (conf.validate && !conf.validate(val)) {
+        FLOG_WARN(Ch::Settings,
+                  "{}: stored value {} failed validation, falling back to "
+                  "default",
+                  key,
+                  val.toString());
         return conf.defaultValue;
     }
 
