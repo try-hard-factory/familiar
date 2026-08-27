@@ -14,9 +14,19 @@
 
 namespace familiar::log {
 
-// In-memory ring buffer of the most recent formatted log lines. Feeds
-// DebugLogDialog's live tail and gives a crash handler something to dump
-// even when the file sink hasn't flushed yet.
+// Full definition: log.h - forward-declared here only, since log.h itself
+// includes this header (for RingSink) before it defines Level. A
+// forward-declared scoped enum is a complete-enough type (fixed, implicit
+// int underlying type) to use by value/as a struct member below - just
+// not by enumerator name - so this doesn't need the full definition.
+enum class Level;
+
+// In-memory ring buffer of the most recent formatted log lines, each
+// paired with its actual level (mapped down from quill::LogLevel - see
+// ring_sink.cpp's fromQuillLevel()) so a consumer can filter by level
+// without re-parsing the formatted text. Feeds DebugLogDialog's live tail
+// (including its per-level filter checkboxes) and gives a crash handler
+// something to dump even when the file sink hasn't flushed yet.
 class RingSink final : public QObject, public quill::Sink
 {
     Q_OBJECT
@@ -41,15 +51,21 @@ public:
     void flush_sink() noexcept override;
     void run_periodic_tasks() noexcept override {}
 
-    QStringList entries() const;
+    struct Entry
+    {
+        Level level;
+        QString line;
+    };
+
+    QList<Entry> entries() const;
 
 signals:
-    void entryAdded(const QString& line);
+    void entryAdded(Level level, const QString& line);
 
 private:
     mutable QMutex mutex_;
     size_t capacity_;
-    QStringList ring_;
+    QList<Entry> ring_;
 };
 
 } // namespace familiar::log

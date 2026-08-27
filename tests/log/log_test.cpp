@@ -90,10 +90,10 @@ TEST(LogFacadeTest, FlogInfoIsCapturedByTheRingSinkAfterFlush)
     // otherwise reading entries() below would be racing the backend.
     channelLogger(Ch::UI)->flush_log();
 
-    const QStringList lines = ringSink()->entries();
+    const QList<RingSink::Entry> lines = ringSink()->entries();
     const bool found = std::any_of(
-        lines.begin(), lines.end(), [](const QString& l) {
-            return l.contains(QStringLiteral("RSMARKER8842"));
+        lines.begin(), lines.end(), [](const RingSink::Entry& e) {
+            return e.line.contains(QStringLiteral("RSMARKER8842"));
         });
     EXPECT_TRUE(found);
 }
@@ -103,11 +103,11 @@ TEST(LogFacadeTest, FlogTimerLogsElapsedTimeAtScopeExit)
     { FLOG_TIMER(Ch::UI, "flog_timer marker TMMARKER7331"); }
     channelLogger(Ch::UI)->flush_log();
 
-    const QStringList lines = ringSink()->entries();
+    const QList<RingSink::Entry> lines = ringSink()->entries();
     const bool found = std::any_of(
-        lines.begin(), lines.end(), [](const QString& l) {
-            return l.contains(QStringLiteral("TMMARKER7331"))
-                   && l.contains(QStringLiteral("took"));
+        lines.begin(), lines.end(), [](const RingSink::Entry& e) {
+            return e.line.contains(QStringLiteral("TMMARKER7331"))
+                   && e.line.contains(QStringLiteral("took"));
         });
     EXPECT_TRUE(found);
 }
