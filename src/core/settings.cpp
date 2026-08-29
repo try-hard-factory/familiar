@@ -231,17 +231,28 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
          }},
         {"Items/image_allocation_limit",
          {
-             // Matches the Maximum Image Size row's spinbox ceiling
-             // (widgets/setting_row.cpp's MaximumImageSizeRow) - kept in
-             // sync since valueOrDefault() results also feed
-             // QImageReader::setAllocationLimit() directly at startup
-             // (below), not just through that row's own UI clamp.
-             /*default*/ 32,
+             // Ceiling here MUST match the Maximum Image Size row's own
+             // spinbox ceiling (widgets/setting_row.cpp's
+             // MaximumImageSizeRow, currently 1024) - valueOrDefault()
+             // results feed QImageReader::setAllocationLimit() directly
+             // at startup (below), not just through that row's own UI
+             // clamp, so a mismatch here silently rejects and reverts
+             // anything the UI itself let the user actually type in. Real
+             // bug this fixes: this was hardcoded to 32 while the
+             // spinbox's own ceiling was already 1024 - any value above
+             // 32 typed into that row saved fine but then silently
+             // reverted back to the default (32) on the very next read,
+             // with no indication why.
+             // Was 32 - too tight for an ordinary modern camera/phone
+             // photo (20+ MP commonly decodes past 32MB at 32 bits/pixel,
+             // e.g. a real 6240x3512 photo ≈ 83.6MB - a genuine bug
+             // report this raised).
+             /*default*/ 256,
              /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
              /*validate*/
              [](const QVariant& v) {
                  const int n = v.toInt();
-                 return n >= 0 && n <= 32;
+                 return n >= 0 && n <= 1024;
              },
              /*postSaveCallback*/
              [](const QVariant& v) {
