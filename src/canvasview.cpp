@@ -1715,6 +1715,43 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     FLOG_DEBUG(Ch::View, "Insert images finished");
     insertImagesInsertedItems_ += scene_->add_queued_items();
 
+    // Explicit, not left to on_scene_changed()'s own hide - that's wired
+    // to QGraphicsScene::changed(), which Qt only delivers once control
+    // returns to the event loop, not synchronously from addItem() above.
+    // Confirmed via real diagnostic logging (not just theory) that
+    // hide() itself already runs before any showMessageBox() below and
+    // scene_->items() is already correct at that point - the remaining
+    // symptom (a stale "Recent Files" heading briefly visible behind the
+    // very first warning dialog) was purely that hide()'s own repaint
+    // hadn't been flushed to screen yet - QWidget::hide() schedules an
+    // update, it doesn't paint synchronously, and any of the
+    // showMessageBox() calls below starts its own nested event loop
+    // immediately afterward, before the normal event loop gets a turn to
+    // actually process that pending repaint. processEvents() forces it
+    // to happen right here, before any dialog can steal the screen.
+    if (!insertImagesInsertedItems_.isEmpty()) {
+        setFocus();
+        welcomeOverlay_->clearFocus();
+        welcomeOverlay_->hide();
+        // Qt's own isVisible() confirms this widget IS logically hidden
+        // well before any dialog below shows (verified via real
+        // diagnostic logging) - the leftover "Recent Files" heading
+        // some users still see behind the very first dialog isn't a
+        // logic bug at that point, it reads as a stale backing-store
+        // artifact (no compositor to guarantee an exposed region gets
+        // redrawn - X11/xcb, this app's own forced QPA platform on
+        // Linux, main.cpp). repaint() (synchronous, immediate - unlike
+        // update()/processEvents(), which only guarantee the paint
+        // EVENT gets queued/dispatched, not that anything was actually
+        // blitted to screen right now) on the whole top-level window
+        // forces a real redraw of everything, including wherever
+        // welcomeOverlay_ used to be, before a modal dialog can freeze
+        // that stale region on screen for its whole duration.
+        if (QWidget* top = window()) {
+            top->repaint();
+        }
+    }
+
     // Three separate causes (ImageLoadFailure, fileio.h) - each with a
     // genuinely different fix for the user, so each gets its own message
     // instead of one generic "unknown format or too big?" that used to
