@@ -238,8 +238,8 @@ private:
     // widgets/controls/binding_dialogs.cpp - Controls can now carry a
     // keySequence too), reusing wheelEvent()'s existing single-notch step
     // convention. Only Zoom and the two wheel Pan groups have a
-    // well-defined single-press meaning; Pan/Move Window (mouse, drag-
-    // based) don't and are left unhandled here - returns false for those.
+    // well-defined single-press meaning; the drag-based mouse Pan group
+    // doesn't and is left unhandled here - returns false for that.
     bool tryControlKeyNudge(QKeyEvent* event);
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);

@@ -41,7 +41,7 @@ const QList<ControlRow>& defaultControlRows()
         {QObject::tr("Select images"), QObject::tr("Left click / drag")},
         {QObject::tr("Focus image"), QObject::tr("Double left click")},
         {QObject::tr("Zoom to pointer"), QObject::tr("Scroll wheel")},
-        {QObject::tr("Pan"), QObject::tr("Alt + Left drag")},
+        {QObject::tr("Pan"), QObject::tr("Alt + Left drag, or Middle drag")},
         {QObject::tr("Move window"), QObject::tr("Drag menu/tab bar")},
     };
     return rows;
