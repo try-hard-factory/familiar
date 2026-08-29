@@ -1,6 +1,7 @@
 #include "fileio.h"
 
 #include "canvasscene.h"
+#include "core/settings.h"
 #include "core/settingshandler.h"
 #include "fml_archive.h"
 
@@ -13,6 +14,8 @@
 #include <QNetworkRequest>
 #include <QTimer>
 #include <QUrlQuery>
+
+#include <optional>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -52,6 +55,62 @@ bool is_image_large(const QImage& img)
 {
     return img.width() > kLargeImageMaxDimension
            || img.height() > kLargeImageMaxDimension;
+}
+
+// Classifies WHY `reader` can't produce an image, without attempting the
+// real (possibly expensive) decode itself - see ImageLoadFailure's own
+// comment (fileio.h) for why this needs its own check rather than
+// trusting QImageReader::error() alone. `allocationLimitBytes <= 0`
+// means "no limit" (matches Items/image_allocation_limit's own "0 = no
+// limitation" convention - see setting_descriptions.cpp), so TooLarge
+// can never fire in that case.
+//
+// Only UnsupportedFormat/TooLarge come back from here - a reader that
+// passes both these checks might still fail its real read() afterward
+// (genuinely corrupt/truncated data); the caller is expected to fall
+// back to ImageLoadFailure::Corrupt itself in that case, since this
+// function never performs the real decode.
+std::optional<ImageLoadFailure> precheckReader(QImageReader& reader,
+                                               qint64 allocationLimitBytes)
+{
+    if (!reader.canRead()) {
+        return ImageLoadFailure::UnsupportedFormat;
+    }
+    const QSize size = reader.size();
+    if (allocationLimitBytes > 0 && size.isValid()) {
+        // Same "32 bits per pixel minimum" accounting Qt's own
+        // setAllocationLimit() documents itself - matches what actually
+        // gets rejected internally, not just a rough estimate.
+        const qint64 required = qint64(size.width()) * size.height() * 4;
+        if (required > allocationLimitBytes) {
+            return ImageLoadFailure::TooLarge;
+        }
+    }
+    return std::nullopt;
+}
+
+// Runs precheckReader() over whatever bytes a failed load actually
+// produced (populated regardless of success by every load_images()
+// branch - local file/data: URL/download alike), so a single
+// classification path covers all three sources without threading
+// QImageReader through each of them individually. Empty `bytes` (e.g. a
+// download that never got any data back at all) falls back to Corrupt -
+// the real reason is already in the network-layer FLOG_WARN from
+// download_image() above.
+ImageLoadFailure classifyFailedLoad(const QByteArray& bytes,
+                                    qint64 allocationLimitBytes)
+{
+    if (bytes.isEmpty()) {
+        return ImageLoadFailure::Corrupt;
+    }
+    QBuffer buf;
+    buf.setData(bytes);
+    buf.open(QIODevice::ReadOnly);
+    QImageReader reader(&buf);
+    if (auto failure = precheckReader(reader, allocationLimitBytes)) {
+        return *failure;
+    }
+    return ImageLoadFailure::Corrupt;
 }
 
 // Scales `img` down in place to fit within kLargeImageMaxDimension on its
@@ -209,13 +268,27 @@ void load_images(const QList<QUrl>& urls,
                  CanvasScene* scene,
                  ThreadedIO* worker)
 {
-    QStringList errors;
+    // 3-way breakdown (ImageLoadFailure) of what "errors" used to lump
+    // together as one opaque "could not load" - `errors` itself is still
+    // built up (below) for finished()'s own log/back-compat `errors`
+    // param, just from these three lists combined at the end.
+    QStringList unsupportedFormatErrors;
+    QStringList tooLargeErrors;
+    QStringList corruptErrors;
     // Labels of images over kLargeImageMaxDimension, collected only in
     // "warn" mode (see below) and reported once via
     // ThreadedIO::largeImagesFound() after the loop.
     QStringList largeImages;
     const QString optimizeMode
         = SettingsHandler::getInstance()->autoOptimizeImportedImages();
+    // 0 = no limitation (Items/image_allocation_limit's own convention -
+    // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
+    // both already treat <= 0 as "never TooLarge".
+    const qint64 allocationLimitBytes
+        = qint64(FamSettings()
+                     .valueOrDefault(QStringLiteral("Items/image_allocation_limit"))
+                     .toInt())
+          * 1024 * 1024;
     emit worker->beginProcessing(urls.size());
 
     // Only constructed if actually needed (most drops are local files).
@@ -272,8 +345,25 @@ void load_images(const QList<QUrl>& urls,
         emit worker->progress(i);
 
         if (img.isNull()) {
-            FLOG_WARN(Ch::IO, "Could not load {}", label);
-            errors.append(label);
+            const ImageLoadFailure failure
+                = classifyFailedLoad(bytes, allocationLimitBytes);
+            switch (failure) {
+            case ImageLoadFailure::UnsupportedFormat:
+                FLOG_WARN(Ch::IO, "Unsupported image format: {}", label);
+                unsupportedFormatErrors.append(label);
+                break;
+            case ImageLoadFailure::TooLarge:
+                FLOG_WARN(Ch::IO,
+                          "Image exceeds the {} MB allocation limit: {}",
+                          allocationLimitBytes / (1024 * 1024),
+                          label);
+                tooLargeErrors.append(label);
+                break;
+            case ImageLoadFailure::Corrupt:
+                FLOG_WARN(Ch::IO, "Could not load (corrupt file?): {}", label);
+                corruptErrors.append(label);
+                break;
+            }
             continue;
         }
 
@@ -327,6 +417,17 @@ void load_images(const QList<QUrl>& urls,
     if (!largeImages.isEmpty()) {
         emit worker->largeImagesFound(largeImages);
     }
+    if (!unsupportedFormatErrors.isEmpty() || !tooLargeErrors.isEmpty()
+        || !corruptErrors.isEmpty()) {
+        emit worker->imageLoadFailures(unsupportedFormatErrors,
+                                       tooLargeErrors,
+                                       corruptErrors);
+    }
+    // Flat list for finished()'s own `errors` param - unchanged shape for
+    // whatever else still just wants "what failed", the 3-way breakdown
+    // above is additive, not a replacement.
+    const QStringList errors
+        = unsupportedFormatErrors + tooLargeErrors + corruptErrors;
     emit worker->finished(QString(), errors);
     worker->quit();
 }

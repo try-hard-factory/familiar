@@ -339,6 +339,13 @@ private:
     // threshold (Items/auto_optimize_imported_images == "warn") -
     // reported to the user once in on_insert_images_finished().
     QStringList insertImagesLargeItems_;
+    // ThreadedIO::imageLoadFailures()' own 3-way breakdown of what
+    // couldn't be loaded at all (unrelated to insertImagesLargeItems_
+    // above, which is about images that DID load) - also reported once
+    // in on_insert_images_finished().
+    QStringList insertImagesUnsupportedFormat_;
+    QStringList insertImagesTooLarge_;
+    QStringList insertImagesCorrupt_;
 
     // State for the in-flight on_action_export_scene() operation - kept
     // alive across the async ThreadedIO call, released in

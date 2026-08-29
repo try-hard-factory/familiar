@@ -1696,24 +1696,59 @@ void CanvasView::setProjectSettings(project_settings* ps)
     scene_->setProjectSettings(ps);
 }
 
+namespace {
+
+QString listAsHtml(const QStringList& names)
+{
+    QStringList items;
+    for (const QString& fn : names) {
+        items.append(QStringLiteral("<li>%1</li>").arg(fn));
+    }
+    return items.join(QString());
+}
+
+} // namespace
+
 void CanvasView::on_insert_images_finished(const QString& /*filename*/,
-                                           const QStringList& errors)
+                                           const QStringList& /*errors*/)
 {
     FLOG_DEBUG(Ch::View, "Insert images finished");
     insertImagesInsertedItems_ += scene_->add_queued_items();
 
-    if (!errors.isEmpty()) {
-        QStringList names;
-        for (const QString& fn : errors) {
-            names.append(QStringLiteral("<li>%1</li>").arg(fn));
-        }
-        showMessageBox(QMessageBox::Warning,
-                       this,
-                       tr("Problem loading images"),
-                       tr("%1 image(s) could not be opened.<br/>"
-                          "Unknown format or too big?<ul>%2</ul>")
-                           .arg(errors.size())
-                           .arg(names.join(QStringLiteral("\n"))));
+    // Three separate causes (ImageLoadFailure, fileio.h) - each with a
+    // genuinely different fix for the user, so each gets its own message
+    // instead of one generic "unknown format or too big?" that used to
+    // guess at both simultaneously. Populated by the connect() to
+    // ThreadedIO::imageLoadFailures() below (do_insert_images()).
+    if (!insertImagesUnsupportedFormat_.isEmpty()) {
+        showMessageBox(
+            QMessageBox::Warning,
+            this,
+            tr("Problem loading images"),
+            tr("%1 image(s) use a format familiar doesn't support.<ul>%2</ul>")
+                .arg(insertImagesUnsupportedFormat_.size())
+                .arg(listAsHtml(insertImagesUnsupportedFormat_)));
+    }
+    if (!insertImagesTooLarge_.isEmpty()) {
+        showMessageBox(
+            QMessageBox::Warning,
+            this,
+            tr("Problem loading images"),
+            tr("%1 image(s) are too large to load with the current memory "
+               "limit.<br/>Raise \"Maximum Image Size\" under Performance "
+               "settings to allow bigger files.<ul>%2</ul>")
+                .arg(insertImagesTooLarge_.size())
+                .arg(listAsHtml(insertImagesTooLarge_)));
+    }
+    if (!insertImagesCorrupt_.isEmpty()) {
+        showMessageBox(
+            QMessageBox::Warning,
+            this,
+            tr("Problem loading images"),
+            tr("%1 image(s) could not be read - the file may be corrupt or "
+               "truncated.<ul>%2</ul>")
+                .arg(insertImagesCorrupt_.size())
+                .arg(listAsHtml(insertImagesCorrupt_)));
     }
 
     if (!insertImagesLargeItems_.isEmpty()) {
@@ -1764,6 +1799,9 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     insertImagesNewScene_ = scene_->items().isEmpty();
     insertImagesInsertedItems_.clear();
     insertImagesLargeItems_.clear();
+    insertImagesUnsupportedFormat_.clear();
+    insertImagesTooLarge_.clear();
+    insertImagesCorrupt_.clear();
 
     scene_->deselect_all_items();
 
@@ -1802,6 +1840,16 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
             this,
             [this](const QStringList& filenames) {
                 insertImagesLargeItems_ += filenames;
+            });
+    connect(worker,
+            &ThreadedIO::imageLoadFailures,
+            this,
+            [this](const QStringList& unsupportedFormat,
+                  const QStringList& tooLarge,
+                  const QStringList& corrupt) {
+                insertImagesUnsupportedFormat_ += unsupportedFormat;
+                insertImagesTooLarge_ += tooLarge;
+                insertImagesCorrupt_ += corrupt;
             });
 
     // QThread's own finished() (not ThreadedIO's same-named result signal)

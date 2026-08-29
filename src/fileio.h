@@ -16,8 +16,28 @@ class CanvasScene;
 // "Large" for Items/auto_optimize_imported_images purposes (warn /
 // optimize_large): long side over this many pixels. Fixed, not itself a
 // setting. Shared with canvasview.cpp's on_insert_images_finished(),
-// which quotes it in the "large images imported" message.
+// which quotes it in the "large images imported" message. Unrelated to
+// ImageLoadFailure::TooLarge below - that's about a load that FAILED
+// outright (Items/image_allocation_limit, a memory ceiling in MB); this
+// is a pixel-dimension threshold applied only AFTER a successful load.
 constexpr int kLargeImageMaxDimension = 4096;
+
+// Why load_images() couldn't produce a usable QImage for one url - lets
+// the UI tell "this format isn't supported at all" apart from "this
+// would need more memory than Items/image_allocation_limit allows" apart
+// from "the file itself is corrupt/truncated", instead of one opaque
+// "could not load". Qt's own QImageReader::error() can't fully make this
+// distinction on its own (UnsupportedFormatError is real and distinct,
+// but an allocation-limit rejection and genuine corrupt data both come
+// back as the same InvalidDataError - see
+// https://bugreports.qt.io/browse/QTBUG-124510) - TooLarge is
+// disambiguated here by checking QImageReader::size() against the
+// configured limit BEFORE attempting the real read().
+enum class ImageLoadFailure {
+    UnsupportedFormat,
+    TooLarge,
+    Corrupt,
+};
 
 // Dedicated thread for loading and saving.
 class ThreadedIO : public QThread
@@ -50,6 +70,14 @@ signals:
     // Separate from finished()'s `errors` - these images loaded fine and
     // were queued as-is, just flagged as candidates for optimization.
     void largeImagesFound(const QStringList& filenames);
+    // Emitted once, right before finished(), by load_images() ONLY - the
+    // 3-way breakdown of finished()'s own `errors` list (same filenames,
+    // just classified - see ImageLoadFailure). finished()'s `errors`
+    // keeps carrying the flat list too (log/back-compat), this is
+    // additive for the UI to build a clearer message from.
+    void imageLoadFailures(const QStringList& unsupportedFormat,
+                          const QStringList& tooLarge,
+                          const QStringList& corrupt);
 
 public slots:
     void onCanceled();
