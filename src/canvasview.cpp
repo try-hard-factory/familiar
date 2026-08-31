@@ -1832,11 +1832,35 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     // ThreadedIO::finished, never on a RAW-choice pause - see
     // do_insert_images()'s own comment) - safe to clean up now, same
     // pattern as on_export_images_finished().
+    // DIAG (ProgressDialog SIGSEGV investigation): the crash's last log
+    // line has consistently been the "cleaning up ..." one just below,
+    // with nothing after it - these extra lines narrow down WHICH of
+    // the 3 statements in this tail actually crashes.
+    FLOG_DEBUG(Ch::View,
+              "on_insert_images_finished: cleaning up worker={} dialog={} "
+              "isRunning={} isFinished={}",
+              static_cast<void*>(imageImportWorker_),
+              static_cast<void*>(imageImportProgressDialog_),
+              imageImportWorker_ ? imageImportWorker_->isRunning() : false,
+              imageImportWorker_ ? imageImportWorker_->isFinished() : false);
     if (imageImportWorker_) {
+        FLOG_DEBUG(Ch::View, "about to call worker->deleteLater()");
         imageImportWorker_->deleteLater();
+        FLOG_DEBUG(Ch::View, "worker->deleteLater() returned");
         imageImportWorker_ = nullptr;
     }
+    FLOG_DEBUG(Ch::View,
+              "about to reset imageImportSession_ (session={})",
+              static_cast<void*>(imageImportSession_.get()));
     imageImportSession_.reset();
+    FLOG_DEBUG(Ch::View, "imageImportSession_ reset OK");
+    // imageImportProgressDialog_ is deliberately NOT touched here
+    // anymore (used to be deleteLater()'d, then nulled) - it's a single
+    // long-lived instance now, reused by do_insert_images() via
+    // ProgressDialog::rebind() next time instead of being recreated.
+    // It already hid itself (ProgressDialog::on_finished()); nothing
+    // else to do with it until the next import.
+    FLOG_DEBUG(Ch::View, "on_insert_images_finished: cleanup done");
 }
 
 void CanvasView::do_insert_images(const QList<QUrl>& urls,
@@ -1876,6 +1900,32 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
 
     imageImportSession_
         = std::make_unique<ImageImportSession>(validUrls, scenePos, scene_);
+
+    // Ask up front, before any ProgressDialog/loading starts at all, if
+    // the batch's FIRST RAW file (if any) doesn't already have a decided
+    // answer - real UX fix: starting the worker/ProgressDialog right
+    // away meant the choice dialog could pop up right on top of one that
+    // had barely appeared, if the very first dropped file was RAW. A
+    // LATER RAW file in the same batch (if "Apply choice to this queue"
+    // wasn't checked) still pauses normally mid-load via
+    // on_raw_import_choice_required() - only the very first decision
+    // point moves up front.
+    const QString rawImportSetting
+        = FamSettings()
+              .valueOrDefault(QStringLiteral("Items/raw_import_choice"))
+              .toString();
+    if (rawImportSetting == QLatin1String("ask")) {
+        for (const QUrl& url : validUrls) {
+            if (url.isLocalFile() && is_raw_file(url.toLocalFile())) {
+                if (!resolveRawImportChoice(url.toLocalFile())) {
+                    imageImportSession_.reset();
+                    return;
+                }
+                break;
+            }
+        }
+    }
+
     imageImportWorker_ = new ThreadedIO([this](ThreadedIO* w) {
         imageImportSession_->run(w);
     });
@@ -1919,30 +1969,89 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // in on_insert_images_finished() and on_raw_import_choice_required()'s
     // own Cancel path instead.
 
-    new ProgressDialog(tr("Loading images"), imageImportWorker_, 0, this);
+    // ONE instance for the WHOLE CanvasView, not per import - created
+    // lazily the first time, reused (ProgressDialog::rebind()) every
+    // time after. Two real problems this replaced, in order: (1) a
+    // confirmed UAF crash from destroying/recreating this dialog every
+    // import (a crash backtrace's `this=` pointer matched an address
+    // this class's own destructor had already logged as destroyed); (2)
+    // that fix's own real problem (correctly called out by Max): never
+    // destroying it but still `new`-ing one per import left every
+    // previous one alive-but-hidden forever as a child of this
+    // CanvasView - N imports over a session == N permanently leaked
+    // dialogs until the tab itself closed. rebind() is the actual fix
+    // for both: one object, reused, memory bounded regardless of import
+    // count. See ProgressDialog::rebind()'s own doc comment.
+    if (!imageImportProgressDialog_) {
+        imageImportProgressDialog_
+            = new ProgressDialog(tr("Loading images"), imageImportWorker_, 0, this);
+        // Marks THIS ProgressDialog (and only this one - every other
+        // ProgressDialog in the app is a genuine one-shot and must NOT
+        // call this, see setReusable()'s own doc comment) as exempt from
+        // on_finished()'s normal self-delete, since do_insert_images()
+        // reuses it (rebind(), below) instead of constructing a fresh
+        // one every import.
+        imageImportProgressDialog_->setReusable(true);
+    } else {
+        imageImportProgressDialog_->rebind(imageImportWorker_);
+    }
+    // DIAG (ProgressDialog SIGSEGV investigation): correlate these two
+    // addresses against ThreadedIO's/ProgressDialog's own DIAG logs.
+    FLOG_DEBUG(Ch::View,
+              "do_insert_images: worker={} dialog={}",
+              static_cast<void*>(imageImportWorker_),
+              static_cast<void*>(imageImportProgressDialog_));
 
-    // Re-enabled in on_insert_images_finished() once arrange_default()
-    // has given every item its final position - see the comment there.
-    // Stays disabled across a RAW-choice pause too (no new ProgressDialog/
-    // ThreadedIO::finished() until the whole session truly finishes).
-    setUpdatesEnabled(false);
+    // NOT setUpdatesEnabled(false) anymore - that used to be safe when
+    // this whole operation was always fast (items snap into their final
+    // arrange_default() position within a fraction of a second either
+    // way), avoiding a brief "scatter then snap" flicker as they were
+    // added one at a time. A RAW file breaks that assumption badly - a
+    // full-resolution demosaic alone can take 10+ seconds (fileio.cpp's
+    // decode_raw_via_demosaic()), and a RawImportDialog pause can sit open for
+    // however long the user takes to answer it - real bug this fixes:
+    // the canvas just went fully blank (updates suppressed) for that
+    // whole stretch, reading as "everything's gone", not "still
+    // working". A little visible flicker on the fast/common path beats
+    // that.
     imageImportWorker_->start();
 }
 
 void CanvasView::on_raw_import_choice_required(const QString& filename)
 {
-    RawImportDialog dialog(this, filename);
-    if (dialog.exec() != QDialog::Accepted) {
+    if (!resolveRawImportChoice(filename)) {
         // Cancel - matches on_export_images_file_exists()'s own Reject
         // branch: this session is simply abandoned. Anything already
         // added to the scene before this pause stays (same as the
         // export path leaving already-written files on disk) - only
         // this file and anything after it in the queue never happens.
+        // Just hide, don't touch the pointer - it's a single long-lived
+        // instance now (see do_insert_images()'s own comment), reused
+        // via ProgressDialog::rebind() next time rather than being
+        // recreated. rebind() resets finished_/disconnects the old
+        // (about to be deleteLater()'d) worker itself, so nothing more
+        // to do with it here.
+        if (imageImportProgressDialog_) {
+            imageImportProgressDialog_->hide();
+        }
         imageImportWorker_->deleteLater();
         imageImportWorker_ = nullptr;
         imageImportSession_.reset();
         setUpdatesEnabled(true);
         return;
+    }
+
+    // NOT a new ProgressDialog here - imageImportProgressDialog_ (created
+    // once in do_insert_images()) is still alive and still correctly
+    // connected to this same imageImportWorker_; just resume it.
+    imageImportWorker_->start();
+}
+
+bool CanvasView::resolveRawImportChoice(const QString& filename)
+{
+    RawImportDialog dialog(this, filename);
+    if (dialog.exec() != QDialog::Accepted) {
+        return false;
     }
 
     if (dialog.applyToQueue()) {
@@ -1957,9 +2066,7 @@ void CanvasView::on_raw_import_choice_required(const QString& filename)
                               ? QStringLiteral("always_optimize")
                               : QStringLiteral("always_keep_original"));
     }
-
-    new ProgressDialog(tr("Loading images"), imageImportWorker_, 0, this);
-    imageImportWorker_->start();
+    return true;
 }
 
 void CanvasView::on_items_loaded(int /*value*/)

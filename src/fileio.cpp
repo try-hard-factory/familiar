@@ -55,56 +55,87 @@ struct LoadedImage
     QByteArray bytes;
 };
 
-// Fast path (RawImportChoice::Optimize): LibRaw's own embedded JPEG/
-// bitmap preview, no demosaic at all. Most modern cameras embed a
-// near-full-resolution preview - plenty for a reference board, which
-// has no RAW-specific editing (white balance/exposure/etc) that would
-// actually need the real sensor data. [Непроверено] - written against
-// LibRaw's documented C++ API (open_file/unpack_thumb/
-// dcraw_make_mem_thumb/dcraw_clear_mem), not yet exercised against a
-// real .NEF/.CR3 file.
-QImage decode_raw_preview(const QString& filename)
+// LibRaw::set_progress_handler()'s callback is a plain C function
+// pointer (no captures allowed), so context has to travel through its
+// own `void* data` param instead of a lambda capture.
+struct RawProgressContext
 {
-    LibRaw processor;
-    if (processor.open_file(filename.toLocal8Bit().constData())
-        != LIBRAW_SUCCESS) {
-        return {};
+    ThreadedIO* worker;
+};
+
+// `stage` is always a single bit (LibRaw's own RUN_CALLBACK() call
+// sites, libraw.h, each pass exactly one named LibRaw_progress flag per
+// call) - OPEN(bit 0) through STRETCH(bit 19) are the ~20 real,
+// meaningful stages a full demosaic actually walks through in order
+// (LOAD_RAW/INTERPOLATE are typically the slow ones); bits 20+ are
+// reserved/thumbnail-specific and don't fire here. [Непроверено] - the
+// ORDER these fire in, and that there are exactly 20 of them for a
+// typical file, is inferred from libraw_const.h's own enum declaration
+// order, not observed against a real decode yet.
+constexpr int kRawProgressKnownStages = 20;
+
+int rawProgressCallback(void* data,
+                        LibRaw_progress stage,
+                        int /*iteration*/,
+                        int /*expected*/)
+{
+    auto* ctx = static_cast<RawProgressContext*>(data);
+    if (!ctx || !ctx->worker) {
+        return 0;
     }
-    if (processor.unpack_thumb() != LIBRAW_SUCCESS) {
-        return {};
+    unsigned bit = static_cast<unsigned>(stage);
+    int bitPos = 0;
+    while (bit > 1u) {
+        bit >>= 1;
+        ++bitPos;
     }
-    int err = 0;
-    libraw_processed_image_t* thumb = processor.dcraw_make_mem_thumb(&err);
-    if (!thumb) {
-        return {};
+    if (bitPos < kRawProgressKnownStages) {
+        const int percent = ((bitPos + 1) * 100) / kRawProgressKnownStages;
+        emit ctx->worker->rawDecodeProgress(percent);
     }
-    QImage result;
-    if (thumb->type == LIBRAW_IMAGE_JPEG) {
-        result.loadFromData(reinterpret_cast<const uchar*>(thumb->data),
-                            static_cast<int>(thumb->data_size));
-    } else if (thumb->type == LIBRAW_IMAGE_BITMAP && thumb->colors == 3
-               && thumb->bits == 8) {
-        // Detach (.copy()) BEFORE dcraw_clear_mem() below frees thumb->data
-        // out from under a QImage that would otherwise just be wrapping it.
-        result = QImage(reinterpret_cast<const uchar*>(thumb->data),
-                        thumb->width,
-                        thumb->height,
-                        thumb->width * 3,
-                        QImage::Format_RGB888)
-                     .copy();
-    }
-    LibRaw::dcraw_clear_mem(thumb);
-    return result;
+    return 0; // non-zero would throw LIBRAW_EXCEPTION_CANCELLED_BY_CALLBACK
+              // internally (libraw.h's RUN_CALLBACK macro) - not wired up
+              // to worker->canceled here, out of scope for now.
 }
 
-// Slow path (RawImportChoice::KeepOriginal): a real demosaic through
-// LibRaw's own default processing pipeline. Best available quality, but
-// can take real time (seconds, not milliseconds) on a modern
-// high-megapixel sensor - see RawImportDialog/ProgressDialog on the
-// caller side. [Непроверено] - same caveat as decode_raw_preview() above.
-QImage decode_raw_full(const QString& filename)
+// Real demosaic through LibRaw's own processing pipeline for BOTH
+// RawImportChoice values - see the enum's own doc comment (fileio.h)
+// for why RawImportChoice::Optimize used to just extract the camera's
+// embedded preview JPEG instead, and why that was abandoned: on a real
+// file, that embedded preview turned out to be a flat, unprocessed-
+// looking render - camera settings (white balance/Picture Control) were
+// never applied to it in the first place, confirmed by dumping those
+// exact bytes to disk and looking at them in an ordinary image viewer,
+// outside our code entirely.
+//
+// `fast` picks a quicker interpolation ALGORITHM (user_qual=0, linear -
+// LibRaw's own doc: API-datastruct.html, "0-10: interpolation quality",
+// 0 is the fastest real option) rather than downscaling resolution -
+// first tried `half_size=1` instead (each 2x2 sensor block collapsed to
+// one output pixel, skipping interpolation entirely), but that produced
+// a real, visible moire/noise pattern on flat surfaces (a plain wall
+// behind a subject, confirmed via a real screenshot) - block-averaging
+// isn't real demosaicing, unlike even the cheapest proper interpolation
+// mode. LibRaw's own default (user_qual left at its constructor value,
+// -1 - "camera-specific best", src/utils/init_close_utils.cpp) is used
+// for RawImportChoice::KeepOriginal, unchanged.
+// `use_camera_wb=1` on both paths - matches what other raw converters
+// (Adobe, darktable, ...) default to; LibRaw's own constructor (same
+// file, checked directly against the vendored source) sets
+// output_color=1 (sRGB) but leaves use_camera_wb/use_auto_wb unset, i.e.
+// off. [Непроверено] - written against LibRaw's documented C++ API, not
+// exercised against every RAW format this app claims to support.
+QImage decode_raw_via_demosaic(const QString& filename,
+                               ThreadedIO* worker,
+                               bool fast)
 {
     LibRaw processor;
+    RawProgressContext progressCtx{worker};
+    processor.set_progress_handler(&rawProgressCallback, &progressCtx);
+    processor.imgdata.params.use_camera_wb = 1;
+    if (fast) {
+        processor.imgdata.params.user_qual = 0;
+    }
     if (processor.open_file(filename.toLocal8Bit().constData())
         != LIBRAW_SUCCESS) {
         return {};
@@ -134,10 +165,11 @@ QImage decode_raw_full(const QString& filename)
     return result;
 }
 
-QImage decode_raw(const QString& filename, RawImportChoice choice)
+QImage decode_raw(const QString& filename, RawImportChoice choice, ThreadedIO* worker)
 {
-    return choice == RawImportChoice::Optimize ? decode_raw_preview(filename)
-                                               : decode_raw_full(filename);
+    return decode_raw_via_demosaic(filename,
+                                   worker,
+                                   choice == RawImportChoice::Optimize);
 }
 
 bool is_image_large(const QImage& img)
@@ -338,10 +370,28 @@ LoadedImage download_image(QNetworkAccessManager& manager,
 ThreadedIO::ThreadedIO(WorkerFunc func, QObject* parent)
     : QThread(parent)
     , func_(std::move(func))
-{}
+{
+    // DIAG (ProgressDialog SIGSEGV investigation): correlate this
+    // object's address across its whole lifetime against whatever
+    // ProgressDialog logs alongside it, and against any later crash's
+    // `this=` pointer in a backtrace.
+    FLOG_DEBUG(Ch::IO, "ThreadedIO() this={}", static_cast<void*>(this));
+}
+
+ThreadedIO::~ThreadedIO()
+{
+    // DIAG: if a crash's backtrace pointer matches an address logged
+    // here as already destroyed, that's direct proof of a stale/
+    // use-after-free delivery rather than a same-object re-entry.
+    FLOG_DEBUG(Ch::IO, "~ThreadedIO() this={}", static_cast<void*>(this));
+}
 
 void ThreadedIO::run()
 {
+    FLOG_DEBUG(Ch::IO,
+              "ThreadedIO::run() this={} thread={}",
+              static_cast<void*>(this),
+              static_cast<void*>(QThread::currentThreadId()));
     func_(this);
 }
 
@@ -387,6 +437,17 @@ ImageImportSession::ImageImportSession(const QList<QUrl>& urls,
 
 void ImageImportSession::run(ThreadedIO* worker)
 {
+    // DIAG (ProgressDialog SIGSEGV investigation): confirms exactly how
+    // many urls this session holds and where it's resuming from - a
+    // progress(N) with N >= 1 only makes sense if urls_.size() > 1, or
+    // if this is genuinely a second run() call resuming past index 0.
+    FLOG_DEBUG(Ch::IO,
+              "ImageImportSession::run() this={} worker={} urls={} "
+              "nextIndex={}",
+              static_cast<void*>(this),
+              static_cast<void*>(worker),
+              urls_.size(),
+              nextIndex_);
     // Only on the very first call, not a resume after
     // rawImportChoiceRequired() - re-emitting this would reset the
     // ProgressDialog's bar back to 0, even though everything before
@@ -452,10 +513,12 @@ void ImageImportSession::run(ThreadedIO* worker)
                 FLOG_DEBUG(Ch::IO,
                           "Decoding RAW file ({}) {}",
                           choice == RawImportChoice::Optimize
-                              ? "preview"
-                              : "full demosaic",
+                              ? "fast half-size demosaic"
+                              : "full-resolution demosaic",
                           label);
-                img = decode_raw(label, choice);
+                emit worker->rawDecodeStateChanged(true);
+                img = decode_raw(label, choice, worker);
+                emit worker->rawDecodeStateChanged(false);
                 // No raw-byte preservation (Max's explicit call - see
                 // ImageImportSession's own doc comment in fileio.h) -
                 // `bytes` stays empty, same as any decode failure below;
@@ -505,6 +568,14 @@ void ImageImportSession::run(ThreadedIO* worker)
             }
         }
 
+        // DIAG (ProgressDialog SIGSEGV investigation): every progress()
+        // emission's worker pointer + thread, to line up against
+        // ProgressDialog's own DIAG logs and any crash backtrace.
+        FLOG_DEBUG(Ch::IO,
+                  "emit progress({}) worker={} thread={}",
+                  i,
+                  static_cast<void*>(worker),
+                  static_cast<void*>(QThread::currentThreadId()));
         emit worker->progress(i);
 
         if (img.isNull()) {
@@ -591,6 +662,8 @@ void ImageImportSession::run(ThreadedIO* worker)
     // above is additive, not a replacement.
     const QStringList errors
         = unsupportedFormatErrors + tooLargeErrors + corruptErrors;
+    // DIAG (ProgressDialog SIGSEGV investigation).
+    FLOG_DEBUG(Ch::IO, "emit finished() worker={}", static_cast<void*>(worker));
     emit worker->finished(QString(), errors);
     worker->quit();
 }

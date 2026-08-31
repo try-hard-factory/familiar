@@ -125,11 +125,10 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     outer->addWidget(formatChip);
 
     auto* noteLabel = new QLabel(
-        tr("\"Optimize image\" uses the camera's own embedded preview "
-           "(fast). \"Keep original\" runs a full RAW conversion instead "
-           "(slower, best quality) - either way, this converted copy is "
-           "what actually gets saved in the project, not the original "
-           "file itself."),
+        tr("\"Optimize image\" runs a quicker RAW conversion (fast). "
+           "\"Keep original\" runs the best-quality conversion instead "
+           "(slower) - either way, this converted copy is what actually "
+           "gets saved in the project, not the original file itself."),
         this);
     noteLabel->setWordWrap(true);
     outer->addWidget(noteLabel);

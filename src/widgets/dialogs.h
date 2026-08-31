@@ -25,6 +25,7 @@
 #include <QPalette>
 #include <QPen>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QRadioButton>
@@ -66,7 +67,6 @@ public:
                             QWidget* parent = nullptr)
         : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Initialized progress bar");
         // See FileActions::openFile(): MainWindow's translucent/frameless
         // stylesheet cascades into this otherwise-unstyled top-level
         // dialog, painting it solid black.
@@ -77,6 +77,62 @@ public:
         setWindowModality(Qt::WindowModal);
         setAutoReset(false);
         setAutoClose(false);
+        bindWorker_(worker);
+    }
+
+    // Reattaches this SAME dialog to a new import session's worker,
+    // instead of the caller constructing a brand new ProgressDialog each
+    // time (see canvasview.cpp's imageImportProgressDialog_ - now a
+    // single long-lived instance, created once and reused for every
+    // do_insert_images() call). Two real problems this replaced, in
+    // order: (1) a confirmed UAF crash from destroying this dialog
+    // mid-session (a crash backtrace's `this=` pointer matched an
+    // address this class's own destructor had already logged as
+    // destroyed) - fixed by simply never destroying it mid-session; (2)
+    // that fix's own real problem, correctly called out by Max: never
+    // destroying it but still constructing a NEW one per import left
+    // every previous one alive-but-hidden forever (as a child of
+    // CanvasView), i.e. N separate imports over a session == N
+    // permanently leaked dialogs until the tab itself closed. This
+    // rebind() is the actual fix for both at once: one object, reused,
+    // memory bounded regardless of how many imports happen.
+    void rebind(ThreadedIO* worker)
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "ProgressDialog::rebind() this={} old worker={} new "
+                  "worker={}",
+                  static_cast<void*>(this),
+                  static_cast<void*>(worker_),
+                  static_cast<void*>(worker));
+        if (worker_) {
+            // Both directions - see the constructor's own connect()
+            // calls below (worker_->this AND this->worker_, the
+            // canceled/onCanceled one) - QObject::disconnect(sender,
+            // nullptr, receiver, nullptr) drops every connection
+            // between exactly this pair, nothing else.
+            QObject::disconnect(worker_, nullptr, this, nullptr);
+            QObject::disconnect(this, nullptr, worker_, nullptr);
+        }
+        finished_ = false;
+        knownMaximum_ = 0;
+        setValue(0);
+        bindWorker_(worker);
+        show();
+    }
+
+private:
+    // Shared by the constructor and rebind() above - the actual
+    // connect() calls, once, instead of duplicated in both places.
+    void bindWorker_(ThreadedIO* worker)
+    {
+        // DIAG (SIGSEGV investigation): this object's own address, to
+        // correlate against a crash backtrace's `this=` pointer and
+        // against ~ProgressDialog()'s own DIAG log below.
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "ProgressDialog::bindWorker_() this={} worker={}",
+                  static_cast<void*>(this),
+                  static_cast<void*>(worker));
+        worker_ = worker;
         connect(worker,
                 &ThreadedIO::beginProcessing,
                 this,
@@ -93,33 +149,220 @@ public:
                 &ThreadedIO::userInputRequired,
                 this,
                 [this](const QString&) { on_finished(QString(), {}); });
+        // Deliberately NOT reacting to ThreadedIO::rawImportChoiceRequired
+        // the same way (see ImagesToDirectoryExporter's own userInputRequired
+        // pause above) - unlike that flow, CanvasView keeps this SAME
+        // ProgressDialog alive across a RAW-choice pause+resume instead
+        // of treating a pause as "done".
         connect(this,
                 &ProgressDialog::canceled,
                 worker,
                 &ThreadedIO::onCanceled);
+        // While a RAW file is actively decoding, this bar temporarily
+        // shows THAT FILE's own 0-100 demosaic sub-progress
+        // (rawDecodeProgress below - LibRaw::set_progress_handler(),
+        // fileio.cpp) instead of "item N of M" - progress() alone only
+        // advances once a whole item finishes, and a full-resolution
+        // demosaic can take 10+ seconds; without this the bar just sat frozen
+        // the whole time. Snaps back to the real N-of-M range the
+        // moment this file's decode ends (on_raw_decode_state_changed(
+        // false) below, and on_progress() itself as a backstop).
+        connect(worker,
+                &ThreadedIO::rawDecodeStateChanged,
+                this,
+                &ProgressDialog::on_raw_decode_state_changed);
+        connect(worker,
+                &ThreadedIO::rawDecodeProgress,
+                this,
+                &ProgressDialog::on_raw_decode_progress);
     }
 
 private slots:
     void on_progress(int value)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Progress dialog: {}", value);
+        // DIAG: logged UNCONDITIONALLY, before the guard - a prior
+        // build only logged this AFTER the finished_ check, so a crash
+        // during setValue() left no trace of whether the guard had even
+        // been reached yet. This is the frame the crash backtrace
+        // points at (dialogs.h on_progress -> QProgressDialog::setValue),
+        // so if a crash recurs, whatever "this=/finished_=" line printed
+        // last (if any) right before it is the key evidence.
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_progress({}) this={} finished_={}",
+                  value,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        // Back to the real range in case a RAW decode's own sub-progress
+        // mode was still active - belt-and-suspenders alongside
+        // on_raw_decode_state_changed(false) below, which normally
+        // already restores it right before this fires anyway.
+        setRange(0, knownMaximum_);
         setValue(value);
+    }
+
+    void on_raw_decode_state_changed(bool decoding)
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_raw_decode_state_changed({}) this={} finished_={}",
+                  decoding,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        if (decoding) {
+            setRange(0, 100);
+            setValue(0);
+        } else {
+            setRange(0, knownMaximum_);
+        }
+    }
+
+    void on_raw_decode_progress(int percent)
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_raw_decode_progress({}) this={} finished_={}",
+                  percent,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        setValue(percent);
     }
 
     void on_begin_processing(int value)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Begin progress dialog: {}", value);
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_begin_processing({}) this={} finished_={}",
+                  value,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        knownMaximum_ = value;
         setMaximum(value);
     }
 
     void on_finished(const QString& filename, const QStringList& errors)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Finished progress dialog");
+        // finished_/worker_->disconnect() below guard this OBJECT while
+        // it's alive - neither helps against what turned out to be the
+        // actual bug (confirmed via DIAG logging + a backtrace: the
+        // crash's `this=` pointer matched an address this class's own
+        // destructor had ALREADY logged as destroyed, ~800ms earlier -
+        // a stale queued event reaching genuinely freed memory, not a
+        // same-object re-entry). Reading `this->finished_` on freed
+        // memory is undefined behavior regardless of what value happens
+        // to be sitting there.
+        //
+        // ONLY the reusable_ instance (canvasview.cpp's
+        // imageImportProgressDialog_, marked via setReusable(true) right
+        // after construction - see that call site) skips destruction
+        // here, staying alive/hidden, parented to CanvasView, until the
+        // tab itself closes - that's the one this class was built to
+        // survive a mid-session rebind() for. Real regression this
+        // fixes: EVERY other ProgressDialog in this app (file_actions.cpp's
+        // "Opening project", canvasview.cpp's 3 "Exporting..." dialogs) is
+        // a genuine one-shot, constructed fresh and never touched again -
+        // those need to keep self-deleting normally via deleteLater(),
+        // or each export/open-project operation leaks one hidden dialog
+        // for the rest of the app's life (confirmed for real: Max saw
+        // TWO ~ProgressDialog() calls at shutdown with only ONE tab and
+        // ONE RAW import all session - the second was an export/open-
+        // project dialog this fix had accidentally stopped cleaning up
+        // too, since the original fix touched every ProgressDialog
+        // instance instead of only the reused one).
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_finished() this={} finished_={} reusable_={}",
+                  static_cast<void*>(this),
+                  finished_,
+                  reusable_);
+        if (finished_) {
+            return;
+        }
+        finished_ = true;
+        if (worker_) {
+            worker_->disconnect(this);
+        }
+        setRange(0, knownMaximum_); // in case a RAW decode's indeterminate
+                                    // mode was somehow still active
         setValue(maximum());
         reset();
         hide();
-        QTimer::singleShot(100, this, &QObject::deleteLater);
+        if (!reusable_) {
+            QTimer::singleShot(100, this, &QObject::deleteLater);
+        }
     }
+
+public:
+    // Call once, right after construction, ONLY for a ProgressDialog the
+    // caller intends to keep and rebind() across multiple operations
+    // (canvasview.cpp's imageImportProgressDialog_) - every other
+    // (one-shot, fire-and-forget) ProgressDialog in this app must leave
+    // this false (the default) so on_finished() keeps self-deleting
+    // normally. See on_finished()'s own comment for the real leak this
+    // distinction fixes.
+    void setReusable(bool value) { reusable_ = value; }
+
+public:
+    // DIAG (SIGSEGV investigation): logs this object's own address right
+    // as it's actually destroyed - compare its timestamp/address against
+    // any later crash backtrace's `this=` pointer - this is exactly how
+    // the real UAF above was confirmed (a crash's `this=` matched an
+    // address logged here, already destroyed, ~800ms earlier). Now only
+    // fires when CanvasView/the tab itself is destroyed (see
+    // on_finished()'s own comment - no more mid-session deleteLater()),
+    // still kept as a cheap correctness check.
+    ~ProgressDialog() override
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "~ProgressDialog() this={}",
+                  static_cast<void*>(this));
+    }
+
+private:
+    // setMaximum()'s own value can't be read back once setRange(0, 0)
+    // (indeterminate mode, on_raw_decode_state_changed() above) is
+    // active - maximum() itself reads back 0 in that state - so this is
+    // the one place that actually remembers the real total to restore.
+    int knownMaximum_ = 0;
+    // Set once, in on_finished() - every other slot checks this first
+    // and no-ops if true. See on_finished()'s own comment for the real
+    // crash this guards against.
+    bool finished_ = false;
+    // Stored so on_finished() can sever worker_'s connections into this
+    // dialog explicitly (worker_->disconnect(this)) instead of relying
+    // only on finished_. A PREVIOUS fix attempt here called a bare
+    // disconnect() (this->disconnect(), no args) intending the same
+    // thing, but that disconnects signals *this* object emits, not the
+    // worker->this connections actually in play - wrong direction,
+    // fixed nothing, and produced a spurious "wildcard call disconnects
+    // from destroyed signal" warning since this class barely emits any
+    // signals of its own. worker_->disconnect(this) disconnects every
+    // connection where worker_ is the sender AND this is the receiver -
+    // the actual ones set up in the constructor - which should stop any
+    // FUTURE emit from worker_ from even posting a new event to this
+    // object at all, regardless of GUI-thread deletion timing.
+    //
+    // QPointer, NOT a raw ThreadedIO* - real crash this fixes: rebind()
+    // reused this dialog for a SECOND import while worker_ still pointed
+    // at the FIRST import's worker, which by then had already been
+    // deleteLater()'d and destroyed by CanvasView (on_insert_images_
+    // finished()) - a plain ThreadedIO* has no idea its pointee died,
+    // so QObject::disconnect(worker_, ...) in rebind() dereferenced
+    // freed memory (confirmed via a real backtrace crashing inside
+    // QObject::disconnect() itself, called from here). QPointer clears
+    // itself back to nullptr automatically the moment its pointee is
+    // destroyed, so every `if (worker_)` check below stays honest even
+    // across a worker that died since the last time this was touched.
+    QPointer<ThreadedIO> worker_;
+    // false by default - see setReusable()'s own doc comment above.
+    bool reusable_ = false;
 };
 
 

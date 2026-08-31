@@ -21,10 +21,11 @@ class QMouseEvent;
 // familiar's "Keep original" doesn't preserve the source .NEF/.CR3 file
 // at all - both choices decode to a QImage that gets re-encoded for
 // storage like any other picture (Items/image_storage_format), same as
-// every other imported format. "Keep original" here means a full RAW
-// demosaic (best quality, slow) instead of the fast embedded-preview
-// path "Optimize image" uses - see fileio.h's decode_raw_preview()/
-// decode_raw_full() for exactly what each does.
+// every other imported format. "Keep original" here means LibRaw's own
+// best-for-this-camera demosaic algorithm (slow) instead of the cheaper
+// linear interpolation "Optimize image" uses (fast, same resolution) -
+// see fileio.h's RawImportChoice and fileio.cpp's
+// decode_raw_via_demosaic() for exactly what each does.
 class RawImportDialog : public QDialog
 {
     Q_OBJECT

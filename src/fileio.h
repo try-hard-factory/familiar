@@ -49,6 +49,10 @@ public:
     using WorkerFunc = std::function<void(ThreadedIO*)>;
 
     explicit ThreadedIO(WorkerFunc func, QObject* parent = nullptr);
+    // DIAG (ProgressDialog SIGSEGV investigation, see fileio.cpp): only
+    // exists right now to log this object's address at destruction time,
+    // for correlation against a crash backtrace's `this=` pointer.
+    ~ThreadedIO() override;
 
     std::atomic<bool> canceled{false};
 
@@ -89,6 +93,22 @@ signals:
     // object, then start()s this same ThreadedIO again to resume from
     // exactly this file.
     void rawImportChoiceRequired(const QString& filename);
+    // Emitted right before ImageImportSession::run() starts decoding a
+    // RAW file (either RawImportChoice - both go through a real LibRaw
+    // demosaic now, see decode_raw_via_demosaic()), and again once that
+    // decode returns (success or failure) - a full-resolution demosaic
+    // specifically can take 10+ seconds with no incremental feedback
+    // otherwise, so progress() alone would leave the progress bar
+    // looking frozen/stuck for that whole stretch instead of showing
+    // something's actively happening.
+    void rawDecodeStateChanged(bool decoding);
+    // Real sub-progress WITHIN a single RAW file's demosaic (either
+    // RawImportChoice - Optimize's half_size=1 pass walks the same named
+    // pipeline stages, just faster), 0-100 - LibRaw::
+    // set_progress_handler() reports back which of its ~20 named
+    // pipeline stages (OPEN, LOAD_RAW, INTERPOLATE, CONVERT_RGB, ...)
+    // just completed; see fileio.cpp's rawProgressCallback().
+    void rawDecodeProgress(int percent);
 
 public slots:
     void onCanceled();
@@ -106,8 +126,21 @@ private:
 bool is_raw_file(const QString& filename);
 
 enum class RawImportChoice {
-    Optimize,     // fast: LibRaw's embedded JPEG preview, no demosaic
-    KeepOriginal, // slow: full LibRaw demosaic (see canvasview's
+    // Both are a real LibRaw demosaic (decode_raw_via_demosaic(),
+    // fileio.cpp) - Optimize used to just extract the camera's own
+    // embedded preview JPEG instead (no demosaic at all), abandoned
+    // after a real file's embedded preview turned out flat/unprocessed
+    // (camera white balance/Picture Control never applied to it, unlike
+    // what its own JPEG engine renders for a real photo) - confirmed by
+    // dumping those exact bytes to disk and viewing them outside this
+    // app entirely, not a decoding bug on this app's side.
+    Optimize,     // fast: full resolution, but the cheapest real
+                  // interpolation algorithm (user_qual=0, linear) rather
+                  // than LibRaw's own best-for-this-camera default -
+                  // NOT half_size (tried first, dropped: block-averaging
+                  // instead of real interpolation produced a visible
+                  // moire/noise pattern on flat surfaces)
+    KeepOriginal, // slow: full-resolution demosaic (see canvasview's
                   // RawImportDialog for why "keep original" doesn't
                   // literally mean the source .NEF/.CR3 bytes - see its
                   // own doc comment)
