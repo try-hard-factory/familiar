@@ -26,6 +26,7 @@ class TextItem;
 class GifItem;
 class SampleColorWidget;
 class ThreadedIO;
+class ImageImportSession;
 class SceneExporterBase;
 class ImagesToDirectoryExporter;
 class QVariantAnimation;
@@ -206,6 +207,9 @@ private slots:
     void on_items_loaded(int value);
     void on_insert_images_finished(const QString& filename,
                                    const QStringList& errors);
+    // ImageImportSession's own pause point - see fileio.h's
+    // ThreadedIO::rawImportChoiceRequired.
+    void on_raw_import_choice_required(const QString& filename);
 
     void on_export_scene_finished(const QString& filename,
                                   const QStringList& errors);
@@ -335,7 +339,7 @@ private:
     // these on self.worker/instance state directly).
     bool insertImagesNewScene_ = false;
     QList<IBaseItem*> insertImagesInsertedItems_;
-    // Filenames flagged by load_images() as over the large-image
+    // Filenames flagged by ImageImportSession::run() as over the large-image
     // threshold (Items/auto_optimize_imported_images == "warn") -
     // reported to the user once in on_insert_images_finished().
     QStringList insertImagesLargeItems_;
@@ -346,6 +350,14 @@ private:
     QStringList insertImagesUnsupportedFormat_;
     QStringList insertImagesTooLarge_;
     QStringList insertImagesCorrupt_;
+    // ImageImportSession (src/fileio.h) is resumable the same way
+    // ImagesToDirectoryExporter is below: run() pauses via
+    // ThreadedIO::rawImportChoiceRequired the first time it hits a RAW
+    // file with no decided handling yet, and resumes (same worker,
+    // QThread::start() again) once the user answers in
+    // on_raw_import_choice_required().
+    std::unique_ptr<ImageImportSession> imageImportSession_;
+    ThreadedIO* imageImportWorker_ = nullptr;
 
     // State for the in-flight on_action_export_scene() operation - kept
     // alive across the async ThreadedIO call, released in

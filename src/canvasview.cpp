@@ -1,6 +1,7 @@
 #include "canvasview.h"
 #include "canvasscene.h"
 #include "commands.h"
+#include "core/settings.h"
 #include "export.h"
 #include "fileio.h"
 #include "mainwindow.h"
@@ -12,6 +13,7 @@
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
 #include "widgets/file_browser_dialog.h"
+#include "widgets/raw_import_dialog.h"
 #include <cmath>
 #include <QApplication>
 #include <QClipboard>
@@ -1374,7 +1376,7 @@ void CanvasView::on_action_paste()
     // on the clipboard, with neither a text/uri-list nor raw image/*
     // data - pull the <img> src out and load it the same way as a
     // dropped URL (handles a plain http(s) link, an embedded data: URI,
-    // or a Google Images redirect - see fileio.cpp's load_images()).
+    // or a Google Images redirect - see fileio.cpp's ImageImportSession::run()).
     if (clipboard->mimeData()->hasHtml()) {
         QString src = extract_first_img_src(clipboard->mimeData()->html());
         if (!src.isEmpty()) {
@@ -1825,6 +1827,16 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     if (insertImagesNewScene_) {
         on_action_fit_scene();
     }
+
+    // True completion (this slot is only ever reached via
+    // ThreadedIO::finished, never on a RAW-choice pause - see
+    // do_insert_images()'s own comment) - safe to clean up now, same
+    // pattern as on_export_images_finished().
+    if (imageImportWorker_) {
+        imageImportWorker_->deleteLater();
+        imageImportWorker_ = nullptr;
+    }
+    imageImportSession_.reset();
 }
 
 void CanvasView::do_insert_images(const QList<QUrl>& urls,
@@ -1862,23 +1874,27 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         validUrls.append(url);
     }
 
-    CanvasScene* scene = scene_;
-    auto* worker = new ThreadedIO([validUrls, scenePos, scene](ThreadedIO* w) {
-        load_images(validUrls, scenePos, scene, w);
+    imageImportSession_
+        = std::make_unique<ImageImportSession>(validUrls, scenePos, scene_);
+    imageImportWorker_ = new ThreadedIO([this](ThreadedIO* w) {
+        imageImportSession_->run(w);
     });
 
-    connect(worker, &ThreadedIO::progress, this, &CanvasView::on_items_loaded);
-    connect(worker,
+    connect(imageImportWorker_,
+            &ThreadedIO::progress,
+            this,
+            &CanvasView::on_items_loaded);
+    connect(imageImportWorker_,
             &ThreadedIO::finished,
             this,
             &CanvasView::on_insert_images_finished);
-    connect(worker,
+    connect(imageImportWorker_,
             &ThreadedIO::largeImagesFound,
             this,
             [this](const QStringList& filenames) {
                 insertImagesLargeItems_ += filenames;
             });
-    connect(worker,
+    connect(imageImportWorker_,
             &ThreadedIO::imageLoadFailures,
             this,
             [this](const QStringList& unsupportedFormat,
@@ -1888,32 +1904,62 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
                 insertImagesTooLarge_ += tooLarge;
                 insertImagesCorrupt_ += corrupt;
             });
+    connect(imageImportWorker_,
+            &ThreadedIO::rawImportChoiceRequired,
+            this,
+            &CanvasView::on_raw_import_choice_required);
 
-    // QThread's own finished() (not ThreadedIO's same-named result signal)
-    // only fires once the thread has actually stopped running, which is
-    // the documented-safe point to delete a QThread object.
-    // connect(worker, &QThread::finished, worker, &QObject::deleteLater);
-    connect(worker, &QThread::finished, this, [worker]() {
-        const QString threadId = worker->objectName().isEmpty()
-                                     ? QStringLiteral("unnamed")
-                                     : worker->objectName();
-        FLOG_DEBUG(Ch::View,
-                   "Thread finished. Scheduling deleteLater for Thread ID: {}",
-                   threadId);
+    // Deliberately NOT connect(worker, &QThread::finished, ...,
+    // deleteLater) here, unlike loadFmlIntoCurrentTab's worker -
+    // QThread::finished() also fires on every pause-for-RAW-choice
+    // (imageImportSession_->run() just returning IS what ends run(),
+    // same as ImagesToDirectoryExporter's own analogous conflict-pause -
+    // see exportPictures()'s identical comment), and the same worker
+    // gets start()ed again on resume. Cleanup happens once, explicitly,
+    // in on_insert_images_finished() and on_raw_import_choice_required()'s
+    // own Cancel path instead.
 
-        worker->deleteLater();
-
-        FLOG_DEBUG(Ch::View,
-                   "deleteLater() called for worker {}",
-                   debugString(worker));
-    });
-
-    new ProgressDialog(tr("Loading images"), worker, 0, this);
+    new ProgressDialog(tr("Loading images"), imageImportWorker_, 0, this);
 
     // Re-enabled in on_insert_images_finished() once arrange_default()
     // has given every item its final position - see the comment there.
+    // Stays disabled across a RAW-choice pause too (no new ProgressDialog/
+    // ThreadedIO::finished() until the whole session truly finishes).
     setUpdatesEnabled(false);
-    worker->start();
+    imageImportWorker_->start();
+}
+
+void CanvasView::on_raw_import_choice_required(const QString& filename)
+{
+    RawImportDialog dialog(this, filename);
+    if (dialog.exec() != QDialog::Accepted) {
+        // Cancel - matches on_export_images_file_exists()'s own Reject
+        // branch: this session is simply abandoned. Anything already
+        // added to the scene before this pause stays (same as the
+        // export path leaving already-written files on disk) - only
+        // this file and anything after it in the queue never happens.
+        imageImportWorker_->deleteLater();
+        imageImportWorker_ = nullptr;
+        imageImportSession_.reset();
+        setUpdatesEnabled(true);
+        return;
+    }
+
+    if (dialog.applyToQueue()) {
+        imageImportSession_->setQueueChoice(dialog.choice());
+    } else {
+        imageImportSession_->setOneShotChoice(dialog.choice());
+    }
+    if (dialog.rememberChoice()) {
+        FamSettings settings;
+        settings.setValue(QStringLiteral("Items/raw_import_choice"),
+                          dialog.choice() == RawImportChoice::Optimize
+                              ? QStringLiteral("always_optimize")
+                              : QStringLiteral("always_keep_original"));
+    }
+
+    new ProgressDialog(tr("Loading images"), imageImportWorker_, 0, this);
+    imageImportWorker_->start();
 }
 
 void CanvasView::on_items_loaded(int /*value*/)

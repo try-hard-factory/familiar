@@ -8,14 +8,18 @@
 #include <QBuffer>
 #include <QEventLoop>
 #include <QFile>
+#include <QFileInfo>
 #include <QImageReader>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QSet>
 #include <QTimer>
 #include <QUrlQuery>
 
 #include <optional>
+
+#include <libraw/libraw.h>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -50,6 +54,91 @@ struct LoadedImage
     QImage image;
     QByteArray bytes;
 };
+
+// Fast path (RawImportChoice::Optimize): LibRaw's own embedded JPEG/
+// bitmap preview, no demosaic at all. Most modern cameras embed a
+// near-full-resolution preview - plenty for a reference board, which
+// has no RAW-specific editing (white balance/exposure/etc) that would
+// actually need the real sensor data. [Непроверено] - written against
+// LibRaw's documented C++ API (open_file/unpack_thumb/
+// dcraw_make_mem_thumb/dcraw_clear_mem), not yet exercised against a
+// real .NEF/.CR3 file.
+QImage decode_raw_preview(const QString& filename)
+{
+    LibRaw processor;
+    if (processor.open_file(filename.toLocal8Bit().constData())
+        != LIBRAW_SUCCESS) {
+        return {};
+    }
+    if (processor.unpack_thumb() != LIBRAW_SUCCESS) {
+        return {};
+    }
+    int err = 0;
+    libraw_processed_image_t* thumb = processor.dcraw_make_mem_thumb(&err);
+    if (!thumb) {
+        return {};
+    }
+    QImage result;
+    if (thumb->type == LIBRAW_IMAGE_JPEG) {
+        result.loadFromData(reinterpret_cast<const uchar*>(thumb->data),
+                            static_cast<int>(thumb->data_size));
+    } else if (thumb->type == LIBRAW_IMAGE_BITMAP && thumb->colors == 3
+               && thumb->bits == 8) {
+        // Detach (.copy()) BEFORE dcraw_clear_mem() below frees thumb->data
+        // out from under a QImage that would otherwise just be wrapping it.
+        result = QImage(reinterpret_cast<const uchar*>(thumb->data),
+                        thumb->width,
+                        thumb->height,
+                        thumb->width * 3,
+                        QImage::Format_RGB888)
+                     .copy();
+    }
+    LibRaw::dcraw_clear_mem(thumb);
+    return result;
+}
+
+// Slow path (RawImportChoice::KeepOriginal): a real demosaic through
+// LibRaw's own default processing pipeline. Best available quality, but
+// can take real time (seconds, not milliseconds) on a modern
+// high-megapixel sensor - see RawImportDialog/ProgressDialog on the
+// caller side. [Непроверено] - same caveat as decode_raw_preview() above.
+QImage decode_raw_full(const QString& filename)
+{
+    LibRaw processor;
+    if (processor.open_file(filename.toLocal8Bit().constData())
+        != LIBRAW_SUCCESS) {
+        return {};
+    }
+    if (processor.unpack() != LIBRAW_SUCCESS) {
+        return {};
+    }
+    if (processor.dcraw_process() != LIBRAW_SUCCESS) {
+        return {};
+    }
+    int err = 0;
+    libraw_processed_image_t* image = processor.dcraw_make_mem_image(&err);
+    if (!image) {
+        return {};
+    }
+    QImage result;
+    if (image->type == LIBRAW_IMAGE_BITMAP && image->colors == 3
+        && image->bits == 8) {
+        result = QImage(reinterpret_cast<const uchar*>(image->data),
+                        image->width,
+                        image->height,
+                        image->width * 3,
+                        QImage::Format_RGB888)
+                     .copy();
+    }
+    LibRaw::dcraw_clear_mem(image);
+    return result;
+}
+
+QImage decode_raw(const QString& filename, RawImportChoice choice)
+{
+    return choice == RawImportChoice::Optimize ? decode_raw_preview(filename)
+                                               : decode_raw_full(filename);
+}
 
 bool is_image_large(const QImage& img)
 {
@@ -90,7 +179,7 @@ std::optional<ImageLoadFailure> precheckReader(QImageReader& reader,
 }
 
 // Runs precheckReader() over whatever bytes a failed load actually
-// produced (populated regardless of success by every load_images()
+// produced (populated regardless of success by every ImageImportSession::run()
 // branch - local file/data: URL/download alike), so a single
 // classification path covers all three sources without threading
 // QImageReader through each of them individually. Empty `bytes` (e.g. a
@@ -174,14 +263,14 @@ LoadedImage decode_data_url(const QUrl& url)
 constexpr int kDownloadTimeoutMs = 15000;
 constexpr int kCancelPollMs = 200;
 
-// Blocking download: load_images() runs on ThreadedIO's background
+// Blocking download: ImageImportSession::run() runs on ThreadedIO's background
 // thread, which has no event loop of its own to deliver
 // QNetworkAccessManager's normally-async signals - a nested QEventLoop
 // here blocks until this one reply completes, standard Qt idiom for
 // "synchronous" network requests off the GUI thread.
 //
 // An unreachable/slow host would otherwise hang this loop (and the whole
-// load_images() run, and its progress dialog) forever - a timeout, plus
+// ImageImportSession::run() run, and its progress dialog) forever - a timeout, plus
 // polling `worker->canceled` so the dialog's own Cancel button actually
 // works mid-download, both just quit the same local loop early.
 LoadedImage download_image(QNetworkAccessManager& manager,
@@ -261,24 +350,51 @@ void ThreadedIO::onCanceled()
     canceled = true;
 }
 
-// ─── load_images ───────────────────────────────────────────────────────────
-
-void load_images(const QList<QUrl>& urls,
-                 const QPointF& pos,
-                 CanvasScene* scene,
-                 ThreadedIO* worker)
+bool is_raw_file(const QString& filename)
 {
-    // 3-way breakdown (ImageLoadFailure) of what "errors" used to lump
-    // together as one opaque "could not load" - `errors` itself is still
-    // built up (below) for finished()'s own log/back-compat `errors`
-    // param, just from these three lists combined at the end.
-    QStringList unsupportedFormatErrors;
-    QStringList tooLargeErrors;
-    QStringList corruptErrors;
-    // Labels of images over kLargeImageMaxDimension, collected only in
-    // "warn" mode (see below) and reported once via
-    // ThreadedIO::largeImagesFound() after the loop.
-    QStringList largeImages;
+    static const QSet<QString> kRawExtensions = {
+        QStringLiteral("nef"), QStringLiteral("nrw"), // Nikon
+        QStringLiteral("cr2"), QStringLiteral("cr3"),
+        QStringLiteral("crw"), // Canon
+        QStringLiteral("arw"), QStringLiteral("srf"),
+        QStringLiteral("sr2"), // Sony
+        QStringLiteral("orf"), // Olympus
+        QStringLiteral("raf"), // Fujifilm
+        QStringLiteral("rw2"), // Panasonic/Leica
+        QStringLiteral("pef"), QStringLiteral("ptx"), // Pentax
+        QStringLiteral("srw"), // Samsung
+        QStringLiteral("dng"), // Adobe DNG (any manufacturer)
+        QStringLiteral("x3f"), // Sigma (Foveon)
+        QStringLiteral("3fr"), // Hasselblad
+        QStringLiteral("iiq"), // Phase One
+        QStringLiteral("dcr"), QStringLiteral("kdc"), // Kodak
+        QStringLiteral("mos"), // Leaf
+        QStringLiteral("erf"), // Epson
+        QStringLiteral("mef"), // Mamiya
+    };
+    return kRawExtensions.contains(QFileInfo(filename).suffix().toLower());
+}
+
+// ─── ImageImportSession ─────────────────────────────────────────────────────
+
+ImageImportSession::ImageImportSession(const QList<QUrl>& urls,
+                                       const QPointF& pos,
+                                       CanvasScene* scene)
+    : urls_(urls)
+    , pos_(pos)
+    , scene_(scene)
+{}
+
+void ImageImportSession::run(ThreadedIO* worker)
+{
+    // Only on the very first call, not a resume after
+    // rawImportChoiceRequired() - re-emitting this would reset the
+    // ProgressDialog's bar back to 0, even though everything before
+    // nextIndex_ already loaded.
+    if (nextIndex_ == 0) {
+        emit worker->beginProcessing(urls_.size());
+    }
+
     const QString optimizeMode
         = SettingsHandler::getInstance()->autoOptimizeImportedImages();
     // 0 = no limitation (Items/image_allocation_limit's own convention -
@@ -289,31 +405,78 @@ void load_images(const QList<QUrl>& urls,
                      .valueOrDefault(QStringLiteral("Items/image_allocation_limit"))
                      .toInt())
           * 1024 * 1024;
-    emit worker->beginProcessing(urls.size());
+    const QString rawImportSetting
+        = FamSettings()
+              .valueOrDefault(QStringLiteral("Items/raw_import_choice"))
+              .toString();
 
     // Only constructed if actually needed (most drops are local files).
     QNetworkAccessManager* netManager = nullptr;
 
-    for (int i = 0; i < urls.size(); ++i) {
-        const QUrl& rawUrl = urls.at(i);
+    for (int i = nextIndex_; i < urls_.size(); ++i) {
+        const QUrl& rawUrl = urls_.at(i);
         QImage img;
         QByteArray bytes;
         QString label;
 
         if (rawUrl.isLocalFile()) {
             label = rawUrl.toLocalFile();
-            FLOG_DEBUG(Ch::IO, "Loading image from file {}", label);
-            // Raw bytes read unconditionally (cheap - these are images,
-            // not video), not just the decoded first frame: an animated
-            // GIF needs the whole stream for GifItem's QMovie, and
-            // is_animated() below needs something to sniff regardless.
-            QFile file(label);
-            if (file.open(QIODevice::ReadOnly)) {
-                bytes = file.readAll();
+
+            if (is_raw_file(label)) {
+                RawImportChoice choice;
+                if (rawImportSetting == QLatin1String("always_optimize")) {
+                    choice = RawImportChoice::Optimize;
+                } else if (rawImportSetting
+                          == QLatin1String("always_keep_original")) {
+                    choice = RawImportChoice::KeepOriginal;
+                } else if (queueChoice_) {
+                    choice = *queueChoice_;
+                } else if (oneShotChoice_) {
+                    choice = *oneShotChoice_;
+                    oneShotChoice_.reset();
+                } else {
+                    // Pause here - the caller shows RawImportDialog,
+                    // calls setQueueChoice(), and calls run() again
+                    // (same ThreadedIO, restarted) to resume from this
+                    // exact file - see ThreadedIO::
+                    // rawImportChoiceRequired's own doc comment.
+                    FLOG_DEBUG(Ch::IO,
+                              "Pausing for RAW import choice: {}",
+                              label);
+                    pendingRawFile_ = label;
+                    nextIndex_ = i;
+                    delete netManager;
+                    emit worker->rawImportChoiceRequired(label);
+                    return;
+                }
+                FLOG_DEBUG(Ch::IO,
+                          "Decoding RAW file ({}) {}",
+                          choice == RawImportChoice::Optimize
+                              ? "preview"
+                              : "full demosaic",
+                          label);
+                img = decode_raw(label, choice);
+                // No raw-byte preservation (Max's explicit call - see
+                // ImageImportSession's own doc comment in fileio.h) -
+                // `bytes` stays empty, same as any decode failure below;
+                // is_animated(empty) already safely returns false, so
+                // this reads as an ordinary non-animated image to
+                // everything downstream.
+            } else {
+                FLOG_DEBUG(Ch::IO, "Loading image from file {}", label);
+                // Raw bytes read unconditionally (cheap - these are
+                // images, not video), not just the decoded first frame:
+                // an animated GIF needs the whole stream for GifItem's
+                // QMovie, and is_animated() below needs something to
+                // sniff regardless.
+                QFile file(label);
+                if (file.open(QIODevice::ReadOnly)) {
+                    bytes = file.readAll();
+                }
+                QImageReader reader(label);
+                reader.setAutoTransform(true); // apply EXIF rotation
+                img = reader.read();
             }
-            QImageReader reader(label);
-            reader.setAutoTransform(true); // apply EXIF rotation
-            img = reader.read();
         } else if (rawUrl.scheme().compare(QStringLiteral("data"),
                                            Qt::CaseInsensitive)
                    == 0) {
@@ -390,7 +553,7 @@ void load_images(const QList<QUrl>& urls,
         // matching what PixmapItem::set_pos_center() would do for a
         // fresh item (scale 1, rotation 0). Computed after the possible
         // downscale above so the item is centered on its final size.
-        QPointF topLeft = pos - QPointF(img.width() / 2.0, img.height() / 2.0);
+        QPointF topLeft = pos_ - QPointF(img.width() / 2.0, img.height() / 2.0);
 
         QVariantMap itemData;
         if (animated) {
@@ -404,7 +567,7 @@ void load_images(const QList<QUrl>& urls,
         itemData[QStringLiteral("filename")] = label;
         itemData[QStringLiteral("x")] = topLeft.x();
         itemData[QStringLiteral("y")] = topLeft.y();
-        scene->add_item_later(itemData, true);
+        scene_->add_item_later(itemData, true);
 
         if (worker->canceled) {
             break;
