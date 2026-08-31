@@ -119,12 +119,18 @@ int rawProgressCallback(void* data,
 // mode. LibRaw's own default (user_qual left at its constructor value,
 // -1 - "camera-specific best", src/utils/init_close_utils.cpp) is used
 // for RawImportChoice::KeepOriginal, unchanged.
-// `use_camera_wb=1` on both paths - matches what other raw converters
-// (Adobe, darktable, ...) default to; LibRaw's own constructor (same
-// file, checked directly against the vendored source) sets
-// output_color=1 (sRGB) but leaves use_camera_wb/use_auto_wb unset, i.e.
-// off. [Непроверено] - written against LibRaw's documented C++ API, not
-// exercised against every RAW format this app claims to support.
+//
+// White balance is deliberately left at LibRaw's OWN defaults - its
+// constructor (same file) sets output_color=1 (sRGB) and
+// use_camera_matrix=1 but leaves use_camera_wb/use_auto_wb unset, so the
+// render uses the camera profile's daylight-referred multipliers.
+// use_camera_wb=1 was tried here and REVERTED: the camera's recorded
+// white balance is what NEUTRALIZES the light it was shot under, so
+// applying it to a warm-lit scene renders it flat and grey - visibly
+// wrong next to how the same file looks in PureRef, and next to what
+// this same code produced before that flag was added (both warm; both
+// confirmed against real screenshots of the same .NEF). Leaving WB
+// alone is what actually matches.
 QImage decode_raw_via_demosaic(const QString& filename,
                                ThreadedIO* worker,
                                bool fast)
@@ -132,7 +138,7 @@ QImage decode_raw_via_demosaic(const QString& filename,
     LibRaw processor;
     RawProgressContext progressCtx{worker};
     processor.set_progress_handler(&rawProgressCallback, &progressCtx);
-    processor.imgdata.params.use_camera_wb = 1;
+    // processor.imgdata.params.use_camera_wb = 1;
     if (fast) {
         processor.imgdata.params.user_qual = 0;
     }
@@ -479,11 +485,16 @@ void ImageImportSession::run(ThreadedIO* worker)
         QImage img;
         QByteArray bytes;
         QString label;
+        // Whether this url actually went through the LibRaw path below
+        // (not just "its name ends in .nef") - see the large-image
+        // handling further down for what it suppresses.
+        bool decodedAsRaw = false;
 
         if (rawUrl.isLocalFile()) {
             label = rawUrl.toLocalFile();
 
             if (is_raw_file(label)) {
+                decodedAsRaw = true;
                 RawImportChoice choice;
                 if (rawImportSetting == QLatin1String("always_optimize")) {
                     choice = RawImportChoice::Optimize;
@@ -601,12 +612,23 @@ void ImageImportSession::run(ThreadedIO* worker)
             continue;
         }
 
-        // Items/auto_optimize_imported_images: an animated GIF is
-        // excluded either way - GifItem plays back the raw `bytes`
-        // stream via QMovie, not the decoded first-frame `img` below, so
-        // shrinking `img` alone wouldn't touch what's actually displayed.
+        // Items/auto_optimize_imported_images, skipped entirely for two
+        // kinds of import:
+        //
+        // - an animated GIF: GifItem plays back the raw `bytes` stream
+        //   via QMovie, not the decoded first-frame `img` below, so
+        //   shrinking `img` alone wouldn't touch what's actually shown.
+        // - a RAW file: this setting's whole job (warn about, or
+        //   automatically shrink, oversized imports) is already covered
+        //   for RAW by RawImportDialog, which asked about THIS specific
+        //   file, by name, moments earlier - so letting this run on top
+        //   would either nag on literally every RAW import (a modern
+        //   sensor exceeds kLargeImageMaxDimension essentially by
+        //   definition) or silently shrink a file the user just
+        //   explicitly chose "Keep original" for. RawImportChoice is the
+        //   answer for RAW; this setting governs everything else.
         const bool animated = is_animated(bytes);
-        if (!animated) {
+        if (!animated && !decodedAsRaw) {
             if (optimizeMode == QLatin1String("warn")) {
                 if (is_image_large(img)) {
                     FLOG_DEBUG(Ch::IO, "{} is a large image", label);

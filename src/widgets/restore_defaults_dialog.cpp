@@ -152,6 +152,7 @@ QStringList RestoreDefaultsDialog::famSettingsKeysFor(SettingsCategory category)
             QStringLiteral("Save/autosave_interval_seconds"),
             QStringLiteral("Items/undo_history_size"),
             QStringLiteral("Items/auto_optimize_imported_images"),
+            QStringLiteral("Items/raw_import_choice"),
         };
     case SettingsCategory::ImagesAndItems:
         return {
