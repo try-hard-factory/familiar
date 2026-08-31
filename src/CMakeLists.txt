@@ -190,6 +190,7 @@ if (WIN32)
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        libraw
         Dbghelp # MiniDumpWriteDump - log/log.cpp's crash-dump handler
     )
 elseif(APPLE)
@@ -198,6 +199,7 @@ elseif(APPLE)
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        libraw
     )
 else()
     target_link_libraries(familiar PRIVATE
@@ -205,6 +207,7 @@ else()
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        libraw
     )
 endif()
 

@@ -279,6 +279,25 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
                         || s == QLatin1String("optimize_large");
              },
          }},
+        {"Items/raw_import_choice",
+         {
+             // "ask" (default) shows RawImportDialog per RAW file (or
+             // per queue - see "Apply choice to this queue" there,
+             // which is a transient in-batch decision, not this
+             // setting). The other two skip that dialog entirely from
+             // then on - set by that dialog's own "Remember choice for
+             // future files" checkbox (widgets/raw_import_dialog.cpp),
+             // not exposed as its own row on the Performance page.
+             /*default*/ QString("ask"),
+             /*cast*/ {},
+             /*validate*/
+             [](const QVariant& v) {
+                 const QString s = v.toString();
+                 return s == QLatin1String("ask")
+                        || s == QLatin1String("always_optimize")
+                        || s == QLatin1String("always_keep_original");
+             },
+         }},
         {"Save/autosave_enabled",
          {
              /*default*/ false,
