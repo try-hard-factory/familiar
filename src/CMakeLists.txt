@@ -131,6 +131,8 @@ set(PROJECT_SOURCES
         widgets/flat_spinbox.h
         widgets/flat_combobox.cpp
         widgets/flat_combobox.h
+        widgets/flat_progress_bar.cpp
+        widgets/flat_progress_bar.h
         widgets/color_picker_dialog.cpp
         widgets/color_picker_dialog.h
         widgets/file_browser_dialog.cpp

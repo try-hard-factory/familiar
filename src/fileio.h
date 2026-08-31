@@ -109,6 +109,12 @@ signals:
     // pipeline stages (OPEN, LOAD_RAW, INTERPOLATE, CONVERT_RGB, ...)
     // just completed; see fileio.cpp's rawProgressCallback().
     void rawDecodeProgress(int percent);
+    // Name of the item about to be processed, emitted right before work
+    // on it starts - purely for display (ProgressDialog shows it under
+    // the operation's own title, so "Loading images" also says WHICH
+    // image is loading right now). Optional: an operation that never
+    // emits it just leaves that line blank.
+    void currentItemChanged(const QString& name);
 
 public slots:
     void onCanceled();

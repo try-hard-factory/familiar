@@ -490,6 +490,14 @@ void ImageImportSession::run(ThreadedIO* worker)
         // handling further down for what it suppresses.
         bool decodedAsRaw = false;
 
+        // Display name for ProgressDialog's "currently working on" line
+        // (widgets/dialogs.h) - a local file's basename rather than its
+        // full path, which would just get elided into uselessness in a
+        // narrow dialog; anything else shows as-is.
+        emit worker->currentItemChanged(
+            rawUrl.isLocalFile() ? QFileInfo(rawUrl.toLocalFile()).fileName()
+                                 : rawUrl.toString());
+
         if (rawUrl.isLocalFile()) {
             label = rawUrl.toLocalFile();
 
