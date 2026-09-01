@@ -221,6 +221,24 @@ target_include_directories(libraw PUBLIC ${LIBRAW_DIR})
 # LIBRAW_NOTHREADS define).
 find_package(Threads REQUIRED)
 target_link_libraries(libraw PUBLIC Threads::Threads)
+# MSVC only, and NOT optional there: libraw.h auto-defines
+# LIBRAW_WIN32_DLLDEFS for _MSC_VER/__INTEL_COMPILER, after which
+# libraw_types.h stamps every API declaration with __declspec(dllimport)
+# unless told otherwise - i.e. the headers assume LibRaw is being
+# CONSUMED as a DLL. This target is a STATIC library, so compiling its
+# own sources against dllimport declarations fails outright
+# ("error C2491: definition of dllimport function not allowed", hundreds
+# of them - a real Windows CI failure; Linux/macOS never hit it because
+# LIBRAW_WIN32_DLLDEFS isn't defined there at all).
+#
+# PUBLIC, not PRIVATE: familiar's own fileio.cpp includes libraw/libraw.h
+# too, and both sides have to agree on what DllDef expands to. With
+# PRIVATE, LibRaw itself would build fine while familiar's translation
+# units still expected dllimport symbols - trading a compile error for a
+# link error.
+if (MSVC)
+    target_compile_definitions(libraw PUBLIC LIBRAW_NODLL)
+endif()
 if (UNIX)
     # Matches Makefile.am's own lib_libraw_r_a_CXXFLAGS (-pthread -w) -
     # this project's own -Wall (src/CMakeLists.txt) is only applied to
