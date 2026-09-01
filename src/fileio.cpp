@@ -83,6 +83,17 @@ int rawProgressCallback(void* data,
     if (!ctx || !ctx->worker) {
         return 0;
     }
+    // The ONLY point a running demosaic can be interrupted at - without
+    // this, hitting Cancel during a full-resolution decode did nothing
+    // whatsoever for the 10+ seconds it takes, since the cancel flag was
+    // only ever looked at between whole files. Returning non-zero makes
+    // LibRaw throw LIBRAW_EXCEPTION_CANCELLED_BY_CALLBACK internally
+    // (libraw.h's RUN_CALLBACK macro); unpack()/dcraw_process() catch it
+    // themselves and hand back a plain error code, so the caller just
+    // sees a failed decode - no exception escapes into this app.
+    if (ctx->worker->canceled) {
+        return 1;
+    }
     unsigned bit = static_cast<unsigned>(stage);
     int bitPos = 0;
     while (bit > 1u) {
@@ -595,6 +606,25 @@ void ImageImportSession::run(ThreadedIO* worker)
                   i,
                   static_cast<void*>(worker),
                   static_cast<void*>(QThread::currentThreadId()));
+        // Checked HERE, before anything is made of `img` - the old check
+        // sat at the very bottom of the loop, i.e. only after the
+        // in-flight item had already been queued onto the scene, so
+        // Cancel always let one more picture through. It also sat after
+        // the `continue` below, so a run of failed loads never noticed
+        // the flag at all.
+        //
+        // Bailing before the isNull() branch specifically matters now
+        // that a RAW decode can be aborted mid-way (rawProgressCallback()
+        // above): an aborted decode returns a null QImage exactly like a
+        // genuinely broken file does, and classifying it would end the
+        // import with a "this file may be corrupt" warning about a file
+        // that's perfectly fine and was only skipped because the user
+        // said stop.
+        if (worker->canceled) {
+            FLOG_DEBUG(Ch::IO, "Import canceled at {}", label);
+            break;
+        }
+
         emit worker->progress(i);
 
         if (img.isNull()) {
@@ -670,22 +700,27 @@ void ImageImportSession::run(ThreadedIO* worker)
         itemData[QStringLiteral("y")] = topLeft.y();
         scene_->add_item_later(itemData, true);
 
-        if (worker->canceled) {
-            break;
-        }
         worker->sleepMs(10);
     }
 
     delete netManager;
 
-    if (!largeImages.isEmpty()) {
-        emit worker->largeImagesFound(largeImages);
-    }
-    if (!unsupportedFormatErrors.isEmpty() || !tooLargeErrors.isEmpty()
-        || !corruptErrors.isEmpty()) {
-        emit worker->imageLoadFailures(unsupportedFormatErrors,
-                                       tooLargeErrors,
-                                       corruptErrors);
+    // Nothing to report after a Cancel. Whatever loaded before it still
+    // stays on the scene (same as ImagesToDirectoryExporter leaving
+    // already-written files on disk, and as the RAW-choice dialog's own
+    // Cancel path - canvasview.cpp), but following that up with warning
+    // popups about the part the user just chose to abandon is pure
+    // noise: they already know they stopped it.
+    if (!worker->canceled) {
+        if (!largeImages.isEmpty()) {
+            emit worker->largeImagesFound(largeImages);
+        }
+        if (!unsupportedFormatErrors.isEmpty() || !tooLargeErrors.isEmpty()
+            || !corruptErrors.isEmpty()) {
+            emit worker->imageLoadFailures(unsupportedFormatErrors,
+                                           tooLargeErrors,
+                                           corruptErrors);
+        }
     }
     // Flat list for finished()'s own `errors` param - unchanged shape for
     // whatever else still just wants "what failed", the 3-way breakdown
