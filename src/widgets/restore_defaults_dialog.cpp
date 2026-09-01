@@ -92,17 +92,28 @@ bool categoryHasChanges(SettingsCategory category)
         return false;
     }
     case SettingsCategory::Colors:
-        // Current preset's own colors, OR masterOpacity - a sibling key
-        // in the same "Colors" JSON group, not tied to any one preset
-        // (see settings_window.cpp's Colors reset branch for why it
-        // needs its own explicit reset call too).
+        // Current preset's own colors: presence-check is valid here -
+        // setDefaultCurrentPreset() resets it via removeJsonValue(), so
+        // the key is only ever there at all if it was actually customized.
+        //
+        // masterOpacity can't use that same presence check - it's ONE
+        // JSON key shared across every preset (QMap<presetIndex,
+        // opacity>), not a per-preset key like the color list above, so
+        // it can't be removeJsonValue()'d on reset without wiping every
+        // OTHER preset's opacity too (a real, deliberately rejected fix
+        // - see setDefaultCurrentPreset()'s own comment). Its reset path
+        // instead WRITES 255 back (setCurrentOpacity(255)), which means
+        // the key stays present in storage forever after the very first
+        // touch (a reset, or just dragging the slider) even once the
+        // CURRENT preset's own value is genuinely back at its default -
+        // a real bug this fixes (Colors came up pre-checked on every
+        // single open of this dialog after that). Comparing the actual
+        // value against its true default (opacityListDef's 255, same
+        // for every preset) is the only check that works here.
         return !SettingsHandler::getInstance()
                     ->jsonValue(QStringLiteral("Colors"), currentPresetJsonKey())
                     .isUndefined()
-            || !SettingsHandler::getInstance()
-                    ->jsonValue(QStringLiteral("Colors"),
-                               QStringLiteral("masterOpacity"))
-                    .isUndefined();
+            || SettingsHandler::getInstance()->getCurrentOpacity() != 255;
     case SettingsCategory::KeyboardShortcuts:
         // Can't use "is the Actions/Controls JSON group empty" the same
         // way Colors uses preset-key presence - KeyboardSettings::
@@ -141,6 +152,7 @@ QStringList RestoreDefaultsDialog::famSettingsKeysFor(SettingsCategory category)
             QStringLiteral("Save/autosave_interval_seconds"),
             QStringLiteral("Items/undo_history_size"),
             QStringLiteral("Items/auto_optimize_imported_images"),
+            QStringLiteral("Items/raw_import_choice"),
         };
     case SettingsCategory::ImagesAndItems:
         return {

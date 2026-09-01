@@ -4,3 +4,6 @@
 [submodule "include/miniz"]
 	path = include/miniz
 	url = https://github.com/richgel999/miniz.git
+[submodule "include/libraw"]
+	path = include/libraw
+	url = https://github.com/LibRaw/LibRaw.git

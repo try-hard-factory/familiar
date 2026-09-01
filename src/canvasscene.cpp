@@ -870,6 +870,54 @@ void CanvasScene::normalize_size()
     undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
+QList<QGraphicsItem*> CanvasScene::arrange_targets()
+{
+    // See the declaration (canvasscene.h) for the full reasoning.
+    QList<QGraphicsItem*> candidates = selectedItems(true);
+
+    // Whose direct members are we arranging? nullptr = the scene's own
+    // top level. Set to a group when exactly that group is selected, so
+    // "arrange" then means "lay out what's inside it" - the one case
+    // where reaching INTO a group is what the user asked for.
+    GroupItem* expectedOwner = nullptr;
+
+    if (candidates.size() == 1) {
+        if (auto* group = dynamic_cast<GroupItem*>(candidates.first())) {
+            expectedOwner = group;
+            candidates = group->resolve_children();
+        }
+    } else if (candidates.isEmpty()) {
+        for (QGraphicsItem* item : items()) {
+            if (itemAddByUser(item)) {
+                candidates.append(item);
+            }
+        }
+    }
+
+    QList<QGraphicsItem*> targets;
+    for (QGraphicsItem* item : candidates) {
+        auto* base = dynamic_cast<IBaseItem*>(item);
+        if (!base) {
+            continue;
+        }
+        if (!base->attachedToUid().isNull()) {
+            continue; // a note/picture pinned to another picture
+        }
+        // Exactly one level, never deeper: a DIRECT member of whatever
+        // we're arranging passes; anything owned by something else does
+        // not. With expectedOwner == nullptr that's "top-level only"; with
+        // a selected group it's "that group's own members only", so a
+        // nested sub-group travels as one block (it passes - its owner IS
+        // the selected group) while the sub-group's own contents do not
+        // (their owner is the sub-group).
+        if (find_owning_group(base->uid()) != expectedOwner) {
+            continue;
+        }
+        targets.append(item);
+    }
+    return targets;
+}
+
 void CanvasScene::arrange_default()
 {
     const QString mode = SettingsHandler::getInstance()->arrangeDefault();
@@ -991,13 +1039,18 @@ void CanvasScene::arrange(bool vertical)
 {
     cancel_active_modes();
 
-    QList<QGraphicsItem*> items = selectedItems(true);
+    QList<QGraphicsItem*> items = arrange_targets();
     if (items.size() < 2) {
         return;
     }
 
     qreal gap = SettingsHandler::getInstance()->arrangeGap();
-    QPointF center = get_selection_center();
+    // Centre of what's actually being arranged, NOT get_selection_center()
+    // - that one measures the selection, which is both empty in the
+    // arrange-the-whole-scene case and wrong whenever arrange_targets()
+    // dropped group members that the raw selection still included.
+    const QRectF targetBounds = itemsBoundingRect(false, items);
+    const QPointF center = targetBounds.center();
     QList<QPointF> positions;
 
     // Структура для хранения прямоугольника и элемента
@@ -1065,7 +1118,7 @@ void CanvasScene::arrange_optimal()
 {
     cancel_active_modes();
 
-    QList<QGraphicsItem*> items = selectedItems(true);
+    QList<QGraphicsItem*> items = arrange_targets();
     if (items.size() < 2) {
         return;
     }
@@ -1080,7 +1133,8 @@ void CanvasScene::arrange_optimal()
                       static_cast<int>(std::round(rect.height() + gap))});
     }
 
-    QPointF center = get_selection_center();
+    // See arrange()'s own comment for why not get_selection_center().
+    const QPointF center = itemsBoundingRect(false, items).center();
 
     // Минимальная площадь элементов
     int minArea = 0;
@@ -1120,7 +1174,7 @@ void CanvasScene::arrange_square()
     qreal maxWidth = 0;
     qreal maxHeight = 0;
     qreal gap = SettingsHandler::getInstance()->arrangeGap();
-    QList<QGraphicsItem*> items = sort_by_filename(selectedItems(true));
+    QList<QGraphicsItem*> items = sort_by_filename(arrange_targets());
 
     if (items.size() < 2) {
         return;
@@ -1135,7 +1189,8 @@ void CanvasScene::arrange_square()
     // We want the items to center around the selection's center,
     // not (0, 0)
     int numRows = static_cast<int>(std::ceil(std::sqrt(items.size())));
-    QPointF center = get_selection_center();
+    // See arrange()'s own comment for why not get_selection_center().
+    const QPointF center = itemsBoundingRect(false, items).center();
     QPointF diff = center - (numRows / 2.0) * QPointF(maxWidth, maxHeight);
 
     QList<QPointF> positions;

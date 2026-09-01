@@ -26,6 +26,8 @@ class TextItem;
 class GifItem;
 class SampleColorWidget;
 class ThreadedIO;
+class ImageImportSession;
+class ProgressDialog;
 class SceneExporterBase;
 class ImagesToDirectoryExporter;
 class QVariantAnimation;
@@ -206,6 +208,9 @@ private slots:
     void on_items_loaded(int value);
     void on_insert_images_finished(const QString& filename,
                                    const QStringList& errors);
+    // ImageImportSession's own pause point - see fileio.h's
+    // ThreadedIO::rawImportChoiceRequired.
+    void on_raw_import_choice_required(const QString& filename);
 
     void on_export_scene_finished(const QString& filename,
                                   const QStringList& errors);
@@ -238,8 +243,8 @@ private:
     // widgets/controls/binding_dialogs.cpp - Controls can now carry a
     // keySequence too), reusing wheelEvent()'s existing single-notch step
     // convention. Only Zoom and the two wheel Pan groups have a
-    // well-defined single-press meaning; Pan/Move Window (mouse, drag-
-    // based) don't and are left unhandled here - returns false for those.
+    // well-defined single-press meaning; the drag-based mouse Pan group
+    // doesn't and is left unhandled here - returns false for that.
     bool tryControlKeyNudge(QKeyEvent* event);
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
@@ -257,6 +262,16 @@ private:
     // Same idea again, for the group toolbar -
     // shown/hidden from on_selection_changed() same as the GIF one.
     void updateGroupToolbarPos_();
+    // Shows RawImportDialog and applies the answer to imageImportSession_
+    // (setQueueChoice()/setOneShotChoice(), plus persisting to
+    // Items/raw_import_choice if "Remember choice" was checked) - shared
+    // by do_insert_images()'s own up-front pre-check (so the choice
+    // dialog is settled BEFORE any ProgressDialog/loading starts at all,
+    // not popping awkwardly over one that just appeared) and
+    // on_raw_import_choice_required()'s mid-load pause for any LATER RAW
+    // file in the same batch, if "Apply choice to this queue" wasn't
+    // checked the first time. Returns false if the user canceled.
+    bool resolveRawImportChoice(const QString& filename);
 
     qreal selectionOutlineOpacity_ = 1.0;
     bool selectionOutlineHover_ = false;
@@ -335,10 +350,42 @@ private:
     // these on self.worker/instance state directly).
     bool insertImagesNewScene_ = false;
     QList<IBaseItem*> insertImagesInsertedItems_;
-    // Filenames flagged by load_images() as over the large-image
+    // Filenames flagged by ImageImportSession::run() as over the large-image
     // threshold (Items/auto_optimize_imported_images == "warn") -
     // reported to the user once in on_insert_images_finished().
     QStringList insertImagesLargeItems_;
+    // ThreadedIO::imageLoadFailures()' own 3-way breakdown of what
+    // couldn't be loaded at all (unrelated to insertImagesLargeItems_
+    // above, which is about images that DID load) - also reported once
+    // in on_insert_images_finished().
+    QStringList insertImagesUnsupportedFormat_;
+    QStringList insertImagesTooLarge_;
+    QStringList insertImagesCorrupt_;
+    // ImageImportSession (src/fileio.h) is resumable the same way
+    // ImagesToDirectoryExporter is below: run() pauses via
+    // ThreadedIO::rawImportChoiceRequired the first time it hits a RAW
+    // file with no decided handling yet, and resumes (same worker,
+    // QThread::start() again) once the user answers in
+    // on_raw_import_choice_required().
+    std::unique_ptr<ImageImportSession> imageImportSession_;
+    ThreadedIO* imageImportWorker_ = nullptr;
+    // ONE ProgressDialog for the whole CanvasView's lifetime, not per
+    // import - created lazily the first time do_insert_images() runs,
+    // reused (ProgressDialog::rebind(), widgets/dialogs.h) every import
+    // after that instead of being recreated. Real history: a fresh
+    // ProgressDialog per import/resume raced its own predecessor's
+    // teardown against a still-in-flight queued signal from the worker -
+    // confirmed via a real crash backtrace whose `this=` pointer matched
+    // an address ProgressDialog's own destructor had already logged as
+    // destroyed (genuine use-after-free, not a same-object re-entry).
+    // Fixed in two steps: first by never destroying it mid-session at
+    // all (which then leaked one hidden instance per import instead -
+    // real problem, correctly called out by Max), then by reusing this
+    // single instance instead of `new`-ing a fresh one each time -
+    // memory bounded regardless of import count. Never cleared to
+    // nullptr - stays alive, hidden between imports, parented to `this`,
+    // destroyed normally whenever the tab itself closes.
+    ProgressDialog* imageImportProgressDialog_ = nullptr;
 
     // State for the in-flight on_action_export_scene() operation - kept
     // alive across the async ThreadedIO call, released in

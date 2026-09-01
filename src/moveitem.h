@@ -5,6 +5,7 @@
 #include "core/settingshandler.h"
 #include "selector.h"
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <optional>
 #include <QAbstractTextDocumentLayout>
@@ -167,6 +168,18 @@ public:
     bool grayscale_ = false;
     QPixmap grayscalePixmap_{};
     mutable std::optional<ColorGamut> colorGamut_{};
+
+    // Mipmap-style cache: this picture's own pixmap, pre-downscaled once
+    // with a proper area-averaging scale, for whenever it's rendered far
+    // smaller than its own resolution. See paint()'s own comment for the
+    // real aliasing bug this exists to fix. Keyed on both the chosen
+    // power-of-two factor AND the source pixmap's cacheKey(), so any
+    // pixmap replacement (setPixmap(), a grayscale toggle, a GIF frame)
+    // invalidates it automatically instead of silently rendering stale
+    // content.
+    mutable QPixmap downscaleCache_{};
+    mutable qreal downscaleCacheFactor_ = 0.0;
+    mutable qint64 downscaleCacheSrcKey_ = 0;
 
     bool is_editable_ = false;
     QRectF crop_{};
@@ -626,6 +639,62 @@ public:
         painter.drawRect(rect);
     }
 
+    // Whether paint() below may keep a pre-downscaled copy of this
+    // item's pixmap around (see downscaleCache_). True for an ordinary
+    // still picture; GifItem overrides it to false - that one replaces
+    // its whole pixmap on every animation frame, so the cache could
+    // never be reused across frames and would just mean a full
+    // area-averaged rescale per frame instead of a one-off.
+    virtual bool caches_downscaled_render() const { return true; }
+
+    // Largest power-of-two fraction that is still >= `scale`, or 1.0 for
+    // "don't bother". Power-of-two (rather than exactly the displayed
+    // size) so that ordinary zooming/panning keeps hitting the same
+    // cached copy instead of rebuilding it every frame; >= `scale` so
+    // the cached copy is never SMALLER than what's actually shown (which
+    // would mean upscaling a downscaled copy - visibly soft).
+    //
+    // Only kicks in below 0.5: at exactly 2x downscale bilinear already
+    // samples the right 2x2 source area, so there's nothing to fix, and
+    // the cache would just cost memory.
+    static qreal downscale_factor_for(qreal scale)
+    {
+        if (!(scale > 0.0) || scale >= 0.5) {
+            return 1.0;
+        }
+        return std::min(1.0, std::pow(2.0, std::ceil(std::log2(scale))));
+    }
+
+    // Rebuilds downscaleCache_ if needed; returns false if paint()
+    // should just draw `pm` directly at full resolution.
+    bool ensure_downscale_cache(const QPixmap& pm, qreal scale) const
+    {
+        if (pm.isNull() || !caches_downscaled_render()) {
+            return false;
+        }
+        const qreal factor = downscale_factor_for(scale);
+        if (factor >= 1.0) {
+            return false;
+        }
+        if (downscaleCache_.isNull() || downscaleCacheFactor_ != factor
+            || downscaleCacheSrcKey_ != pm.cacheKey()) {
+            const QSize target = (QSizeF(pm.size()) * factor).toSize();
+            if (target.isEmpty()) {
+                return false;
+            }
+            // Qt::SmoothTransformation on a whole QPixmap/QImage is a
+            // real area-averaging rescale (every source pixel
+            // contributes), unlike QPainter's SmoothPixmapTransform
+            // render hint - see paint()'s own comment.
+            downscaleCache_ = pm.scaled(target,
+                                        Qt::IgnoreAspectRatio,
+                                        Qt::SmoothTransformation);
+            downscaleCacheFactor_ = factor;
+            downscaleCacheSrcKey_ = pm.cacheKey();
+        }
+        return !downscaleCache_.isNull();
+    }
+
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
                QWidget* widget) override
@@ -656,7 +725,43 @@ public:
             draw_crop_rect(*painter, *crop_temp);
         } else {
             const QPixmap& pm = grayscale_ ? grayscalePixmap_ : pixmap();
-            painter->drawPixmap(crop_, pm, crop_);
+            // Real bug this fixes: a big photo (a 6048x4024 RAW import,
+            // but any large image counts) shown on the board at a few
+            // hundred pixels wide came out visibly grainy/shimmering.
+            // Not a decoding problem - QPainter's SmoothPixmapTransform
+            // render hint is BILINEAR: it averages 2x2 source pixels per
+            // output pixel, which is exactly right down to 2x downscale
+            // and increasingly wrong past that. At ~30x downscale it
+            // samples ~4 of the ~900 source pixels each output pixel
+            // should represent, so which 4 it happens to land on is
+            // essentially arbitrary - that's the "graininess", plain
+            // aliasing. A 1280px web JPEG only downscales 3-4x, which is
+            // why this never showed up before RAW imports.
+            //
+            // So: do the big reduction ONCE, properly (area-averaged,
+            // every source pixel contributing - ensure_downscale_cache()
+            // above), cache it, and let the painter do only the small
+            // leftover step, which is the range bilinear is actually
+            // good at.
+            const QTransform t = painter->combinedTransform();
+            const qreal renderScale = std::max(std::hypot(t.m11(), t.m12()),
+                                               std::hypot(t.m21(), t.m22()));
+            if (ensure_downscale_cache(pm, renderScale)) {
+                // Source rect expressed in the CACHE's own (smaller)
+                // pixel coordinates - derived from its real dimensions
+                // rather than the requested factor, since scaled()'s own
+                // rounding can differ by a pixel.
+                const qreal fx = downscaleCache_.width() / qreal(pm.width());
+                const qreal fy = downscaleCache_.height() / qreal(pm.height());
+                painter->drawPixmap(crop_,
+                                    downscaleCache_,
+                                    QRectF(crop_.x() * fx,
+                                           crop_.y() * fy,
+                                           crop_.width() * fx,
+                                           crop_.height() * fy));
+            } else {
+                painter->drawPixmap(crop_, pm, crop_);
+            }
             paint_selectable(painter, option, widget);
 
             // Attached-picture indicator (current) - exact
@@ -1046,6 +1151,15 @@ public:
     }
 
     std::string get_type() const override { return TYPE; }
+
+    // See PixmapItem::caches_downscaled_render()'s own comment: this
+    // item's pixmap is replaced on every animation frame (init_movie_()'s
+    // frameChanged handler below), so a pre-downscaled cache could never
+    // survive to be reused - it would just turn into one full
+    // area-averaged rescale per frame. Animated GIFs are also small
+    // enough in practice that the aliasing this guards against isn't the
+    // problem it is for a full-resolution photo.
+    bool caches_downscaled_render() const override { return false; }
 
     QVariantMap get_extra_save_data() const override
     {
