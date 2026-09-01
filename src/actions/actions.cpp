@@ -207,7 +207,7 @@ static ActionRegistry buildRegistry()
     ActionRegistry r;
 
     // ── File ──────────────────────────────────────────────────────────────────
-    r.add(A::make("new_scene", "New Scene", "on_action_new_scene", {"Ctrl+P"}));
+    r.add(A::make("new_scene", "New Scene", "on_action_new_scene", {"Ctrl+E"}));
     r.add(A::make("open", "Open", "on_action_open", {"Ctrl+O"}));
     r.add(A::make("save",
                   "Save",
@@ -476,31 +476,31 @@ static ActionRegistry buildRegistry()
     r.add(A::make("arrange_optimal",
                   "Arrange Optimal",
                   "on_action_arrange_optimal",
-                  {"Shift+O"},
+                  {"Ctrl+P"},
                   false,
                   false,
-                  "active_when_selection"));
+                  "active_when_items_in_scene"));
     r.add(A::make("arrange_horizontal",
                   "Arrange Horizontal (by filename)",
                   "on_action_arrange_horizontal",
                   {"Ctrl+Shift+H"},
                   false,
                   false,
-                  "active_when_selection"));
+                  "active_when_items_in_scene"));
     r.add(A::make("arrange_vertical",
                   "Arrange Vertical (by filename)",
                   "on_action_arrange_vertical",
                   {"Ctrl+Shift+V"},
                   false,
                   false,
-                  "active_when_selection"));
+                  "active_when_items_in_scene"));
     r.add(A::make("arrange_square",
                   "Arrange Square (by filename)",
                   "on_action_arrange_square",
                   {"Ctrl+Shift+Q"},
                   false,
                   false,
-                  "active_when_selection"));
+                  "active_when_items_in_scene"));
 
     // ── Images ────────────────────────────────────────────────────────────────
     r.add(A::make("change_opacity",

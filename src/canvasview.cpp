@@ -788,6 +788,24 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
         return;
     }
     QGraphicsView::keyPressEvent(event);
+
+    // Escape clears the selection - but strictly as a LAST resort, after
+    // everything with a more specific claim on Escape has had its turn.
+    // Both crop mode (PixmapItem::keyPressEvent) and text editing
+    // (TextItem::keyPressEvent) exit on Escape, and they only ever see
+    // the key because QGraphicsView::keyPressEvent() above forwards it to
+    // the focused item - so this has to run after that call and only if
+    // the event came back unaccepted.
+    //
+    // Deliberately NOT an Escape shortcut on the deselect_all action
+    // (actions.cpp, which binds Ctrl+Shift+D): a window-level QAction
+    // shortcut is dispatched as a QShortcutEvent BEFORE the focus item
+    // ever sees the key, so it would silently break both of those modes.
+    if (!event->isAccepted() && event->key() == Qt::Key_Escape
+        && event->modifiers() == Qt::NoModifier) {
+        scene_->deselect_all_items();
+        event->accept();
+    }
 }
 
 bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
