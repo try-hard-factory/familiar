@@ -29,6 +29,17 @@ const QMap<QString, QString>& settingsTable()
          QStringLiteral(
              "The maximum image size that can be loaded (in megabytes)."
              "<br/><br/><b>Set to 0</b> for no limitation.")},
+        {QStringLiteral("Items/raw_import_choice"),
+         QStringLiteral(
+             "How camera RAW files (.NEF, .CR3, ...) are converted when "
+             "imported."
+             "<br/><br/><b>Optimize</b> converts faster at slightly lower "
+             "quality; <b>Keep original</b> uses the best conversion your "
+             "camera's profile allows, which can take several seconds per "
+             "file."
+             "<br/><br/>Set this back to <b>Ask every time</b> to bring the "
+             "import prompt back after ticking \"Remember choice for future "
+             "files\".")},
         {QStringLiteral("Items/arrange_default"),
          QStringLiteral(
              "How images are arranged when inserted in batch."

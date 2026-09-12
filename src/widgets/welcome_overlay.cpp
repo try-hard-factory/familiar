@@ -40,9 +40,21 @@ void WelcomeOverlay::show()
 {
     QStringList files = SettingsHandler::getInstance()->getRecentFiles(true);
     filesView_->update_files(files);
-    if (!files.isEmpty() && layout_->indexOf(filesWidget_) < 0) {
-        layout_->insertWidget(0, filesWidget_);
+    if (!files.isEmpty()) {
+        if (layout_->indexOf(filesWidget_) < 0) {
+            layout_->insertWidget(0, filesWidget_);
+        }
         filesWidget_->show();
+    } else if (layout_->indexOf(filesWidget_) >= 0) {
+        // Mirror image of the branch above - a real bug this fixes: this
+        // widget was only ever ADDED+shown once files stopped being
+        // empty, never removed+hidden again once it WAS added and files
+        // becomes empty later (e.g. this tab's recent-files snapshot
+        // just happened to be empty on THIS particular show() call) -
+        // left a bare "Recent Files" heading with nothing under it
+        // visible instead of just not showing this widget at all.
+        layout_->removeWidget(filesWidget_);
+        filesWidget_->hide();
     }
     QWidget::show();
 }

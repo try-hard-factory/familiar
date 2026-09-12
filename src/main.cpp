@@ -122,11 +122,6 @@ int main(int argc, char* argv[])
     // level, filename to open, ...) - see CommandlineArgs::process().
     CommandlineArgs::instance().process(a);
 
-    // Was defined but never actually called - the image allocation limit
-    // never took effect at startup, only whenever something happened to
-    // resave settings afterward.
-    FamSettings().onStartup();
-
     // Window/taskbar icon. Built from the raster PNGs (rather than the
     // .svg also in graphics.qrc) since QIcon needs the Qt SVG icon-engine
     // plugin at runtime to rasterize an SVG source, and that plugin isn't
@@ -140,6 +135,16 @@ int main(int argc, char* argv[])
     logOptions.consoleLevel = levelFromName(
         CommandlineArgs::instance().loglevel());
     familiar::log::init(logOptions);
+
+    // Was defined but never actually called - the image allocation limit
+    // never took effect at startup, only whenever something happened to
+    // resave settings afterward. Must run AFTER familiar::log::init()
+    // above, not before - FamSettings::valueOrDefault() can itself log
+    // (a validate()/cast failure) via FLOG_WARN, and calling that before
+    // the logger is initialized is a real null-logger crash (confirmed
+    // via a real backtrace: quill::LoggerBase::get_log_level() on a null
+    // `this`).
+    FamSettings().onStartup();
 
 
 #ifdef NDEBUG

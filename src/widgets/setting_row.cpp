@@ -485,6 +485,20 @@ AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
                       parent)
 {}
 
+RawImportChoiceRow::RawImportChoiceRow(QWidget* parent)
+    : ComboSettingRow(QStringLiteral("RAW Import"),
+                      QStringLiteral("Items/raw_import_choice"),
+                      {
+                          {QStringLiteral("ask"),
+                           QStringLiteral("Ask every time")},
+                          {QStringLiteral("always_optimize"),
+                           QStringLiteral("Always optimize")},
+                          {QStringLiteral("always_keep_original"),
+                           QStringLiteral("Always keep original")},
+                      },
+                      parent)
+{}
+
 AutosaveEnabledRow::AutosaveEnabledRow(QWidget* parent)
     : CheckboxSettingRow(QStringLiteral("Enable Autosave"),
                          QStringLiteral("Save/autosave_enabled"),

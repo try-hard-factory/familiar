@@ -15,6 +15,10 @@ Copyright: 2013-2014 RAD Game Tools and Valve Software
            2010-2014 Rich Geldreich and Tenacious Software LLC
 License: Expat
 
+Files: include/libraw/*
+Copyright: 2008-2025 LibRaw LLC (http://www.libraw.org, info@libraw.org)
+License: LGPL-2.1
+
 Files: debian/*
 Copyright: 2026 try-hard-factory <mpano91@gmail.com>
 License: GPL-3+
@@ -35,6 +39,14 @@ License: GPL-3+
  .
  On Debian systems, the complete text of the GNU General
  Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: LGPL-2.1
+ LibRaw is dual-licensed under the LGPL v2.1 (this project's own choice
+ - LibRaw also offers CDDL 1.0 as an alternative, see include/libraw/COPYRIGHT).
+ .
+ On Debian systems, the complete text of the GNU Lesser General
+ Public License version 2.1 can be found in
+ "/usr/share/common-licenses/LGPL-2.1".
 
 License: Expat
  The MIT License (MIT)

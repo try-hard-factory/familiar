@@ -222,9 +222,8 @@ const char* MouseWheelConfig::settingsGroup() const
     // Same JSON group as MouseConfig - both are "Controls" in the
     // Keyboard Shortcuts UI (widgets/controls/keyboard_shortcuts_page.h),
     // just two different C++ classes internally (wheel vs click
-    // matching). ids don't collide between the two ("zoom"/"pan"/
-    // "movewindow" vs "pan_horizontal"/"pan_vertical"), so sharing one
-    // group is safe.
+    // matching). ids don't collide between the two ("zoom"/"pan" vs
+    // "pan_horizontal"/"pan_vertical"), so sharing one group is safe.
     return "Controls";
 }
 
@@ -400,13 +399,28 @@ const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
 
 const QList<MouseConfig>& KeyboardSettings::mouseActions()
 {
+    // "movewindow" used to live here (Left + Ctrl+Alt) but was pure
+    // decoration - nothing in the dispatch cascade (CanvasView::
+    // mousePressEvent()) ever had a branch for match->group ==
+    // "movewindow", so rebinding it in the Keyboard Shortcuts UI never
+    // did anything. The app's actual move-the-window gesture is a
+    // separate, hardcoded mechanism entirely (MainControlsMixin::
+    // mousePressEventMainControls(), plain right-click-drag, not
+    // configurable) - removed rather than wired up, since Max didn't
+    // want a second, redundant way to do the same thing.
     static const QList<MouseConfig> list = {
         {"zoom", "zoom", "Zoom", {Binding{{}, "Middle", {"Ctrl"}, false}}, true},
-        {"pan", "pan", "Pan", {Binding{{}, "Left", {"Alt"}, false}}, false},
-        {"movewindow",
-         "movewindow",
-         "Move Window",
-         {Binding{{}, "Left", {"Ctrl", "Alt"}, false}},
+        // Two default bindings for Pan - Alt+Left (original default) plus
+        // a bare Middle-drag alias (no modifier needed) added by request,
+        // matching the common "middle-mouse-button pans" convention other
+        // canvas/image tools use. Doesn't collide with Zoom above - that
+        // one requires Middle+Ctrl, this requires Middle with NO
+        // modifiers held (MouseConfig::matchesEvent() matches modifiers
+        // exactly, not as a subset).
+        {"pan",
+         "pan",
+         "Pan",
+         {Binding{{}, "Left", {"Alt"}, false}, Binding{{}, "Middle", {}, false}},
          false},
     };
     return list;

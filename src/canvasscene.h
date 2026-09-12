@@ -167,6 +167,29 @@ public:
     void arrange(bool vertical = false);
     void arrange_optimal();
     void arrange_square();
+    // What arrange()/arrange_optimal()/arrange_square() actually operate
+    // on, rather than the raw selection. Three rules, each fixing real
+    // misbehaviour:
+    //
+    // - Nothing selected means the WHOLE scene, not "do nothing". An
+    //   arrange with an empty selection used to silently return (the
+    //   size() < 2 guard), which reads as a broken menu entry.
+    // - Exactly one group selected means arrange what's INSIDE it - its
+    //   own direct members - since laying out a single block by itself
+    //   is meaningless, and rearranging its contents is the only thing
+    //   the request can sensibly mean.
+    // - Otherwise, and in both cases above, exactly ONE level takes
+    //   part - never anything nested deeper, and never a member whose
+    //   owner isn't the thing being arranged. A sub-group therefore
+    //   moves as a single block and keeps its own internal layout.
+    //   Items pinned to a picture (IBaseItem::attachedToUid()) are
+    //   dropped for the same reason: GroupItem/PixmapItem carry their
+    //   members along via ItemSendsGeometryChanges, so placing one
+    //   directly would move it twice - once by ArrangeItemsCommand,
+    //   once by its owner's own setPos().
+    //
+    // Non-const only because GroupItem::resolve_children() is.
+    QList<QGraphicsItem*> arrange_targets();
     void flip_items(bool vertical = false);
     void crop_items();
     QColor sample_color_at(const QPointF& position);

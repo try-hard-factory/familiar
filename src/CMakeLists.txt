@@ -131,6 +131,8 @@ set(PROJECT_SOURCES
         widgets/flat_spinbox.h
         widgets/flat_combobox.cpp
         widgets/flat_combobox.h
+        widgets/flat_progress_bar.cpp
+        widgets/flat_progress_bar.h
         widgets/color_picker_dialog.cpp
         widgets/color_picker_dialog.h
         widgets/file_browser_dialog.cpp
@@ -139,6 +141,8 @@ set(PROJECT_SOURCES
         widgets/save_all_dialog.h
         widgets/restore_defaults_dialog.cpp
         widgets/restore_defaults_dialog.h
+        widgets/raw_import_dialog.cpp
+        widgets/raw_import_dialog.h
         widgets/help_dialog.cpp
         widgets/help_dialog.h
         widgets/about_dialog.cpp
@@ -190,6 +194,7 @@ if (WIN32)
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        libraw
         Dbghelp # MiniDumpWriteDump - log/log.cpp's crash-dump handler
     )
 elseif(APPLE)
@@ -198,6 +203,7 @@ elseif(APPLE)
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        libraw
     )
 else()
     target_link_libraries(familiar PRIVATE
@@ -205,6 +211,7 @@ else()
         Qt${QT_VERSION_MAJOR}::Network
         quill::quill
         miniz
+        libraw
     )
 endif()
 

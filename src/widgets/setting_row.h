@@ -249,6 +249,18 @@ public:
     explicit AutoOptimizeImportedImagesRow(QWidget* parent = nullptr);
 };
 
+// The same Items/raw_import_choice that RawImportDialog's own "Remember
+// choice for future files" checkbox writes (canvasview.cpp's
+// resolveRawImportChoice()). Exposed here specifically so that checkbox
+// isn't a one-way door: ticking it silences the dialog permanently, and
+// before this row existed nothing in the UI could bring it back - not
+// even Restore Defaults, which didn't list the key either.
+class RawImportChoiceRow : public ComboSettingRow
+{
+public:
+    explicit RawImportChoiceRow(QWidget* parent = nullptr);
+};
+
 class AutosaveEnabledRow : public CheckboxSettingRow
 {
 public:

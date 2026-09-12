@@ -11,6 +11,7 @@ class QStackedWidget;
 class ColorsWidget;
 class UndoHistorySizeRow;
 class AutoOptimizeImportedImagesRow;
+class RawImportChoiceRow;
 class AutosaveEnabledRow;
 class AutosaveIntervalRow;
 class ArrangeGapRow;
@@ -61,6 +62,7 @@ private:
     QWidget* miscPage_ = nullptr;
     UndoHistorySizeRow* undoHistorySize_ = nullptr;
     AutoOptimizeImportedImagesRow* autoOptimizeImportedImages_ = nullptr;
+    RawImportChoiceRow* rawImportChoice_ = nullptr;
     AutosaveEnabledRow* autosaveEnabled_ = nullptr;
     AutosaveIntervalRow* autosaveInterval_ = nullptr;
 

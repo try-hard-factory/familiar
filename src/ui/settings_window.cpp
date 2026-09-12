@@ -144,6 +144,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     , miscPage_(new QWidget)
     , undoHistorySize_(new UndoHistorySizeRow)
     , autoOptimizeImportedImages_(new AutoOptimizeImportedImagesRow)
+    , rawImportChoice_(new RawImportChoiceRow)
     , autosaveEnabled_(new AutosaveEnabledRow)
     , autosaveInterval_(new AutosaveIntervalRow)
     , imagesPage_(new QWidget)
@@ -478,6 +479,11 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     auto* miscLayout = new QVBoxLayout(miscPage_);
     miscLayout->addWidget(undoHistorySize_);
     miscLayout->addWidget(autoOptimizeImportedImages_);
+    // Directly under Auto Optimize Imported Images - same topic (how much
+    // work an import does up front), and RawImportChoice is specifically
+    // what REPLACES that setting for RAW files (fileio.cpp's
+    // ImageImportSession::run() skips auto_optimize entirely for those).
+    miscLayout->addWidget(rawImportChoice_);
     miscLayout->addWidget(autosaveEnabled_);
     // Not nested/indented as a child widget under autosaveEnabled_ - just
     // the next row down, disabled unless autosave is actually enabled

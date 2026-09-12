@@ -516,7 +516,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
 
     if (canceled) {
         // Don't write anything to disk - the previous file (if any) stays
-        // untouched. Mirrors load_images()'s silent-stop-on-cancel
+        // untouched. Mirrors ImageImportSession::run()'s silent-stop-on-cancel
         // convention (empty error, no dialog).
         return result;
     }

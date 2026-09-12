@@ -25,7 +25,7 @@
 #include <QPalette>
 #include <QPen>
 #include <QPlainTextEdit>
-#include <QProgressDialog>
+#include <QPointer>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QResizeEvent>
@@ -54,29 +54,267 @@
 #include <core/settingshandler.h>
 #include <widgets/dialog_style.h>
 #include <widgets/flat_checkbox.h>
+#include <widgets/flat_progress_bar.h>
 
-class ProgressDialog : public QProgressDialog
+// Custom-chrome convention (see ChangeOpacityDialog/RawImportDialog/
+// ExportImagesFileExistsDialog below): frameless, opaque (NOT
+// WA_TranslucentBackground - see dialog_style::panelStyleSheet()'s own
+// comment for why that combo breaks rendering on a QSS-auto-painted
+// top-level widget), rounded via a real setMask() rather than QSS
+// border-radius alone, drag-to-move via startSystemMove() since there's
+// no native title bar to grab.
+//
+// Was a QProgressDialog. Swapped to a plain QDialog for the same reason
+// every other stock Qt dialog in this app got replaced during the
+// custom-widgets pass: its fixed internal layout (label + bar + button,
+// all native-styled) can't carry this app's own chrome, and it left no
+// room for the "which file is being worked on right now" line. What it
+// actually provided beyond that was small and is reimplemented below -
+// setValue()/setRange()/maximum()/reset() over an owned FlatProgressBar,
+// plus a canceled() signal - so all five construction sites
+// (canvasview.cpp x3, file_actions.cpp, plus the reusable import one)
+// keep working unchanged.
+//
+// NOTE the ctor calls show() itself: QProgressDialog used to self-show
+// via setMinimumDuration(0), a plain QDialog does not, and every caller
+// here is "new ProgressDialog(...)" with no show() of its own.
+class ProgressDialog : public QDialog
 {
     Q_OBJECT
+
+    static constexpr int kDialogWidth = 380;
+    // Usable width inside outer's own left/right margins below - what
+    // the "current item" line elides against. A constant rather than the
+    // label's live width() so eliding is deterministic even before the
+    // dialog has ever been laid out.
+    static constexpr int kContentWidth = kDialogWidth - 40;
 
 public:
     explicit ProgressDialog(const QString& label,
                             ThreadedIO* worker,
                             int maximum = 0,
                             QWidget* parent = nullptr)
-        : QProgressDialog(label, QStringLiteral("Cancel"), 0, maximum, parent)
+        : QDialog(parent)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Initialized progress bar");
-        // See FileActions::openFile(): MainWindow's translucent/frameless
-        // stylesheet cascades into this otherwise-unstyled top-level
-        // dialog, painting it solid black.
+        setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
-        setStyleSheet("* { background-color: palette(window); color: "
-                      "palette(window-text); }");
-        setMinimumDuration(0);
+        setAttribute(Qt::WA_StyledBackground);
         setWindowModality(Qt::WindowModal);
-        setAutoReset(false);
-        setAutoClose(false);
+        setFixedWidth(kDialogWidth);
+
+        auto colorPreset
+            = SettingsHandler::getInstance()->getCurrentColorPreset();
+        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& background
+            = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+
+        auto* shadow = new QGraphicsDropShadowEffect(this);
+        shadow->setBlurRadius(24);
+        shadow->setOffset(0, 4);
+        shadow->setColor(QColor(0, 0, 0, 150));
+        setGraphicsEffect(shadow);
+
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(20, 14, 20, 16);
+        outer->setSpacing(10);
+
+        auto* topRow = new QHBoxLayout();
+        auto* titleLabel = new QLabel(label, this);
+        QFont titleFont = titleLabel->font();
+        titleFont.setBold(true);
+        titleFont.setPointSize(titleFont.pointSize() + 1);
+        titleLabel->setFont(titleFont);
+        topRow->addWidget(titleLabel, 1);
+
+        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
+        closeBtn->setFixedSize(22, 22);
+        closeBtn->setCursor(Qt::PointingHandCursor);
+        closeBtn->setFocusPolicy(Qt::NoFocus);
+        closeBtn->setObjectName(QStringLiteral("progressCloseBtn"));
+        // Same funnel as the Cancel button below - see reject().
+        connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
+        topRow->addWidget(closeBtn, 0, Qt::AlignTop);
+        outer->addLayout(topRow);
+
+        // The whole point of the rewrite: which item is being worked on
+        // right now (ThreadedIO::currentItemChanged, fileio.h). Kept at a
+        // fixed height even while empty so the dialog doesn't jump around
+        // as names come and go.
+        currentItemLabel_ = new QLabel(this);
+        // Muted via an objectName + its own QSS rule further down, NOT
+        // via setPalette(): dialog_style::panelStyleSheet() below carries
+        // a blanket "QLabel { color: ... }" rule, and QSS beats QPalette
+        // - a palette-based tint here would simply never show up.
+        currentItemLabel_->setObjectName(
+            QStringLiteral("progressCurrentItem"));
+        currentItemLabel_->setFixedHeight(
+            currentItemLabel_->fontMetrics().height());
+        outer->addWidget(currentItemLabel_);
+
+        auto* barRow = new QHBoxLayout();
+        barRow->setSpacing(10);
+        bar_ = new FlatProgressBar(border, accent, this);
+        barRow->addWidget(bar_, 1);
+        percentLabel_ = new QLabel(this);
+        // Reserves the widest string this ever shows, so the bar beside
+        // it doesn't resize by a few pixels every time the number's digit
+        // count changes.
+        percentLabel_->setFixedWidth(
+            percentLabel_->fontMetrics().horizontalAdvance(
+                QStringLiteral("100%")));
+        percentLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        barRow->addWidget(percentLabel_, 0);
+        outer->addLayout(barRow);
+
+        auto* buttonRow = new QHBoxLayout();
+        buttonRow->addStretch();
+        auto* cancelBtn = new QPushButton(tr("Cancel"), this);
+        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+                                                     textColor,
+                                                     border);
+        connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
+        buttonRow->addWidget(cancelBtn);
+        outer->addLayout(buttonRow);
+
+        setStyleSheet(
+            familiar::dialog_style::panelStyleSheet("ProgressDialog",
+                                                    background,
+                                                    border,
+                                                    textColor)
+            + familiar::dialog_style::closeButtonStyleSheet(
+                "progressCloseBtn", textColor, accent)
+            // Overrides panelStyleSheet()'s blanket QLabel colour for
+            // this one label - the filename is secondary to the
+            // operation title above it, so it reads as a subdued
+            // subtitle rather than competing with it.
+            + QStringLiteral(
+                  "QLabel#progressCurrentItem { color: rgba(%1, %2, %3, 160); }")
+                  .arg(textColor.red())
+                  .arg(textColor.green())
+                  .arg(textColor.blue()));
+
+        knownMaximum_ = maximum;
+        bar_->setRange(0, maximum);
+        updatePercentText_();
+        bindWorker_(worker);
+        show();
+    }
+
+    // Reattaches this SAME dialog to a new import session's worker,
+    // instead of the caller constructing a brand new ProgressDialog each
+    // time (see canvasview.cpp's imageImportProgressDialog_ - now a
+    // single long-lived instance, created once and reused for every
+    // do_insert_images() call). Two real problems this replaced, in
+    // order: (1) a confirmed UAF crash from destroying this dialog
+    // mid-session (a crash backtrace's `this=` pointer matched an
+    // address this class's own destructor had already logged as
+    // destroyed) - fixed by simply never destroying it mid-session; (2)
+    // that fix's own real problem, correctly called out by Max: never
+    // destroying it but still constructing a NEW one per import left
+    // every previous one alive-but-hidden forever (as a child of
+    // CanvasView), i.e. N separate imports over a session == N
+    // permanently leaked dialogs until the tab itself closed. This
+    // rebind() is the actual fix for both at once: one object, reused,
+    // memory bounded regardless of how many imports happen.
+    void rebind(ThreadedIO* worker)
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "ProgressDialog::rebind() this={} old worker={} new "
+                  "worker={}",
+                  static_cast<void*>(this),
+                  static_cast<void*>(worker_),
+                  static_cast<void*>(worker));
+        if (worker_) {
+            // Both directions - see bindWorker_()'s own connect() calls
+            // (worker_->this AND this->worker_, the canceled/onCanceled
+            // one) - QObject::disconnect(sender, nullptr, receiver,
+            // nullptr) drops every connection between exactly this pair,
+            // nothing else.
+            QObject::disconnect(worker_, nullptr, this, nullptr);
+            QObject::disconnect(this, nullptr, worker_, nullptr);
+        }
+        finished_ = false;
+        knownMaximum_ = 0;
+        currentItemLabel_->clear();
+        setRange(0, 0);
+        bindWorker_(worker);
+        show();
+    }
+
+    // Call once, right after construction, ONLY for a ProgressDialog the
+    // caller intends to keep and rebind() across multiple operations
+    // (canvasview.cpp's imageImportProgressDialog_) - every other
+    // (one-shot, fire-and-forget) ProgressDialog in this app must leave
+    // this false (the default) so on_finished() keeps self-deleting
+    // normally. See on_finished()'s own comment for the real leak this
+    // distinction fixes.
+    void setReusable(bool value) { reusable_ = value; }
+
+    // DIAG (SIGSEGV investigation): logs this object's own address right
+    // as it's actually destroyed - compare its timestamp/address against
+    // any later crash backtrace's `this=` pointer - this is exactly how
+    // the real UAF above was confirmed (a crash's `this=` matched an
+    // address logged here, already destroyed, ~800ms earlier). Now only
+    // fires when CanvasView/the tab itself is destroyed (see
+    // on_finished()'s own comment - no more mid-session deleteLater()),
+    // still kept as a cheap correctness check.
+    ~ProgressDialog() override
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "~ProgressDialog() this={}",
+                  static_cast<void*>(this));
+    }
+
+signals:
+    // QProgressDialog's own signal of the same name, reimplemented -
+    // bindWorker_() wires it to ThreadedIO::onCanceled() exactly as
+    // before. Single funnel: the Cancel button, the "x" button and Esc
+    // all go through reject() below, which emits this.
+    void canceled();
+
+public slots:
+    // Esc (QDialog's own default) as well as both buttons. Deliberately
+    // NOT also hiding on its own beyond what QDialog::reject() does: the
+    // worker still has to notice ThreadedIO::canceled and wind down,
+    // which ends in on_finished() like any other completion.
+    void reject() override
+    {
+        emit canceled();
+        QDialog::reject();
+    }
+
+protected:
+    void mousePressEvent(QMouseEvent* event) override
+    {
+        if (event->button() == Qt::LeftButton && windowHandle()) {
+            windowHandle()->startSystemMove();
+            event->accept();
+            return;
+        }
+        QDialog::mousePressEvent(event);
+    }
+
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QDialog::resizeEvent(event);
+        familiar::dialog_style::applyRoundedMask(this, 10);
+    }
+
+private:
+    // Shared by the constructor and rebind() above - the actual
+    // connect() calls, once, instead of duplicated in both places.
+    void bindWorker_(ThreadedIO* worker)
+    {
+        // DIAG (SIGSEGV investigation): this object's own address, to
+        // correlate against a crash backtrace's `this=` pointer and
+        // against ~ProgressDialog()'s own DIAG log above.
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "ProgressDialog::bindWorker_() this={} worker={}",
+                  static_cast<void*>(this),
+                  static_cast<void*>(worker));
+        worker_ = worker;
         connect(worker,
                 &ThreadedIO::beginProcessing,
                 this,
@@ -90,36 +328,250 @@ public:
                 this,
                 &ProgressDialog::on_finished);
         connect(worker,
+                &ThreadedIO::currentItemChanged,
+                this,
+                &ProgressDialog::on_current_item_changed);
+        connect(worker,
                 &ThreadedIO::userInputRequired,
                 this,
                 [this](const QString&) { on_finished(QString(), {}); });
+        // Deliberately NOT reacting to ThreadedIO::rawImportChoiceRequired
+        // the same way (see ImagesToDirectoryExporter's own userInputRequired
+        // pause above) - unlike that flow, CanvasView keeps this SAME
+        // ProgressDialog alive across a RAW-choice pause+resume instead
+        // of treating a pause as "done".
         connect(this,
                 &ProgressDialog::canceled,
                 worker,
                 &ThreadedIO::onCanceled);
+        // While a RAW file is actively decoding, this bar temporarily
+        // shows THAT FILE's own 0-100 demosaic sub-progress
+        // (rawDecodeProgress below - LibRaw::set_progress_handler(),
+        // fileio.cpp) instead of "item N of M" - progress() alone only
+        // advances once a whole item finishes, and a full-resolution
+        // demosaic can take 10+ seconds; without this the bar just sat frozen
+        // the whole time. Snaps back to the real N-of-M range the
+        // moment this file's decode ends (on_raw_decode_state_changed(
+        // false) below, and on_progress() itself as a backstop).
+        connect(worker,
+                &ThreadedIO::rawDecodeStateChanged,
+                this,
+                &ProgressDialog::on_raw_decode_state_changed);
+        connect(worker,
+                &ThreadedIO::rawDecodeProgress,
+                this,
+                &ProgressDialog::on_raw_decode_progress);
+    }
+
+    // ─── The QProgressDialog API this class used to inherit ─────────────
+    void setRange(int minimum, int maximum)
+    {
+        bar_->setRange(minimum, maximum);
+        updatePercentText_();
+    }
+
+    void setMaximum(int maximum)
+    {
+        bar_->setMaximum(maximum);
+        updatePercentText_();
+    }
+
+    int maximum() const { return bar_->maximum(); }
+
+    void setValue(int value)
+    {
+        bar_->setValue(value);
+        updatePercentText_();
+    }
+
+    void reset() { bar_->setValue(bar_->minimum()); }
+
+    // Blank rather than "0%" while indeterminate (the marquee already
+    // says "working, total unknown" on its own) or before any real range
+    // exists - a hard 0% next to a sliding bar reads as stuck.
+    void updatePercentText_()
+    {
+        const int span = bar_->maximum() - bar_->minimum();
+        if (bar_->isIndeterminate() || span <= 0) {
+            percentLabel_->clear();
+            return;
+        }
+        const int percent = ((bar_->value() - bar_->minimum()) * 100) / span;
+        percentLabel_->setText(QStringLiteral("%1%").arg(percent));
     }
 
 private slots:
+    void on_current_item_changed(const QString& name)
+    {
+        if (finished_) {
+            return;
+        }
+        currentItemLabel_->setText(
+            currentItemLabel_->fontMetrics().elidedText(name,
+                                                        Qt::ElideMiddle,
+                                                        kContentWidth));
+    }
+
     void on_progress(int value)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Progress dialog: {}", value);
+        // DIAG: logged UNCONDITIONALLY, before the guard - a prior
+        // build only logged this AFTER the finished_ check, so a crash
+        // during setValue() left no trace of whether the guard had even
+        // been reached yet.
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_progress({}) this={} finished_={}",
+                  value,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        // Back to the real range in case a RAW decode's own sub-progress
+        // mode was still active - belt-and-suspenders alongside
+        // on_raw_decode_state_changed(false) below, which normally
+        // already restores it right before this fires anyway.
+        setRange(0, knownMaximum_);
         setValue(value);
+    }
+
+    void on_raw_decode_state_changed(bool decoding)
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_raw_decode_state_changed({}) this={} finished_={}",
+                  decoding,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        if (decoding) {
+            setRange(0, 100);
+            setValue(0);
+        } else {
+            setRange(0, knownMaximum_);
+        }
+    }
+
+    void on_raw_decode_progress(int percent)
+    {
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_raw_decode_progress({}) this={} finished_={}",
+                  percent,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        setValue(percent);
     }
 
     void on_begin_processing(int value)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Begin progress dialog: {}", value);
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_begin_processing({}) this={} finished_={}",
+                  value,
+                  static_cast<void*>(this),
+                  finished_);
+        if (finished_) {
+            return;
+        }
+        knownMaximum_ = value;
         setMaximum(value);
     }
 
     void on_finished(const QString& filename, const QStringList& errors)
     {
-        FLOG_DEBUG(familiar::log::Ch::UI, "Finished progress dialog");
+        // finished_/worker_->disconnect() below guard this OBJECT while
+        // it's alive - neither helps against what turned out to be the
+        // actual bug (confirmed via DIAG logging + a backtrace: the
+        // crash's `this=` pointer matched an address this class's own
+        // destructor had ALREADY logged as destroyed, ~800ms earlier -
+        // a stale queued event reaching genuinely freed memory, not a
+        // same-object re-entry). Reading `this->finished_` on freed
+        // memory is undefined behavior regardless of what value happens
+        // to be sitting there.
+        //
+        // ONLY the reusable_ instance (canvasview.cpp's
+        // imageImportProgressDialog_, marked via setReusable(true) right
+        // after construction - see that call site) skips destruction
+        // here, staying alive/hidden, parented to CanvasView, until the
+        // tab itself closes - that's the one this class was built to
+        // survive a mid-session rebind() for. Real regression this
+        // fixes: EVERY other ProgressDialog in this app (file_actions.cpp's
+        // "Opening project", canvasview.cpp's 3 "Exporting..." dialogs) is
+        // a genuine one-shot, constructed fresh and never touched again -
+        // those need to keep self-deleting normally via deleteLater(),
+        // or each export/open-project operation leaks one hidden dialog
+        // for the rest of the app's life (confirmed for real: Max saw
+        // TWO ~ProgressDialog() calls at shutdown with only ONE tab and
+        // ONE RAW import all session - the second was an export/open-
+        // project dialog this fix had accidentally stopped cleaning up
+        // too, since the original fix touched every ProgressDialog
+        // instance instead of only the reused one).
+        FLOG_DEBUG(familiar::log::Ch::UI,
+                  "on_finished() this={} finished_={} reusable_={}",
+                  static_cast<void*>(this),
+                  finished_,
+                  reusable_);
+        if (finished_) {
+            return;
+        }
+        finished_ = true;
+        if (worker_) {
+            worker_->disconnect(this);
+        }
+        setRange(0, knownMaximum_); // in case a RAW decode's indeterminate
+                                    // mode was somehow still active
         setValue(maximum());
         reset();
+        currentItemLabel_->clear();
         hide();
-        QTimer::singleShot(100, this, &QObject::deleteLater);
+        if (!reusable_) {
+            QTimer::singleShot(100, this, &QObject::deleteLater);
+        }
     }
+
+private:
+    FlatProgressBar* bar_ = nullptr;
+    QLabel* percentLabel_ = nullptr;
+    QLabel* currentItemLabel_ = nullptr;
+    // setMaximum()'s own value can't be read back once setRange(0, 0)
+    // (indeterminate mode, on_raw_decode_state_changed() above) is
+    // active - maximum() itself reads back 0 in that state - so this is
+    // the one place that actually remembers the real total to restore.
+    int knownMaximum_ = 0;
+    // Set once, in on_finished() - every other slot checks this first
+    // and no-ops if true. See on_finished()'s own comment for the real
+    // crash this guards against.
+    bool finished_ = false;
+    // Stored so on_finished() can sever worker_'s connections into this
+    // dialog explicitly (worker_->disconnect(this)) instead of relying
+    // only on finished_. A PREVIOUS fix attempt here called a bare
+    // disconnect() (this->disconnect(), no args) intending the same
+    // thing, but that disconnects signals *this* object emits, not the
+    // worker->this connections actually in play - wrong direction,
+    // fixed nothing, and produced a spurious "wildcard call disconnects
+    // from destroyed signal" warning. worker_->disconnect(this)
+    // disconnects every connection where worker_ is the sender AND this
+    // is the receiver - the actual ones set up in bindWorker_() - which
+    // should stop any FUTURE emit from worker_ from even posting a new
+    // event to this object at all, regardless of GUI-thread deletion
+    // timing.
+    //
+    // QPointer, NOT a raw ThreadedIO* - real crash this fixes: rebind()
+    // reused this dialog for a SECOND import while worker_ still pointed
+    // at the FIRST import's worker, which by then had already been
+    // deleteLater()'d and destroyed by CanvasView (on_insert_images_
+    // finished()) - a plain ThreadedIO* has no idea its pointee died,
+    // so QObject::disconnect(worker_, ...) in rebind() dereferenced
+    // freed memory (confirmed via a real backtrace crashing inside
+    // QObject::disconnect() itself, called from here). QPointer clears
+    // itself back to nullptr automatically the moment its pointee is
+    // destroyed, so every `if (worker_)` check stays honest even across
+    // a worker that died since the last time this was touched.
+    QPointer<ThreadedIO> worker_;
+    // false by default - see setReusable()'s own doc comment above.
+    bool reusable_ = false;
 };
 
 
