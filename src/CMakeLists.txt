@@ -459,9 +459,21 @@ if (WIN32)
         install(DIRECTORY ${CMAKE_BINARY_DIR}/windeployqt_stuff/ DESTINATION bin)
 
 
-        STRING(REGEX REPLACE "\\\\" "/" OPENSSL_ROOT_DIR $ENV{OPENSSL_ROOT_DIR} )
- 
         if (ENABLE_OPENSSL)
+            # Quoted, and inside the ENABLE_OPENSSL guard rather than
+            # above it. Both matter: unquoted, an unset OPENSSL_ROOT_DIR
+            # expands to nothing at all, so the argument disappears and
+            # string(REGEX REPLACE ...) is left with 5 arguments instead
+            # of 6 - a hard configure error ("needs at least 6 arguments
+            # total"), not a warning. That went unnoticed because this
+            # whole block only runs when QTDIR points at a real
+            # windeployqt.exe, which only the OpenSSL-enabled pipelines
+            # (Windows-pack.yml, appveyor.yml - both pass
+            # -DENABLE_OPENSSL=ON and set OPENSSL_ROOT_DIR via vcpkg)
+            # ever satisfied. nightly.yml does neither, so the moment its
+            # QTDIR started resolving, this blew up on an empty value.
+            string(REGEX REPLACE "\\\\" "/" OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
+
             if (EXISTS ${OPENSSL_ROOT_DIR}/bin)
 
              install(
