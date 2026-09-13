@@ -1,3 +1,14 @@
+Version v0.0.17
+==============
+
+  - feedback fixes (#101)
+  - add log level to log widget and updates logs (#100)
+  - cmd line rework (#99)
+  - new file format (#98)
+  - rework restore defaults (#97)
+  - add nightly
+  - issue template
+
 Version v0.0.9
 ==============
 
