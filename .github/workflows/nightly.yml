@@ -88,6 +88,18 @@ jobs:
     name: Windows (portable)
     needs: prep
     runs-on: windows-2022
+    env:
+      # src/CMakeLists.txt's windeployqt POST_BUILD step gates on
+      # $ENV{QTDIR} (`if (EXISTS $ENV{QTDIR}/bin/windeployqt.exe)`) -
+      # without it, that step is silently skipped (just a `message()`,
+      # no warning/error) and familiar.exe ships with no Qt DLLs/
+      # platform plugin next to it, so it can't even start. install-qt-
+      # action itself doesn't set QTDIR - matches Windows-pack.yml's own
+      # identical env var for this exact reason. Must agree with the
+      # "Install Qt" step below: <dir>/Qt/<version>/<arch_install>/,
+      # msvc2022_64 being install-qt-action's default arch for a Windows
+      # desktop target when no explicit `arch:` is given (as here).
+      QTDIR: ${{ github.workspace }}\qt\Qt\${{ env.WINDOWS_QT_VERSION }}\msvc2022_64\
     steps:
       - uses: actions/checkout@v6
         with:
