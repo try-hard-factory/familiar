@@ -182,7 +182,9 @@ QImage decode_raw_via_demosaic(const QString& filename,
     return result;
 }
 
-QImage decode_raw(const QString& filename, RawImportChoice choice, ThreadedIO* worker)
+QImage decode_raw(const QString& filename,
+                  RawImportChoice choice,
+                  ThreadedIO* worker)
 {
     return decode_raw_via_demosaic(filename,
                                    worker,
@@ -291,7 +293,7 @@ LoadedImage decode_data_url(const QUrl& url)
         return {};
     }
     QString payload = full.mid(5);
-    int commaIdx = payload.indexOf(QLatin1Char(','));
+    int commaIdx = static_cast<int>(payload.indexOf(QLatin1Char(',')));
     if (commaIdx < 0) {
         return {};
     }
@@ -406,9 +408,9 @@ ThreadedIO::~ThreadedIO()
 void ThreadedIO::run()
 {
     FLOG_DEBUG(Ch::IO,
-              "ThreadedIO::run() this={} thread={}",
-              static_cast<void*>(this),
-              static_cast<void*>(QThread::currentThreadId()));
+               "ThreadedIO::run() this={} thread={}",
+               static_cast<void*>(this),
+               QThread::currentThreadId());
     func_(this);
 }
 
@@ -424,20 +426,20 @@ bool is_raw_file(const QString& filename)
         QStringLiteral("cr2"), QStringLiteral("cr3"),
         QStringLiteral("crw"), // Canon
         QStringLiteral("arw"), QStringLiteral("srf"),
-        QStringLiteral("sr2"), // Sony
-        QStringLiteral("orf"), // Olympus
-        QStringLiteral("raf"), // Fujifilm
-        QStringLiteral("rw2"), // Panasonic/Leica
+        QStringLiteral("sr2"),                        // Sony
+        QStringLiteral("orf"),                        // Olympus
+        QStringLiteral("raf"),                        // Fujifilm
+        QStringLiteral("rw2"),                        // Panasonic/Leica
         QStringLiteral("pef"), QStringLiteral("ptx"), // Pentax
-        QStringLiteral("srw"), // Samsung
+        QStringLiteral("srw"),                        // Samsung
         QStringLiteral("dng"), // Adobe DNG (any manufacturer)
         QStringLiteral("x3f"), // Sigma (Foveon)
         QStringLiteral("3fr"), // Hasselblad
         QStringLiteral("iiq"), // Phase One
         QStringLiteral("dcr"), QStringLiteral("kdc"), // Kodak
-        QStringLiteral("mos"), // Leaf
-        QStringLiteral("erf"), // Epson
-        QStringLiteral("mef"), // Mamiya
+        QStringLiteral("mos"),                        // Leaf
+        QStringLiteral("erf"),                        // Epson
+        QStringLiteral("mef"),                        // Mamiya
     };
     return kRawExtensions.contains(QFileInfo(filename).suffix().toLower());
 }
@@ -459,18 +461,18 @@ void ImageImportSession::run(ThreadedIO* worker)
     // progress(N) with N >= 1 only makes sense if urls_.size() > 1, or
     // if this is genuinely a second run() call resuming past index 0.
     FLOG_DEBUG(Ch::IO,
-              "ImageImportSession::run() this={} worker={} urls={} "
-              "nextIndex={}",
-              static_cast<void*>(this),
-              static_cast<void*>(worker),
-              urls_.size(),
-              nextIndex_);
+               "ImageImportSession::run() this={} worker={} urls={} "
+               "nextIndex={}",
+               static_cast<void*>(this),
+               static_cast<void*>(worker),
+               urls_.size(),
+               nextIndex_);
     // Only on the very first call, not a resume after
     // rawImportChoiceRequired() - re-emitting this would reset the
     // ProgressDialog's bar back to 0, even though everything before
     // nextIndex_ already loaded.
     if (nextIndex_ == 0) {
-        emit worker->beginProcessing(urls_.size());
+        emit worker->beginProcessing(static_cast<int>(urls_.size()));
     }
 
     const QString optimizeMode
@@ -480,13 +482,14 @@ void ImageImportSession::run(ThreadedIO* worker)
     // both already treat <= 0 as "never TooLarge".
     const qint64 allocationLimitBytes
         = qint64(FamSettings()
-                     .valueOrDefault(QStringLiteral("Items/image_allocation_limit"))
+                     .valueOrDefault(
+                         QStringLiteral("Items/image_allocation_limit"))
                      .toInt())
           * 1024 * 1024;
-    const QString rawImportSetting
-        = FamSettings()
-              .valueOrDefault(QStringLiteral("Items/raw_import_choice"))
-              .toString();
+    const QString rawImportSetting = FamSettings()
+                                         .valueOrDefault(QStringLiteral(
+                                             "Items/raw_import_choice"))
+                                         .toString();
 
     // Only constructed if actually needed (most drops are local files).
     QNetworkAccessManager* netManager = nullptr;
@@ -518,7 +521,7 @@ void ImageImportSession::run(ThreadedIO* worker)
                 if (rawImportSetting == QLatin1String("always_optimize")) {
                     choice = RawImportChoice::Optimize;
                 } else if (rawImportSetting
-                          == QLatin1String("always_keep_original")) {
+                           == QLatin1String("always_keep_original")) {
                     choice = RawImportChoice::KeepOriginal;
                 } else if (queueChoice_) {
                     choice = *queueChoice_;
@@ -532,8 +535,8 @@ void ImageImportSession::run(ThreadedIO* worker)
                     // exact file - see ThreadedIO::
                     // rawImportChoiceRequired's own doc comment.
                     FLOG_DEBUG(Ch::IO,
-                              "Pausing for RAW import choice: {}",
-                              label);
+                               "Pausing for RAW import choice: {}",
+                               label);
                     pendingRawFile_ = label;
                     nextIndex_ = i;
                     delete netManager;
@@ -541,11 +544,11 @@ void ImageImportSession::run(ThreadedIO* worker)
                     return;
                 }
                 FLOG_DEBUG(Ch::IO,
-                          "Decoding RAW file ({}) {}",
-                          choice == RawImportChoice::Optimize
-                              ? "fast half-size demosaic"
-                              : "full-resolution demosaic",
-                          label);
+                           "Decoding RAW file ({}) {}",
+                           choice == RawImportChoice::Optimize
+                               ? "fast half-size demosaic"
+                               : "full-resolution demosaic",
+                           label);
                 emit worker->rawDecodeStateChanged(true);
                 img = decode_raw(label, choice, worker);
                 emit worker->rawDecodeStateChanged(false);
@@ -602,10 +605,10 @@ void ImageImportSession::run(ThreadedIO* worker)
         // emission's worker pointer + thread, to line up against
         // ProgressDialog's own DIAG logs and any crash backtrace.
         FLOG_DEBUG(Ch::IO,
-                  "emit progress({}) worker={} thread={}",
-                  i,
-                  static_cast<void*>(worker),
-                  static_cast<void*>(QThread::currentThreadId()));
+                   "emit progress({}) worker={} thread={}",
+                   i,
+                   static_cast<void*>(worker),
+                   QThread::currentThreadId());
         // Checked HERE, before anything is made of `img` - the old check
         // sat at the very bottom of the loop, i.e. only after the
         // in-flight item had already been queued onto the scene, so
@@ -645,6 +648,9 @@ void ImageImportSession::run(ThreadedIO* worker)
             case ImageLoadFailure::Corrupt:
                 FLOG_WARN(Ch::IO, "Could not load (corrupt file?): {}", label);
                 corruptErrors.append(label);
+                break;
+            default:
+                // TODOLATER: unreachable?
                 break;
             }
             continue;
@@ -725,8 +731,8 @@ void ImageImportSession::run(ThreadedIO* worker)
     // Flat list for finished()'s own `errors` param - unchanged shape for
     // whatever else still just wants "what failed", the 3-way breakdown
     // above is additive, not a replacement.
-    const QStringList errors
-        = unsupportedFormatErrors + tooLargeErrors + corruptErrors;
+    const QStringList errors = unsupportedFormatErrors + tooLargeErrors
+                               + corruptErrors;
     // DIAG (ProgressDialog SIGSEGV investigation).
     FLOG_DEBUG(Ch::IO, "emit finished() worker={}", static_cast<void*>(worker));
     emit worker->finished(QString(), errors);
@@ -762,12 +768,12 @@ void save_fml(const QString& filename,
     // TODOLATER: no CanvasView here to read canvasRect() from (this
     // wrapper isn't actually called anywhere yet - see
     // FileActions::saveFile(), which calls FmlArchive::save() directly
-    // instead so it can pass the real one). scene->rememberedBoundingRect()
+    // instead so it can pass the real one). scene->remembered_bounding_rect()
     // is a reasonable stand-in once this does get wired up, but it's
     // really meant as a one-shot value read right after a load, not an
     // ongoing substitute for the view's own canvasRect().
     FmlResult result = FmlArchive::save(scene,
-                                        scene->rememberedBoundingRect(),
+                                        scene->remembered_bounding_rect(),
                                         filename,
                                         worker);
 

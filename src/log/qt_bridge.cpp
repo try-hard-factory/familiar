@@ -34,7 +34,10 @@ Level levelFromQt(QtMsgType type)
         return Level::Error;
     case QtFatalMsg:
         return Level::Critical;
+    default:
+        return Level::Debug;    
     }
+    // TODOLATER: UNREACHABLE
     return Level::Debug;
 }
 

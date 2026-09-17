@@ -278,6 +278,9 @@ private:
             case MenuNode::Type::Dynamic:
                 _build_recent_files(menu);
                 break;
+            default:
+                // TODOLATER: unreachable?
+                break;
             }
         }
     }

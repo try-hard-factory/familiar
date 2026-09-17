@@ -268,7 +268,7 @@ public:
         QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
         QImage img = pm.toImage();
 
-        QColor color = img.pixelColor((int) ipos.x(), (int) ipos.y());
+        QColor color = img.pixelColor(static_cast<int>(ipos.x()), static_cast<int>(ipos.y()));
         if (color.alpha()) {
             return color;
         }
@@ -429,9 +429,7 @@ public:
             ColorGamut gamut;
             QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
-            int step = std::max(1,
-                                static_cast<int>(
-                                    std::max(img.width(), img.height()) / 1000));
+            int step = std::max(1, std::max(img.width(), img.height()) / 1000);
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Considering every {}. row/column",
                        step);
@@ -1209,7 +1207,10 @@ public:
     // lazily determined for some formats/plugins and not reliable before
     // a full pass, so this doubles as the authoritative frame count too.
     const QList<QPixmap>& frame_thumbnails() const { return frameThumbnails_; }
-    int frame_count() const { return frameThumbnails_.size(); }
+    int frame_count() const
+    {
+        return static_cast<int>(frameThumbnails_.size());
+    }
 
     bool is_playing() const
     {
@@ -1251,7 +1252,7 @@ public:
             return;
         }
         pause();
-        const int count = frameThumbnails_.size();
+        const int count = static_cast<int>(frameThumbnails_.size());
         int next = (current_frame() + delta) % count;
         if (next < 0) {
             next += count;
@@ -1264,7 +1265,8 @@ public:
             return;
         }
         pause();
-        movie_->jumpToFrame(qBound(0, index, frameThumbnails_.size() - 1));
+        movie_->jumpToFrame(
+            qBound(0, index, static_cast<int>(frameThumbnails_.size()) - 1));
     }
     // QMovie's own convention: 100 = normal speed, 25 = x0.25, 200 = x2 -
     // matches the x0.25-x2 steps this app's own UI displays directly, no
@@ -2376,13 +2378,12 @@ public:
                                   "already a member of ANOTHER group ({}, "
                                   "uid={}) - {} is about to become a SECOND "
                                   "owner of it",
-                                   id.toString(QUuid::WithoutBraces)
-                                       .toStdString(),
-                                   otherGroup->toString(),
-                                   otherGroup->uid()
-                                       .toString(QUuid::WithoutBraces)
-                                       .toStdString(),
-                                   toString());
+                                  id.toString(QUuid::WithoutBraces).toStdString(),
+                                  otherGroup->toString(),
+                                  otherGroup->uid()
+                                      .toString(QUuid::WithoutBraces)
+                                      .toStdString(),
+                                  toString());
                     }
                 }
             }

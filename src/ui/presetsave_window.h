@@ -13,7 +13,4 @@ public:
 
 protected:
     void keyPressEvent(QKeyEvent*) override;
-
-private:
-    void savePresetToSettings(EPresets preset);
 };

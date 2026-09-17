@@ -66,8 +66,10 @@ QList<FileBrowserDialog::FilterEntry> parseNameFilter(const QString& filterStrin
     for (const QString& part : parts) {
         FileBrowserDialog::FilterEntry entry;
         const QString trimmed = part.trimmed();
-        const int openParen = trimmed.indexOf(QLatin1Char('('));
-        const int closeParen = trimmed.lastIndexOf(QLatin1Char(')'));
+        const int openParen
+            = static_cast<int>(trimmed.indexOf(QLatin1Char('(')));
+        const int closeParen
+            = static_cast<int>(trimmed.lastIndexOf(QLatin1Char(')')));
         if (openParen >= 0 && closeParen > openParen) {
             entry.label = trimmed;
             const QString patternsStr = trimmed.mid(openParen + 1,
@@ -674,6 +676,8 @@ void FileBrowserDialog::tryAccept_()
         accept();
         break;
     }
+    default:
+        break;
     }
 }
 

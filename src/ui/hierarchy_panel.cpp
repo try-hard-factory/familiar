@@ -496,7 +496,7 @@ void HierarchyPanel::rebuild_()
     QSet<QUuid> consumed;
     const QList<QGraphicsItem*> allItems = scene_->items();
     for (QGraphicsItem* item : allItems) {
-        if (!scene_->itemAddByUser(item)) {
+        if (!scene_->item_add_by_user(item)) {
             continue;
         }
         if (auto* group = dynamic_cast<GroupItem*>(item)) {
@@ -513,7 +513,7 @@ void HierarchyPanel::rebuild_()
 
     QSet<QUuid> added;
     for (QGraphicsItem* item : allItems) {
-        if (!scene_->itemAddByUser(item)) {
+        if (!scene_->item_add_by_user(item)) {
             continue;
         }
         auto* base = dynamic_cast<IBaseItem*>(item);

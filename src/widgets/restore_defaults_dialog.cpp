@@ -37,8 +37,9 @@ QString categoryLabel(SettingsCategory category)
         return QObject::tr("Colors");
     case SettingsCategory::KeyboardShortcuts:
         return QObject::tr("Keyboard Shortcuts");
+    default:
+        return {};
     }
-    return {};
 }
 
 const QList<SettingsCategory>& allCategories()
@@ -69,8 +70,9 @@ QString currentPresetJsonKey()
         return QStringLiteral("customPreset2");
     case EPresets::kCustom3:
         return QStringLiteral("customPreset3");
+    default:
+        return {};
     }
-    return {};
 }
 
 // Whether `category` currently has anything that would actually change
@@ -129,9 +131,9 @@ bool categoryHasChanges(SettingsCategory category)
         // construction here just for a pre-check convenience feature,
         // so this category simply starts unchecked like the rest did
         // before this pre-check existed.
+    default:
         return false;
     }
-    return false;
 }
 
 } // namespace
@@ -163,9 +165,9 @@ QStringList RestoreDefaultsDialog::famSettingsKeysFor(SettingsCategory category)
         };
     case SettingsCategory::Colors:
     case SettingsCategory::KeyboardShortcuts:
+    default:
         return {};
     }
-    return {};
 }
 
 RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)

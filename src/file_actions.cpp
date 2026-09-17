@@ -71,8 +71,8 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
             // FmlArchive::load() stashed on the scene, so fit_scene()
             // has something to fall back to even if this project was
             // saved with zero items (see CanvasScene::
-            // rememberedBoundingRect()).
-            canvasView->restoreCanvasRect(scene->rememberedBoundingRect());
+            // remembered_bounding_rect()).
+            canvasView->restoreCanvasRect(scene->remembered_bounding_rect());
             canvasView->on_action_fit_scene();
             canvasView->setModified(markModifiedAfterLoad);
 

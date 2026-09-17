@@ -287,7 +287,7 @@ void SwatchRow::setCurrent(const QColor& color)
 // visually).
 QRectF SwatchRow::cellRect_(int index) const
 {
-    const int count = colors_.size();
+    const int count = static_cast<int>(colors_.size());
     if (count == 0) {
         return QRectF();
     }
@@ -300,7 +300,7 @@ QRectF SwatchRow::cellRect_(int index) const
 
 int SwatchRow::swatchAt_(const QPoint& pos) const
 {
-    const int count = colors_.size();
+    const int count = static_cast<int>(colors_.size());
     if (count == 0) {
         return -1;
     }

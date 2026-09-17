@@ -1,12 +1,13 @@
 #pragma once
 
+#include "recent_files_model.h"
+#include <algorithm>
+#include <numeric>
 #include <QCursor>
 #include <QFileInfo>
 #include <QListView>
 #include <QMouseEvent>
 #include <QSize>
-
-#include "recent_files_model.h"
 
 class MainWindow;
 
@@ -19,7 +20,7 @@ public:
                     const QStringList& files,
                     MainWindow* mainWindow = nullptr)
         : QListView(parent)
-        , files(files)
+        , files_(files)
         , mainWindow_(mainWindow)
     {
         connect(this, &QListView::clicked, this, &RecentFilesView::on_clicked);
@@ -29,12 +30,12 @@ public:
 
     void update_files(const QStringList& newFiles)
     {
-        files = newFiles;
+        files_ = newFiles;
         // QItemSelectionModel* m = selectionModel();
         // setModel(new RecentFilesModel(nullptr, files));
         // delete m;
         auto* model = dynamic_cast<RecentFilesModel*>(this->model());
-        model->setFiles(files);
+        model->setFiles(files_);
         reset();
     }
 
@@ -47,30 +48,35 @@ public:
         // this isn't a hypothetical edge case - confirmed real crash
         // (EXCEPTION_ACCESS_VIOLATION) triggered by Ctrl+N (insert_text)
         // while the welcome overlay with zero recent files was showing.
-        if (files.isEmpty()) {
+        if (files_.isEmpty()) {
             return QSize(0, 0);
         }
 
-        int height = std::accumulate(
-            files.begin(), files.end(), 0, [this](int sum, const QString& file) {
-                return sum
-                       + sizeHintForRow(this->model()
-                                            ->index(this->files.indexOf(file), 0)
-                                            .row())
-                       + 2;
-            });
+        int height
+            = std::accumulate(files_.begin(),
+                              files_.end(),
+                              0,
+                              [this](int sum, const QString& file) {
+                                  return sum
+                                         + sizeHintForRow(
+                                             this->model()
+                                                 ->index(static_cast<int>(
+                                                             this->files_
+                                                                 .indexOf(file)),
+                                                         0)
+                                                 .row())
+                                         + 2;
+                              });
 
-        std::vector<int> columnWidths(files.size());
-        std::transform(files.begin(),
-                       files.end(),
-                       columnWidths.begin(),
-                       [this](const QString& file) {
-                           return sizeHintForColumn(
-                               model()->index(files.indexOf(file), 0).column());
-                       });
-        int width = 2
-                    + *std::max_element(columnWidths.begin(),
-                                        columnWidths.end());
+        std::vector<int> columnWidths(static_cast<std::size_t>(files_.size()));
+        std::ranges::transform(
+            files_, columnWidths.begin(), [this](const QString& file) {
+                return sizeHintForColumn(
+                    model()
+                        ->index(static_cast<int>(files_.indexOf(file)), 0)
+                        .column());
+            });
+        int width = 2 + *std::ranges::max_element(columnWidths);
         return QSize(width, height);
     }
 
@@ -94,6 +100,6 @@ private slots:
     void on_clicked(const QModelIndex& index);
 
 private:
-    QStringList files;
+    QStringList files_;
     MainWindow* mainWindow_;
 };

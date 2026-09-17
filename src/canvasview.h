@@ -108,7 +108,7 @@ public:
     QUuid recoveryId();
 
     // The drawn canvas frame's extent - see canvasRect_ and
-    // CanvasScene::rememberedBoundingRect().
+    // CanvasScene::remembered_bounding_rect().
     QRectF canvasRect() const { return canvasRect_; }
     // Applied right after loading a project (see FileActions::
     // loadFmlIntoCurrentTab()): seeds canvasRect_ from the manifest's

@@ -264,7 +264,8 @@ QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
 
 void SceneToSVGExporter::exportTo(const QString& filename, ThreadedIO* worker)
 {
-    emitBeginProcessing(worker, scene_->items_for_save().size());
+    emitBeginProcessing(worker,
+                        static_cast<int>(scene_->items_for_save().size()));
     QString svg = renderToSvg(worker);
 
     if (worker && worker->canceled) {
@@ -323,7 +324,7 @@ ImagesToDirectoryExporter::ImagesToDirectoryExporter(
 
 void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
 {
-    int total = items_.size();
+    int total = static_cast<int>(items_.size());
     emitBeginProcessing(worker, total);
     emitProgress(worker, startFrom_);
 

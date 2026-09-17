@@ -147,8 +147,7 @@ public:
         // via setPalette(): dialog_style::panelStyleSheet() below carries
         // a blanket "QLabel { color: ... }" rule, and QSS beats QPalette
         // - a palette-based tint here would simply never show up.
-        currentItemLabel_->setObjectName(
-            QStringLiteral("progressCurrentItem"));
+        currentItemLabel_->setObjectName(QStringLiteral("progressCurrentItem"));
         currentItemLabel_->setFixedHeight(
             currentItemLabel_->fontMetrics().height());
         outer->addWidget(currentItemLabel_);
@@ -183,14 +182,15 @@ public:
                                                     background,
                                                     border,
                                                     textColor)
-            + familiar::dialog_style::closeButtonStyleSheet(
-                "progressCloseBtn", textColor, accent)
+            + familiar::dialog_style::closeButtonStyleSheet("progressCloseBtn",
+                                                            textColor,
+                                                            accent)
             // Overrides panelStyleSheet()'s blanket QLabel colour for
             // this one label - the filename is secondary to the
             // operation title above it, so it reads as a subdued
             // subtitle rather than competing with it.
-            + QStringLiteral(
-                  "QLabel#progressCurrentItem { color: rgba(%1, %2, %3, 160); }")
+            + QStringLiteral("QLabel#progressCurrentItem { color: rgba(%1, %2, "
+                             "%3, 160); }")
                   .arg(textColor.red())
                   .arg(textColor.green())
                   .arg(textColor.blue()));
@@ -221,11 +221,11 @@ public:
     void rebind(ThreadedIO* worker)
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "ProgressDialog::rebind() this={} old worker={} new "
-                  "worker={}",
-                  static_cast<void*>(this),
-                  static_cast<void*>(worker_),
-                  static_cast<void*>(worker));
+                   "ProgressDialog::rebind() this={} old worker={} new "
+                   "worker={}",
+                   static_cast<void*>(this),
+                   static_cast<void*>(worker_),
+                   static_cast<void*>(worker));
         if (worker_) {
             // Both directions - see bindWorker_()'s own connect() calls
             // (worker_->this AND this->worker_, the canceled/onCanceled
@@ -263,8 +263,8 @@ public:
     ~ProgressDialog() override
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "~ProgressDialog() this={}",
-                  static_cast<void*>(this));
+                   "~ProgressDialog() this={}",
+                   static_cast<void*>(this));
     }
 
 signals:
@@ -311,9 +311,9 @@ private:
         // correlate against a crash backtrace's `this=` pointer and
         // against ~ProgressDialog()'s own DIAG log above.
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "ProgressDialog::bindWorker_() this={} worker={}",
-                  static_cast<void*>(this),
-                  static_cast<void*>(worker));
+                   "ProgressDialog::bindWorker_() this={} worker={}",
+                   static_cast<void*>(this),
+                   static_cast<void*>(worker));
         worker_ = worker;
         connect(worker,
                 &ThreadedIO::beginProcessing,
@@ -419,10 +419,10 @@ private slots:
         // during setValue() left no trace of whether the guard had even
         // been reached yet.
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "on_progress({}) this={} finished_={}",
-                  value,
-                  static_cast<void*>(this),
-                  finished_);
+                   "on_progress({}) this={} finished_={}",
+                   value,
+                   static_cast<void*>(this),
+                   finished_);
         if (finished_) {
             return;
         }
@@ -437,10 +437,10 @@ private slots:
     void on_raw_decode_state_changed(bool decoding)
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "on_raw_decode_state_changed({}) this={} finished_={}",
-                  decoding,
-                  static_cast<void*>(this),
-                  finished_);
+                   "on_raw_decode_state_changed({}) this={} finished_={}",
+                   decoding,
+                   static_cast<void*>(this),
+                   finished_);
         if (finished_) {
             return;
         }
@@ -455,10 +455,10 @@ private slots:
     void on_raw_decode_progress(int percent)
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "on_raw_decode_progress({}) this={} finished_={}",
-                  percent,
-                  static_cast<void*>(this),
-                  finished_);
+                   "on_raw_decode_progress({}) this={} finished_={}",
+                   percent,
+                   static_cast<void*>(this),
+                   finished_);
         if (finished_) {
             return;
         }
@@ -468,10 +468,10 @@ private slots:
     void on_begin_processing(int value)
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "on_begin_processing({}) this={} finished_={}",
-                  value,
-                  static_cast<void*>(this),
-                  finished_);
+                   "on_begin_processing({}) this={} finished_={}",
+                   value,
+                   static_cast<void*>(this),
+                   finished_);
         if (finished_) {
             return;
         }
@@ -479,7 +479,8 @@ private slots:
         setMaximum(value);
     }
 
-    void on_finished(const QString& filename, const QStringList& errors)
+    void on_finished([[maybe_unused]] const QString& filename,
+                     [[maybe_unused]] const QStringList& errors)
     {
         // finished_/worker_->disconnect() below guard this OBJECT while
         // it's alive - neither helps against what turned out to be the
@@ -509,10 +510,10 @@ private slots:
         // too, since the original fix touched every ProgressDialog
         // instance instead of only the reused one).
         FLOG_DEBUG(familiar::log::Ch::UI,
-                  "on_finished() this={} finished_={} reusable_={}",
-                  static_cast<void*>(this),
-                  finished_,
-                  reusable_);
+                   "on_finished() this={} finished_={} reusable_={}",
+                   static_cast<void*>(this),
+                   finished_,
+                   reusable_);
         if (finished_) {
             return;
         }
@@ -626,9 +627,11 @@ public:
         const QColor text = palette().color(QPalette::WindowText);
         const QColor border = palette().color(QPalette::Mid);
         const QColor warnAccent
-            = familiar::dialog_style::severityColor(QMessageBox::Warning, border);
+            = familiar::dialog_style::severityColor(QMessageBox::Warning,
+                                                    border);
         const QColor errorAccent
-            = familiar::dialog_style::severityColor(QMessageBox::Critical, border);
+            = familiar::dialog_style::severityColor(QMessageBox::Critical,
+                                                    border);
         struct LevelEntry
         {
             familiar::log::Level level;
@@ -905,7 +908,7 @@ class SceneToPixmapExporterDialog : public QDialog
 public:
     SceneToPixmapExporterDialog(QWidget* parent, QSize defaultSize)
         : QDialog(parent)
-        , defaultSize(defaultSize)
+        , defaultSize_(defaultSize)
         , ignoreChange(false)
     {
         if (defaultSize.width() > MAX_SIZE || defaultSize.width() >= MAX_SIZE) {
@@ -960,9 +963,9 @@ private slots:
     {
         if (!ignoreChange) {
             ignoreChange = true;
-            QSize scaled = defaultSize.scaled(width,
-                                              MAX_SIZE,
-                                              Qt::KeepAspectRatio);
+            QSize scaled = defaultSize_.scaled(width,
+                                               MAX_SIZE,
+                                               Qt::KeepAspectRatio);
             heightInput->setValue(scaled.height());
             ignoreChange = false;
         }
@@ -972,16 +975,16 @@ private slots:
     {
         if (!ignoreChange) {
             ignoreChange = true;
-            QSize scaled = defaultSize.scaled(MAX_SIZE,
-                                              height,
-                                              Qt::KeepAspectRatio);
+            QSize scaled = defaultSize_.scaled(MAX_SIZE,
+                                               height,
+                                               Qt::KeepAspectRatio);
             widthInput->setValue(scaled.width());
             ignoreChange = false;
         }
     }
 
 private:
-    QSize defaultSize;
+    QSize defaultSize_;
     bool ignoreChange;
     QSpinBox* widthInput;
     QSpinBox* heightInput;
@@ -1002,8 +1005,8 @@ public:
                         const QList<QGraphicsItem*>& items,
                         QUndoStack* undoStack)
         : QDialog(parent)
-        , items(items)
-        , undoStack(undoStack)
+        , items_(items)
+        , undoStack_(undoStack)
         , command(new ChangeOpacityCommand(items, 1.0))
     {
         int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
@@ -1136,9 +1139,9 @@ public:
 public slots:
     void accept() override
     {
-        if (!items.isEmpty()) {
+        if (!items_.isEmpty()) {
             command->setIgnoreFirstRedo(true);
-            undoStack->push(command);
+            undoStack_->push(command);
             command = nullptr;
         }
         QDialog::accept();
@@ -1180,8 +1183,8 @@ private slots:
     }
 
 private:
-    QList<QGraphicsItem*> items;
-    QUndoStack* undoStack;
+    QList<QGraphicsItem*> items_;
+    QUndoStack* undoStack_;
     ChangeOpacityCommand* command;
     QLabel* label;
     QSlider* input;

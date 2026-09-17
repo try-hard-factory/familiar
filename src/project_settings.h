@@ -19,7 +19,7 @@ public:
     const QString& path() const noexcept { return path_; }
 
     void projectName(const QString& p);
-    const QString& projectName() const noexcept { return projectName_; };
+    const QString& projectName() const noexcept { return projectName_; }
 
     void modified(bool s);
     bool modified() const noexcept { return changed_; }

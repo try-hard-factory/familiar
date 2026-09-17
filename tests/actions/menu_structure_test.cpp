@@ -42,6 +42,7 @@ void checkWellFormed(const MenuNode& node)
         }
         break;
     case MenuNode::Type::Separator:
+    default:
         break;
     }
 }

@@ -106,7 +106,7 @@ struct Manifest
     int formatVersion = kFormatVersion;
     QString appVersion;
     // The scene's remembered bounding rect (CanvasScene::
-    // rememberedBoundingRect()) - empty if the scene never had content.
+    // remembered_bounding_rect()) - empty if the scene never had content.
     // Round-tripped so a project saved with zero items still shows its
     // old "empty space" frame instead of looking brand-new on reload.
     QRectF sceneBoundingRect;
@@ -437,7 +437,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     manifest.sceneBoundingRect = canvasRect;
 
     if (worker) {
-        emit worker->beginProcessing(items.size());
+        emit worker->beginProcessing(static_cast<int>(items.size()));
     }
 
     bool canceled = false;
@@ -627,10 +627,11 @@ FmlResult FmlArchive::load(const QString& filename,
     // sees this value - Qt's queued cross-thread signal delivery
     // provides the necessary happens-before ordering, so no extra
     // locking is needed for this single write-before-emit.
-    scene->setRememberedBoundingRect(manifest->sceneBoundingRect);
+    scene->set_remembered_bounding_rect(manifest->sceneBoundingRect);
 
     if (worker) {
-        emit worker->beginProcessing(manifest->items.size());
+        emit worker->beginProcessing(
+            static_cast<int>(manifest->items.size()));
     }
 
     for (int i = 0; i < manifest->items.size(); ++i) {

@@ -190,7 +190,7 @@ ColorList::ColorList(QMap<int, QColor> def)
     : m_def(def)
 {}
 
-bool ColorList::check(const QVariant& val)
+bool ColorList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
@@ -240,7 +240,7 @@ OpacityList::OpacityList(QMap<int, int> def)
     : m_def(def)
 {}
 
-bool OpacityList::check(const QVariant& val)
+bool OpacityList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
