@@ -341,9 +341,8 @@ quill::LogLevel toQuillLevel(Level level)
         return quill::LogLevel::Critical;
     default:
         // TODOLATER: unreachable?
-        return quill::LogLevel::Debug;    
+        return quill::LogLevel::Debug;
     }
-    return quill::LogLevel::Debug;
 }
 
 ScopeTimer::ScopeTimer(Ch channel,

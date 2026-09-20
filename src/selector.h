@@ -283,6 +283,7 @@ public:
         Q_ASSERT_X(false,
                    "BaseItemMixin::sample_color_at",
                    "Should not be called");
+        return {};
     }
     // void on_selected_change() {}
 };

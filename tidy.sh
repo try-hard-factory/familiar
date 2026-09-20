@@ -97,7 +97,16 @@ echo
 # tee so the run is watchable AND kept - a full run is long enough that
 # a terminal with no output reads as a hang (it isn't; the first result
 # can take ~30s to appear).
-run-clang-tidy -p "$ROOT" -j"$(nproc)" "${CHECKS[@]}" "$@" "$FILE_RE" 2>&1 |
+# -Wno-unknown-warning-option: compile_commands.json normally comes
+# from a GCC build, and cmake/CompilerWarnings.cmake's GCC_WARNINGS adds
+# flags clang's driver doesn't know (-Wduplicated-cond,
+# -Wduplicated-branches, -Wlogical-op, -Wuseless-cast). That alone is
+# just a warning, but the same command line carries -Werror, so every
+# single file died with "Found compiler error(s)" before clang-tidy got
+# to run a check at all - a whole 60-file run producing nothing but that.
+run-clang-tidy -p "$ROOT" -j"$(nproc)" \
+    -extra-arg=-Wno-unknown-warning-option \
+    "${CHECKS[@]}" "$@" "$FILE_RE" 2>&1 |
     tee "$LOG"
 
 echo
