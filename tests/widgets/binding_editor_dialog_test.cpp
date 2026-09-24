@@ -172,7 +172,8 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
                                                      action.id);
     ActionBindingTarget target(&action);
     // Diverge from the default first, same as RebindDialogTest above.
-    target.setBindings({Binding{QStringLiteral("Ctrl+Alt+Shift+F22")}});
+    target.setBindings(
+        {Binding{QStringLiteral("Ctrl+Alt+Shift+F22"), {}, {}}});
 
     RebindDialog dialog(&target, /*bindingIndex=*/0, nullptr);
     dialog.show();

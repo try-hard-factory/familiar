@@ -38,9 +38,10 @@
 using namespace familiar::log;
 
 
-CanvasView::CanvasView(MainWindow& mw, QWidget* parent)
-    : MainControlsMixin<CanvasView, QGraphicsView>()
-    , mainwindow_(mw)
+CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
+    : 
+    //MainControlsMixin<CanvasView, QGraphicsView>()
+    mainwindow_(mw)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
 {
@@ -404,7 +405,7 @@ void CanvasView::fitRect(const QRectF& rect, QGraphicsItem* toggleItem)
     if (toggleItem) {
         previousTransform_ = std::make_unique<PreviousTransform>();
         previousTransform_->toggleItem = toggleItem;
-        previousTransform_->transform = QTransform(transform());
+        previousTransform_->transform = transform();
         previousTransform_->center = mapToScene(getViewCenter().toPoint());
     } else {
         previousTransform_.reset();
@@ -872,7 +873,8 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 }
 
 
-void CanvasView::drawBackground(QPainter* painter, const QRectF& rect)
+void CanvasView::drawBackground(QPainter* painter,
+                                [[maybe_unused]] const QRectF& rect)
 {
     qreal opacity = qreal(currentOpacity_) / 255.0;
     painter->setOpacity(opacity);
@@ -1514,6 +1516,23 @@ void CanvasView::on_action_insert_text()
     if (selected.size() == 1) {
         if (auto* picture = dynamic_cast<PixmapItem*>(selected.first())) {
             item->set_attached_to(picture->uid());
+            // Park the note just above its picture instead of at the
+            // cursor - right after clicking a picture to select it the
+            // cursor sits somewhere in the middle of it, so the note
+            // landed on top of the very image it annotates.
+            // InsertItemsCommand centers the item on the position it's
+            // given, hence the half-height. The gap is in screen pixels
+            // (same 1/get_scale() convention as the note's own scale
+            // above), so it looks the same at any zoom.
+            constexpr qreal kNoteGap = 10.0;
+            const QRectF pictureRect
+                = scene_->itemsBoundingRect(false,
+                                            QList<QGraphicsItem*>{picture});
+            const QRectF noteRect
+                = scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+            pos = QPointF(pictureRect.center().x(),
+                          pictureRect.top() - kNoteGap / get_scale()
+                              - noteRect.height() / 2.0);
         } else if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
             targetGroup = group;
         }
@@ -1855,12 +1874,12 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     // with nothing after it - these extra lines narrow down WHICH of
     // the 3 statements in this tail actually crashes.
     FLOG_DEBUG(Ch::View,
-              "on_insert_images_finished: cleaning up worker={} dialog={} "
-              "isRunning={} isFinished={}",
-              static_cast<void*>(imageImportWorker_),
-              static_cast<void*>(imageImportProgressDialog_),
-              imageImportWorker_ ? imageImportWorker_->isRunning() : false,
-              imageImportWorker_ ? imageImportWorker_->isFinished() : false);
+               "on_insert_images_finished: cleaning up worker={} dialog={} "
+               "isRunning={} isFinished={}",
+               static_cast<void*>(imageImportWorker_),
+               static_cast<void*>(imageImportProgressDialog_),
+               imageImportWorker_ ? imageImportWorker_->isRunning() : false,
+               imageImportWorker_ ? imageImportWorker_->isFinished() : false);
     if (imageImportWorker_) {
         FLOG_DEBUG(Ch::View, "about to call worker->deleteLater()");
         imageImportWorker_->deleteLater();
@@ -1868,8 +1887,8 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
         imageImportWorker_ = nullptr;
     }
     FLOG_DEBUG(Ch::View,
-              "about to reset imageImportSession_ (session={})",
-              static_cast<void*>(imageImportSession_.get()));
+               "about to reset imageImportSession_ (session={})",
+               static_cast<void*>(imageImportSession_.get()));
     imageImportSession_.reset();
     FLOG_DEBUG(Ch::View, "imageImportSession_ reset OK");
     // imageImportProgressDialog_ is deliberately NOT touched here
@@ -1916,8 +1935,9 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         validUrls.append(url);
     }
 
-    imageImportSession_
-        = std::make_unique<ImageImportSession>(validUrls, scenePos, scene_);
+    imageImportSession_ = std::make_unique<ImageImportSession>(validUrls,
+                                                               scenePos,
+                                                               scene_);
 
     // Ask up front, before any ProgressDialog/loading starts at all, if
     // the batch's FIRST RAW file (if any) doesn't already have a decided
@@ -1928,10 +1948,10 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // wasn't checked) still pauses normally mid-load via
     // on_raw_import_choice_required() - only the very first decision
     // point moves up front.
-    const QString rawImportSetting
-        = FamSettings()
-              .valueOrDefault(QStringLiteral("Items/raw_import_choice"))
-              .toString();
+    const QString rawImportSetting = FamSettings()
+                                         .valueOrDefault(QStringLiteral(
+                                             "Items/raw_import_choice"))
+                                         .toString();
     if (rawImportSetting == QLatin1String("ask")) {
         for (const QUrl& url : validUrls) {
             if (url.isLocalFile() && is_raw_file(url.toLocalFile())) {
@@ -1944,9 +1964,8 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         }
     }
 
-    imageImportWorker_ = new ThreadedIO([this](ThreadedIO* w) {
-        imageImportSession_->run(w);
-    });
+    imageImportWorker_ = new ThreadedIO(
+        [this](ThreadedIO* w) { imageImportSession_->run(w); });
 
     connect(imageImportWorker_,
             &ThreadedIO::progress,
@@ -1966,8 +1985,8 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
             &ThreadedIO::imageLoadFailures,
             this,
             [this](const QStringList& unsupportedFormat,
-                  const QStringList& tooLarge,
-                  const QStringList& corrupt) {
+                   const QStringList& tooLarge,
+                   const QStringList& corrupt) {
                 insertImagesUnsupportedFormat_ += unsupportedFormat;
                 insertImagesTooLarge_ += tooLarge;
                 insertImagesCorrupt_ += corrupt;
@@ -2001,8 +2020,10 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // for both: one object, reused, memory bounded regardless of import
     // count. See ProgressDialog::rebind()'s own doc comment.
     if (!imageImportProgressDialog_) {
-        imageImportProgressDialog_
-            = new ProgressDialog(tr("Loading images"), imageImportWorker_, 0, this);
+        imageImportProgressDialog_ = new ProgressDialog(tr("Loading images"),
+                                                        imageImportWorker_,
+                                                        0,
+                                                        this);
         // Marks THIS ProgressDialog (and only this one - every other
         // ProgressDialog in the app is a genuine one-shot and must NOT
         // call this, see setReusable()'s own doc comment) as exempt from
@@ -2016,9 +2037,9 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // DIAG (ProgressDialog SIGSEGV investigation): correlate these two
     // addresses against ThreadedIO's/ProgressDialog's own DIAG logs.
     FLOG_DEBUG(Ch::View,
-              "do_insert_images: worker={} dialog={}",
-              static_cast<void*>(imageImportWorker_),
-              static_cast<void*>(imageImportProgressDialog_));
+               "do_insert_images: worker={} dialog={}",
+               static_cast<void*>(imageImportWorker_),
+               static_cast<void*>(imageImportProgressDialog_));
 
     // NOT setUpdatesEnabled(false) anymore - that used to be safe when
     // this whole operation was always fast (items snap into their final

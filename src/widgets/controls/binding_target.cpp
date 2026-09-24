@@ -20,7 +20,7 @@ QList<Binding> ActionBindingTarget::bindings() const
 {
     QList<Binding> out;
     for (const QString& seq : action_->get_shortcuts()) {
-        out.append(Binding{seq});
+        out.append(Binding{seq, {}, {}});
     }
     out.append(action_->get_mouse_bindings());
     return out;
@@ -31,7 +31,7 @@ QList<Binding> ActionBindingTarget::defaultBindings() const
     // No Action ships with a default mouse/mixed binding today.
     QList<Binding> out;
     for (const QString& seq : action_->shortcuts) {
-        out.append(Binding{seq});
+        out.append(Binding{seq, {}, {}});
     }
     return out;
 }

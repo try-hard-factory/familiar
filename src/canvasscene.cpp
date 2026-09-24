@@ -114,7 +114,7 @@ CanvasScene::~CanvasScene()
         removeItem(multiselect_item_);
     }
     delete multiselect_item_;
-    detachAllItems();
+    detach_all_items();
 
     delete projectSettings_;
 }
@@ -141,7 +141,7 @@ void CanvasScene::clear()
         delete multiselect_item_;
     }
 
-    detachAllItems();
+    detach_all_items();
     QGraphicsScene::clear();
     // internal_clipboard is intentionally NOT cleared here - it's shared
     // across all tabs (see its declaration) and its shared_ptr entries
@@ -161,12 +161,12 @@ void CanvasScene::addItem(QGraphicsItem* item)
     // for corners_scene_coords()/get_type()/etc.) but aren't part of the
     // shared-ownership system at all - they're singletons with manual
     // new/delete lifetime in clear() and get repeatedly attached/detached
-    // as selection changes. itemAddByUser() is the existing filter for
+    // as selection changes. item_add_by_user() is the existing filter for
     // "real" pixmap/text items (see itemsBoundingRect()); without it,
     // the first attach here would hand out the item's only shared_ptr,
     // and detaching it on deselect would free it out from under the
     // scene's own still-live raw pointer.
-    if (itemAddByUser(item)) {
+    if (item_add_by_user(item)) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         attachedItems_.insert(item, baseItem->acquireShared());
     }
@@ -179,7 +179,7 @@ void CanvasScene::removeItem(QGraphicsItem* item)
     attachedItems_.remove(item);
 }
 
-void CanvasScene::detachAllItems()
+void CanvasScene::detach_all_items()
 {
     const QList<QGraphicsItem*> current = items();
     for (QGraphicsItem* item : current) {
@@ -384,7 +384,7 @@ void CanvasScene::raise_to_top()
     cancel_active_modes();
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> z_values;
-    z_values.reserve(items.size());
+    z_values.reserve(static_cast<std::size_t>(items.size()));
     std::transform(items.begin(),
                    items.end(),
                    std::back_inserter(z_values),
@@ -822,7 +822,7 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
         return;
     }
     qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
-                / values.size();
+                / static_cast<qreal>(values.size());
     FLOG_DEBUG(Ch::Scene, "Calculated average {} {}", mode, avg);
 
     QList<qreal> scaleFactors;
@@ -858,7 +858,7 @@ void CanvasScene::normalize_size()
         return;
     }
     qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
-                / sizes.size();
+                / static_cast<qreal>(sizes.size());
     FLOG_DEBUG(Ch::Scene, "Calculated average size {}", avg);
 
     QList<qreal> scaleFactors;
@@ -888,7 +888,7 @@ QList<QGraphicsItem*> CanvasScene::arrange_targets()
         }
     } else if (candidates.isEmpty()) {
         for (QGraphicsItem* item : items()) {
-            if (itemAddByUser(item)) {
+            if (item_add_by_user(item)) {
                 candidates.append(item);
             }
         }
@@ -1517,7 +1517,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
         // those flags back on right here, before
         // selecting it (setSelected() on a non-ItemIsSelectable item is
         // a silent no-op). Left on only while the item stays selected -
-        // restore_drilled_in_members_() (called from on_selection_change())
+        // restore_drilled_in_members() (called from on_selection_change())
         // turns them back off the moment it's deselected, so re-selecting
         // it again requires another explicit double-click.
         const bool wasLockedGroupMember = !(item->flags()
@@ -1548,7 +1548,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
             return;
         }
         if (dynamic_cast<IBaseItem*>(item)->is_editable()) {
-            ((TextItem*) item)->enter_edit_mode();
+            static_cast<TextItem*>(item)->enter_edit_mode();
             // TODOLATER:
             QGraphicsScene::mousePressEvent(event);
         } else {
@@ -1649,12 +1649,12 @@ QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
 {
     // If user_only is set to true, only return items added by the user
     // (i.e. no multi select outlines and other UI items) - see
-    // itemAddByUser().
+    // item_add_by_user().
     QList<QGraphicsItem*> items = QGraphicsScene::selectedItems();
     if (userOnly) {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : items) {
-            if (itemAddByUser(item)) {
+            if (item_add_by_user(item)) {
                 userItems.append(item);
             }
         }
@@ -1679,7 +1679,7 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
 {
     QList<QGraphicsItem*> userItems;
     for (QGraphicsItem* item : items(Qt::AscendingOrder)) {
-        if (itemAddByUser(item)) {
+        if (item_add_by_user(item)) {
             userItems.append(item);
         }
     }
@@ -1703,7 +1703,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
         [this](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : itemList) {
-            if (this->itemAddByUser(item)) {
+            if (this->item_add_by_user(item)) {
                 userItems.append(item);
             }
         }
@@ -1789,12 +1789,12 @@ void CanvasScene::on_selection_change()
         removeItem(multiselect_item_);
     }
 
-    restore_drilled_in_members_();
+    restore_drilled_in_members();
 }
 
-void CanvasScene::restore_drilled_in_members_()
+void CanvasScene::restore_drilled_in_members()
 {
-    for (int i = drilledInMembers_.size() - 1; i >= 0; --i) {
+    for (int i = static_cast<int>(drilledInMembers_.size()) - 1; i >= 0; --i) {
         QGraphicsItem* item = drilledInMembers_[i];
         if (item->isSelected()) {
             continue;
@@ -2014,7 +2014,7 @@ CanvasScene::ESceneMode CanvasScene::active_mode() const
     return active_mode_;
 }
 
-bool CanvasScene::itemAddByUser(QGraphicsItem* item) const
+bool CanvasScene::item_add_by_user(QGraphicsItem* item) const
 {
     auto* baseItem = dynamic_cast<IBaseItem*>(item);
     if (!baseItem) {
@@ -2102,9 +2102,10 @@ qint16 CanvasScene::objectsCount() const
 {
     // TODO: type.h header with all types (image, textline, multitextline)
     const int targetObjectType = 3;
-    return std::count_if(items().begin(),
-                         items().end(),
-                         [](const QGraphicsItem* item) {
-                             return item->type() == targetObjectType;
-                         });
+    return static_cast<qint16>(
+        std::count_if(items().begin(),
+                      items().end(),
+                      [](const QGraphicsItem* item) {
+                          return item->type() == targetObjectType;
+                      }));
 }

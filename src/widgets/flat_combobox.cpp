@@ -68,7 +68,7 @@ QSize FlatComboItemDelegate::sizeHint(const QStyleOptionViewItem& option,
 FlatComboBox::FlatComboBox(const QColor& background,
                            const QColor& text,
                            const QColor& hoverBackground,
-                           const QColor& itemHighlight,
+                           [[maybe_unused]] const QColor& itemHighlight,
                            QWidget* parent)
     : QComboBox(parent)
     , background_(background)

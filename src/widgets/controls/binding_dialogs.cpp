@@ -298,7 +298,8 @@ void BindingEditorDialogBase::tryAccept()
                 return;
             }
             QList<Binding> remaining = conflicting->get_mouse_bindings();
-            for (int i = remaining.size() - 1; i >= 0; --i) {
+            for (int i = static_cast<int>(remaining.size()) - 1; i >= 0;
+                 --i) {
                 if (remaining[i].mouseButton == candidate.mouseButton
                     && sameModifiers(remaining[i].mouseModifiers,
                                      candidate.mouseModifiers)) {
@@ -330,7 +331,7 @@ void BindingEditorDialogBase::tryAccept()
                 return;
             }
             QList<Binding> theirs = other.getBindings();
-            for (int i = theirs.size() - 1; i >= 0; --i) {
+            for (int i = static_cast<int>(theirs.size()) - 1; i >= 0; --i) {
                 const bool mouseMatch
                     = !candidate.mouseButton.isEmpty()
                       && theirs[i].mouseButton == candidate.mouseButton
@@ -363,7 +364,7 @@ void BindingEditorDialogBase::tryAccept()
                 return;
             }
             QList<Binding> theirs = other.getBindings();
-            for (int i = theirs.size() - 1; i >= 0; --i) {
+            for (int i = static_cast<int>(theirs.size()) - 1; i >= 0; --i) {
                 const bool modMatch = !candidate.mouseModifiers.isEmpty()
                                       && sameModifiers(theirs[i].mouseModifiers,
                                                        candidate.mouseModifiers);

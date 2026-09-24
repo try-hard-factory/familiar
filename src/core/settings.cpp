@@ -122,9 +122,10 @@ void CommandlineArgs::process(const QCoreApplication& app)
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty()) {
         if (looksLikeAPlaceholderNotAPath(positional.first())) {
-            const QString msg = QStringLiteral("%1: Not a valid file path: \"%2\".\n\n")
-                                     .arg(QCoreApplication::applicationName(),
-                                          positional.first());
+            const QString msg = QStringLiteral(
+                                    "%1: Not a valid file path: \"%2\".\n\n")
+                                    .arg(QCoreApplication::applicationName(),
+                                         positional.first());
             std::fputs(qPrintable(msg), stderr);
             std::fputs(qPrintable(parser.helpText()), stderr);
             std::exit(EXIT_FAILURE);
@@ -197,37 +198,45 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
     static const QMap<QString, FieldConfig> map = {
         {"Items/image_storage_format",
          {
-             /*default*/ QString("best"),
-             /*cast*/ {},
+             /*default*/ .defaultValue = QString("best"),
+             /*cast*/ .cast = {},
              /*validate*/
-             [](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("png") || s == QLatin1String("jpg")
-                        || s == QLatin1String("best");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("png")
+                            || s == QLatin1String("jpg")
+                            || s == QLatin1String("best");
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/arrange_gap",
          {
-             /*default*/ 0,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue=0,
+             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
              /*validate*/
-             [](const QVariant& v) {
+             .validate=[](const QVariant& v) {
                  const int n = v.toInt();
                  return n >= 0 && n <= 200;
              },
+             /*postSaveCallback*/
+             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/arrange_default",
          {
-             /*default*/ QString("optimal"),
-             /*cast*/ {},
+             /*default*/ .defaultValue=QString("optimal"),
+             /*cast*/ .cast={},
              /*validate*/
-             [](const QVariant& v) {
+             .validate=[](const QVariant& v) {
                  const QString s = v.toString();
                  return s == QLatin1String("optimal")
                         || s == QLatin1String("horizontal")
                         || s == QLatin1String("vertical")
                         || s == QLatin1String("square");
              },
+             /*postSaveCallback*/
+             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/image_allocation_limit",
          {
@@ -247,15 +256,15 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // photo (20+ MP commonly decodes past 32MB at 32 bits/pixel,
              // e.g. a real 6240x3512 photo ≈ 83.6MB - a genuine bug
              // report this raised).
-             /*default*/ 256,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue=256,
+             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
              /*validate*/
-             [](const QVariant& v) {
+             .validate=[](const QVariant& v) {
                  const int n = v.toInt();
                  return n >= 0 && n <= 1024;
              },
              /*postSaveCallback*/
-             [](const QVariant& v) {
+             .postSaveCallback=[](const QVariant& v) {
                  QImageReader::setAllocationLimit(v.toInt());
              },
          }},
@@ -264,20 +273,24 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // Matches the hardcoded undoStack_->setUndoLimit(100) this
              // is meant to replace (canvasview.cpp) - not wired up to it
              // yet, UI only for now.
-             /*default*/ 100,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
-             /*validate*/ [](const QVariant& v) { return v.toInt() >= 0; },
+             /*default*/ .defaultValue=100,
+             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*validate*/ .validate=[](const QVariant& v) { return v.toInt() >= 0; },
+             /*postSaveCallback*/
+             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/auto_optimize_imported_images",
          {
-             /*default*/ QString("warn"),
-             /*cast*/ {},
+             /*default*/ .defaultValue=QString("warn"),
+             /*cast*/ .cast={},
              /*validate*/
-             [](const QVariant& v) {
+             .validate=[](const QVariant& v) {
                  const QString s = v.toString();
                  return s == QLatin1String("off") || s == QLatin1String("warn")
                         || s == QLatin1String("optimize_large");
              },
+             /*postSaveCallback*/
+             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/raw_import_choice",
          {
@@ -288,37 +301,42 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // then on - set by that dialog's own "Remember choice for
              // future files" checkbox (widgets/raw_import_dialog.cpp),
              // not exposed as its own row on the Performance page.
-             /*default*/ QString("ask"),
-             /*cast*/ {},
+             /*default*/ .defaultValue=QString("ask"),
+             /*cast*/ .cast={},
              /*validate*/
-             [](const QVariant& v) {
+             .validate=[](const QVariant& v) {
                  const QString s = v.toString();
                  return s == QLatin1String("ask")
                         || s == QLatin1String("always_optimize")
                         || s == QLatin1String("always_keep_original");
              },
+             /*postSaveCallback*/
+             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
          }},
         {"Save/autosave_enabled",
          {
-             /*default*/ false,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toBool(); },
-             /*validate*/ {},
-             /*postSaveCallback*/
-             [](const QVariant&) {
-                 emit SettingsEvents::instance().autosaveSettingsChanged();
+             /*default*/ .defaultValue = false,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toBool();
              },
+             /*validate*/ .validate = {},
+             /*postSaveCallback*/
+             .postSaveCallback =
+                 [](const QVariant&) {
+                     emit SettingsEvents::instance().autosaveSettingsChanged();
+                 },
          }},
         {"Save/autosave_interval_seconds",
          {
-             /*default*/ 5,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue=5,
+             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
              /*validate*/
-             [](const QVariant& v) {
+             .validate=[](const QVariant& v) {
                  const int n = v.toInt();
                  return n >= 1 && n <= 3600;
              },
              /*postSaveCallback*/
-             [](const QVariant&) {
+             .postSaveCallback=[](const QVariant&) {
                  emit SettingsEvents::instance().autosaveSettingsChanged();
              },
          }},

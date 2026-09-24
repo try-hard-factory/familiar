@@ -25,13 +25,14 @@ int ExtendedSlider::mappedValue(int min, int max)
 {
     qreal progress = ((value() - minimum()))
                      / static_cast<qreal>(maximum() - minimum());
-    return min + (max - min) * progress;
+    return min + static_cast<int>((max - min) * progress);
 }
 
 void ExtendedSlider::setMapedValue(int min, int val, int max)
 {
     qreal progress = ((val - min) + 1) / static_cast<qreal>(max - min);
-    int value = minimum() + (maximum() - minimum()) * progress;
+    int value
+        = minimum() + static_cast<int>((maximum() - minimum()) * progress);
     setValue(value);
 }
 

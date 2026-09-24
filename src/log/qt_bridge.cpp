@@ -34,8 +34,9 @@ Level levelFromQt(QtMsgType type)
         return Level::Error;
     case QtFatalMsg:
         return Level::Critical;
+    default:
+        return Level::Debug;
     }
-    return Level::Debug;
 }
 
 // Qt's Q_FUNC_INFO (what QMessageLogContext::function holds) is the

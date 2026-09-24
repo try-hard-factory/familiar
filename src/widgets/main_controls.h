@@ -127,7 +127,7 @@ protected:
         event->acceptProposedAction();
     }
 
-    void dropEvent(QDropEvent* event) override
+    void dropEvent([[maybe_unused]] QDropEvent* event) override
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
                    "MainControlMixin Handling file drop:");

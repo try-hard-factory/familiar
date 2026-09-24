@@ -1581,7 +1581,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
-    qreal opacity = (qreal) currentOpacity_ / 255;
+    qreal opacity = static_cast<qreal>(currentOpacity_) / 255;
 
     // In auto-hide-UI mode the window's own background fill in the top
     // strip (menu bar + tab bar) fades together with the widgets sitting

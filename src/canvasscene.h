@@ -35,14 +35,12 @@ public:
         kRubberbandMode = 2,
     };
 
-signals:
-    void cursor_changed(QCursor);
-    void cursor_cleared();
-    // Fired by TextItem::enter_edit_mode()/exit_edit_mode() (nullptr on
-    // exit) - CanvasView shows/hides the floating text toolbar on this.
-    void edit_item_changed(TextItem* item);
+    CanvasScene(MainWindow& mw,
+                uint64_t& zc,
+                QUndoStack* undoStack,
+                QGraphicsScene* scene = nullptr);
+    ~CanvasScene();
 
-public:
     // TextItem is not in a position to emit our signals itself (signals
     // are protected in Qt) - it calls this instead.
     void notify_edit_item_changed(TextItem* item)
@@ -50,7 +48,6 @@ public:
         emit edit_item_changed(item);
     }
 
-public:
     // Holds data for an item queued via add_item_later(), consumed by
     // add_queued_items().
     struct QueuedItemData
@@ -58,12 +55,6 @@ public:
         QVariantMap data;
         bool selected = false;
     };
-
-    CanvasScene(MainWindow& mw,
-                uint64_t& zc,
-                QUndoStack* undoStack,
-                QGraphicsScene* scene = 0);
-    ~CanvasScene();
 
     void addItem(QGraphicsItem* item);
     void removeItem(QGraphicsItem* item);
@@ -74,7 +65,7 @@ public:
     // a shared_ptr for one of them at that point, we'd double-free: Qt
     // deletes the object directly, then attachedItems_'s own shared_ptr
     // destruction tries to delete it again.
-    void detachAllItems();
+    void detach_all_items();
     void cancel_active_modes();
     void end_rubberband_mode();
     void cancel_crop_mode();
@@ -212,13 +203,6 @@ public:
     // item from its group, leaving the rest intact. No-op otherwise.
     void ungroup_selection();
 
-protected:
-    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
-    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-
-public:
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(const std::string& type);
     QList<QGraphicsItem*> items_for_save();
@@ -235,18 +219,11 @@ public:
     // to/from manifest.json's "scene.boundingRect" so a saved project's
     // "remembered" empty space survives a save/reload round-trip. Empty
     // for a scene that's never had any content.
-    QRectF rememberedBoundingRect() const { return rememberedBoundingRect_; }
-    void setRememberedBoundingRect(const QRectF& rect)
+    QRectF remembered_bounding_rect() const { return rememberedBoundingRect_; }
+    void set_remembered_bounding_rect(const QRectF& rect)
     {
         rememberedBoundingRect_ = rect;
     }
-
-public slots:
-    void clear();
-    void on_selection_change();
-    void on_change();
-
-public:
     void add_item_later(const QVariantMap& itemdata, bool selected = false);
     QList<IBaseItem*> add_queued_items();
 
@@ -258,7 +235,7 @@ public:
     // rather than a helper item (MultiSelectItem, RubberbandItem,
     // ErrorItem), based on IBaseItem::get_type()'s string tag rather
     // than a numeric type().
-    bool itemAddByUser(QGraphicsItem* item) const;
+    bool item_add_by_user(QGraphicsItem* item) const;
 
     // Linear scan over items() for the one whose IBaseItem::uid()
     // matches - GroupItem::resolve_children() is the main caller (group
@@ -368,13 +345,37 @@ public:
     void begin_group_batch() { ++groupBatchDepth_; }
     void end_group_batch() { --groupBatchDepth_; }
     bool in_group_batch() const { return groupBatchDepth_ > 0; }
+    void clear_drop_target_highlight();
+
+signals:
+    void cursor_changed(QCursor);
+    void cursor_cleared();
+    // Fired by TextItem::enter_edit_mode()/exit_edit_mode() (nullptr on
+    // exit) - CanvasView shows/hides the floating text toolbar on this.
+    void edit_item_changed(TextItem* item);
+
+protected:
+    void mousePressEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+
+
+
+public slots:
+    void clear();
+    void on_selection_change();
+    void on_change();
+
+public:
+
     int groupBatchDepth_ = 0;
     // Whichever group is currently showing the live drop-target
     // highlight (mouseMoveEvent()) - tracked so the highlight can be
     // cleared off the PREVIOUS target when the cursor moves to a new
     // one, or off entirely on release/mode-cancel.
     GroupItem* highlightedGroup_ = nullptr;
-    void clear_drop_target_highlight();
+    
 
     QUndoStack* undo_stack_ = nullptr;
     qreal max_z = 0;
@@ -437,14 +438,13 @@ private:
     QList<IBaseItem*> clone_with_remap_(
         const QList<std::shared_ptr<IBaseItem>>& sources) const;
 
+    void restore_drilled_in_members();
+
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
-
     qreal parentViewScaleFactor_ = 1;
     project_settings* projectSettings_;
-
     QRectF rememberedBoundingRect_;
-
     QPointF origin_;
     QRectF rubberBand_;
     QPointF lastClickedPoint_{0, 0};
@@ -463,10 +463,9 @@ private:
     // mouseDoubleClickEvent()) - their ItemIsSelectable/ItemIsMovable
     // flags were forced back on so they behave as ordinary items while
     // this lasts. Re-locked (flags turned back off) by
-    // restore_drilled_in_members_() once they're no longer selected, so
+    // restore_drilled_in_members() once they're no longer selected, so
     // re-selecting them again requires another explicit double-click.
     QList<QGraphicsItem*> drilledInMembers_;
-    void restore_drilled_in_members_();
 };
 
 #endif // CANVASSCENE_H

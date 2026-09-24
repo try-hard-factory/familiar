@@ -215,6 +215,16 @@ else()
     )
 endif()
 
+# Warning flags (cmake/CompilerWarnings.cmake, populated in the top-level
+# CMakeLists.txt). Linked once here rather than repeated in each of the
+# three platform branches above - it carries no libraries, only
+# INTERFACE compile options, so it's the same for all of them.
+#
+# Only project_warnings, not project_options - the latter now carries
+# nothing this target doesn't already get from the project-wide
+# CMAKE_CXX_STANDARD.
+target_link_libraries(familiar PRIVATE project_warnings)
+
 # GoogleTest suite lives inside the app binary itself (main.cpp's "-t"
 # handling: ::testing::InitGoogleTest + RUN_ALL_TESTS instead of the
 # normal GUI startup), not a separate test executable - linked
@@ -274,9 +284,7 @@ include(GNUInstallDirs)
 
 set_target_properties(familiar
         PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED ON
-        COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}  -Wall  -O0 -g" # -Wextra -Wpedantic -Werror
+        COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS} -O0 -g"
 )
 
 # Install binary

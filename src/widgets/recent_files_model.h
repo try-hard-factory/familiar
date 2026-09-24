@@ -16,7 +16,7 @@ public:
     int rowCount(const QModelIndex& parent = QModelIndex()) const override
     {
         Q_UNUSED(parent);
-        return files_.size();
+        return static_cast<int>(files_.size());
     }
 
     QVariant data(const QModelIndex& index, int role) const override

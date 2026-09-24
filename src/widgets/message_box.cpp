@@ -188,8 +188,9 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
 
 void CustomMessageBox::setIconPixmap(const QPixmap& pixmap)
 {
-    iconLabel_->setPixmap(pixmap.scaled(kIconSize * devicePixelRatioF(),
-                                        kIconSize * devicePixelRatioF(),
+    const int scaledSize = static_cast<int>(kIconSize * devicePixelRatioF());
+    iconLabel_->setPixmap(pixmap.scaled(scaledSize,
+                                        scaledSize,
                                         Qt::KeepAspectRatio,
                                         Qt::SmoothTransformation));
 }

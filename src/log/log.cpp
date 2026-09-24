@@ -291,7 +291,7 @@ void logSessionHeader(const QString& filePath)
                  geo.height(),
                  geo.x(),
                  geo.y(),
-                 double(screen->logicalDotsPerInch()));
+                 screen->logicalDotsPerInch());
     }
 }
 
@@ -339,8 +339,10 @@ quill::LogLevel toQuillLevel(Level level)
         return quill::LogLevel::Error;
     case Level::Critical:
         return quill::LogLevel::Critical;
+    default:
+        // TODOLATER: unreachable?
+        return quill::LogLevel::Debug;
     }
-    return quill::LogLevel::Debug;
 }
 
 ScopeTimer::ScopeTimer(Ch channel,

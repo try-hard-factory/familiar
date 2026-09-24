@@ -53,9 +53,25 @@ option(GENERATE_TS "Regenerate translation source files" OFF)
 include(cmake/StandardProjectSettings.cmake)
 
 add_library(project_options INTERFACE)
-target_compile_features(project_options INTERFACE cxx_std_11)
+# cxx_std_20, matching CMAKE_CXX_STANDARD below - this said cxx_std_11
+# (the cppbestpractices template's default) while the project targets
+# C++20, so anything linking it would have been handed a third, lower
+# standard than either the project or the target asked for.
+target_compile_features(project_options INTERFACE cxx_std_20)
 
 add_library(project_warnings INTERFACE)
+# This target existed but was never populated and never linked to
+# anything, so cmake/CompilerWarnings.cmake sat dead in the tree
+# (leftover from the cppbestpractices template it came from). Measured
+# before wiring it up: the only warning flag actually reaching this
+# project's own sources was a single hand-written -Wall in
+# src/CMakeLists.txt.
+#
+# Note this affects ONLY the familiar target (see where it's linked, in
+# src/CMakeLists.txt) - not the vendored submodules, which build through
+# their own targets and their own flags.
+include(cmake/CompilerWarnings.cmake)
+set_project_warnings(project_warnings)
 
 
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
@@ -115,6 +131,31 @@ set(BUILD_FUZZERS OFF CACHE BOOL "" FORCE)
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(INSTALL_PROJECT OFF CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/miniz)
+
+# Vendored headers are compiled as SYSTEM headers from here on, which
+# makes the compiler stop reporting warnings found inside them. Not
+# cosmetic: these submodules follow their own standards and aren't ours
+# to fix, so without this every warning flag added below reports against
+# them too - a real measurement over this project's own sources counted
+# 25 such findings (20 alone in libraw_datastream.h, all
+# -Wsuggest-override) against 50 genuinely ours. That ratio only gets
+# worse the moment a submodule is updated.
+#
+# Done by setting the property rather than passing add_subdirectory(...
+# SYSTEM): that keyword needs CMake 3.25+, while this works on any
+# version and doesn't depend on what the CI images happen to ship.
+foreach(vendored_target quill miniz)
+  if(TARGET ${vendored_target})
+    get_target_property(vendored_includes
+                        ${vendored_target}
+                        INTERFACE_INCLUDE_DIRECTORIES)
+    if(vendored_includes)
+      set_target_properties(${vendored_target} PROPERTIES
+                            INTERFACE_SYSTEM_INCLUDE_DIRECTORIES
+                            "${vendored_includes}")
+    endif()
+  endif()
+endforeach()
 
 # LibRaw: decodes camera RAW files (NEF/CR3/ARW/...) for the RAW-import
 # feature. No CMake build ships upstream - README.cmake says so
@@ -212,7 +253,9 @@ add_library(libraw STATIC
     ${LIBRAW_DIR}/src/x3f/x3f_parse_process.cpp
     ${LIBRAW_DIR}/src/x3f/x3f_utils_patched.cpp
 )
-target_include_directories(libraw PUBLIC ${LIBRAW_DIR})
+# SYSTEM for the same reason quill/miniz are marked so above - LibRaw's
+# own headers are the single largest warning source in the tree.
+target_include_directories(libraw SYSTEM PUBLIC ${LIBRAW_DIR})
 # Not -DLIBRAW_NOTHREADS (that's the OTHER, single-threaded-only
 # variant Makefile.am also defines, lib_libraw_a_CPPFLAGS) - familiar's
 # own image-loading can run more than one ThreadedIO worker over its

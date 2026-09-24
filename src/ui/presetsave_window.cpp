@@ -72,9 +72,6 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
     setLayout(layout_);
 }
 
-void PresetSaveWindow::savePresetToSettings(EPresets preset) {}
-
-
 void PresetSaveWindow::keyPressEvent(QKeyEvent* e)
 {
     if (e->key() == Qt::Key_Escape) {

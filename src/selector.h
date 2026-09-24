@@ -267,7 +267,7 @@ public:
                    "Should not be called");
     }
 
-    void set_cursor(Qt::CursorShape c)
+    void set_cursor([[maybe_unused]] Qt::CursorShape c)
     {
         Q_ASSERT_X(false, "BaseItemMixin::set_cursor", "Should not be called");
     }
@@ -276,11 +276,14 @@ public:
     {
         Q_ASSERT_X(false, "BaseItemMixin::unset_cursor", "Should not be called");
     }
-    QColor sample_color_at(const QPointF& pos)
+    QColor sample_color_at([[maybe_unused]] const QPointF& pos)
     {
+        // TODO: put a proper assert here - Q_ASSERT_X compiles out in
+        // release, and falling off the end without a return is UB.
         Q_ASSERT_X(false,
                    "BaseItemMixin::sample_color_at",
                    "Should not be called");
+        return {};
     }
     // void on_selected_change() {}
 };
@@ -289,9 +292,10 @@ public:
 template<typename Mixin, typename T>
 class SelectableMixin : public BaseItemMixin<T>
 {
-    qreal selectLineWidth_{2};
-    qreal selectHandleSize_{9};
-    qreal selectEdgeHandleSize_{6};
+    // TODOLATER: constexpor?
+    int selectLineWidth_{2};
+    int selectHandleSize_{9};
+    int selectEdgeHandleSize_{6};
     qreal selectResizeSize_{20};
     qreal selectRotateSize_{10};
     qreal selectFreeCenter_{20};
@@ -493,7 +497,8 @@ public:
         auto colorPreset
             = SettingsHandler::getInstance()->getCurrentColorPreset();
         QColor selectColor = colorPreset[EPresetsColorIdx::kSelectionColor];
-        selectColor.setAlphaF(selectColor.alphaF() * outlineOpacity);
+        selectColor.setAlphaF(selectColor.alphaF()
+                              * static_cast<float>(outlineOpacity));
 
         QPen pen(selectColor);
         pen.setWidth(selectLineWidth_);
@@ -771,14 +776,14 @@ protected:
         this->unset_cursor();
     }
 
-    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override
+    void hoverEnterEvent([[maybe_unused]] QGraphicsSceneHoverEvent* event) override
     {
         if (static_cast<Mixin*>(this)->has_selection_handles() == false) {
             this->unset_cursor();
         }
     }
 
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override
+    void hoverLeaveEvent([[maybe_unused]] QGraphicsSceneHoverEvent* event) override
     {
         this->unset_cursor();
     }
@@ -786,8 +791,7 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
         eventStart_ = event->scenePos();
-        CanvasView* view = dynamic_cast<CanvasView*>(
-            this->scene()->views().at(0));
+        auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
         // TODOLATER: assert view?
         view->resetPreviousTransform(this);
 
@@ -1365,7 +1369,7 @@ public:
         return false;
     }
     // Unlike is_image()/uid() etc., this genuinely gets called
-    // during unfiltered scene iteration (itemAddByUser(), items_by_type())
+    // during unfiltered scene iteration (item_add_by_user(), items_by_type())
     // since rubberband_item_/multiselect_item_ are real scene items while
     // active. Mirrors Python's getattr(i, 'TYPE', None): a safe "no type"
     // answer, not a logic error.

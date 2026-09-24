@@ -36,6 +36,9 @@ Level fromQuillLevel(quill::LogLevel level)
     case quill::LogLevel::None:
     case quill::LogLevel::Dynamic:
         break;
+    default:
+        // TODOLATER: unreachable?
+        return Level::Info;    
     }
     return Level::Info;
 }
