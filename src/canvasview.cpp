@@ -1516,6 +1516,23 @@ void CanvasView::on_action_insert_text()
     if (selected.size() == 1) {
         if (auto* picture = dynamic_cast<PixmapItem*>(selected.first())) {
             item->set_attached_to(picture->uid());
+            // Park the note just above its picture instead of at the
+            // cursor - right after clicking a picture to select it the
+            // cursor sits somewhere in the middle of it, so the note
+            // landed on top of the very image it annotates.
+            // InsertItemsCommand centers the item on the position it's
+            // given, hence the half-height. The gap is in screen pixels
+            // (same 1/get_scale() convention as the note's own scale
+            // above), so it looks the same at any zoom.
+            constexpr qreal kNoteGap = 10.0;
+            const QRectF pictureRect
+                = scene_->itemsBoundingRect(false,
+                                            QList<QGraphicsItem*>{picture});
+            const QRectF noteRect
+                = scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+            pos = QPointF(pictureRect.center().x(),
+                          pictureRect.top() - kNoteGap / get_scale()
+                              - noteRect.height() / 2.0);
         } else if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
             targetGroup = group;
         }
