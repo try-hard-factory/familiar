@@ -820,7 +820,7 @@ bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
         if (cfg.group() != QLatin1String("zoom")) {
             continue;
         }
-        for (const Binding& b : cfg.getBindings()) {
+        for (const Binding& b : cfg.get_bindings()) {
             if (b.keySequence == pressed) {
                 zoom(120.0, getViewCenter());
                 return true;
@@ -829,7 +829,7 @@ bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
     }
 
     for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheelActions()) {
-        for (const Binding& b : cfg.getBindings()) {
+        for (const Binding& b : cfg.get_bindings()) {
             if (b.keySequence != pressed) {
                 continue;
             }

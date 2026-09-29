@@ -70,6 +70,6 @@ TEST(MouseConfigBindingTargetTest, DelegatesToWrappedMouseConfig)
     EXPECT_EQ(target.id(), zoom.id());
     EXPECT_EQ(target.text(), zoom.text());
     EXPECT_EQ(target.kind(), BindingTargetKind::MouseControl);
-    EXPECT_EQ(target.isInvertible(), zoom.isInvertible());
-    EXPECT_EQ(target.defaultBindings(), zoom.defaultBindings());
+    EXPECT_EQ(target.isInvertible(), zoom.is_invertible());
+    EXPECT_EQ(target.defaultBindings(), zoom.default_bindings());
 }

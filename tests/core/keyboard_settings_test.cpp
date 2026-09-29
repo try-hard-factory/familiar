@@ -238,15 +238,15 @@ TEST(KeyboardSettingsEventDispatchTest, MouseActionForEventFindsMatchingGroup)
 TEST(MouseConfigTest, SetButtonPersistsAndGetButtonReflectsIt)
 {
     const MouseConfig& zoom = KeyboardSettings::mouseActions()[0]; // "zoom"
-    const QList<Binding> original = zoom.getBindings();
+    const QList<Binding> original = zoom.get_bindings();
 
     zoom.setButton(QStringLiteral("Right"));
     EXPECT_EQ(zoom.getButton(), QStringLiteral("Right"));
-    EXPECT_TRUE(zoom.isConfigured());
+    EXPECT_TRUE(zoom.is_configured());
 
     zoom.setButton(QStringLiteral("Not Configured"));
     EXPECT_EQ(zoom.getButton(), QStringLiteral("Not Configured"));
-    EXPECT_FALSE(zoom.isConfigured());
+    EXPECT_FALSE(zoom.is_configured());
 
-    zoom.setBindings(original); // restore, shared storage across TESTs
+    zoom.set_bindings(original); // restore, shared storage across TESTs
 }

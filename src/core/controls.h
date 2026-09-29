@@ -81,42 +81,42 @@ public:
     virtual const QString& id() const = 0;
     virtual const QString& group() const = 0;
     virtual const QString& text() const = 0;
-    virtual const char* settingsGroup() const = 0;
+    virtual const char* settings_group() const = 0;
 
-    virtual bool controlsChanged() const = 0;
-    virtual bool isConfigured() const = 0;
-    virtual void removeControls() const = 0;
+    virtual bool controls_changed() const = 0;
+    virtual bool is_configured() const = 0;
+    virtual void remove_controls() const = 0;
 
-    bool isInvertible() const { return invertible_; }
-    bool defaultInverted() const { return defaultBindings_.value(0).inverted; }
-    QStringList defaultModifiers() const
+    bool is_invertible() const { return invertible_; }
+    bool default_inverted() const { return defaultBindings_.value(0).inverted; }
+    QStringList default_modifiers() const
     {
         return defaultBindings_.value(0).mouseModifiers;
     }
-    virtual QString defaultButton() const { return {}; }
+    virtual QString default_button() const { return {}; }
 
     bool operator==(const MouseConfigBase& o) const { return id() == o.id(); }
 
     // Ordered modifier name → Qt flag mapping.
-    static const QList<QPair<QString, Qt::KeyboardModifier>>& modifierMap();
+    static const QList<QPair<QString, Qt::KeyboardModifier>>& modifier_map();
     // Ordered button name → Qt flag mapping.
-    static const QList<QPair<QString, Qt::MouseButton>>& buttonMap();
+    static const QList<QPair<QString, Qt::MouseButton>>& button_map();
     // Convert list of modifier names to combined Qt::KeyboardModifiers.
-    static Qt::KeyboardModifiers modifiersToQt(const QStringList& modifiers);
+    static Qt::KeyboardModifiers modifiers_to_qt(const QStringList& modifiers);
 
     // N-alias API.
-    QList<Binding> getBindings() const;
-    void setBindings(const QList<Binding>& bindings) const;
-    const QList<Binding>& defaultBindings() const { return defaultBindings_; }
+    QList<Binding> get_bindings() const;
+    void set_bindings(const QList<Binding>& bindings) const;
+    const QList<Binding>& default_bindings() const { return defaultBindings_; }
 
     // Single-binding API kept for the existing Mouse/Mouse Wheel table
     // widgets (widgets/controls/mouse_controls.cpp,
     // mousewheel_controls.cpp) - thin wrappers over getBindings()[0], see
     // core/controls.cpp.
-    QStringList getModifiers() const;
-    void setModifiers(const QStringList& values) const;
-    bool getInverted() const;
-    void setInverted(bool value) const;
+    QStringList get_modifiers() const;
+    void set_modifiers(const QStringList& values) const;
+    bool get_inverted() const;
+    void set_inverted(bool value) const;
 
 protected:
     MouseConfigBase(const QString& id,
@@ -146,11 +146,11 @@ public:
     const QString& id() const override { return id_; }
     const QString& group() const override { return group_; }
     const QString& text() const override { return text_; }
-    const char* settingsGroup() const override;
+    const char* settings_group() const override;
 
-    bool controlsChanged() const override;
-    bool isConfigured() const override;
-    void removeControls() const override;
+    bool controls_changed() const override;
+    bool is_configured() const override;
+    void remove_controls() const override;
     std::optional<Binding> matchesEvent(const QWheelEvent* event) const;
 };
 
@@ -168,16 +168,16 @@ public:
     const QString& id() const override { return id_; }
     const QString& group() const override { return group_; }
     const QString& text() const override { return text_; }
-    const char* settingsGroup() const override;
+    const char* settings_group() const override;
 
     // "Not Configured" if the primary (index-0) binding has no mouse button.
     QString getButton() const;
     void setButton(const QString& value) const;
-    QString defaultButton() const override;
+    QString default_button() const override;
 
-    bool controlsChanged() const override;
-    bool isConfigured() const override;
-    void removeControls() const override;
+    bool controls_changed() const override;
+    bool is_configured() const override;
+    void remove_controls() const override;
     std::optional<Binding> matchesEvent(const QMouseEvent* event) const;
 };
 

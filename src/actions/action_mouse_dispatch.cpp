@@ -22,7 +22,7 @@ namespace {
 
 QString buttonNameFor(Qt::MouseButton btn)
 {
-    for (const auto& pair : MouseConfigBase::buttonMap()) {
+    for (const auto& pair : MouseConfigBase::button_map()) {
         if (pair.second == btn && pair.second != Qt::NoButton) {
             return pair.first;
         }
@@ -32,7 +32,7 @@ QString buttonNameFor(Qt::MouseButton btn)
 
 Qt::MouseButton buttonFlagFor(const QString& name)
 {
-    for (const auto& pair : MouseConfigBase::buttonMap()) {
+    for (const auto& pair : MouseConfigBase::button_map()) {
         if (pair.first == name) {
             return pair.second;
         }
@@ -137,7 +137,7 @@ bool ActionMouseDispatcher::tryMousePress(QMouseEvent* event)
             if (!b.is_mouse_only() || b.mouseButton != btn) {
                 continue;
             }
-            if (MouseConfigBase::modifiersToQt(b.mouseModifiers)
+            if (MouseConfigBase::modifiers_to_qt(b.mouseModifiers)
                 == event->modifiers()) {
                 invoke(target_, action);
                 return true;

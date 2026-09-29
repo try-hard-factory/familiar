@@ -52,7 +52,7 @@ void MouseButtonCaptureField::mousePressEvent(QMouseEvent* event)
     // separate "arm capture" step, and no modifiers (that's the keyboard
     // field's job). Left-click records Left, middle-click records
     // Middle, etc.
-    const auto& bmap = MouseConfigBase::buttonMap();
+    const auto& bmap = MouseConfigBase::button_map();
     QString name;
     for (const auto& pair : bmap) {
         if (pair.second == event->button() && pair.second != Qt::NoButton) {
@@ -144,7 +144,7 @@ BindingEditorDialogBase::BindingEditorDialogBase(BindingTarget* target,
         mouseButtonField_->clearBinding();
     });
     mouseRow->addWidget(mouseClearBtn);
-    for (const auto& pair : MouseConfigBase::modifierMap()) {
+    for (const auto& pair : MouseConfigBase::modifier_map()) {
         const QString name = pair.first;
         auto* cb = new QCheckBox(name, this);
         modifierChecks_[name] = cb;
@@ -330,7 +330,7 @@ void BindingEditorDialogBase::tryAccept()
             if (reply != QMessageBox::Yes) {
                 return;
             }
-            QList<Binding> theirs = other.getBindings();
+            QList<Binding> theirs = other.get_bindings();
             for (int i = static_cast<int>(theirs.size()) - 1; i >= 0; --i) {
                 const bool mouseMatch
                     = !candidate.mouseButton.isEmpty()
@@ -344,7 +344,7 @@ void BindingEditorDialogBase::tryAccept()
                     theirs.removeAt(i);
                 }
             }
-            other.setBindings(theirs);
+            other.set_bindings(theirs);
         }
 
         const int wheelRow = ks.findConflictingWheelGroup(target_->id(),
@@ -363,7 +363,7 @@ void BindingEditorDialogBase::tryAccept()
             if (reply != QMessageBox::Yes) {
                 return;
             }
-            QList<Binding> theirs = other.getBindings();
+            QList<Binding> theirs = other.get_bindings();
             for (int i = static_cast<int>(theirs.size()) - 1; i >= 0; --i) {
                 const bool modMatch = !candidate.mouseModifiers.isEmpty()
                                       && sameModifiers(theirs[i].mouseModifiers,
@@ -375,7 +375,7 @@ void BindingEditorDialogBase::tryAccept()
                     theirs.removeAt(i);
                 }
             }
-            other.setBindings(theirs);
+            other.set_bindings(theirs);
         }
     }
 

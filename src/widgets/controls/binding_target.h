@@ -65,15 +65,15 @@ public:
     QString id() const override { return config_->id(); }
     QString text() const override { return config_->text(); }
     BindingTargetKind kind() const override { return kind_; }
-    bool isInvertible() const override { return config_->isInvertible(); }
-    QList<Binding> bindings() const override { return config_->getBindings(); }
+    bool isInvertible() const override { return config_->is_invertible(); }
+    QList<Binding> bindings() const override { return config_->get_bindings(); }
     QList<Binding> defaultBindings() const override
     {
-        return config_->defaultBindings();
+        return config_->default_bindings();
     }
     void setBindings(const QList<Binding>& bindings) override
     {
-        config_->setBindings(bindings);
+        config_->set_bindings(bindings);
     }
 
 private:

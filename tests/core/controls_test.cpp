@@ -85,20 +85,20 @@ TEST(BindingTest, DisplayTextCombinesPartsWithPlusSeparator)
 
 TEST(ModifiersToQtTest, CombinesFlagsFromNames)
 {
-    const Qt::KeyboardModifiers result = MouseConfigBase::modifiersToQt(
+    const Qt::KeyboardModifiers result = MouseConfigBase::modifiers_to_qt(
         {QStringLiteral("Ctrl"), QStringLiteral("Shift")});
     EXPECT_EQ(result, Qt::ControlModifier | Qt::ShiftModifier);
 }
 
 TEST(ModifiersToQtTest, UnknownNameIsIgnored)
 {
-    EXPECT_EQ(MouseConfigBase::modifiersToQt({QStringLiteral("Bogus")}),
+    EXPECT_EQ(MouseConfigBase::modifiers_to_qt({QStringLiteral("Bogus")}),
               Qt::NoModifier);
 }
 
 TEST(ModifiersToQtTest, EmptyListIsNoModifier)
 {
-    EXPECT_EQ(MouseConfigBase::modifiersToQt({}), Qt::NoModifier);
+    EXPECT_EQ(MouseConfigBase::modifiers_to_qt({}), Qt::NoModifier);
 }
 
 // ─── keyEventToSequenceString ──────────────────────────────────────────
