@@ -169,7 +169,7 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
         return false;
     }
 
-    const QString pressed = keyEventToSequenceString(event);
+    const QString pressed = key_event_to_sequence_string(event);
     if (pressed.isEmpty()) {
         return false;
     }
@@ -202,7 +202,7 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
 
 bool ActionMouseDispatcher::tryBareModifierAction(QKeyEvent* event)
 {
-    const QString pressed = keyEventToSequenceString(event);
+    const QString pressed = key_event_to_sequence_string(event);
     if (!bareModifierNames().contains(pressed)) {
         return false;
     }

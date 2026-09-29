@@ -105,7 +105,7 @@ void KeySequenceCaptureField::keyPressEvent(QKeyEvent* event)
         event->ignore(); // let the dialog's own Escape-to-close handle it
         return;
     }
-    sequence_ = keyEventToSequenceString(event);
+    sequence_ = key_event_to_sequence_string(event);
     updateDisplay();
     event->accept();
 }

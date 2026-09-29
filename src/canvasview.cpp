@@ -811,7 +811,7 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
 
 bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
 {
-    const QString pressed = keyEventToSequenceString(event);
+    const QString pressed = key_event_to_sequence_string(event);
     if (pressed.isEmpty()) {
         return false;
     }

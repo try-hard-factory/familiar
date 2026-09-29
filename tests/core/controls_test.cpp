@@ -28,14 +28,14 @@ TEST(BindingTest, EmptyBindingRoundTrips)
 TEST(BindingTest, ClassificationHelpers)
 {
     Binding empty;
-    EXPECT_TRUE(empty.isEmpty());
+    EXPECT_TRUE(empty.is_empty());
     EXPECT_FALSE(empty.isKeyboardOnly());
     EXPECT_FALSE(empty.isMouseOnly());
     EXPECT_FALSE(empty.isMixed());
 
     Binding keyOnly;
     keyOnly.keySequence = QStringLiteral("Ctrl+S");
-    EXPECT_FALSE(keyOnly.isEmpty());
+    EXPECT_FALSE(keyOnly.is_empty());
     EXPECT_TRUE(keyOnly.isKeyboardOnly());
     EXPECT_FALSE(keyOnly.isMouseOnly());
     EXPECT_FALSE(keyOnly.isMixed());
@@ -109,10 +109,10 @@ TEST(KeyEventToSequenceStringTest, BareModifierPressReturnsPlainName)
     // special-cased in keyEventToSequenceString() itself (core/controls.cpp)
     // rather than falling through to QKeySequence::toString().
     QKeyEvent ctrlOnly(QEvent::KeyPress, Qt::Key_Control, Qt::NoModifier);
-    EXPECT_EQ(keyEventToSequenceString(&ctrlOnly), QStringLiteral("Ctrl"));
+    EXPECT_EQ(key_event_to_sequence_string(&ctrlOnly), QStringLiteral("Ctrl"));
 
     QKeyEvent altOnly(QEvent::KeyPress, Qt::Key_Alt, Qt::NoModifier);
-    EXPECT_EQ(keyEventToSequenceString(&altOnly), QStringLiteral("Alt"));
+    EXPECT_EQ(key_event_to_sequence_string(&altOnly), QStringLiteral("Alt"));
 }
 
 TEST(KeyEventToSequenceStringTest, NormalKeyUsesQKeySequenceFormat)
@@ -125,5 +125,5 @@ TEST(KeyEventToSequenceStringTest, NormalKeyUsesQKeySequenceFormat)
     // render ("Ctrl+S" vs "⌘S", ...).
     QKeyEvent ctrlS(QEvent::KeyPress, Qt::Key_S, Qt::ControlModifier);
     const QString expected = QKeySequence(ctrlS.keyCombination()).toString();
-    EXPECT_EQ(keyEventToSequenceString(&ctrlS), expected);
+    EXPECT_EQ(key_event_to_sequence_string(&ctrlS), expected);
 }

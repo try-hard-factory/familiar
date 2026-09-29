@@ -21,7 +21,7 @@ class QKeyEvent;
 // name ("Ctrl"/"Shift"/"Alt"/"Meta"). Used by both the capture field that
 // records a binding and the dispatchers that match a live key press
 // against one, so they agree on the same strings.
-QString keyEventToSequenceString(const QKeyEvent* event);
+QString key_event_to_sequence_string(const QKeyEvent* event);
 
 // ─── Binding ──────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ struct Binding
     bool systemGlobal
         = false; // stored for forward compat; no dispatch effect yet
 
-    bool isEmpty() const
+    bool is_empty() const
     {
         return keySequence.isEmpty() && mouseButton.isEmpty();
     }

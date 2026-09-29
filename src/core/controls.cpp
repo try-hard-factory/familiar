@@ -13,7 +13,7 @@
 #include <QSet>
 #include <QWheelEvent>
 
-QString keyEventToSequenceString(const QKeyEvent* event)
+QString key_event_to_sequence_string(const QKeyEvent* event)
 {
     switch (event->key()) {
     case Qt::Key_Control:
