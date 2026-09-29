@@ -44,21 +44,21 @@ struct Binding
     {
         return keySequence.isEmpty() && mouseButton.isEmpty();
     }
-    bool isKeyboardOnly() const
+    bool is_keyboard_only() const
     {
         return mouseButton.isEmpty() && !keySequence.isEmpty();
     }
-    bool isMouseOnly() const
+    bool is_mouse_only() const
     {
         return !mouseButton.isEmpty() && keySequence.isEmpty();
     }
-    bool isMixed() const
+    bool is_mixed() const
     {
         return !mouseButton.isEmpty() && !keySequence.isEmpty();
     }
 
     // Chip label, e.g. "Ctrl+S", "Middle MB", "Left MB + Ctrl+Alt+Shift".
-    QString displayText() const;
+    QString display_text() const;
 
     QString serialize() const;
     static Binding deserialize(const QString& s);

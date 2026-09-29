@@ -33,7 +33,7 @@ QString key_event_to_sequence_string(const QKeyEvent* event)
 
 // ─── Binding ──────────────────────────────────────────────────────────────────
 
-QString Binding::displayText() const
+QString Binding::display_text() const
 {
     QStringList parts;
     if (!mouseButton.isEmpty()) {

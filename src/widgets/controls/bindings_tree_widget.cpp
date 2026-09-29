@@ -267,7 +267,7 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     if (showAdd) {
         QStringList defaultChords;
         for (const Binding& b : target->defaultBindings()) {
-            const QString dt = b.displayText();
+            const QString dt = b.display_text();
             if (!dt.isEmpty()) {
                 defaultChords.append(dt);
             }
@@ -284,8 +284,8 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
 
     if (bindingIndex >= 0) {
         const Binding b = target->bindings().value(bindingIndex);
-        const QString chipLabel = b.displayText().isEmpty() ? tr("(none)")
-                                                            : b.displayText();
+        const QString chipLabel = b.display_text().isEmpty() ? tr("(none)")
+                                                            : b.display_text();
         auto* chip = new QPushButton(chipLabel, row);
         chip->setCursor(Qt::PointingHandCursor);
         chip->setMinimumWidth(kChipMinWidth);

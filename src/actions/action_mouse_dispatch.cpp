@@ -134,7 +134,7 @@ bool ActionMouseDispatcher::tryMousePress(QMouseEvent* event)
 
     for (Action* action : getActions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
-            if (!b.isMouseOnly() || b.mouseButton != btn) {
+            if (!b.is_mouse_only() || b.mouseButton != btn) {
                 continue;
             }
             if (MouseConfigBase::modifiersToQt(b.mouseModifiers)
@@ -181,7 +181,7 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
 
     for (Action* action : getActions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
-            if (!b.isMixed() || b.keySequence != pressed) {
+            if (!b.is_mixed() || b.keySequence != pressed) {
                 continue;
             }
             const Qt::MouseButton flag = buttonFlagFor(b.mouseButton);
