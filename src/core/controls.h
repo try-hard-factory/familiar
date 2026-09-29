@@ -151,7 +151,7 @@ public:
     bool controls_changed() const override;
     bool is_configured() const override;
     void remove_controls() const override;
-    std::optional<Binding> matchesEvent(const QWheelEvent* event) const;
+    std::optional<Binding> matches_event(const QWheelEvent* event) const;
 };
 
 // ─── MouseConfig ──────────────────────────────────────────────────────────────
@@ -171,14 +171,14 @@ public:
     const char* settings_group() const override;
 
     // "Not Configured" if the primary (index-0) binding has no mouse button.
-    QString getButton() const;
-    void setButton(const QString& value) const;
+    QString get_button() const;
+    void set_button(const QString& value) const;
     QString default_button() const override;
 
     bool controls_changed() const override;
     bool is_configured() const override;
     void remove_controls() const override;
-    std::optional<Binding> matchesEvent(const QMouseEvent* event) const;
+    std::optional<Binding> matches_event(const QMouseEvent* event) const;
 };
 
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
@@ -199,12 +199,12 @@ class KeyboardSettings
 public:
     KeyboardSettings() = default;
 
-    static const QList<MouseWheelConfig>& mousewheelActions();
-    static const QList<MouseConfig>& mouseActions();
+    static const QList<MouseWheelConfig>& mousewheel_actions();
+    static const QList<MouseConfig>& mouse_actions();
 
     // ── Shortcut API (used by Action) ─────────────────────────────────────────
     // Saves even if equal to default (saveUnknownShortcuts flag controls this).
-    void setShortcuts(const QString& group,
+    void set_shortcuts(const QString& group,
                       const QString& key,
                       const QStringList& values);
     QStringList get_shortcuts(const QString& group,
@@ -213,38 +213,38 @@ public:
 
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────
     // Removes key when values == defaultValues (stores only non-default data).
-    void setList(const QString& group,
+    void set_list(const QString& group,
                  const QString& key,
                  const QStringList& values,
                  const QStringList& defaultValues = {});
-    QStringList getList(const QString& group,
+    QStringList get_list(const QString& group,
                         const QString& key,
                         const QStringList& defaultValues = {}) const;
 
     // ── Generic scalar API (used by mouse/wheel configs) ──────────────────────
-    void setScalar(const QString& group,
+    void set_scalar(const QString& group,
                    const QString& key,
                    const QVariant& value,
                    const QVariant& defaultValue = {});
-    QVariant getScalar(const QString& group,
+    QVariant get_scalar(const QString& group,
                        const QString& key,
                        const QVariant& defaultValue = {}) const;
 
     // Removes all stored controls and emits SettingsEvents::restoreKeyboardDefaults.
-    void restoreDefaults();
+    void restore_defaults();
 
-    std::optional<ControlMatch> mousewheelActionForEvent(
+    std::optional<ControlMatch> mousewheel_action_for_event(
         const QWheelEvent* event) const;
-    std::optional<ControlMatch> mouseActionForEvent(
+    std::optional<ControlMatch> mouse_action_for_event(
         const QMouseEvent* event) const;
 
     // Index into mouseActions()/mousewheelActions() of a group (other than
     // excludeId) whose bindings already use the same button+modifiers as
     // `candidate`, or -1 if none. Used by both the old single-binding
     // Mouse/Mouse Wheel dialogs and the new alias dialogs.
-    int findConflictingMouseGroup(const QString& excludeId,
+    int find_conflicting_mouse_group(const QString& excludeId,
                                   const Binding& candidate) const;
-    int findConflictingWheelGroup(const QString& excludeId,
+    int find_conflicting_wheel_group(const QString& excludeId,
                                   const Binding& candidate) const;
 
     bool saveUnknownShortcuts = true;

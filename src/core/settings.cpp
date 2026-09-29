@@ -351,7 +351,7 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
     const FieldConfig& conf = f[key];
 
     const QJsonValue raw
-        = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
+        = SettingsHandler::get_instance()->json_value(keyGroup(key),
                                                     keySubkey(key));
     if (raw.isUndefined()) {
         return conf.defaultValue;
@@ -389,8 +389,8 @@ bool FamSettings::valueChanged(const QString& key) const
 
 void FamSettings::restoreDefaults()
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Save"));
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Items"));
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Save"));
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Items"));
     for (const QString& key : fields().keys()) {
         const auto& conf = fields()[key];
         if (conf.postSaveCallback) {
@@ -415,7 +415,7 @@ void FamSettings::onStartup()
 
 void FamSettings::setValue(const QString& key, const QVariant& value)
 {
-    SettingsHandler::getInstance()->setJsonValue(keyGroup(key),
+    SettingsHandler::get_instance()->set_json_value(keyGroup(key),
                                                  keySubkey(key),
                                                  QJsonValue::fromVariant(value));
     const auto& f = fields();
@@ -428,14 +428,14 @@ QVariant FamSettings::value(const QString& key,
                             const QVariant& defaultValue) const
 {
     const QJsonValue raw
-        = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
+        = SettingsHandler::get_instance()->json_value(keyGroup(key),
                                                     keySubkey(key));
     return raw.isUndefined() ? defaultValue : raw.toVariant();
 }
 
 void FamSettings::remove(const QString& key)
 {
-    SettingsHandler::getInstance()->removeJsonValue(keyGroup(key),
+    SettingsHandler::get_instance()->remove_json_value(keyGroup(key),
                                                     keySubkey(key));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
@@ -454,12 +454,12 @@ void FamSettings::updateRecentFiles(const QString& filename)
         values = values.mid(0, 10);
     }
 
-    SettingsHandler::getInstance()->setRecentFilesRaw(values);
+    SettingsHandler::get_instance()->set_recent_files_raw(values);
 }
 
 QStringList FamSettings::getRecentFiles(bool existingOnly) const
 {
-    QStringList values = SettingsHandler::getInstance()->recentFilesRaw();
+    QStringList values = SettingsHandler::get_instance()->recent_files_raw();
 
     if (existingOnly) {
         values.erase(std::remove_if(values.begin(),
@@ -474,5 +474,5 @@ QStringList FamSettings::getRecentFiles(bool existingOnly) const
 
 QString FamSettings::fileName() const
 {
-    return SettingsHandler::getInstance()->settingsFilePath();
+    return SettingsHandler::get_instance()->settings_file_path();
 }

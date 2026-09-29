@@ -150,7 +150,7 @@ QList<Binding> MouseConfigBase::get_bindings() const
     }
 
     const QStringList serialized
-        = KeyboardSettings().getList(settings_group(),
+        = KeyboardSettings().get_list(settings_group(),
                                      id_ + QStringLiteral("_bindings"),
                                      defaultSerialized);
     QList<Binding> out;
@@ -171,7 +171,7 @@ void MouseConfigBase::set_bindings(const QList<Binding>& bindings) const
         defaultSerialized.append(b.serialize());
     }
 
-    KeyboardSettings().setList(settings_group(),
+    KeyboardSettings().set_list(settings_group(),
                                id_ + QStringLiteral("_bindings"),
                                serialized,
                                defaultSerialized);
@@ -242,7 +242,7 @@ void MouseWheelConfig::remove_controls() const
     set_bindings({});
 }
 
-std::optional<Binding> MouseWheelConfig::matchesEvent(
+std::optional<Binding> MouseWheelConfig::matches_event(
     const QWheelEvent* event) const
 {
     for (const Binding& b : get_bindings()) {
@@ -288,13 +288,13 @@ const char* MouseConfig::settings_group() const
     return "Controls";
 }
 
-QString MouseConfig::getButton() const
+QString MouseConfig::get_button() const
 {
     const QString btn = get_bindings().value(0).mouseButton;
     return btn.isEmpty() ? QStringLiteral("Not Configured") : btn;
 }
 
-void MouseConfig::setButton(const QString& value) const
+void MouseConfig::set_button(const QString& value) const
 {
     QList<Binding> bindings = get_bindings();
     if (bindings.isEmpty()) {
@@ -319,7 +319,7 @@ bool MouseConfig::controls_changed() const
 
 bool MouseConfig::is_configured() const
 {
-    return getButton() != QLatin1String("Not Configured");
+    return get_button() != QLatin1String("Not Configured");
 }
 
 void MouseConfig::remove_controls() const
@@ -327,7 +327,7 @@ void MouseConfig::remove_controls() const
     set_bindings({});
 }
 
-std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
+std::optional<Binding> MouseConfig::matches_event(const QMouseEvent* event) const
 {
     const auto& bmap = button_map();
     for (const Binding& b : get_bindings()) {
@@ -377,7 +377,7 @@ std::optional<Binding> MouseConfig::matchesEvent(const QMouseEvent* event) const
 
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
 
-const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
+const QList<MouseWheelConfig>& KeyboardSettings::mousewheel_actions()
 {
     // Plain scroll-to-zoom (no modifier) isn't listed here - it's not
     // user-configurable, see CanvasView::wheelEvent(). Everything else
@@ -397,7 +397,7 @@ const QList<MouseWheelConfig>& KeyboardSettings::mousewheelActions()
     return list;
 }
 
-const QList<MouseConfig>& KeyboardSettings::mouseActions()
+const QList<MouseConfig>& KeyboardSettings::mouse_actions()
 {
     // "movewindow" used to live here (Left + Ctrl+Alt) but was pure
     // decoration - nothing in the dispatch cascade (CanvasView::
@@ -448,11 +448,11 @@ QStringList fromJsonArray(const QJsonValue& v)
 
 } // namespace
 
-void KeyboardSettings::setShortcuts(const QString& group,
+void KeyboardSettings::set_shortcuts(const QString& group,
                                     const QString& key,
                                     const QStringList& values)
 {
-    SettingsHandler::getInstance()->setJsonValue(group,
+    SettingsHandler::get_instance()->set_json_value(group,
                                                  key,
                                                  toJsonArray(values));
 }
@@ -462,63 +462,63 @@ QStringList KeyboardSettings::get_shortcuts(const QString& group,
                                             const QString& key,
                                             const QStringList& defaultValues)
 {
-    const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
+    const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     if (!v.isUndefined()) {
         return fromJsonArray(v);
     }
     if (saveUnknownShortcuts) {
-        setShortcuts(group, key, defaultValues);
+        set_shortcuts(group, key, defaultValues);
     }
     return defaultValues;
 }
 
-void KeyboardSettings::setList(const QString& group,
+void KeyboardSettings::set_list(const QString& group,
                                const QString& key,
                                const QStringList& values,
                                const QStringList& defaultValues)
 {
     if (values == defaultValues) {
-        SettingsHandler::getInstance()->removeJsonValue(group, key);
+        SettingsHandler::get_instance()->remove_json_value(group, key);
     } else {
-        SettingsHandler::getInstance()->setJsonValue(group,
+        SettingsHandler::get_instance()->set_json_value(group,
                                                      key,
                                                      toJsonArray(values));
     }
 }
 
-QStringList KeyboardSettings::getList(const QString& group,
+QStringList KeyboardSettings::get_list(const QString& group,
                                       const QString& key,
                                       const QStringList& defaultValues) const
 {
-    const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
+    const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     return v.isUndefined() ? defaultValues : fromJsonArray(v);
 }
 
-void KeyboardSettings::setScalar(const QString& group,
+void KeyboardSettings::set_scalar(const QString& group,
                                  const QString& key,
                                  const QVariant& value,
                                  const QVariant& defaultValue)
 {
     if (value == defaultValue) {
-        SettingsHandler::getInstance()->removeJsonValue(group, key);
+        SettingsHandler::get_instance()->remove_json_value(group, key);
     } else {
-        SettingsHandler::getInstance()
-            ->setJsonValue(group, key, QJsonValue::fromVariant(value));
+        SettingsHandler::get_instance()
+            ->set_json_value(group, key, QJsonValue::fromVariant(value));
     }
 }
 
-QVariant KeyboardSettings::getScalar(const QString& group,
+QVariant KeyboardSettings::get_scalar(const QString& group,
                                      const QString& key,
                                      const QVariant& defaultValue) const
 {
-    const QJsonValue v = SettingsHandler::getInstance()->jsonValue(group, key);
+    const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     return v.isUndefined() ? defaultValue : v.toVariant();
 }
 
-void KeyboardSettings::restoreDefaults()
+void KeyboardSettings::restore_defaults()
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Actions"));
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Actions"));
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
     // Clearing storage alone only fixes what Action::get_shortcuts()
     // returns on its NEXT call (e.g. the Keyboard Shortcuts settings
     // page's own rows, refreshed via restoreKeyboardDefaults() below) -
@@ -546,35 +546,35 @@ void KeyboardSettings::restoreDefaults()
     emit SettingsEvents::instance().restoreKeyboardDefaults();
 }
 
-std::optional<ControlMatch> KeyboardSettings::mousewheelActionForEvent(
+std::optional<ControlMatch> KeyboardSettings::mousewheel_action_for_event(
     const QWheelEvent* event) const
 {
-    for (const MouseWheelConfig& action : mousewheelActions()) {
-        if (auto binding = action.matchesEvent(event)) {
+    for (const MouseWheelConfig& action : mousewheel_actions()) {
+        if (auto binding = action.matches_event(event)) {
             return ControlMatch{action.group(), binding->inverted};
         }
     }
     return std::nullopt;
 }
 
-std::optional<ControlMatch> KeyboardSettings::mouseActionForEvent(
+std::optional<ControlMatch> KeyboardSettings::mouse_action_for_event(
     const QMouseEvent* event) const
 {
-    for (const MouseConfig& action : mouseActions()) {
-        if (auto binding = action.matchesEvent(event)) {
+    for (const MouseConfig& action : mouse_actions()) {
+        if (auto binding = action.matches_event(event)) {
             return ControlMatch{action.group(), binding->inverted};
         }
     }
     return std::nullopt;
 }
 
-int KeyboardSettings::findConflictingMouseGroup(const QString& excludeId,
+int KeyboardSettings::find_conflicting_mouse_group(const QString& excludeId,
                                                 const Binding& candidate) const
 {
     if (candidate.mouseButton.isEmpty() && candidate.keySequence.isEmpty()) {
         return -1;
     }
-    const auto& list = mouseActions();
+    const auto& list = mouse_actions();
     for (int i = 0; i < list.size(); ++i) {
         if (list[i].id() == excludeId) {
             continue;
@@ -597,13 +597,13 @@ int KeyboardSettings::findConflictingMouseGroup(const QString& excludeId,
     return -1;
 }
 
-int KeyboardSettings::findConflictingWheelGroup(const QString& excludeId,
+int KeyboardSettings::find_conflicting_wheel_group(const QString& excludeId,
                                                 const Binding& candidate) const
 {
     if (candidate.mouseModifiers.isEmpty() && candidate.keySequence.isEmpty()) {
         return -1;
     }
-    const auto& list = mousewheelActions();
+    const auto& list = mousewheel_actions();
     for (int i = 0; i < list.size(); ++i) {
         if (list[i].id() == excludeId) {
             continue;

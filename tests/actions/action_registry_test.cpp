@@ -45,9 +45,9 @@ TEST(ActionRegistryTest, AddIsUpsertAndPreservesInsertionOrder)
 
 TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
 {
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_a"));
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_b"));
 
     ActionRegistry registry;
@@ -75,9 +75,9 @@ TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
     EXPECT_EQ(registry.findByShortcut(QStringLiteral("reg_test_b"), QString()),
              nullptr);
 
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_a"));
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_b"));
 }
 
@@ -85,7 +85,7 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
 {
     Action a
         = Action::make(QStringLiteral("reg_test_mouse_a"), QStringLiteral("A"));
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
 
     Binding stored;
@@ -107,7 +107,7 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
                                          candidate),
              nullptr);
 
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
 }
 

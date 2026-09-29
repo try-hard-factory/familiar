@@ -8,9 +8,9 @@
 namespace {
 void cleanupAction(const QString& id)
 {
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                     id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), id + QStringLiteral("_mouse"));
 }
 } // namespace
@@ -64,7 +64,7 @@ TEST(ActionBindingTargetTest, SetBindingsSplitsKeyboardAndMouseAliases)
 
 TEST(MouseConfigBindingTargetTest, DelegatesToWrappedMouseConfig)
 {
-    const MouseConfig& zoom = KeyboardSettings::mouseActions()[0]; // "zoom"
+    const MouseConfig& zoom = KeyboardSettings::mouse_actions()[0]; // "zoom"
     MouseConfigBindingTarget target(&zoom, BindingTargetKind::MouseControl);
 
     EXPECT_EQ(target.id(), zoom.id());

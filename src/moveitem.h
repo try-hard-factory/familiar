@@ -248,7 +248,7 @@ public:
         if (value) {
             QImage img(pixmap().size(), QImage::Format_Grayscale8);
             auto colorPreset
-                = SettingsHandler::getInstance()->getCurrentColorPreset();
+                = SettingsHandler::get_instance()->get_current_color_preset();
             img.fill(colorPreset[EPresetsColorIdx::kCanvasColor]);
             QPainter painter(&img);
             painter.drawPixmap(0, 0, pixmap());
@@ -344,7 +344,7 @@ public:
     // Determines the format for storing this image.
     QString get_imgformat(const QImage& img) const
     {
-        QString formt = SettingsHandler::getInstance()->imageStorageFormat();
+        QString formt = SettingsHandler::get_instance()->image_storage_format();
 
         if (formt == QLatin1String("best")) {
             if (img.hasAlphaChannel()
@@ -774,8 +774,8 @@ public:
                     if (QGraphicsItem* anchor = scene->find_by_uid(
                             attachedToUid_);
                         anchor && anchor->isSelected()) {
-                        auto colorPreset = SettingsHandler::getInstance()
-                                               ->getCurrentColorPreset();
+                        auto colorPreset = SettingsHandler::get_instance()
+                                               ->get_current_color_preset();
                         QColor highlightColor
                             = colorPreset[EPresetsColorIdx::kSelectionColor];
                         highlightColor.setAlpha(230);
@@ -1356,7 +1356,7 @@ public:
         init_selectable();
         edit_mode = false;
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
     }
@@ -1627,8 +1627,8 @@ public:
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 if (QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
                     picture && picture->isSelected()) {
-                    auto colorPreset = SettingsHandler::getInstance()
-                                           ->getCurrentColorPreset();
+                    auto colorPreset = SettingsHandler::get_instance()
+                                           ->get_current_color_preset();
                     QColor highlightColor
                         = colorPreset[EPresetsColorIdx::kSelectionColor];
                     highlightColor.setAlpha(230);
@@ -2548,7 +2548,7 @@ public:
         // opacity here since this is a border, not a translucent fill.
         if (highlighted_) {
             auto colorPreset
-                = SettingsHandler::getInstance()->getCurrentColorPreset();
+                = SettingsHandler::get_instance()->get_current_color_preset();
             QColor highlightColor
                 = colorPreset[EPresetsColorIdx::kSelectionColor];
             highlightColor.setAlpha(230);
@@ -2711,7 +2711,7 @@ public:
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
         init_selectable();
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
     }

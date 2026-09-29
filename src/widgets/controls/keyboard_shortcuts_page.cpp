@@ -32,7 +32,7 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
         actionTargets_.append(new ActionBindingTarget(action));
     }
 
-    for (const MouseConfig& cfg : KeyboardSettings::mouseActions()) {
+    for (const MouseConfig& cfg : KeyboardSettings::mouse_actions()) {
         controlTargets_.append(
             new MouseConfigBindingTarget(&cfg, BindingTargetKind::MouseControl));
         if (cfg.id() == QLatin1String("zoom")) {
@@ -45,7 +45,7 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
             }
         }
     }
-    for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheelActions()) {
+    for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheel_actions()) {
         controlTargets_.append(
             new MouseConfigBindingTarget(&cfg,
                                          BindingTargetKind::MouseWheelControl));

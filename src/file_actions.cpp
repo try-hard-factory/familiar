@@ -173,7 +173,7 @@ void FileActions::processOpenFile(const QString& file)
 
     loadFmlIntoCurrentTab(file);
 
-    SettingsHandler::getInstance()->updateRecentFiles(file);
+    SettingsHandler::get_instance()->update_recent_files(file);
     mainwindow_.update_menu_and_actions();
 }
 
@@ -226,7 +226,7 @@ int FileActions::saveFile(CanvasView* canvasView, const QString& path)
 
     // See processOpenFile()'s comment - saveFileAs() reaches this via
     // its own call to saveFile(selected), so this covers both.
-    SettingsHandler::getInstance()->updateRecentFiles(path);
+    SettingsHandler::get_instance()->update_recent_files(path);
     mainwindow_.update_menu_and_actions();
 
     return QDialog::Accepted;

@@ -38,7 +38,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
 
 void WelcomeOverlay::show()
 {
-    QStringList files = SettingsHandler::getInstance()->getRecentFiles(true);
+    QStringList files = SettingsHandler::get_instance()->get_recent_files(true);
     filesView_->update_files(files);
     if (!files.isEmpty()) {
         if (layout_->indexOf(filesWidget_) < 0) {

@@ -20,49 +20,49 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
     QPushButton* custom1_btn = new QPushButton("Custom 1");
     connect(custom1_btn, &QPushButton::clicked, this, [this]() {
         auto current_preset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         auto current_opacity
-            = SettingsHandler::getInstance()->getCurrentOpacity();
-        auto master_opacity = SettingsHandler::getInstance()->masterOpacity();
+            = SettingsHandler::get_instance()->get_current_opacity();
+        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
         master_opacity[kCustom1] = current_opacity;
-        SettingsHandler::getInstance()->setMasterOpacity(master_opacity);
-        SettingsHandler::getInstance()->setCustomPreset1(current_preset);
+        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
+        SettingsHandler::get_instance()->setCustomPreset1(current_preset);
         close();
     });
     QPushButton* custom2_btn = new QPushButton("Custom 2");
     connect(custom2_btn, &QPushButton::clicked, this, [this]() {
         auto current_preset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         auto current_opacity
-            = SettingsHandler::getInstance()->getCurrentOpacity();
-        auto master_opacity = SettingsHandler::getInstance()->masterOpacity();
+            = SettingsHandler::get_instance()->get_current_opacity();
+        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
         master_opacity[kCustom2] = current_opacity;
-        SettingsHandler::getInstance()->setMasterOpacity(master_opacity);
-        SettingsHandler::getInstance()->setCustomPreset2(current_preset);
+        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
+        SettingsHandler::get_instance()->setCustomPreset2(current_preset);
         close();
     });
     QPushButton* custom3_btn = new QPushButton("Custom 3");
     connect(custom3_btn, &QPushButton::clicked, this, [this]() {
         auto current_preset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         auto current_opacity
-            = SettingsHandler::getInstance()->getCurrentOpacity();
-        auto master_opacity = SettingsHandler::getInstance()->masterOpacity();
+            = SettingsHandler::get_instance()->get_current_opacity();
+        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
         master_opacity[kCustom3] = current_opacity;
-        SettingsHandler::getInstance()->setMasterOpacity(master_opacity);
-        SettingsHandler::getInstance()->setCustomPreset3(current_preset);
+        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
+        SettingsHandler::get_instance()->setCustomPreset3(current_preset);
         close();
     });
     QPushButton* custom4_btn = new QPushButton("Custom 4");
     connect(custom4_btn, &QPushButton::clicked, this, [this]() {
         auto current_preset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         auto current_opacity
-            = SettingsHandler::getInstance()->getCurrentOpacity();
-        auto master_opacity = SettingsHandler::getInstance()->masterOpacity();
+            = SettingsHandler::get_instance()->get_current_opacity();
+        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
         master_opacity[kCustom4] = current_opacity;
-        SettingsHandler::getInstance()->setMasterOpacity(master_opacity);
-        SettingsHandler::getInstance()->setCustomPreset4(current_preset);
+        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
+        SettingsHandler::get_instance()->setCustomPreset4(current_preset);
         close();
     });
     layout_->addWidget(custom1_btn);

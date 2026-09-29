@@ -117,7 +117,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -523,7 +523,7 @@ void FileBrowserDialog::showContextMenu_(const QPoint& pos)
     // dialog_style::panelStyleSheet()'s QToolTip rule, just for a widget
     // type that rule doesn't cover.
     const auto colorPreset
-        = SettingsHandler::getInstance()->getCurrentColorPreset();
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];

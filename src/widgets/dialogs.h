@@ -103,7 +103,7 @@ public:
         setFixedWidth(kDialogWidth);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor& background
             = colorPreset[EPresetsColorIdx::kBackgroundColor];
@@ -1028,7 +1028,7 @@ public:
         setFixedWidth(280);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor& background
             = colorPreset[EPresetsColorIdx::kBackgroundColor];
@@ -1290,7 +1290,7 @@ public:
         setFixedWidth(380);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor& background
             = colorPreset[EPresetsColorIdx::kBackgroundColor];

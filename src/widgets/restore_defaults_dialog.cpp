@@ -59,7 +59,7 @@ const QList<SettingsCategory>& allCategories()
 // exist at all").
 QString currentPresetJsonKey()
 {
-    switch (SettingsHandler::getInstance()->currentPreset()) {
+    switch (SettingsHandler::get_instance()->currentPreset()) {
     case EPresets::kDarkPreset:
         return QStringLiteral("darkColorPreset");
     case EPresets::kLightPreset:
@@ -112,10 +112,10 @@ bool categoryHasChanges(SettingsCategory category)
         // single open of this dialog after that). Comparing the actual
         // value against its true default (opacityListDef's 255, same
         // for every preset) is the only check that works here.
-        return !SettingsHandler::getInstance()
-                    ->jsonValue(QStringLiteral("Colors"), currentPresetJsonKey())
+        return !SettingsHandler::get_instance()
+                    ->json_value(QStringLiteral("Colors"), currentPresetJsonKey())
                     .isUndefined()
-            || SettingsHandler::getInstance()->getCurrentOpacity() != 255;
+            || SettingsHandler::get_instance()->get_current_opacity() != 255;
     case SettingsCategory::KeyboardShortcuts:
         // Can't use "is the Actions/Controls JSON group empty" the same
         // way Colors uses preset-key presence - KeyboardSettings::
@@ -195,7 +195,7 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];

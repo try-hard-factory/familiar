@@ -314,11 +314,11 @@ void BindingEditorDialogBase::tryAccept()
     if (!candidate.mouseButton.isEmpty() || !candidate.keySequence.isEmpty()) {
         KeyboardSettings ks;
 
-        const int mouseRow = ks.findConflictingMouseGroup(target_->id(),
+        const int mouseRow = ks.find_conflicting_mouse_group(target_->id(),
                                                           candidate);
         if (mouseRow >= 0) {
             const MouseConfig& other
-                = KeyboardSettings::mouseActions()[mouseRow];
+                = KeyboardSettings::mouse_actions()[mouseRow];
             const auto reply = showMessageBox(
                 QMessageBox::Question,
                 this,
@@ -347,11 +347,11 @@ void BindingEditorDialogBase::tryAccept()
             other.set_bindings(theirs);
         }
 
-        const int wheelRow = ks.findConflictingWheelGroup(target_->id(),
+        const int wheelRow = ks.find_conflicting_wheel_group(target_->id(),
                                                           candidate);
         if (wheelRow >= 0) {
             const MouseWheelConfig& other
-                = KeyboardSettings::mousewheelActions()[wheelRow];
+                = KeyboardSettings::mousewheel_actions()[wheelRow];
             const auto reply = showMessageBox(
                 QMessageBox::Question,
                 this,

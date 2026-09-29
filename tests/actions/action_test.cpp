@@ -12,9 +12,9 @@ namespace {
 // earlier one using the same id left behind.
 void cleanupAction(const QString& id)
 {
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                     id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), id + QStringLiteral("_mouse"));
 }
 } // namespace

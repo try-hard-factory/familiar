@@ -366,7 +366,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             // above it - not the whole map for every preset, which an
             // earlier version of this fix wrongly did via a blanket
             // remove("masterOpacity")).
-            SettingsHandler::getInstance()->setDefaultCurrentPreset();
+            SettingsHandler::get_instance()->set_default_current_preset();
             // Neither setDefaultCurrentPreset() nor setCurrentOpacity()
             // emits this on their own - ColorsWidget::updateComponents()
             // (connected to it) is what actually repaints the color
@@ -377,10 +377,10 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             // matches how colors_widget.cpp's own preset-switch/Import
             // handlers already emit this same signal after changing
             // anything here.
-            emit SettingsHandler::getInstance()->presetsChanged();
+            emit SettingsHandler::get_instance()->presets_changed();
         }
         if (checked.contains(familiar::SettingsCategory::KeyboardShortcuts)) {
-            KeyboardSettings().restoreDefaults();
+            KeyboardSettings().restore_defaults();
         }
         // Every bound row already listens for this to re-read its value
         // from storage (Import above relies on the same signal) - fired
@@ -409,7 +409,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         if (path.isEmpty()) {
             return;
         }
-        if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
+        if (!SettingsHandler::get_instance()->import_settings_from(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
                            tr("Import failed"),
@@ -424,7 +424,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         // ColorsWidget::updateComponents()'s presetsChanged connection.
         emit SettingsEvents::instance().restoreDefaults();
         emit SettingsEvents::instance().restoreKeyboardDefaults();
-        emit SettingsHandler::getInstance() -> presetsChanged();
+        emit SettingsHandler::get_instance() -> presets_changed();
     });
 
     auto* exportBtn = new QPushButton(tr("Export"), this);
@@ -440,7 +440,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         if (path.isEmpty()) {
             return;
         }
-        if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
+        if (!SettingsHandler::get_instance()->export_settings_to(path)) {
             showMessageBox(QMessageBox::Warning,
                            this,
                            tr("Export failed"),

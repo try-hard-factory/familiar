@@ -59,7 +59,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     // UndoHistorySizeRow) is a plain spinbox with range [0, 10000] -
     // 0 already matches Qt's own "0 means no limit" for this property,
     // no translation needed.
-    undoStack_->setUndoLimit(SettingsHandler::getInstance()->undoHistorySize());
+    undoStack_->setUndoLimit(SettingsHandler::get_instance()->undo_history_size());
     connect(undoStack_.get(),
             &QUndoStack::cleanChanged,
             this,
@@ -133,8 +133,8 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
         updateGroupToolbarPos_();
     });
 
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::settingsChanged,
+    connect(SettingsHandler::get_instance(),
+            &SettingsHandler::settings_changed,
             this,
             &CanvasView::settingsChangedSlot);
     settingsChangedSlot();
@@ -311,11 +311,11 @@ void CanvasView::on_undo_clean_changed(bool clean)
 
 void CanvasView::settingsChangedSlot()
 {
-    auto* settings = SettingsHandler::getInstance();
-    auto colorPreset = settings->getCurrentColorPreset();
+    auto* settings = SettingsHandler::get_instance();
+    auto colorPreset = settings->get_current_color_preset();
     canvasColor_ = colorPreset[EPresetsColorIdx::kCanvasColor];
     borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
-    currentOpacity_ = settings->getCurrentOpacity();
+    currentOpacity_ = settings->get_current_opacity();
     if (textToolbar_) {
         textToolbar_->restyleFromPreset();
     }
@@ -589,7 +589,7 @@ void CanvasView::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    auto match = SettingsHandler::getInstance()->mousewheelActionForEvent(event);
+    auto match = SettingsHandler::get_instance()->mousewheel_action_for_event(event);
     if (!match) {
         return;
     }
@@ -634,7 +634,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    auto match = SettingsHandler::getInstance()->mouseActionForEvent(event);
+    auto match = SettingsHandler::get_instance()->mouse_action_for_event(event);
     if (match) {
         if (match->group == QLatin1String("zoom")) {
             activeMode_ = ModeZoom;
@@ -816,7 +816,7 @@ bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
         return false;
     }
 
-    for (const MouseConfig& cfg : KeyboardSettings::mouseActions()) {
+    for (const MouseConfig& cfg : KeyboardSettings::mouse_actions()) {
         if (cfg.group() != QLatin1String("zoom")) {
             continue;
         }
@@ -828,7 +828,7 @@ bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
         }
     }
 
-    for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheelActions()) {
+    for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheel_actions()) {
         for (const Binding& b : cfg.get_bindings()) {
             if (b.keySequence != pressed) {
                 continue;

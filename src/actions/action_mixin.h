@@ -99,7 +99,7 @@ private:
     QString menuStyleSheet_() const
     {
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
         QColor text = colorPreset[EPresetsColorIdx::kTextColor];
         QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -166,12 +166,12 @@ private:
         qaction->setChecked(defaultChecked);
 
         if (!settingsKey.isEmpty()) {
-            const bool val = SettingsHandler::getInstance()
-                                 ->actionState(settingsKey, defaultChecked)
+            const bool val = SettingsHandler::get_instance()
+                                 ->action_state(settingsKey, defaultChecked)
                                  .toBool();
             qaction->setChecked(val);
             QObject::connect(qaction, &QAction::toggled, [settingsKey](bool v) {
-                SettingsHandler::getInstance()->setActionState(settingsKey, v);
+                SettingsHandler::get_instance()->set_action_state(settingsKey, v);
             });
         }
 
@@ -296,7 +296,7 @@ private:
             return;
         }
 
-        const QStringList files = SettingsHandler::getInstance()->getRecentFiles(
+        const QStringList files = SettingsHandler::get_instance()->get_recent_files(
             /*existingOnly=*/true);
 
         for (int i = 0; i < 10; ++i) {

@@ -68,7 +68,7 @@ public:
         setFixedWidth(360);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor& background
             = colorPreset[EPresetsColorIdx::kBackgroundColor];
@@ -211,8 +211,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     setMouseTracking(true);
 
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::settingsChanged,
+    connect(SettingsHandler::get_instance(),
+            &SettingsHandler::settings_changed,
             this,
             &MainWindow::settingsChangedSlot);
     settingsChangedSlot();
@@ -445,10 +445,10 @@ void MainWindow::saveFileAs()
 
 void MainWindow::settingsChangedSlot()
 {
-    auto* settings = SettingsHandler::getInstance();
-    auto colorPreset = settings->getCurrentColorPreset();
+    auto* settings = SettingsHandler::get_instance();
+    auto colorPreset = settings->get_current_color_preset();
     backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    currentOpacity_ = settings->getCurrentOpacity();
+    currentOpacity_ = settings->get_current_opacity();
     rgbaBackGroundStr_ = QString("rgba(%1, %2, %3, %4);")
                              .arg(backGroundColor_.red())
                              .arg(backGroundColor_.green())
@@ -834,7 +834,7 @@ void MainWindow::updateWindowControlsStyle_()
         return;
     }
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -882,7 +882,7 @@ void MainWindow::updateMenubarStyle_()
         return;
     }
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
@@ -1096,7 +1096,7 @@ void MainWindow::on_action_settings()
 
 void MainWindow::on_action_open_settings_dir()
 {
-    QString dir = QFileInfo(SettingsHandler::getInstance()->settingsFileName())
+    QString dir = QFileInfo(SettingsHandler::get_instance()->settings_file_name())
                       .absolutePath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }

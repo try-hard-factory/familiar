@@ -515,8 +515,8 @@ void TextEditToolbar::applyLink(const QString& href)
     // theme's accent color is what actually makes it read as a link.
     format.setFontUnderline(true);
     format.setForeground(
-        SettingsHandler::getInstance()
-            ->getCurrentColorPreset()[EPresetsColorIdx::kSelectionColor]);
+        SettingsHandler::get_instance()
+            ->get_current_color_preset()[EPresetsColorIdx::kSelectionColor]);
 
     // Inserts href AS the visible link text rather than
     // formatting whatever's currently selected - a selection is replaced
@@ -559,7 +559,7 @@ void TextEditToolbar::showLinkPopup()
     // paints solid black.
     popup->setAttribute(Qt::WA_TranslucentBackground, false);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -825,7 +825,7 @@ void TextEditToolbar::updateColorButtonIcons()
 
 void TextEditToolbar::restyleFromPreset()
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];

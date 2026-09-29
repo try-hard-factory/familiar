@@ -94,7 +94,7 @@ QImage SceneToPixmapExporter::renderToImage() const
 {
     qreal finalMargin = margin_ * size_.width() / defaultSize_.width();
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
 
     QImage image(size_, QImage::Format_RGB32);

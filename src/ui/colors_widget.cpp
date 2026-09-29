@@ -166,8 +166,8 @@ void ColorsWidget::presetsInit()
 
         const EPresets value = preset.preset;
         connect(btn, &QPushButton::clicked, this, [value]() {
-            SettingsHandler::getInstance()->setCurrentPreset(value);
-            emit SettingsHandler::getInstance() -> presetsChanged();
+            SettingsHandler::get_instance()->setCurrentPreset(value);
+            emit SettingsHandler::get_instance() -> presets_changed();
         });
 
         presetButtons_->addButton(btn, static_cast<int>(preset.preset));
@@ -175,12 +175,12 @@ void ColorsWidget::presetsInit()
     }
 
     if (QAbstractButton* checked = presetButtons_->button(
-            SettingsHandler::getInstance()->currentPreset())) {
+            SettingsHandler::get_instance()->currentPreset())) {
         checked->setChecked(true);
     }
 
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::presetsChanged,
+    connect(SettingsHandler::get_instance(),
+            &SettingsHandler::presets_changed,
             this,
             &ColorsWidget::updateComponents);
 
@@ -240,8 +240,8 @@ void ColorsWidget::colorInit()
 
 void ColorsWidget::pickColor_(EPresetsColorIdx idx)
 {
-    auto* settings = SettingsHandler::getInstance();
-    const auto preset = settings->getCurrentColorPreset();
+    auto* settings = SettingsHandler::get_instance();
+    const auto preset = settings->get_current_color_preset();
     const QColor oldColor = preset[idx];
 
     const QMap<EPresetsColorIdx, QString> titles = {
@@ -257,22 +257,22 @@ void ColorsWidget::pickColor_(EPresetsColorIdx idx)
             &ColorPickerDialog::colorChanged,
             this,
             [this, settings, idx](QColor c) {
-                auto p = settings->getCurrentColorPreset();
+                auto p = settings->get_current_color_preset();
                 p[idx] = c;
-                settings->setCurrentColorPreset(p);
+                settings->set_current_color_preset(p);
                 refreshSwatch_(idx);
-                emit SettingsHandler::getInstance() -> settingsChanged();
+                emit SettingsHandler::get_instance() -> settings_changed();
             });
 
     if (dialog.exec() != QDialog::Accepted) {
         // Cancelled - revert the live preview colorChanged() applied
         // above while dragging, same convention GroupToolbar's fill-color
         // button uses (ui/group_toolbar.cpp).
-        auto p = settings->getCurrentColorPreset();
+        auto p = settings->get_current_color_preset();
         p[idx] = oldColor;
-        settings->setCurrentColorPreset(p);
+        settings->set_current_color_preset(p);
         refreshSwatch_(idx);
-        emit SettingsHandler::getInstance() -> settingsChanged();
+        emit SettingsHandler::get_instance() -> settings_changed();
     }
 }
 
@@ -282,7 +282,7 @@ void ColorsWidget::refreshSwatch_(EPresetsColorIdx idx)
     if (!swatch) {
         return;
     }
-    const auto preset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    const auto preset = SettingsHandler::get_instance()->get_current_color_preset();
     swatch->setIcon(makeSwatchIcon(preset[idx], devicePixelRatioF()));
 }
 
@@ -290,7 +290,7 @@ void ColorsWidget::refreshSwatch_(EPresetsColorIdx idx)
 void ColorsWidget::sliderInit()
 {
     // TODOLATER
-    auto* settings = SettingsHandler::getInstance();
+    auto* settings = SettingsHandler::get_instance();
     // slider init
     opacitySlider_->setFocusPolicy(Qt::NoFocus);
     opacitySlider_->setOrientation(Qt::Horizontal);
@@ -301,15 +301,15 @@ void ColorsWidget::sliderInit()
     slider_layout_->addWidget(new QLabel(QStringLiteral("Master opacity:")));
     slider_layout_->addWidget(opacitySlider_);
 
-    opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
+    opacitySlider_->setMapedValue(0, settings->get_current_opacity(), 255);
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
         FLOG_DEBUG(Ch::UI,
                    "Master opacity from settings = {}",
-                   debugString(SettingsHandler::getInstance()->masterOpacity()));
-        SettingsHandler::getInstance()->setCurrentOpacity(
+                   debugString(SettingsHandler::get_instance()->masterOpacity()));
+        SettingsHandler::get_instance()->set_current_opacity(
             opacitySlider_->mappedValue(0, 255));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
-        emit SettingsHandler::getInstance() -> settingsChanged();
+        emit SettingsHandler::get_instance() -> settings_changed();
     });
 }
 
@@ -346,18 +346,18 @@ void ColorsWidget::showPresetSaveWindow()
 
 void ColorsWidget::updateComponents()
 {
-    auto* settings = SettingsHandler::getInstance();
+    auto* settings = SettingsHandler::get_instance();
 
     for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
         refreshSwatch_(static_cast<EPresetsColorIdx>(i));
     }
 
-    opacitySlider_->setMapedValue(0, settings->getCurrentOpacity(), 255);
+    opacitySlider_->setMapedValue(0, settings->get_current_opacity(), 255);
 
     if (QAbstractButton* checked = presetButtons_->button(
             settings->currentPreset())) {
         checked->setChecked(true);
     }
 
-    emit SettingsHandler::getInstance() -> settingsChanged();
+    emit SettingsHandler::get_instance() -> settings_changed();
 }

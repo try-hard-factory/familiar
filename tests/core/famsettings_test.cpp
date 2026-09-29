@@ -84,7 +84,7 @@ TEST(FamSettingsTest, RestoreDefaultsClearsItemsAndSaveGroups)
 
 TEST(FamSettingsTest, UpdateRecentFilesDedupsPrependsAndCaps)
 {
-    SettingsHandler::getInstance()->setRecentFilesRaw({});
+    SettingsHandler::get_instance()->set_recent_files_raw({});
     FamSettings settings;
 
     // Already-absolute paths - updateRecentFiles() runs them through
@@ -104,5 +104,5 @@ TEST(FamSettingsTest, UpdateRecentFilesDedupsPrependsAndCaps)
     EXPECT_EQ(files.first(), QStringLiteral("/tmp/file_5.fml"));
     EXPECT_EQ(files.count(QStringLiteral("/tmp/file_5.fml")), 1);
 
-    SettingsHandler::getInstance()->setRecentFilesRaw({});
+    SettingsHandler::get_instance()->set_recent_files_raw({});
 }

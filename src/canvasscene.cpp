@@ -78,8 +78,8 @@ CanvasScene::CanvasScene(MainWindow& mw,
     clear();
     clear_ongoing = false;
 
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::settingsChanged,
+    connect(SettingsHandler::get_instance(),
+            &SettingsHandler::settings_changed,
             this,
             &CanvasScene::settingsChangedSlot);
     settingsChangedSlot();
@@ -98,7 +98,7 @@ CanvasScene::~CanvasScene()
     // already run, so Qt asserts ("class destructor may have already
     // run") if it tries to invoke a slot declared on this class.
     disconnect(this, nullptr, nullptr, nullptr);
-    disconnect(SettingsHandler::getInstance(), nullptr, this, nullptr);
+    disconnect(SettingsHandler::get_instance(), nullptr, this, nullptr);
     disconnect(QApplication::clipboard(), nullptr, this, nullptr);
 
     // Same reasoning as clear(): detach rubberband_item_/multiselect_item_
@@ -920,7 +920,7 @@ QList<QGraphicsItem*> CanvasScene::arrange_targets()
 
 void CanvasScene::arrange_default()
 {
-    const QString mode = SettingsHandler::getInstance()->arrangeDefault();
+    const QString mode = SettingsHandler::get_instance()->arrange_default();
     if (mode == QLatin1String("horizontal")) {
         arrange(false);
     } else if (mode == QLatin1String("vertical")) {
@@ -1044,7 +1044,7 @@ void CanvasScene::arrange(bool vertical)
         return;
     }
 
-    qreal gap = SettingsHandler::getInstance()->arrangeGap();
+    qreal gap = SettingsHandler::get_instance()->arrange_gap();
     // Centre of what's actually being arranged, NOT get_selection_center()
     // - that one measures the selection, which is both empty in the
     // arrange-the-whole-scene case and wrong whenever arrange_targets()
@@ -1123,7 +1123,7 @@ void CanvasScene::arrange_optimal()
         return;
     }
 
-    qreal gap = SettingsHandler::getInstance()->arrangeGap();
+    qreal gap = SettingsHandler::get_instance()->arrange_gap();
 
     // Получаем размеры элементов
     QList<RectPacker::Size> sizes;
@@ -1173,7 +1173,7 @@ void CanvasScene::arrange_square()
     cancel_active_modes();
     qreal maxWidth = 0;
     qreal maxHeight = 0;
-    qreal gap = SettingsHandler::getInstance()->arrangeGap();
+    qreal gap = SettingsHandler::get_instance()->arrange_gap();
     QList<QGraphicsItem*> items = sort_by_filename(arrange_targets());
 
     if (items.size() < 2) {
@@ -2088,8 +2088,8 @@ QUuid CanvasScene::recoveryId()
 
 void CanvasScene::settingsChangedSlot()
 {
-    auto settings = SettingsHandler::getInstance();
-    auto colorPreset = settings->getCurrentColorPreset();
+    auto settings = SettingsHandler::get_instance();
+    auto colorPreset = settings->get_current_color_preset();
     selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
 }
 

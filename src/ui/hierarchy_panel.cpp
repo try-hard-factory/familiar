@@ -216,7 +216,7 @@ public:
         setFixedWidth(320);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor& background
             = colorPreset[EPresetsColorIdx::kBackgroundColor];
@@ -381,8 +381,8 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     connect(rebuildTimer_, &QTimer::timeout, this, &HierarchyPanel::refresh);
 
     applyColorStyle_();
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::settingsChanged,
+    connect(SettingsHandler::get_instance(),
+            &SettingsHandler::settings_changed,
             this,
             [this] {
                 applyColorStyle_();
@@ -392,7 +392,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
 
 void HierarchyPanel::applyColorStyle_()
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
@@ -565,7 +565,7 @@ void HierarchyPanel::connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif)
     // changed(), a per-node icon update on frameChanged is a targeted,
     // cheap operation (setIcon() on one row) instead of a full tree
     // rebuild every frame.
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor glyphColor = colorPreset[EPresetsColorIdx::kTextColor];
     QMetaObject::Connection conn
         = QObject::connect(gif->movie(),
@@ -581,7 +581,7 @@ void HierarchyPanel::connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif)
 
 QTreeWidgetItem* HierarchyPanel::makeNode_(QGraphicsItem* item)
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
 
     QString label;
@@ -732,7 +732,7 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
     // it falls back to the app-wide "background: transparent" (MainWindow's
     // own setStyleSheet()) with nothing underneath to actually paint,
     // rendering solid black.
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];

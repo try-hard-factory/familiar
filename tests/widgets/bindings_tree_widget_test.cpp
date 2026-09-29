@@ -19,9 +19,9 @@
 
 TEST(BindingsTreeWidgetTest, EmptyFilterShowsEveryRow)
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
-    const MouseConfig& zoomCfg = KeyboardSettings::mouseActions()[0]; // "Zoom"
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1]; // "Pan"
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0]; // "Zoom"
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1]; // "Pan"
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
     MouseConfigBindingTarget pan(&panCfg, BindingTargetKind::MouseControl);
 
@@ -35,9 +35,9 @@ TEST(BindingsTreeWidgetTest, EmptyFilterShowsEveryRow)
 
 TEST(BindingsTreeWidgetTest, FilterHidesNonMatchingRows)
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
-    const MouseConfig& zoomCfg = KeyboardSettings::mouseActions()[0]; // "Zoom"
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1]; // "Pan"
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0]; // "Zoom"
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1]; // "Pan"
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
     MouseConfigBindingTarget pan(&panCfg, BindingTargetKind::MouseControl);
 
@@ -50,8 +50,8 @@ TEST(BindingsTreeWidgetTest, FilterHidesNonMatchingRows)
 
 TEST(BindingsTreeWidgetTest, NoMatchReturnsFalseAndHidesEverything)
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
-    const MouseConfig& zoomCfg = KeyboardSettings::mouseActions()[0];
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0];
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
 
     BindingsTreeWidget tree({&zoom});

@@ -41,14 +41,14 @@ Action Action::make(const QString& id,
 
 QStringList Action::get_shortcuts() const
 {
-    return SettingsHandler::getInstance()
-        ->getShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
+    return SettingsHandler::get_instance()
+        ->get_shortcuts(QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
 }
 
 void Action::setShortcuts(const QStringList& values)
 {
-    SettingsHandler::getInstance()
-        ->setShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, values);
+    SettingsHandler::get_instance()
+        ->set_shortcuts(QString::fromLatin1(SETTINGS_GROUP), id, values);
     if (qaction) {
         QList<QKeySequence> seqs;
         for (const QString& s : values) {
@@ -83,7 +83,7 @@ QString Action::getDefaultShortcut(int index) const
 QList<Binding> Action::get_mouse_bindings() const
 {
     const QStringList serialized
-        = KeyboardSettings().getList(QString::fromLatin1(SETTINGS_GROUP),
+        = KeyboardSettings().get_list(QString::fromLatin1(SETTINGS_GROUP),
                                      id + QStringLiteral("_mouse"),
                                      {});
     QList<Binding> out;
@@ -99,7 +99,7 @@ void Action::setMouseBindings(const QList<Binding>& values)
     for (const Binding& b : values) {
         serialized.append(b.serialize());
     }
-    KeyboardSettings().setList(QString::fromLatin1(SETTINGS_GROUP),
+    KeyboardSettings().set_list(QString::fromLatin1(SETTINGS_GROUP),
                                id + QStringLiteral("_mouse"),
                                serialized,
                                {});

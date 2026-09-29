@@ -88,9 +88,9 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
 {
     Action action = Action::make(QStringLiteral("test_add_alias_dialog"),
                                  QStringLiteral("Test"));
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), action.id + QStringLiteral("_mouse"));
     ActionBindingTarget target(&action);
     ASSERT_TRUE(target.bindings().isEmpty());
@@ -116,9 +116,9 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
              QStringLiteral("Ctrl+Alt+Shift+F24"));
     EXPECT_EQ(dialog.result(), int(QDialog::Accepted));
 
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), action.id + QStringLiteral("_mouse"));
 }
 
@@ -134,7 +134,7 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
                                  QStringLiteral("Test"),
                                  {},
                                  {QStringLiteral("Ctrl+Alt+Shift+F20")});
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
     ActionBindingTarget target(&action);
     ASSERT_EQ(target.bindings().size(), 1); // the default, not yet overridden
@@ -158,7 +158,7 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
     EXPECT_EQ(bindings.first().keySequence,
              QStringLiteral("Ctrl+Alt+Shift+F23"));
 
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
 }
 
@@ -168,7 +168,7 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
                                  QStringLiteral("Test"),
                                  {},
                                  {QStringLiteral("Ctrl+Alt+Shift+F20")});
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
     ActionBindingTarget target(&action);
     // Diverge from the default first, same as RebindDialogTest above.
@@ -191,14 +191,14 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
     EXPECT_EQ(bindings.first().keySequence,
              QStringLiteral("Ctrl+Alt+Shift+F20"));
 
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
 }
 
 TEST(BindingEditorDialogBaseTest,
     TryAcceptWithNoConflictAcceptsWithoutShowingAMessageBox)
 {
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1];
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];
     MouseConfigBindingTarget target(&panCfg, BindingTargetKind::MouseControl);
     RecordingBindingEditorDialog dialog(&target);
 
@@ -213,7 +213,7 @@ TEST(BindingEditorDialogBaseTest,
 {
     // "pan" (MouseConfig, not invertible) - see
     // KeyboardSettings::mouseActions() (core/controls.cpp).
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1];
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];
     MouseConfigBindingTarget target(&panCfg, BindingTargetKind::MouseControl);
     TestBindingEditorDialog dialog(&target);
 
@@ -229,7 +229,7 @@ TEST(BindingEditorDialogBaseTest,
 TEST(BindingEditorDialogBaseTest,
     PopulateThenCollectRoundTripsMouseButtonBinding)
 {
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1];
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];
     MouseConfigBindingTarget target(&panCfg, BindingTargetKind::MouseControl);
     TestBindingEditorDialog dialog(&target);
 
@@ -245,7 +245,7 @@ TEST(BindingEditorDialogBaseTest, WheelControlUsesModifierCheckboxesNotButton)
     // "pan_horizontal" (MouseWheelConfig, invertible=true) - see
     // KeyboardSettings::mousewheelActions().
     const MouseWheelConfig& panHCfg
-        = KeyboardSettings::mousewheelActions()[0];
+        = KeyboardSettings::mousewheel_actions()[0];
     MouseConfigBindingTarget target(&panHCfg,
                                     BindingTargetKind::MouseWheelControl);
     TestBindingEditorDialog dialog(&target);

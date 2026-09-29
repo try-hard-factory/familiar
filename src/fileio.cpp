@@ -476,7 +476,7 @@ void ImageImportSession::run(ThreadedIO* worker)
     }
 
     const QString optimizeMode
-        = SettingsHandler::getInstance()->autoOptimizeImportedImages();
+        = SettingsHandler::get_instance()->auto_optimize_imported_images();
     // 0 = no limitation (Items/image_allocation_limit's own convention -
     // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
     // both already treat <= 0 as "never TooLarge".

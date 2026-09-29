@@ -57,7 +57,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -116,7 +116,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     auto* formatChip = new QLabel(this);
     const QString sourceExt = QFileInfo(filename).suffix().toUpper();
     const QString targetFormat = storageFormatLabel(
-        SettingsHandler::getInstance()->imageStorageFormat());
+        SettingsHandler::get_instance()->image_storage_format());
     formatChip->setText(tr("Format: %1 → %2").arg(sourceExt, targetFormat));
     formatChip->setStyleSheet(
         QStringLiteral("QLabel { background: %1; border-radius: 6px; "

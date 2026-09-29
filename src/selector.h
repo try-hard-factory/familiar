@@ -495,7 +495,7 @@ public:
         painter->setOpacity(1.0);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         QColor selectColor = colorPreset[EPresetsColorIdx::kSelectionColor];
         selectColor.setAlphaF(selectColor.alphaF()
                               * static_cast<float>(outlineOpacity));
@@ -1388,7 +1388,7 @@ public:
         : BaseItemMixin<QGraphicsRectItem>(parent)
     {
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         QColor fillColor = colorPreset[EPresetsColorIdx::kSelectionColor];
         fillColor.setAlpha(40);
         this->setBrush(QBrush(fillColor));
