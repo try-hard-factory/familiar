@@ -113,7 +113,7 @@ private:
 #define FML_LOG_CONCAT(a, b) FML_LOG_CONCAT_INNER(a, b)
 
 #define FLOG_TRACE(channel, ...) \
-    LOG_TRACE_L1(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_TRACE_L1(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_DEBUG(channel, ...) \
     LOG_DEBUG(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_INFO(channel, ...) \
@@ -123,7 +123,7 @@ private:
 #define FLOG_ERROR(channel, ...) \
     LOG_ERROR(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_CRITICAL(channel, ...) \
-    LOG_CRITICAL(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_CRITICAL(::familiar::log::channel_logger(channel), __VA_ARGS__)
 
 // RAII scope timer: logs the elapsed wall time when the enclosing scope exits.
 #define FLOG_TIMER(channel, label) \
@@ -136,7 +136,7 @@ private:
 // like mouseMoveEvent/paintEvent.
 #define FLOG_EVERY_N(channel, n, ...) \
     QUILL_LOG_DEBUG_LIMIT_EVERY_N(n, \
-                                  ::familiar::log::channelLogger(channel), \
+                                  ::familiar::log::channel_logger(channel), \
                                   __VA_ARGS__)
 
 // Debug-level log that fires only the first time this call site is reached.

@@ -174,14 +174,14 @@ QString captureStackTrace(CONTEXT* context)
 
 LONG WINAPI writeMiniDumpAndChain(EXCEPTION_POINTERS* exceptionPointers)
 {
-    if (quill::Logger* core = channelLogger(Ch::Core)) {
+    if (quill::Logger* core = channel_logger(Ch::Core)) {
         const QString trace = captureStackTrace(
             exceptionPointers->ContextRecord);
         FLOG_CRITICAL(Ch::Core, "Crash call stack:\n{}", trace.toStdString());
         core->flush_log(0);
     }
 
-    const QString dumpDir = QFileInfo(g_filePath).absolutePath();
+    const QString dumpDir = QFileInfo(gFilePath).absolutePath();
     const QString dumpPath
         = dumpDir + QStringLiteral("/crash_")
           + QDateTime::currentDateTime().toString(
