@@ -57,7 +57,7 @@ class QSharedPointer;
     { \
         QString key = QStringLiteral(#KEY); \
         if (QVariant::fromValue(val) != value(key)) { \
-            setValue(key, QVariant::fromValue(val)); \
+            set_value(key, QVariant::fromValue(val)); \
         } \
     }
 #define SETTINGS_GETTER_SETTER(GETFUNC, SETFUNC, TYPE) \
@@ -91,7 +91,7 @@ public:
     // check/process/fallback/representation (core/valuehandler.h) - kept
     // as the stable entry point SETTINGS_GETTER_SETTER expands into.
     // TODOLATER: + name change
-    void setValue(const QString& key, const QVariant& value);
+    void set_value(const QString& key, const QVariant& value);
     QVariant value(const QString& key) const;
     void remove(const QString& key);
     void reset_value(const QString& key);

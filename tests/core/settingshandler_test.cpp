@@ -214,7 +214,7 @@ TEST(SettingsHandlerTest, ValueRemoveResetRoundTrip)
     // core/settingshandler.cpp).
     EXPECT_TRUE(h->value(QStringLiteral("option0")).toBool());
 
-    h->setValue(QStringLiteral("option0"), false);
+    h->set_value(QStringLiteral("option0"), false);
     EXPECT_FALSE(h->value(QStringLiteral("option0")).toBool());
 
     h->reset_value(QStringLiteral("option0"));

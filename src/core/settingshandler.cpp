@@ -357,7 +357,7 @@ void SettingsHandler::set_default_current_preset()
 }
 
 
-void SettingsHandler::setValue(const QString& key, const QVariant& value)
+void SettingsHandler::set_value(const QString& key, const QVariant& value)
 {
     FLOG_DEBUG(Ch::Settings, "Setting {} to {}", key, debug_string(value));
     auto val = value_handler(key)->representation(value);
