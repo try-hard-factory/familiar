@@ -26,7 +26,7 @@ public:
     static HeldButtonsTracker& instance();
 
     Qt::MouseButtons current() const { return held_; }
-    QWidget* pressTarget() const { return pressTarget_; }
+    QWidget* press_target() const { return pressTarget_; }
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;

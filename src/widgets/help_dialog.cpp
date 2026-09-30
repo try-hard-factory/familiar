@@ -35,7 +35,7 @@ struct ControlRow
 // its window via a right-click drag; familiar's are Alt+Left drag and
 // an empty-chrome left-drag respectively, and right-click is currently
 // unused on this app's canvas (no context menu here at all).
-const QList<ControlRow>& defaultControlRows()
+const QList<ControlRow>& default_control_rows()
 {
     static const QList<ControlRow> rows = {
         {QObject::tr("Select images"), QObject::tr("Left click / drag")},
@@ -56,7 +56,7 @@ const QList<ControlRow>& defaultControlRows()
 // width the text just ran past the edge and got clipped instead of
 // flowing to a second line. A single wrapping label reflows the WHOLE
 // sentence together, link included, exactly like a real paragraph.
-QLabel* makeInlineLinkParagraph(const QString& before,
+QLabel* make_inline_link_paragraph(const QString& before,
                                 const QString& linkText,
                                 const QString& after,
                                 QWidget* parent,
@@ -94,7 +94,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -144,7 +144,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     grid->setHorizontalSpacing(18);
     grid->setVerticalSpacing(6);
     int row = 0;
-    for (const ControlRow& item : defaultControlRows()) {
+    for (const ControlRow& item : default_control_rows()) {
         auto* actionLabel = new QLabel(item.action, box);
         auto* gestureLabel = new QLabel(item.gesture, box);
         gestureLabel->setStyleSheet(
@@ -156,7 +156,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     outer->addWidget(box);
 
     auto* shortcutsLabel
-        = makeInlineLinkParagraph(tr("To see or change every shortcut, open"),
+        = make_inline_link_paragraph(tr("To see or change every shortcut, open"),
                                   tr("Keyboard Shortcuts"),
                                   QString(),
                                   this,
@@ -167,7 +167,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     connect(shortcutsLabel,
             &QLabel::linkActivated,
             window_,
-            &MainWindow::openKeyboardShortcutsSettings);
+            &MainWindow::open_keyboard_shortcuts_settings);
     outer->addWidget(shortcutsLabel);
 
     outer->addSpacing(4);
@@ -176,7 +176,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     supportHeading->setFont(headingFont);
     outer->addWidget(supportHeading);
 
-    auto* supportLabel = makeInlineLinkParagraph(
+    auto* supportLabel = make_inline_link_paragraph(
         tr("Something not working right? Write me to discord:"),
         tr("?????"),
         QStringLiteral("."),
@@ -187,7 +187,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
 
     outer->addSpacing(8);
 
-    auto* aboutLabel = makeInlineLinkParagraph(QString(),
+    auto* aboutLabel = make_inline_link_paragraph(QString(),
                                                tr("About Familiar"),
                                                QString(),
                                                this,
@@ -199,12 +199,12 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
             &MainWindow::on_action_about);
     outer->addWidget(aboutLabel);
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("HelpDialog",
+    setStyleSheet(familiar::dialog_style::panel_style_sheet("HelpDialog",
                                                           background,
                                                           border,
                                                           textColor,
                                                           /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("hdCloseBtn",
+                  + familiar::dialog_style::close_button_style_sheet("hdCloseBtn",
                                                                   textColor,
                                                                   accent));
 

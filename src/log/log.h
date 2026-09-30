@@ -34,7 +34,7 @@ struct Options
 // Parses a case-insensitive level name (TRACE/DEBUG/INFO/WARNING or WARN/
 // ERROR/CRITICAL or FATAL) - for the --loglevel command-line option;
 // unrecognized input falls back to `fallback`.
-Level levelFromName(const QString& name, Level fallback = Level::Info);
+Level level_from_name(const QString& name, Level fallback = Level::Info);
 
 // First line of main(), before MainWindow is constructed.
 void init(const Options& options = Options{});
@@ -43,22 +43,22 @@ void init(const Options& options = Options{});
 void shutdown();
 
 // Runtime per-channel level tuning.
-void setChannelLevel(Ch channel, Level level);
+void set_channel_level(Ch channel, Level level);
 
 // Whether the Qt bridge (qDebug()/qWarning()/...) logs the full C++
 // function signature Qt's Q_FUNC_INFO captures (return type + every
 // parameter type) or just "Class::method". Off (short names) by default -
 // full signatures get unreadable fast around templates/lambdas/mixins.
-void setQtBridgeVerboseFunctions(bool verbose);
+void set_qt_bridge_verbose_functions(bool verbose);
 
-quill::Logger* channelLogger(Ch channel);
+quill::Logger* channel_logger(Ch channel);
 
 // Captures whatever operator<<(QDebug, const T&) already prints for a type
 // that has Qt debug-stream support but no fmtquill::formatter of its own
 // (QGraphicsItem*, QList<T>, enums with QDebug support, ...). Use as
 // FLOG_DEBUG(Ch::X, "item: {}", familiar::log::debugString(item)).
 template<typename T>
-QString debugString(const T& value)
+QString debug_string(const T& value)
 {
     QString result;
     QDebug(&result) << value;
@@ -67,20 +67,20 @@ QString debugString(const T& value)
 
 // Last N formatted lines, for DebugLogDialog's live tail; returns nullptr
 // if init() hasn't run yet.
-RingSink* ringSink();
+RingSink* ring_sink();
 
 // Resolved path of the current session's log file (after any default
 // AppLocalDataLocation fallback in init()) - the single source of truth
 // for anything that needs to show/open it (DebugLogDialog, ...). Empty
 // if init() hasn't run yet.
-QString logFilePath();
+QString log_file_path();
 
 namespace detail {
-quill::LogLevel toQuillLevel(Level level);
+quill::LogLevel to_quill_level(Level level);
 
 // Installs the qInstallMessageHandler bridge that routes qDebug()/qWarning()/
 // etc. into Ch::Qt. Called once by init().
-void installQtMessageBridge();
+void install_qt_message_bridge();
 
 // Small RAII helper backing FLOG_TIMER: logs the elapsed time at scope
 // exit, attributed to the FLOG_TIMER call site rather than log.h itself.
@@ -113,17 +113,17 @@ private:
 #define FML_LOG_CONCAT(a, b) FML_LOG_CONCAT_INNER(a, b)
 
 #define FLOG_TRACE(channel, ...) \
-    LOG_TRACE_L1(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_TRACE_L1(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_DEBUG(channel, ...) \
-    LOG_DEBUG(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_DEBUG(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_INFO(channel, ...) \
-    LOG_INFO(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_INFO(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_WARN(channel, ...) \
-    LOG_WARNING(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_WARNING(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_ERROR(channel, ...) \
-    LOG_ERROR(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_ERROR(::familiar::log::channel_logger(channel), __VA_ARGS__)
 #define FLOG_CRITICAL(channel, ...) \
-    LOG_CRITICAL(::familiar::log::channelLogger(channel), __VA_ARGS__)
+    LOG_CRITICAL(::familiar::log::channel_logger(channel), __VA_ARGS__)
 
 // RAII scope timer: logs the elapsed wall time when the enclosing scope exits.
 #define FLOG_TIMER(channel, label) \
@@ -136,7 +136,7 @@ private:
 // like mouseMoveEvent/paintEvent.
 #define FLOG_EVERY_N(channel, n, ...) \
     QUILL_LOG_DEBUG_LIMIT_EVERY_N(n, \
-                                  ::familiar::log::channelLogger(channel), \
+                                  ::familiar::log::channel_logger(channel), \
                                   __VA_ARGS__)
 
 // Debug-level log that fires only the first time this call site is reached.

@@ -19,28 +19,28 @@ public:
     ~ColorsWidget();
 
 private:
-    void labelsInit();
-    void presetsInit();
-    void colorInit();
-    void sliderInit();
-    void saveResetBtnsInit();
-    void showPresetSaveWindow();
+    void labels_init();
+    void presets_init();
+    void color_init();
+    void slider_init();
+    void save_reset_btns_init();
+    void show_preset_save_window();
 
-    void pickColor_(EPresetsColorIdx idx);
-    void refreshSwatch_(EPresetsColorIdx idx);
+    void pick_color(EPresetsColorIdx idx);
+    void refresh_swatch(EPresetsColorIdx idx);
 
 public slots:
-    void updateComponents();
+    void update_components();
 
 signals:
 
 private:
     QVBoxLayout* layout_ = nullptr;
     ExtendedSlider* opacitySlider_ = nullptr;
-    QHBoxLayout* header_layout_ = nullptr;
-    QHBoxLayout* body_layout_ = nullptr;
-    QHBoxLayout* slider_layout_ = nullptr;
-    QHBoxLayout* bottom_layout_ = nullptr;
+    QHBoxLayout* headerLayout_ = nullptr;
+    QHBoxLayout* bodyLayout_ = nullptr;
+    QHBoxLayout* sliderLayout_ = nullptr;
+    QHBoxLayout* bottomLayout_ = nullptr;
     // One button per EPresets value (Dark/Light/Custom1-4), ids matching
     // that enum - see presetsInit().
     QButtonGroup* presetButtons_ = nullptr;

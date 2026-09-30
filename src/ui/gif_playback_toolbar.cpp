@@ -17,16 +17,16 @@
 
 namespace {
 
-constexpr int kButtonSize = 30;
-constexpr int kIconSize = 18;
-constexpr int kThumbSize = 48;
+constexpr int kbuttonSize = 30;
+constexpr int kiconSize = 18;
+constexpr int kthumbSize = 48;
 
 // Simple filled triangle - reused (mirrored/rotated) for prev/play/next,
 // same drawn-icon approach as ui/text_edit_toolbar.cpp's makeListIcon()
 // etc: a small, theme-colored glyph that doesn't need an external asset.
-QIcon makeTriangleIcon(const QColor& glyphColor, qreal dpr, bool pointLeft)
+QIcon make_triangle_icon(const QColor& glyphColor, qreal dpr, bool pointLeft)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -37,12 +37,12 @@ QIcon makeTriangleIcon(const QColor& glyphColor, qreal dpr, bool pointLeft)
 
     QPolygonF tri;
     if (pointLeft) {
-        tri << QPointF(kIconSize - 4, 3)
-            << QPointF(kIconSize - 4, kIconSize - 3)
-            << QPointF(4, kIconSize / 2.0);
+        tri << QPointF(kiconSize - 4, 3)
+            << QPointF(kiconSize - 4, kiconSize - 3)
+            << QPointF(4, kiconSize / 2.0);
     } else {
-        tri << QPointF(4, 3) << QPointF(4, kIconSize - 3)
-            << QPointF(kIconSize - 4, kIconSize / 2.0);
+        tri << QPointF(4, 3) << QPointF(4, kiconSize - 3)
+            << QPointF(kiconSize - 4, kiconSize / 2.0);
     }
     p.drawPolygon(tri);
 
@@ -54,9 +54,9 @@ QIcon makeTriangleIcon(const QColor& glyphColor, qreal dpr, bool pointLeft)
 
 // "Skip to previous/next frame": a triangle plus a thin bar against the
 // edge it points towards.
-QIcon makeStepIcon(const QColor& glyphColor, qreal dpr, bool prev)
+QIcon make_step_icon(const QColor& glyphColor, qreal dpr, bool prev)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -68,14 +68,14 @@ QIcon makeStepIcon(const QColor& glyphColor, qreal dpr, bool prev)
     QPolygonF tri;
     QRectF bar;
     if (prev) {
-        tri << QPointF(kIconSize - 5, 3)
-            << QPointF(kIconSize - 5, kIconSize - 3)
-            << QPointF(7, kIconSize / 2.0);
-        bar = QRectF(3, 3, 2, kIconSize - 6);
+        tri << QPointF(kiconSize - 5, 3)
+            << QPointF(kiconSize - 5, kiconSize - 3)
+            << QPointF(7, kiconSize / 2.0);
+        bar = QRectF(3, 3, 2, kiconSize - 6);
     } else {
-        tri << QPointF(5, 3) << QPointF(5, kIconSize - 3)
-            << QPointF(kIconSize - 7, kIconSize / 2.0);
-        bar = QRectF(kIconSize - 5, 3, 2, kIconSize - 6);
+        tri << QPointF(5, 3) << QPointF(5, kiconSize - 3)
+            << QPointF(kiconSize - 7, kiconSize / 2.0);
+        bar = QRectF(kiconSize - 5, 3, 2, kiconSize - 6);
     }
     p.drawPolygon(tri);
     p.drawRect(bar);
@@ -86,9 +86,9 @@ QIcon makeStepIcon(const QColor& glyphColor, qreal dpr, bool prev)
     return icon;
 }
 
-QIcon makePauseIcon(const QColor& glyphColor, qreal dpr)
+QIcon make_pause_icon(const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -96,8 +96,8 @@ QIcon makePauseIcon(const QColor& glyphColor, qreal dpr)
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
-    p.drawRect(QRectF(4, 3, 4, kIconSize - 6));
-    p.drawRect(QRectF(kIconSize - 8, 3, 4, kIconSize - 6));
+    p.drawRect(QRectF(4, 3, 4, kiconSize - 6));
+    p.drawRect(QRectF(kiconSize - 8, 3, 4, kiconSize - 6));
 
     p.end();
     QIcon icon;
@@ -106,9 +106,9 @@ QIcon makePauseIcon(const QColor& glyphColor, qreal dpr)
 }
 
 // "Show all frames": three small stacked rectangles, filmstrip-style.
-QIcon makeFilmstripIcon(const QColor& glyphColor, qreal dpr)
+QIcon make_filmstrip_icon(const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -119,9 +119,9 @@ QIcon makeFilmstripIcon(const QColor& glyphColor, qreal dpr)
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
 
-    const qreal w = (kIconSize - 6) / 3.0;
+    const qreal w = (kiconSize - 6) / 3.0;
     for (int i = 0; i < 3; ++i) {
-        p.drawRect(QRectF(3 + i * w, 4, w - 2, kIconSize - 8));
+        p.drawRect(QRectF(3 + i * w, 4, w - 2, kiconSize - 8));
     }
 
     p.end();
@@ -158,7 +158,7 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
         b->setToolTip(tooltip);
         b->setCheckable(checkable);
         b->setAutoRaise(true);
-        b->setFixedSize(kButtonSize, kButtonSize);
+        b->setFixedSize(kbuttonSize, kbuttonSize);
         b->setFocusPolicy(Qt::NoFocus);
         lay->addWidget(b);
         return b;
@@ -172,7 +172,7 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     speedBtn_->setFixedSize(speedBtn_->fontMetrics().horizontalAdvance(
                                 QStringLiteral("x0.25"))
                                 + 16,
-                            kButtonSize);
+                            kbuttonSize);
     speedBtn_->setText(QStringLiteral("x1"));
 
     prevBtn_ = makeButton(tr("Previous frame"), false);
@@ -216,18 +216,18 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
         if (item_) {
             item_->toggle_play_pause();
         }
-        updatePlayPauseIcon_();
+        update_play_pause_icon();
     });
     connect(speedBtn_,
             &QToolButton::clicked,
             this,
-            &GifPlaybackToolbar::showSpeedPopup_);
+            &GifPlaybackToolbar::show_speed_popup);
     connect(framesBtn_,
             &QToolButton::clicked,
             this,
-            &GifPlaybackToolbar::toggleFilmstrip_);
+            &GifPlaybackToolbar::toggle_filmstrip);
 
-    restyleFromPreset();
+    restyle_from_preset();
 }
 
 void GifPlaybackToolbar::attach(GifItem* item)
@@ -243,34 +243,34 @@ void GifPlaybackToolbar::attach(GifItem* item)
             connect(item_->movie(),
                     &QMovie::frameChanged,
                     this,
-                    &GifPlaybackToolbar::onFrameChanged_);
+                    &GifPlaybackToolbar::on_frame_changed);
         }
-        updatePlayPauseIcon_();
-        updateSpeedLabel_();
+        update_play_pause_icon();
+        update_speed_label();
     }
 }
 
-void GifPlaybackToolbar::onFrameChanged_(int frame)
+void GifPlaybackToolbar::on_frame_changed(int frame)
 {
     Q_UNUSED(frame);
-    updatePlayPauseIcon_();
+    update_play_pause_icon();
     if (filmstrip_->isVisible()) {
-        rebuildFilmstrip_(); // cheap enough - just re-highlights the current thumbnail
+        rebuild_filmstrip(); // cheap enough - just re-highlights the current thumbnail
     }
 }
 
-void GifPlaybackToolbar::updatePlayPauseIcon_()
+void GifPlaybackToolbar::update_play_pause_icon()
 {
     if (!item_) {
         return;
     }
     const qreal dpr = devicePixelRatioF();
     playPauseBtn_->setIcon(item_->is_playing()
-                               ? makePauseIcon(iconGlyphColor_, dpr)
-                               : makeTriangleIcon(iconGlyphColor_, dpr, false));
+                               ? make_pause_icon(iconGlyphColor_, dpr)
+                               : make_triangle_icon(iconGlyphColor_, dpr, false));
 }
 
-void GifPlaybackToolbar::updateSpeedLabel_()
+void GifPlaybackToolbar::update_speed_label()
 {
     if (!item_) {
         return;
@@ -280,7 +280,7 @@ void GifPlaybackToolbar::updateSpeedLabel_()
     speedBtn_->setText(QStringLiteral("x%1").arg(text));
 }
 
-void GifPlaybackToolbar::showSpeedPopup_()
+void GifPlaybackToolbar::show_speed_popup()
 {
     if (!item_) {
         return;
@@ -309,7 +309,7 @@ void GifPlaybackToolbar::showSpeedPopup_()
         this->speedPopup_ = nullptr;
     });
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -352,7 +352,7 @@ void GifPlaybackToolbar::showSpeedPopup_()
             if (item_) {
                 item_->set_speed_percent(percent);
             }
-            updateSpeedLabel_();
+            update_speed_label();
             popup->close();
         });
     }
@@ -364,10 +364,10 @@ void GifPlaybackToolbar::showSpeedPopup_()
     popup->show();
 }
 
-void GifPlaybackToolbar::toggleFilmstrip_()
+void GifPlaybackToolbar::toggle_filmstrip()
 {
     if (framesBtn_->isChecked()) {
-        rebuildFilmstrip_();
+        rebuild_filmstrip();
         filmstrip_->show();
     } else {
         filmstrip_->hide();
@@ -381,7 +381,7 @@ void GifPlaybackToolbar::toggleFilmstrip_()
     adjustSize();
 }
 
-void GifPlaybackToolbar::rebuildFilmstrip_()
+void GifPlaybackToolbar::rebuild_filmstrip()
 {
     if (!item_) {
         return;
@@ -398,7 +398,7 @@ void GifPlaybackToolbar::rebuildFilmstrip_()
     for (int i = 0; i < thumbs.size(); ++i) {
         auto* btn = new QToolButton(filmstrip_);
         btn->setIcon(QIcon(thumbs.at(i)));
-        btn->setIconSize(QSize(kThumbSize, kThumbSize));
+        btn->setIconSize(QSize(kthumbSize, kthumbSize));
         btn->setText(QString::number(i + 1));
         btn->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
         btn->setCheckable(true);
@@ -418,19 +418,19 @@ void GifPlaybackToolbar::rebuildFilmstrip_()
 void GifPlaybackToolbar::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    emit geometryChanged();
+    emit geometry_changed();
 }
 
-void GifPlaybackToolbar::positionControlsRow(int desiredCenterX)
+void GifPlaybackToolbar::position_controls_row(int desiredCenterX)
 {
     int x = desiredCenterX - controlsRow_->width() / 2;
     x = qBound(0, x, qMax(0, width() - controlsRow_->width()));
     controlsRow_->move(x, controlsRow_->y());
 }
 
-void GifPlaybackToolbar::restyleFromPreset()
+void GifPlaybackToolbar::restyle_from_preset()
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -471,8 +471,8 @@ void GifPlaybackToolbar::restyleFromPreset()
                            background.name()));
 
     const qreal dpr = devicePixelRatioF();
-    prevBtn_->setIcon(makeStepIcon(iconGlyphColor_, dpr, /*prev=*/true));
-    nextBtn_->setIcon(makeStepIcon(iconGlyphColor_, dpr, /*prev=*/false));
-    framesBtn_->setIcon(makeFilmstripIcon(iconGlyphColor_, dpr));
-    updatePlayPauseIcon_();
+    prevBtn_->setIcon(make_step_icon(iconGlyphColor_, dpr, /*prev=*/true));
+    nextBtn_->setIcon(make_step_icon(iconGlyphColor_, dpr, /*prev=*/false));
+    framesBtn_->setIcon(make_filmstrip_icon(iconGlyphColor_, dpr));
+    update_play_pause_icon();
 }

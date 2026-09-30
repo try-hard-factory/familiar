@@ -15,14 +15,14 @@
 #include <QWindow>
 
 namespace {
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
 
 // Items/image_storage_format's own values ("best"/"png"/"jpg" - see
 // core/settings.cpp) - this setting has no dedicated UI row of its own
 // (dropped during an earlier settings-window redesign, see
 // ui/settings_window.cpp's own comment on that), so this dialog is the
 // only place that currently surfaces it to the user at all.
-QString storageFormatLabel(const QString& format)
+QString storage_format_label(const QString& format)
 {
     if (format == QLatin1String("png")) {
         return QStringLiteral("PNG");
@@ -57,7 +57,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -71,9 +71,9 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     topRow->setSpacing(12);
 
     auto* iconLabel = new QLabel(this);
-    iconLabel->setFixedSize(kIconSize, kIconSize);
+    iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
-        familiar::dialog_style::severityIcon(QMessageBox::Information,
+        familiar::dialog_style::severity_icon(QMessageBox::Information,
                                              accent,
                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
@@ -115,8 +115,8 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     // there's already a title+icon here to anchor it).
     auto* formatChip = new QLabel(this);
     const QString sourceExt = QFileInfo(filename).suffix().toUpper();
-    const QString targetFormat = storageFormatLabel(
-        SettingsHandler::getInstance()->imageStorageFormat());
+    const QString targetFormat = storage_format_label(
+        SettingsHandler::get_instance()->image_storage_format());
     formatChip->setText(tr("Format: %1 → %2").arg(sourceExt, targetFormat));
     formatChip->setStyleSheet(
         QStringLiteral("QLabel { background: %1; border-radius: 6px; "
@@ -152,7 +152,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     buttonRow->addStretch();
 
     auto* keepOriginalBtn = new QPushButton(tr("Keep original"), this);
-    familiar::dialog_style::styleSecondaryButton(keepOriginalBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(keepOriginalBtn, textColor, border);
     connect(keepOriginalBtn, &QPushButton::clicked, this, [this]() {
         choice_ = RawImportChoice::KeepOriginal;
         accept();
@@ -160,7 +160,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     buttonRow->addWidget(keepOriginalBtn);
 
     auto* optimizeBtn = new QPushButton(tr("Optimize image"), this);
-    familiar::dialog_style::stylePrimaryButton(optimizeBtn, accent);
+    familiar::dialog_style::style_primary_button(optimizeBtn, accent);
     connect(optimizeBtn, &QPushButton::clicked, this, [this]() {
         choice_ = RawImportChoice::Optimize;
         accept();
@@ -170,22 +170,22 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     outer->addLayout(buttonRow);
 
     setStyleSheet(
-        familiar::dialog_style::panelStyleSheet("RawImportDialog",
+        familiar::dialog_style::panel_style_sheet("RawImportDialog",
                                                 background,
                                                 border,
                                                 textColor,
                                                 /*radiusPx=*/0)
-        + familiar::dialog_style::closeButtonStyleSheet("ridCloseBtn",
+        + familiar::dialog_style::close_button_style_sheet("ridCloseBtn",
                                                         textColor,
                                                         accent));
 }
 
-bool RawImportDialog::applyToQueue() const
+bool RawImportDialog::apply_to_queue() const
 {
     return applyToQueueCheckbox_->isChecked();
 }
 
-bool RawImportDialog::rememberChoice() const
+bool RawImportDialog::remember_choice() const
 {
     return rememberCheckbox_->isChecked();
 }

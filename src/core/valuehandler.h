@@ -111,7 +111,7 @@ public:
     QString expected() override;
 
 private:
-    int m_min, m_max, m_def;
+    int mMin_, mMax_, mDef_;
 };
 
 class KeySequence : public ValueHandler
@@ -140,7 +140,7 @@ public:
     QString expected() override;
 
 private:
-    QColor m_def;
+    QColor mDef_;
 };
 
 class ColorList : public ValueHandler
@@ -154,7 +154,7 @@ public:
     QString expected() override;
 
 private:
-    QMap<int, QColor> m_def;
+    QMap<int, QColor> mDef_;
 };
 
 class OpacityList : public ValueHandler
@@ -168,7 +168,7 @@ public:
     QString expected() override;
 
 private:
-    QMap<int, int> m_def;
+    QMap<int, int> mDef_;
 };
 
 #endif // VALUEHANDLER_H

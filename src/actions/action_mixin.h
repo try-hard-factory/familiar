@@ -43,9 +43,9 @@ public:
         contextMenu_ = new QMenu(static_cast<T*>(this));
         toplevelMenus_.clear();
         actionGroups_.clear();
-        _create_actions();
-        _create_menu(contextMenu_, menuStructure());
-        fireInitialCheckableCallbacks_();
+        create_actions();
+        create_menu(contextMenu_, menu_structure());
+        fire_initial_checkable_callbacks();
 
         // The main window is a translucent/frameless overlay
         // (Qt::WA_TranslucentBackground in MainWindow); QMenu is its own
@@ -53,11 +53,11 @@ public:
         // without it the popup gets no alpha channel and paints as solid
         // black instead of the intended (semi-)transparent look.
         contextMenu_->setAttribute(Qt::WA_TranslucentBackground);
-        contextMenu_->setStyleSheet(menuStyleSheet_());
+        contextMenu_->setStyleSheet(menu_style_sheet());
     }
 
     // Rebuild the "Open Recent" submenu (call after recent-files list changes).
-    void update_menu_and_actions() { _build_recent_files(); }
+    void update_menu_and_actions() { build_recent_files(); }
 
     QMenuBar* create_menubar()
     {
@@ -85,7 +85,7 @@ public:
         if (!contextMenu_) {
             return;
         }
-        const QString sheet = menuStyleSheet_();
+        const QString sheet = menu_style_sheet();
         contextMenu_->setStyleSheet(sheet);
         for (QMenu* sub : contextMenu_->findChildren<QMenu*>()) {
             sub->setStyleSheet(sheet);
@@ -96,10 +96,10 @@ private:
     // QMenu paints its own popup window (no inherited widget background),
     // so give it an explicit stylesheet built from the current color
     // preset instead of leaving it to render with nothing but text.
-    QString menuStyleSheet_() const
+    QString menu_style_sheet() const
     {
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
         QColor text = colorPreset[EPresetsColorIdx::kTextColor];
         QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -157,7 +157,7 @@ private:
     }
 
     // TODOLATER:
-    void _init_action_checkable(Action* action, QAction* qaction)
+    void init_action_checkable(Action* action, QAction* qaction)
     {
         qaction->setCheckable(true);
 
@@ -166,12 +166,12 @@ private:
         qaction->setChecked(defaultChecked);
 
         if (!settingsKey.isEmpty()) {
-            const bool val = SettingsHandler::getInstance()
-                                 ->actionState(settingsKey, defaultChecked)
+            const bool val = SettingsHandler::get_instance()
+                                 ->action_state(settingsKey, defaultChecked)
                                  .toBool();
             qaction->setChecked(val);
             QObject::connect(qaction, &QAction::toggled, [settingsKey](bool v) {
-                SettingsHandler::getInstance()->setActionState(settingsKey, v);
+                SettingsHandler::get_instance()->set_action_state(settingsKey, v);
             });
         }
 
@@ -189,9 +189,9 @@ private:
         }
     }
 
-    void _create_actions()
+    void create_actions()
     {
-        for (Action* action : getActions().all()) {
+        for (Action* action : get_actions().all()) {
             QAction* qaction = new QAction(action->text, static_cast<T*>(this));
             qaction->setAutoRepeat(false);
 
@@ -205,7 +205,7 @@ private:
             }
 
             if (action->checkable) {
-                _init_action_checkable(action, qaction);
+                init_action_checkable(action, qaction);
             } else if (!action->callback.isEmpty()) {
                 const QByteArray cb = action->callback.toUtf8();
                 QObject::connect(qaction,
@@ -239,9 +239,9 @@ private:
     // contextMenu_ - see _init_action_checkable() for why firing any
     // earlier breaks callbacks like on_action_show_menubar. Our take on
     // Python's _post_create_functions loop in build_menu_and_actions().
-    void fireInitialCheckableCallbacks_()
+    void fire_initial_checkable_callbacks()
     {
-        for (Action* action : getActions().all()) {
+        for (Action* action : get_actions().all()) {
             if (action->checkable && !action->callback.isEmpty()
                 && action->qaction) {
                 QMetaObject::invokeMethod(static_cast<T*>(this),
@@ -253,12 +253,12 @@ private:
         }
     }
 
-    void _create_menu(QMenu* menu, const QList<MenuNode>& nodes)
+    void create_menu(QMenu* menu, const QList<MenuNode>& nodes)
     {
         for (const MenuNode& node : nodes) {
             switch (node.type) {
             case MenuNode::Type::Action:
-                if (Action* a = getActions().find(node.id)) {
+                if (Action* a = get_actions().find(node.id)) {
                     menu->addAction(a->qaction);
                 }
                 break;
@@ -268,32 +268,35 @@ private:
             case MenuNode::Type::Submenu: {
                 QMenu* sub = menu->addMenu(node.label);
                 sub->setAttribute(Qt::WA_TranslucentBackground);
-                sub->setStyleSheet(menuStyleSheet_());
+                sub->setStyleSheet(menu_style_sheet());
                 if (menu == contextMenu_) {
                     toplevelMenus_.append(sub);
                 }
-                _create_menu(sub, node.children);
+                create_menu(sub, node.children);
                 break;
             }
             case MenuNode::Type::Dynamic:
-                _build_recent_files(menu);
+                build_recent_files(menu);
+                break;
+            default:
+                // TODOLATER: unreachable?
                 break;
             }
         }
     }
 
-    void _build_recent_files(QMenu* menu = nullptr)
+    void build_recent_files(QMenu* menu = nullptr)
     {
         if (menu) {
             recentFilesSubmenu_ = menu;
         }
-        _clear_recent_files();
+        clear_recent_files();
 
         if (!recentFilesSubmenu_) {
             return;
         }
 
-        const QStringList files = SettingsHandler::getInstance()->getRecentFiles(
+        const QStringList files = SettingsHandler::get_instance()->get_recent_files(
             /*existingOnly=*/true);
 
         for (int i = 0; i < 10; ++i) {
@@ -310,14 +313,14 @@ private:
                                     {},
                                     true,
                                     QStringLiteral("_build_recent_files"));
-            getActions().add(a);
+            get_actions().add(a);
 
             if (i < files.size()) {
                 const QString filename = files[i];
                 QAction* qa = new QAction(QFileInfo(filename).fileName(),
                                           static_cast<T*>(this));
 
-                const QStringList sc = getActions()[aid].get_shortcuts();
+                const QStringList sc = get_actions()[aid].get_shortcuts();
                 QList<QKeySequence> seqs;
                 for (const QString& s : sc) {
                     seqs.append(QKeySequence(s));
@@ -335,13 +338,13 @@ private:
                                          Q_ARG(QString, filename));
                                  });
                 static_cast<T*>(this)->addAction(qa);
-                getActions()[aid].qaction = qa;
+                get_actions()[aid].qaction = qa;
                 recentFilesSubmenu_->addAction(qa);
             }
         }
     }
 
-    void _clear_recent_files()
+    void clear_recent_files()
     {
         if (!recentFilesSubmenu_) {
             return;
@@ -351,9 +354,9 @@ private:
         }
         recentFilesSubmenu_->clear();
 
-        for (const QString& k : getActions().keys()) {
+        for (const QString& k : get_actions().keys()) {
             if (k.startsWith(QLatin1String("recent_files_"))) {
-                getActions()[k].qaction = nullptr;
+                get_actions()[k].qaction = nullptr;
             }
         }
     }

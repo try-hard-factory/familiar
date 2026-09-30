@@ -12,7 +12,7 @@ class QAction;
 
 struct Action
 {
-    static constexpr const char* SETTINGS_GROUP = "Actions";
+    static constexpr const char* ksettingsGroup = "Actions";
 
     QString id;
     QString text;
@@ -39,21 +39,21 @@ struct Action
                        const QString& menuId = {});
 
     QStringList get_shortcuts() const;
-    void setShortcuts(const QStringList& values);
-    QKeySequence getKeySequence(int index) const;
-    bool shortcutsChanged() const;
-    QString getDefaultShortcut(int index) const;
+    void set_shortcuts(const QStringList& values);
+    QKeySequence get_key_sequence(int index) const;
+    bool shortcuts_changed() const;
+    QString get_default_shortcut(int index) const;
 
     // Mouse-chord and mixed mouse+key aliases - a separate, additive
     // store (key "Actions/<id>_mouse") from the plain keyboard shortcuts
     // above; dispatched by ActionMouseDispatcher (actions/
     // action_mouse_dispatch.h), not by Qt's native QAction::setShortcuts().
     QList<Binding> get_mouse_bindings() const;
-    void setMouseBindings(const QList<Binding>& values);
+    void set_mouse_bindings(const QList<Binding>& values);
 
     // text with the Qt mnemonic marker stripped - a lone '&' is removed,
     // but '&&' (escaped, meant to display as a literal '&') is kept.
-    QString displayText() const;
+    QString display_text() const;
 };
 
 // Insertion-ordered registry (QMap for O(log n) lookup, QList for order).
@@ -70,11 +70,11 @@ public:
 
     // Action (other than excludeId) whose shortcuts already contain
     // `shortcut`, or nullptr if none.
-    Action* findByShortcut(const QString& excludeId, const QString& shortcut);
+    Action* find_by_shortcut(const QString& excludeId, const QString& shortcut);
 
     // Action (other than excludeId) whose mouse bindings already use the
     // same button+modifiers as `candidate`, or nullptr if none.
-    Action* findByMouseBinding(const QString& excludeId,
+    Action* find_by_mouse_binding(const QString& excludeId,
                                const Binding& candidate);
 
 private:
@@ -83,4 +83,4 @@ private:
 };
 
 // Global singleton registry populated at first call.
-ActionRegistry& getActions();
+ActionRegistry& get_actions();

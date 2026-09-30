@@ -5,7 +5,7 @@
 
 namespace {
 
-bool sameModifiers(const QStringList& a, const QStringList& b)
+bool same_modifiers(const QStringList& a, const QStringList& b)
 {
     return QSet<QString>(a.begin(), a.end())
            == QSet<QString>(b.begin(), b.end());
@@ -41,14 +41,14 @@ Action Action::make(const QString& id,
 
 QStringList Action::get_shortcuts() const
 {
-    return SettingsHandler::getInstance()
-        ->getShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, shortcuts);
+    return SettingsHandler::get_instance()
+        ->get_shortcuts(QString::fromLatin1(ksettingsGroup), id, shortcuts);
 }
 
-void Action::setShortcuts(const QStringList& values)
+void Action::set_shortcuts(const QStringList& values)
 {
-    SettingsHandler::getInstance()
-        ->setShortcuts(QString::fromLatin1(SETTINGS_GROUP), id, values);
+    SettingsHandler::get_instance()
+        ->set_shortcuts(QString::fromLatin1(ksettingsGroup), id, values);
     if (qaction) {
         QList<QKeySequence> seqs;
         for (const QString& s : values) {
@@ -58,7 +58,7 @@ void Action::setShortcuts(const QStringList& values)
     }
 }
 
-QKeySequence Action::getKeySequence(int index) const
+QKeySequence Action::get_key_sequence(int index) const
 {
     const QStringList sc = get_shortcuts();
     if (index < sc.size()) {
@@ -67,12 +67,12 @@ QKeySequence Action::getKeySequence(int index) const
     return {};
 }
 
-bool Action::shortcutsChanged() const
+bool Action::shortcuts_changed() const
 {
     return get_shortcuts() != shortcuts;
 }
 
-QString Action::getDefaultShortcut(int index) const
+QString Action::get_default_shortcut(int index) const
 {
     if (index < shortcuts.size()) {
         return shortcuts[index];
@@ -83,7 +83,7 @@ QString Action::getDefaultShortcut(int index) const
 QList<Binding> Action::get_mouse_bindings() const
 {
     const QStringList serialized
-        = KeyboardSettings().getList(QString::fromLatin1(SETTINGS_GROUP),
+        = KeyboardSettings().get_list(QString::fromLatin1(ksettingsGroup),
                                      id + QStringLiteral("_mouse"),
                                      {});
     QList<Binding> out;
@@ -93,19 +93,19 @@ QList<Binding> Action::get_mouse_bindings() const
     return out;
 }
 
-void Action::setMouseBindings(const QList<Binding>& values)
+void Action::set_mouse_bindings(const QList<Binding>& values)
 {
     QStringList serialized;
     for (const Binding& b : values) {
         serialized.append(b.serialize());
     }
-    KeyboardSettings().setList(QString::fromLatin1(SETTINGS_GROUP),
+    KeyboardSettings().set_list(QString::fromLatin1(ksettingsGroup),
                                id + QStringLiteral("_mouse"),
                                serialized,
                                {});
 }
 
-QString Action::displayText() const
+QString Action::display_text() const
 {
     QString t = text;
     t.replace(QLatin1String("&&"), QLatin1String("\x01"));
@@ -157,7 +157,7 @@ QList<Action*> ActionRegistry::all()
     return result;
 }
 
-Action* ActionRegistry::findByShortcut(const QString& excludeId,
+Action* ActionRegistry::find_by_shortcut(const QString& excludeId,
                                        const QString& shortcut)
 {
     if (shortcut.isEmpty()) {
@@ -174,7 +174,7 @@ Action* ActionRegistry::findByShortcut(const QString& excludeId,
     return nullptr;
 }
 
-Action* ActionRegistry::findByMouseBinding(const QString& excludeId,
+Action* ActionRegistry::find_by_mouse_binding(const QString& excludeId,
                                            const Binding& candidate)
 {
     if (candidate.mouseButton.isEmpty()) {
@@ -186,7 +186,7 @@ Action* ActionRegistry::findByMouseBinding(const QString& excludeId,
         }
         for (const Binding& b : a->get_mouse_bindings()) {
             if (b.mouseButton == candidate.mouseButton
-                && sameModifiers(b.mouseModifiers, candidate.mouseModifiers)) {
+                && same_modifiers(b.mouseModifiers, candidate.mouseModifiers)) {
                 return a;
             }
         }
@@ -201,7 +201,7 @@ QStringList ActionRegistry::keys() const
 
 // ─── Global actions registry ──────────────────────────────────────────────────
 
-static ActionRegistry buildRegistry()
+static ActionRegistry build_registry()
 {
     using A = Action;
     ActionRegistry r;
@@ -546,8 +546,8 @@ static ActionRegistry buildRegistry()
     return r;
 }
 
-ActionRegistry& getActions()
+ActionRegistry& get_actions()
 {
-    static ActionRegistry inst = buildRegistry();
+    static ActionRegistry inst = build_registry();
     return inst;
 }

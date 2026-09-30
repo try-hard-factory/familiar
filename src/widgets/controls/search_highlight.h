@@ -9,12 +9,13 @@
 // Keyboard Shortcuts row list (bindings_tree_widget.cpp) and the
 // settings-window category sidebar (ui/settings_window.cpp), which
 // both bold the matched substring of whatever the search box found.
-inline QString highlightSearchMatch(const QString& text, const QString& query)
+inline QString highlight_search_match(const QString& text, const QString& query)
 {
     if (query.isEmpty()) {
         return text.toHtmlEscaped();
     }
-    const int idx = text.indexOf(query, 0, Qt::CaseInsensitive);
+    const int idx
+        = static_cast<int>(text.indexOf(query, 0, Qt::CaseInsensitive));
     if (idx < 0) {
         return text.toHtmlEscaped();
     }

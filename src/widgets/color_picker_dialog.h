@@ -23,11 +23,11 @@ class SvPicker : public QWidget
 public:
     explicit SvPicker(QWidget* parent = nullptr);
 
-    void setHue(int hue);
-    void setSv(qreal s, qreal v);
+    void set_hue(int hue);
+    void set_sv(qreal s, qreal v);
 
 signals:
-    void svChanged(qreal s, qreal v);
+    void sv_changed(qreal s, qreal v);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -35,7 +35,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
-    void pick_(const QPoint& pos);
+    void pick(const QPoint& pos);
 
     int hue_ = 0;
     qreal s_ = 0.0;
@@ -51,11 +51,11 @@ class HueSlider : public QWidget
 public:
     explicit HueSlider(QWidget* parent = nullptr);
 
-    void setHue(int hue);
+    void set_hue(int hue);
     int hue() const { return hue_; }
 
 signals:
-    void hueChanged(int hue);
+    void hue_changed(int hue);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -63,7 +63,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
-    void pick_(const QPoint& pos);
+    void pick(const QPoint& pos);
 
     int hue_ = 0;
 };
@@ -80,11 +80,11 @@ class AlphaSlider : public QWidget
 public:
     explicit AlphaSlider(QWidget* parent = nullptr);
 
-    void setRgb(const QColor& rgb);
-    void setAlpha(int alpha);
+    void set_rgb(const QColor& rgb);
+    void set_alpha(int alpha);
 
 signals:
-    void alphaChanged(int alpha);
+    void alpha_changed(int alpha);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -92,7 +92,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
 private:
-    void pick_(const QPoint& pos);
+    void pick(const QPoint& pos);
 
     QColor rgb_ = Qt::red;
     int alpha_ = 255;
@@ -109,18 +109,18 @@ class SwatchRow : public QWidget
 public:
     SwatchRow(bool withNone, const QColor& accent, QWidget* parent = nullptr);
 
-    void setCurrent(const QColor& color);
+    void set_current(const QColor& color);
 
 signals:
-    void swatchPicked(QColor color);
+    void swatch_picked(QColor color);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    QRectF cellRect_(int index) const;
-    int swatchAt_(const QPoint& pos) const;
+    QRectF cell_rect(int index) const;
+    int swatch_at(const QPoint& pos) const;
 
     QList<QColor> colors_; // colors_[0] is the "none" swatch iff withNone_
     bool withNone_;
@@ -138,10 +138,10 @@ public:
                       const QString& title,
                       bool withAlpha = true);
 
-    QColor selectedColor() const { return current_; }
+    QColor selected_color() const { return current_; }
 
 signals:
-    void colorChanged(QColor color);
+    void color_changed(QColor color);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
@@ -151,7 +151,7 @@ private:
     // control the user is actively dragging/typing into doesn't fight
     // its own edit mid-keystroke (same reentrancy concern as any
     // multi-widget synced-state UI).
-    void setColor_(const QColor& color, QObject* source);
+    void set_color(const QColor& color, QObject* source);
 
     QColor current_;
     bool withAlpha_;
@@ -169,7 +169,7 @@ private:
 // (ui/group_toolbar.cpp, ui/text_edit_toolbar.cpp) - modal, returns the
 // picked color, or an invalid QColor if cancelled - same semantics as
 // the QColorDialog-based versions it replaces.
-QColor showColorPickerDialog(QWidget* parent,
+QColor show_color_picker_dialog(QWidget* parent,
                              const QColor& initial,
                              const QString& title,
                              bool withAlpha = true);

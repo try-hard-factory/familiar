@@ -158,8 +158,8 @@ public:
 class PixmapItem : public ItemMixin<PixmapItem, QGraphicsPixmapItem>
 {
 public:
-    const std::string TYPE = "pixmap"; // static constexpr
-    const qreal CROP_HANDLE_SIZE = 15; // static constexpr
+    const std::string type = "pixmap"; // static constexpr
+    const qreal cropHandleSize = 15; // static constexpr
     using ColorGamut = QMap<QPair<int, int>, int>;
     using CropHandleFn = QRectF (PixmapItem::*)() const;
     QString filename_;
@@ -201,7 +201,7 @@ public:
     {
         setPixmap(QPixmap::fromImage(image));
         reset_crop();
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
         crop_mode = false;
         init_selectable();
         // ItemPositionChange/ItemPositionHasChanged notifications are
@@ -213,7 +213,7 @@ public:
 
     bool is_image() const override { return is_image_; }
 
-    QString toString() const
+    QString to_string() const
     {
         QSize size = pixmap().size();
         return QString("Image \"%1\" %2 x %3")
@@ -230,7 +230,7 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Setting crop for {} to {}",
-                   toString(),
+                   to_string(),
                    crop);
         this->prepareGeometryChange();
         this->crop_ = crop;
@@ -238,17 +238,17 @@ public:
     }
 
     bool grayscale() const { return grayscale_; }
-    void setGrayscale(bool value)
+    void set_grayscale(bool value)
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Setting grayscale for {} to {}",
-                   toString(),
+                   to_string(),
                    value);
         grayscale_ = value;
         if (value) {
             QImage img(pixmap().size(), QImage::Format_Grayscale8);
             auto colorPreset
-                = SettingsHandler::getInstance()->getCurrentColorPreset();
+                = SettingsHandler::get_instance()->get_current_color_preset();
             img.fill(colorPreset[EPresetsColorIdx::kCanvasColor]);
             QPainter painter(&img);
             painter.drawPixmap(0, 0, pixmap());
@@ -260,7 +260,7 @@ public:
         update();
     }
     // TODOTALER: use standart type func
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
 
     QColor sample_color_at(const QPointF& pos)
     {
@@ -268,7 +268,7 @@ public:
         QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
         QImage img = pm.toImage();
 
-        QColor color = img.pixelColor((int) ipos.x(), (int) ipos.y());
+        QColor color = img.pixelColor(static_cast<int>(ipos.x()), static_cast<int>(ipos.y()));
         if (color.alpha()) {
             return color;
         }
@@ -326,7 +326,7 @@ public:
         }
     }
 
-    QUuid attachedToUid() const override { return attachedToUid_; }
+    QUuid attached_to_uid() const override { return attachedToUid_; }
     void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
     // TODOLATER: not wired up to a caller yet (batch export).
@@ -344,7 +344,7 @@ public:
     // Determines the format for storing this image.
     QString get_imgformat(const QImage& img) const
     {
-        QString formt = SettingsHandler::getInstance()->imageStorageFormat();
+        QString formt = SettingsHandler::get_instance()->image_storage_format();
 
         if (formt == QLatin1String("best")) {
             if (img.hasAlphaChannel()
@@ -358,20 +358,20 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Found format {} for {}",
                    formt,
-                   toString());
+                   to_string());
         return formt;
     }
 
-    std::pair<QByteArray, QString> pixmap_to_bytes(bool apply_grayscale = false,
-                                                   bool apply_crop = false)
+    std::pair<QByteArray, QString> pixmap_to_bytes(bool applyGrayscale = false,
+                                                   bool applyCrop = false)
     {
         QByteArray barray;
         QBuffer buffer(&barray);
         buffer.open(QIODevice::WriteOnly);
 
-        QPixmap pm = (apply_grayscale && grayscale_) ? grayscalePixmap_
+        QPixmap pm = (applyGrayscale && grayscale_) ? grayscalePixmap_
                                                      : pixmap();
-        if (apply_crop) {
+        if (applyCrop) {
             pm = pm.copy(crop_.toRect());
         }
 
@@ -407,7 +407,7 @@ public:
         item->setScale(scale());
         item->setRotation(rotation());
         item->setOpacity(opacity());
-        item->setGrayscale(grayscale_);
+        item->set_grayscale(grayscale_);
         if (flip() == -1) {
             item->do_flip();
         }
@@ -425,13 +425,11 @@ public:
         if (!colorGamut_) {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Calculating color gamut for {}",
-                       toString());
+                       to_string());
             ColorGamut gamut;
             QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
-            int step = std::max(1,
-                                static_cast<int>(
-                                    std::max(img.width(), img.height()) / 1000));
+            int step = std::max(1, std::max(img.width(), img.height()) / 1000);
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Considering every {}. row/column",
                        step);
@@ -472,7 +470,7 @@ public:
 
     qreal crop_handle_size() const
     {
-        return this->fixed_length_for_viewport(CROP_HANDLE_SIZE);
+        return this->fixed_length_for_viewport(cropHandleSize);
     }
 
     QRectF crop_handle_topleft() const
@@ -566,21 +564,21 @@ public:
 
     Qt::CursorShape get_crop_handle_cursor(CropHandleFn handle)
     {
-        bool is_topleft_or_bottomright
+        bool isTopleftOrBottomright
             = (handle == &PixmapItem::crop_handle_topleft
                || handle == &PixmapItem::crop_handle_bottomright);
-        return get_diag_cursor(is_topleft_or_bottomright);
+        return get_diag_cursor(isTopleftOrBottomright);
     }
 
     Qt::CursorShape get_crop_edge_cursor(CropHandleFn edge)
     {
-        bool top_or_bottom = (edge == &PixmapItem::crop_edge_top
+        bool topOrBottom = (edge == &PixmapItem::crop_edge_top
                               || edge == &PixmapItem::crop_edge_bottom);
 
         bool sideways = (45 < rotation() && rotation() < 135)
                         || (225 < rotation() && rotation() < 315);
 
-        return (top_or_bottom == sideways) ? Qt::SizeHorCursor
+        return (topOrBottom == sideways) ? Qt::SizeHorCursor
                                            : Qt::SizeVerCursor;
     }
 
@@ -776,8 +774,8 @@ public:
                     if (QGraphicsItem* anchor = scene->find_by_uid(
                             attachedToUid_);
                         anchor && anchor->isSelected()) {
-                        auto colorPreset = SettingsHandler::getInstance()
-                                               ->getCurrentColorPreset();
+                        auto colorPreset = SettingsHandler::get_instance()
+                                               ->get_current_color_preset();
                         QColor highlightColor
                             = colorPreset[EPresetsColorIdx::kSelectionColor];
                         highlightColor.setAlpha(230);
@@ -799,7 +797,7 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Entering crop mode on {}",
-                   toString());
+                   to_string());
         this->prepareGeometryChange();
         crop_mode = true;
         crop_temp = crop();
@@ -816,7 +814,7 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Exiting crop mode with {} on {}",
                    confirm,
-                   toString());
+                   to_string());
         if (confirm && crop() != *crop_temp) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             // TODOLATER: interface
@@ -1126,7 +1124,7 @@ protected:
 class GifItem : public PixmapItem
 {
 public:
-    const std::string TYPE = "gif"; // static constexpr
+    const std::string type = "gif"; // static constexpr
 
     explicit GifItem(const QByteArray& gifBytes,
                      const QString& filename = QString(),
@@ -1134,14 +1132,14 @@ public:
         : PixmapItem(QImage(), filename, parent)
         , gifBytes_(gifBytes)
     {
-        build_thumbnails_();
-        init_movie_(); // connects frameChanged, jumps to frame 0
+        build_thumbnails();
+        init_movie(); // connects frameChanged, jumps to frame 0
         // Base PixmapItem's ctor already ran reset_crop() against the
         // empty placeholder QImage() above - redo it now that pixmap()
         // reflects the real first frame's actual size.
         reset_crop();
         movie_->start();
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
     ~GifItem() override
@@ -1150,7 +1148,7 @@ public:
         delete gifBuffer_;
     }
 
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
 
     // See PixmapItem::caches_downscaled_render()'s own comment: this
     // item's pixmap is replaced on every animation frame (init_movie_()'s
@@ -1209,7 +1207,10 @@ public:
     // lazily determined for some formats/plugins and not reliable before
     // a full pass, so this doubles as the authoritative frame count too.
     const QList<QPixmap>& frame_thumbnails() const { return frameThumbnails_; }
-    int frame_count() const { return frameThumbnails_.size(); }
+    int frame_count() const
+    {
+        return static_cast<int>(frameThumbnails_.size());
+    }
 
     bool is_playing() const
     {
@@ -1251,7 +1252,7 @@ public:
             return;
         }
         pause();
-        const int count = frameThumbnails_.size();
+        const int count = static_cast<int>(frameThumbnails_.size());
         int next = (current_frame() + delta) % count;
         if (next < 0) {
             next += count;
@@ -1264,7 +1265,8 @@ public:
             return;
         }
         pause();
-        movie_->jumpToFrame(qBound(0, index, frameThumbnails_.size() - 1));
+        movie_->jumpToFrame(
+            qBound(0, index, static_cast<int>(frameThumbnails_.size()) - 1));
     }
     // QMovie's own convention: 100 = normal speed, 25 = x0.25, 200 = x2 -
     // matches the x0.25-x2 steps this app's own UI displays directly, no
@@ -1283,7 +1285,7 @@ private:
     // the filmstrip. QImageReader::read()/canRead() auto-advance through
     // an animated source's frames, same idiom as Qt's own animated-image
     // examples - no explicit jumpToNextImage() needed.
-    void build_thumbnails_()
+    void build_thumbnails()
     {
         QBuffer buf;
         buf.setData(gifBytes_);
@@ -1302,7 +1304,7 @@ private:
         }
     }
 
-    void init_movie_()
+    void init_movie()
     {
         gifBuffer_ = new QBuffer();
         gifBuffer_->setData(gifBytes_);
@@ -1336,7 +1338,7 @@ private:
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 {
 public:
-    const std::string TYPE = "text"; // static constexpr
+    const std::string type = "text"; // static constexpr
     bool edit_mode = false;
     QString old_html;
 
@@ -1347,24 +1349,24 @@ public:
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
-        , fill_color_(default_fill_color())
+        , fillColor_(default_fill_color())
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
 
         init_selectable();
         edit_mode = false;
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
     bool is_image() const override { return false; }
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
     // int type() const override { return 666; }
     bool is_editable() override { return true; }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("Text \"%1\"").arg(this->toPlainText().left(40));
     }
@@ -1383,8 +1385,8 @@ public:
         // fallback and greppable manifests (docs/fml_format_design.md).
         data[QStringLiteral("text")] = this->toPlainText();
         data[QStringLiteral("html")] = this->toHtml();
-        if (fill_color_ != default_fill_color()) {
-            data[QStringLiteral("fill_color")] = fill_color_.name(
+        if (fillColor_ != default_fill_color()) {
+            data[QStringLiteral("fill_color")] = fillColor_.name(
                 QColor::HexArgb);
         }
         // Manual field size from the edit-mode square handles
@@ -1416,7 +1418,7 @@ public:
         if (!fill.isEmpty()) {
             QColor c(fill);
             if (c.isValid()) {
-                fill_color_ = c;
+                fillColor_ = c;
             }
         }
         if (data.contains(QStringLiteral("field_width"))) {
@@ -1433,7 +1435,7 @@ public:
         }
     }
 
-    QColor fill_color() const { return fill_color_; }
+    QColor fill_color() const { return fillColor_; }
     void set_fill_color(const QColor& color)
     {
         // TEMPORARY debug logging (fill-color
@@ -1441,15 +1443,15 @@ public:
         // fixed.
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "set_fill_color: {},{},{},{} -> {},{},{},{}",
-                   fill_color_.red(),
-                   fill_color_.green(),
-                   fill_color_.blue(),
-                   fill_color_.alpha(),
+                   fillColor_.red(),
+                   fillColor_.green(),
+                   fillColor_.blue(),
+                   fillColor_.alpha(),
                    color.red(),
                    color.green(),
                    color.blue(),
                    color.alpha());
-        fill_color_ = color;
+        fillColor_ = color;
         update();
     }
 
@@ -1504,7 +1506,7 @@ public:
                       bool anchorRight,
                       bool anchorBottom) override
     {
-        constexpr qreal kMinFieldSize = 20.0;
+        constexpr qreal kminFieldSize = 20.0;
         this->prepareGeometryChange();
 
         const qreal oldWidth = document()->textWidth() < 0
@@ -1515,10 +1517,10 @@ public:
                                     : manualHeight_;
 
         const qreal clampedWidth = newWidth < 0 ? -1
-                                                : qMax(newWidth, kMinFieldSize);
+                                                : qMax(newWidth, kminFieldSize);
         const qreal clampedHeight = newHeight < 0
                                         ? -1
-                                        : qMax(newHeight, kMinFieldSize);
+                                        : qMax(newHeight, kminFieldSize);
 
         document()->setTextWidth(clampedWidth);
         manualHeight_ = clampedHeight;
@@ -1595,17 +1597,17 @@ public:
         // investigation) - remove once the BG/H no-op bug is confirmed
         // fixed. Throttled to once per actual value (paint() runs every
         // frame) so this doesn't flood the log.
-        if (fill_color_ != lastPaintLoggedFillColor_) {
-            lastPaintLoggedFillColor_ = fill_color_;
+        if (fillColor_ != lastPaintLoggedFillColor_) {
+            lastPaintLoggedFillColor_ = fillColor_;
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "paint(): drawing fill_color_ = {},{},{},{}",
-                       fill_color_.red(),
-                       fill_color_.green(),
-                       fill_color_.blue(),
-                       fill_color_.alpha());
+                       fillColor_.red(),
+                       fillColor_.green(),
+                       fillColor_.blue(),
+                       fillColor_.alpha());
         }
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(fill_color_));
+        painter->setBrush(QBrush(fillColor_));
         // bounding_rect_unselected(), not QGraphicsTextItem::boundingRect()
         // directly: the manual-height padding from resize_field() needs
         // to actually show up as extra colored space, not just affect
@@ -1625,8 +1627,8 @@ public:
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 if (QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
                     picture && picture->isSelected()) {
-                    auto colorPreset = SettingsHandler::getInstance()
-                                           ->getCurrentColorPreset();
+                    auto colorPreset = SettingsHandler::get_instance()
+                                           ->get_current_color_preset();
                     QColor highlightColor
                         = colorPreset[EPresetsColorIdx::kSelectionColor];
                     highlightColor.setAlpha(230);
@@ -1647,37 +1649,37 @@ public:
 
     IBaseItem* create_copy() override
     {
-        auto* new_item = new TextItem(this->toPlainText());
-        new_item->setHtml(this->toHtml());
-        new_item->set_fill_color(fill_color_);
-        new_item->document()->setTextWidth(this->document()->textWidth());
-        new_item->manualHeight_ = manualHeight_;
-        new_item->setPos(this->pos());
-        new_item->setZValue(this->zValue());
-        new_item->setScale(this->scale());
-        new_item->setRotation(this->rotation());
+        auto* newItem = new TextItem(this->toPlainText());
+        newItem->setHtml(this->toHtml());
+        newItem->set_fill_color(fillColor_);
+        newItem->document()->setTextWidth(this->document()->textWidth());
+        newItem->manualHeight_ = manualHeight_;
+        newItem->setPos(this->pos());
+        newItem->setZValue(this->zValue());
+        newItem->setScale(this->scale());
+        newItem->setRotation(this->rotation());
         if (this->flip() == -1) {
-            new_item->do_flip();
+            newItem->do_flip();
         }
         // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
         // CanvasScene::paste_from_internal_clipboard() remaps this to
         // the anchor's own copy afterward, or clears it if the anchor
         // wasn't part of this copy - see its own comment.
-        new_item->attachedToUid_ = attachedToUid_;
+        newItem->attachedToUid_ = attachedToUid_;
 
-        return new_item;
+        return newItem;
     }
 
     void enter_edit_mode()
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Entering edit mode on {}",
-                   toString());
+                   to_string());
         edit_mode = true;
         // html, not plain text: the same commit-on-exit diff also carries
         // any formatting the floating toolbar applied during the session.
         old_html = this->toHtml();
-        old_fill_color_ = fill_color_;
+        oldFillColor_ = fillColor_;
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         scene->edit_item = this;
@@ -1688,7 +1690,7 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Exiting edit mode on {}",
-                   toString());
+                   to_string());
         edit_mode = false;
         // Reset selection:
         this->setTextCursor(QTextCursor(document()));
@@ -1700,8 +1702,8 @@ public:
             scene->undo_stack_->push(new ChangeTextCommand(this,
                                                            this->toHtml(),
                                                            old_html,
-                                                           fill_color_,
-                                                           old_fill_color_));
+                                                           fillColor_,
+                                                           oldFillColor_));
             if (this->toPlainText().trimmed().isEmpty()) {
                 FLOG_DEBUG(familiar::log::Ch::Items, "Removing empty text item");
                 scene->undo_stack_->push(
@@ -1709,7 +1711,7 @@ public:
             }
         } else {
             setHtml(old_html);
-            set_fill_color(old_fill_color_);
+            set_fill_color(oldFillColor_);
         }
     }
 
@@ -1788,12 +1790,12 @@ protected:
     }
 
 public:
-    QUuid attachedToUid() const override { return attachedToUid_; }
+    QUuid attached_to_uid() const override { return attachedToUid_; }
     void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
 private:
-    QColor fill_color_;
-    QColor old_fill_color_;
+    QColor fillColor_;
+    QColor oldFillColor_;
     // TEMPORARY (see paint() above) - remove together with that logging.
     QColor lastPaintLoggedFillColor_;
     // -1 = natural (content-driven) height, matching document()->
@@ -1815,7 +1817,7 @@ private:
 class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
 {
 public:
-    const std::string TYPE = "group"; // static constexpr
+    const std::string type = "group"; // static constexpr
 
     static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
     // Visual breathing room kept between the members' own tight bounding
@@ -1828,18 +1830,18 @@ public:
     // border, regardless of how big the grouped
     // images actually are - so this is proportional to the group's own
     // content size, with a floor for tiny groups.
-    static constexpr qreal kMinPadding = 20.0;
-    static constexpr qreal kPaddingRatio = 0.03;
+    static constexpr qreal kminPadding = 20.0;
+    static constexpr qreal kpaddingRatio = 0.03;
     static qreal compute_padding(const QRectF& contentRect)
     {
-        return qMax(kMinPadding,
+        return qMax(kminPadding,
                     (contentRect.width() + contentRect.height()) / 2.0
-                        * kPaddingRatio);
+                        * kpaddingRatio);
     }
 
     GroupItem(QGraphicsRectItem* parent = nullptr)
         : ItemMixin<GroupItem, QGraphicsRectItem>(parent)
-        , fill_color_(default_fill_color())
+        , fillColor_(default_fill_color())
     {
         init_selectable();
         // ItemPositionChange/ItemPositionHasChanged notifications are
@@ -1851,16 +1853,16 @@ public:
         // init_selectable(), so every other item type's behavior/
         // performance stays exactly as before.
         this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("Group (%1 items)").arg(childIds_.size());
     }
 
     bool is_image() const override { return false; }
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
     bool is_editable() override { return false; }
     void enter_crop_mode() override
     {
@@ -1921,20 +1923,20 @@ public:
         // CanvasScene::paste_from_internal_clipboard() does that
         // remapping afterward, once every clone in the batch actually
         // exists - see its own comment for the full picture.
-        auto* new_item = new GroupItem();
-        new_item->set_local_rect(localRect_);
-        new_item->fill_color_ = fill_color_;
-        new_item->childIds_ = childIds_;
-        new_item->locked_ = locked_;
-        new_item->dragDropEnabled_ = dragDropEnabled_;
-        new_item->setPos(this->pos());
-        new_item->setZValue(this->zValue());
-        new_item->setScale(this->scale());
-        new_item->setRotation(this->rotation());
+        auto* newItem = new GroupItem();
+        newItem->set_local_rect(localRect_);
+        newItem->fillColor_ = fillColor_;
+        newItem->childIds_ = childIds_;
+        newItem->locked_ = locked_;
+        newItem->dragDropEnabled_ = dragDropEnabled_;
+        newItem->setPos(this->pos());
+        newItem->setZValue(this->zValue());
+        newItem->setScale(this->scale());
+        newItem->setRotation(this->rotation());
         if (this->flip() == -1) {
-            new_item->do_flip();
+            newItem->do_flip();
         }
-        return new_item;
+        return newItem;
     }
 
     // Membership (child_ids) + fill color + the group's own local
@@ -1952,8 +1954,8 @@ public:
             idList.append(id.toString(QUuid::WithoutBraces));
         }
         data[QStringLiteral("child_ids")] = idList;
-        if (fill_color_ != default_fill_color()) {
-            data[QStringLiteral("fill_color")] = fill_color_.name(
+        if (fillColor_ != default_fill_color()) {
+            data[QStringLiteral("fill_color")] = fillColor_.name(
                 QColor::HexArgb);
         }
         data[QStringLiteral("rect_width")] = localRect_.width();
@@ -1991,7 +1993,7 @@ public:
         if (!fill.isEmpty()) {
             QColor c(fill);
             if (c.isValid()) {
-                fill_color_ = c;
+                fillColor_ = c;
             }
         }
 
@@ -2020,10 +2022,10 @@ public:
     // CanvasScene::add_queued_items() invokes after a whole load batch.
     void invalidate_children_cache() { resolvedChildrenDirty_ = true; }
 
-    QColor fill_color() const { return fill_color_; }
+    QColor fill_color() const { return fillColor_; }
     void set_fill_color(const QColor& color)
     {
-        fill_color_ = color;
+        fillColor_ = color;
         update();
     }
 
@@ -2079,7 +2081,7 @@ public:
                            "GroupItem::keep_below_children() {} uid={} was "
                            "AT OR ABOVE its own children (z={}, min child "
                            "z={}) - correcting",
-                           toString(),
+                           to_string(),
                            uid().toString(QUuid::WithoutBraces).toStdString(),
                            this->zValue(),
                            minChildZ);
@@ -2182,13 +2184,13 @@ public:
         // position differing at the 1e-12 level). 1e-6 is far above that
         // noise floor and far below anything visually meaningful at any
         // sane zoom level.
-        constexpr qreal kEps = 1e-6;
-        const bool unchanged = qAbs(unionRect.x() - localRect_.x()) < kEps
-                               && qAbs(unionRect.y() - localRect_.y()) < kEps
+        constexpr qreal keps = 1e-6;
+        const bool unchanged = qAbs(unionRect.x() - localRect_.x()) < keps
+                               && qAbs(unionRect.y() - localRect_.y()) < keps
                                && qAbs(unionRect.width() - localRect_.width())
-                                      < kEps
+                                      < keps
                                && qAbs(unionRect.height() - localRect_.height())
-                                      < kEps;
+                                      < keps;
         if (unchanged) {
             return;
         }
@@ -2197,7 +2199,7 @@ public:
                    "GroupItem::fit_to_contain_children() {} uid={} z={} "
                    "refitting (local) {},{} {}x{} -> {},{} {}x{} ({} "
                    "children)",
-                   toString(),
+                   to_string(),
                    uid().toString(QUuid::WithoutBraces).toStdString(),
                    this->zValue(),
                    localRect_.x(),
@@ -2376,13 +2378,12 @@ public:
                                   "already a member of ANOTHER group ({}, "
                                   "uid={}) - {} is about to become a SECOND "
                                   "owner of it",
-                                   id.toString(QUuid::WithoutBraces)
-                                       .toStdString(),
-                                   otherGroup->toString(),
-                                   otherGroup->uid()
-                                       .toString(QUuid::WithoutBraces)
-                                       .toStdString(),
-                                   toString());
+                                  id.toString(QUuid::WithoutBraces).toStdString(),
+                                  otherGroup->to_string(),
+                                  otherGroup->uid()
+                                      .toString(QUuid::WithoutBraces)
+                                      .toStdString(),
+                                  to_string());
                     }
                 }
             }
@@ -2497,7 +2498,7 @@ public:
                QWidget* widget = nullptr) override
     {
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(fill_color_));
+        painter->setBrush(QBrush(fillColor_));
         painter->drawRect(bounding_rect_unselected());
 
         // Nested groups: if ANY ancestor of mine (direct parent, or
@@ -2547,7 +2548,7 @@ public:
         // opacity here since this is a border, not a translucent fill.
         if (highlighted_) {
             auto colorPreset
-                = SettingsHandler::getInstance()->getCurrentColorPreset();
+                = SettingsHandler::get_instance()->get_current_color_preset();
             QColor highlightColor
                 = colorPreset[EPresetsColorIdx::kSelectionColor];
             highlightColor.setAlpha(230);
@@ -2615,7 +2616,7 @@ protected:
                     "GroupItem::itemChange() {} uid={} ItemPositionChange "
                     "delta=({},{}) selected={} - cascading to {} "
                     "children",
-                    toString(),
+                    to_string(),
                     uid().toString(QUuid::WithoutBraces).toStdString(),
                     delta.x(),
                     delta.y(),
@@ -2679,7 +2680,7 @@ protected:
 
 private:
     QRectF localRect_;
-    QColor fill_color_;
+    QColor fillColor_;
     QList<QUuid> childIds_;
     QList<QGraphicsItem*> resolvedChildren_;
     bool resolvedChildrenDirty_ = true;
@@ -2696,7 +2697,7 @@ private:
 class ErrorItem : public ItemMixin<ErrorItem, QGraphicsTextItem>
 {
 public:
-    const std::string TYPE = "error"; // static constexpr
+    const std::string type = "error"; // static constexpr
     // The uid of the manifest item this stand-in couldn't load (see
     // docs/fml_format_design.md §5.1/§6) - preserved so a re-save doesn't
     // mint a new identity for data that's otherwise round-tripped as-is.
@@ -2710,16 +2711,16 @@ public:
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
         init_selectable();
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
     bool is_image() const override { return false; }
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
     bool is_editable() override { return false; }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("Error \"%1\"").arg(this->toPlainText().left(40));
     }
@@ -2756,12 +2757,12 @@ public:
 
     IBaseItem* create_copy() override
     {
-        auto* new_item = new ErrorItem(this->toPlainText());
-        new_item->setPos(this->pos());
-        new_item->setZValue(this->zValue());
-        new_item->setScale(this->scale());
-        new_item->setRotation(this->rotation());
-        return new_item;
+        auto* newItem = new ErrorItem(this->toPlainText());
+        newItem->setPos(this->pos());
+        newItem->setZValue(this->zValue());
+        newItem->setScale(this->scale());
+        newItem->setRotation(this->rotation());
+        return newItem;
     }
 
     // Never display error messages flipped.

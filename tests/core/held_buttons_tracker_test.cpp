@@ -32,7 +32,7 @@ TEST(HeldButtonsTrackerTest, TracksPressAndReleaseViaEventFilter)
     QCoreApplication::sendEvent(&widget, &press);
 
     EXPECT_EQ(tracker.current(), Qt::MouseButtons(Qt::LeftButton));
-    EXPECT_EQ(tracker.pressTarget(), &widget);
+    EXPECT_EQ(tracker.press_target(), &widget);
 
     QMouseEvent release(QEvent::MouseButtonRelease,
                         QPointF(0, 0),

@@ -25,21 +25,21 @@ using namespace familiar::log;
 // ExporterBase
 // ============================================================================
 
-void ExporterBase::emitBeginProcessing(ThreadedIO* worker, int total) const
+void ExporterBase::emit_begin_processing(ThreadedIO* worker, int total) const
 {
     if (worker) {
-        emit worker->beginProcessing(total);
+        emit worker->begin_processing(total);
     }
 }
 
-void ExporterBase::emitProgress(ThreadedIO* worker, int value) const
+void ExporterBase::emit_progress(ThreadedIO* worker, int value) const
 {
     if (worker) {
         emit worker->progress(value);
     }
 }
 
-void ExporterBase::emitFinished(ThreadedIO* worker,
+void ExporterBase::emit_finished(ThreadedIO* worker,
                                 const QString& target,
                                 const QStringList& errors) const
 {
@@ -48,11 +48,11 @@ void ExporterBase::emitFinished(ThreadedIO* worker,
     }
 }
 
-void ExporterBase::emitUserInputRequired(ThreadedIO* worker,
+void ExporterBase::emit_user_input_required(ThreadedIO* worker,
                                          const QString& message) const
 {
     if (worker) {
-        emit worker->userInputRequired(message);
+        emit worker->user_input_required(message);
     }
 }
 
@@ -80,7 +80,7 @@ SceneExporterBase::SceneExporterBase(CanvasScene* scene)
 // SceneToPixmapExporter
 // ============================================================================
 
-bool SceneToPixmapExporter::getUserInput(QWidget* parent)
+bool SceneToPixmapExporter::get_user_input(QWidget* parent)
 {
     SceneToPixmapExporterDialog dialog(parent, defaultSize_);
     if (dialog.exec() != QDialog::Accepted) {
@@ -90,11 +90,11 @@ bool SceneToPixmapExporter::getUserInput(QWidget* parent)
     return true;
 }
 
-QImage SceneToPixmapExporter::renderToImage() const
+QImage SceneToPixmapExporter::render_to_image() const
 {
     qreal finalMargin = margin_ * size_.width() / defaultSize_.width();
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
 
     QImage image(size_, QImage::Format_RGB32);
@@ -109,36 +109,36 @@ QImage SceneToPixmapExporter::renderToImage() const
     return image;
 }
 
-void SceneToPixmapExporter::exportTo(const QString& filename, ThreadedIO* worker)
+void SceneToPixmapExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
-    emitBeginProcessing(worker, 1);
-    QImage image = renderToImage();
+    emit_begin_processing(worker, 1);
+    QImage image = render_to_image();
 
     if (worker && worker->canceled) {
-        emitFinished(worker, filename, {});
+        emit_finished(worker, filename, {});
         return;
     }
 
     if (!image.save(filename, nullptr, 90)) {
-        emitFinished(worker, filename, {QStringLiteral("Error writing file")});
+        emit_finished(worker, filename, {QStringLiteral("Error writing file")});
         return;
     }
 
-    emitProgress(worker, 1);
-    emitFinished(worker, filename, {});
+    emit_progress(worker, 1);
+    emit_finished(worker, filename, {});
 }
 
 // ============================================================================
 // SceneToSVGExporter
 // ============================================================================
 
-bool SceneToSVGExporter::getUserInput(QWidget* /*parent*/)
+bool SceneToSVGExporter::get_user_input(QWidget* /*parent*/)
 {
     size_ = defaultSize_;
     return true;
 }
 
-QString SceneToSVGExporter::textStyles(TextItem* item) const
+QString SceneToSVGExporter::text_styles(TextItem* item) const
 {
     static const QMap<QFont::Style, QString> styleNames{
         {QFont::StyleNormal, QStringLiteral("normal")},
@@ -161,7 +161,7 @@ QString SceneToSVGExporter::textStyles(TextItem* item) const
     return styles.join(QStringLiteral(";"));
 }
 
-QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
+QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
 {
     QString output;
     QXmlStreamWriter xml(&output);
@@ -193,7 +193,7 @@ QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
         if (type == "text") {
             auto* textItem = static_cast<TextItem*>(gitem);
             xml.writeStartElement(QStringLiteral("text"));
-            xml.writeAttribute(QStringLiteral("style"), textStyles(textItem));
+            xml.writeAttribute(QStringLiteral("style"), text_styles(textItem));
             xml.writeAttribute(QStringLiteral("dominant-baseline"),
                                QStringLiteral("hanging"));
         } else if (type == "pixmap") {
@@ -251,7 +251,7 @@ QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
         }
         xml.writeEndElement(); // text | image
 
-        emitProgress(worker, i);
+        emit_progress(worker, i);
         if (worker && worker->canceled) {
             return {};
         }
@@ -262,36 +262,37 @@ QString SceneToSVGExporter::renderToSvg(ThreadedIO* worker) const
     return output;
 }
 
-void SceneToSVGExporter::exportTo(const QString& filename, ThreadedIO* worker)
+void SceneToSVGExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
-    emitBeginProcessing(worker, scene_->items_for_save().size());
-    QString svg = renderToSvg(worker);
+    emit_begin_processing(worker,
+                        static_cast<int>(scene_->items_for_save().size()));
+    QString svg = render_to_svg(worker);
 
     if (worker && worker->canceled) {
-        emitFinished(worker, filename, {});
+        emit_finished(worker, filename, {});
         return;
     }
 
     QFile file(filename);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         FLOG_WARN(Ch::IO,
-                  "SceneToSVGExporter::exportTo: could not open {}: {}",
+                  "SceneToSVGExporter::export_to: could not open {}: {}",
                   filename,
                   file.errorString());
-        emitFinished(worker, filename, {file.errorString()});
+        emit_finished(worker, filename, {file.errorString()});
         return;
     }
     file.write(svg.toUtf8());
     file.close();
 
-    emitFinished(worker, filename, {});
+    emit_finished(worker, filename, {});
 }
 
 // ============================================================================
 // createSceneExporter
 // ============================================================================
 
-std::unique_ptr<SceneExporterBase> createSceneExporter(const QString& extension,
+std::unique_ptr<SceneExporterBase> create_scene_exporter(const QString& extension,
                                                        CanvasScene* scene)
 {
     if (extension.compare(QStringLiteral("svg"), Qt::CaseInsensitive) == 0) {
@@ -321,15 +322,15 @@ ImagesToDirectoryExporter::ImagesToDirectoryExporter(
     , dirname_(dirname)
 {}
 
-void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
+void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
 {
-    int total = items_.size();
-    emitBeginProcessing(worker, total);
-    emitProgress(worker, startFrom_);
+    int total = static_cast<int>(items_.size());
+    emit_begin_processing(worker, total);
+    emit_progress(worker, startFrom_);
 
     for (int i = startFrom_; i < total; ++i) {
         if (worker && worker->canceled) {
-            emitFinished(worker, dirname_, {});
+            emit_finished(worker, dirname_, {});
             return;
         }
 
@@ -355,7 +356,7 @@ void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
         if (QFile::exists(path)) {
             if (handleExisting_.isEmpty()) {
                 startFrom_ = i;
-                emitUserInputRequired(worker, path);
+                emit_user_input_required(worker, path);
                 return;
             }
             if (handleExisting_ == QStringLiteral("skip")) {
@@ -375,15 +376,15 @@ void ImagesToDirectoryExporter::exportTo(ThreadedIO* worker)
         QFile file(path);
         if (!file.open(QIODevice::WriteOnly)
             || file.write(bytes) != bytes.size()) {
-            emitFinished(worker,
+            emit_finished(worker,
                          dirname_,
                          {QStringLiteral("Could not write %1").arg(path)});
             return;
         }
         file.close();
 
-        emitProgress(worker, i);
+        emit_progress(worker, i);
     }
 
-    emitFinished(worker, dirname_, {});
+    emit_finished(worker, dirname_, {});
 }

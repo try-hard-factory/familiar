@@ -18,33 +18,33 @@ FileActions::FileActions(MainWindow& mw)
 
 FileActions::~FileActions() {}
 
-void FileActions::newFile()
+void FileActions::new_file()
 {
-    mainwindow_.tabPane().addNewUntitledTab();
+    mainwindow_.tab_pane().add_new_untitled_tab();
 }
 
-void FileActions::openFile()
+void FileActions::open_file()
 {
     // SVG/Adobe filter entries used to be listed here too (pre-existing,
     // not something this refactor added) but loadFmlIntoCurrentTab()
     // only ever knows how to parse the .fml zip+manifest archive - a
     // raw .svg/.psd file just fails to open as one, so those filters
     // were pure misdirection.
-    const QStringList files = showOpenFilesDialog(&mainwindow_,
+    const QStringList files = show_open_files_dialog(&mainwindow_,
                                                   QObject::tr("Open"),
                                                   QDir::homePath(),
                                                   QStringLiteral(
                                                       "Familiar (*.fml)"));
     for (const QString& file : files) {
-        processOpenFile(file);
+        process_open_file(file);
     }
 }
 
-void FileActions::loadFmlIntoCurrentTab(const QString& path,
+void FileActions::load_fml_into_current_tab(const QString& path,
                                         bool markModifiedAfterLoad,
                                         const QUuid& recoveryIdToClear)
 {
-    CanvasView* canvasView = mainwindow_.tabPane().currentWidget();
+    CanvasView* canvasView = mainwindow_.tab_pane().current_widget();
     CanvasScene* scene = canvasView->scene();
 
     auto* worker = new ThreadedIO(
@@ -66,15 +66,15 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
             // trigger is QUndoStack::indexChanged (see
             // resyncActionsForTab()), which won't fire for this, so it
             // needs an explicit nudge here.
-            mainwindow_.notifyStructuralChange();
+            mainwindow_.notify_structural_change();
             // Before fit_scene(): seeds canvasRect_ from what
             // FmlArchive::load() stashed on the scene, so fit_scene()
             // has something to fall back to even if this project was
             // saved with zero items (see CanvasScene::
-            // rememberedBoundingRect()).
-            canvasView->restoreCanvasRect(scene->rememberedBoundingRect());
+            // remembered_bounding_rect()).
+            canvasView->restore_canvas_rect(scene->remembered_bounding_rect());
             canvasView->on_action_fit_scene();
-            canvasView->setModified(markModifiedAfterLoad);
+            canvasView->set_modified(markModifiedAfterLoad);
 
             // Only now - after the background read has actually
             // succeeded - is it safe to delete the recovery file it was
@@ -86,7 +86,7 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
             }
 
             if (!error.isEmpty()) {
-                showMessageBox(QMessageBox::Critical,
+                show_message_box(QMessageBox::Critical,
                                &mainwindow_,
                                QObject::tr("Could not open file"),
                                error);
@@ -96,7 +96,7 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
                 for (const QString& e : itemErrors) {
                     lines.append(QStringLiteral("<li>%1</li>").arg(e));
                 }
-                showMessageBox(QMessageBox::Warning,
+                show_message_box(QMessageBox::Warning,
                                &mainwindow_,
                                QObject::tr("Problem loading project"),
                                QObject::tr(
@@ -112,33 +112,33 @@ void FileActions::loadFmlIntoCurrentTab(const QString& path,
     worker->start();
 }
 
-void FileActions::restoreFromRecovery(const QString& recoveryFmlPath,
+void FileActions::restore_from_recovery(const QString& recoveryFmlPath,
                                       const QString& originalPath,
                                       const QUuid& recoveryId)
 {
     if (originalPath.isEmpty()) {
-        mainwindow_.tabPane().addNewUntitledTab();
+        mainwindow_.tab_pane().add_new_untitled_tab();
     } else {
-        mainwindow_.tabPane().addNewTab(originalPath);
+        mainwindow_.tab_pane().add_new_tab(originalPath);
     }
-    loadFmlIntoCurrentTab(recoveryFmlPath,
+    load_fml_into_current_tab(recoveryFmlPath,
                           /*markModifiedAfterLoad=*/true,
                           recoveryId);
 }
 
-CanvasView* FileActions::findBlankTab()
+CanvasView* FileActions::find_blank_tab()
 {
-    TabPane& tp = mainwindow_.tabPane();
+    TabPane& tp = mainwindow_.tab_pane();
     for (int i = 0; i < tp.count(); ++i) {
-        CanvasView* cv = tp.widgetAt(i);
-        if (cv->isUntitled() && !cv->isModified()) {
+        CanvasView* cv = tp.widget_at(i);
+        if (cv->is_untitled() && !cv->is_modified()) {
             return cv;
         }
     }
     return nullptr;
 }
 
-void FileActions::closeTab(CanvasView* cv)
+void FileActions::close_tab(CanvasView* cv)
 {
     // Same direct `delete` TabPane::onTabClosed() uses for its own
     // "nothing to lose" branch - Qt's QTabWidget notices the child
@@ -147,41 +147,41 @@ void FileActions::closeTab(CanvasView* cv)
     delete cv;
 }
 
-void FileActions::processOpenFile(const QString& file)
+void FileActions::process_open_file(const QString& file)
 {
     // Already open in some tab - switch to it instead of opening a
     // second copy. Was previously only checked in openFile()'s dialog
     // loop, so on_action_open_recent_file() (which calls this directly)
     // skipped it entirely.
-    int count = mainwindow_.tabPane().count();
+    int count = mainwindow_.tab_pane().count();
     for (int j = 0; j < count; ++j) {
-        if (mainwindow_.tabPane().widgetAt(j)->path() == file) {
-            mainwindow_.tabPane().setCurrentIndex(j);
+        if (mainwindow_.tab_pane().widget_at(j)->path() == file) {
+            mainwindow_.tab_pane().set_current_index(j);
             return;
         }
     }
 
-    if (mainwindow_.tabPane().currentWidget()->isUntitled()
-        && mainwindow_.tabPane().currentWidget()->isModified() == false) {
-        mainwindow_.tabPane().setCurrentTabPath(file);
-        mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(file).fileName());
-        mainwindow_.tabPane().setCurrentTabProjectName(
+    if (mainwindow_.tab_pane().current_widget()->is_untitled()
+        && mainwindow_.tab_pane().current_widget()->is_modified() == false) {
+        mainwindow_.tab_pane().set_current_tab_path(file);
+        mainwindow_.tab_pane().set_current_tab_title(QFileInfo(file).fileName());
+        mainwindow_.tab_pane().set_current_tab_project_name(
             QFileInfo(file).fileName());
     } else {
-        mainwindow_.tabPane().addNewTab(file);
+        mainwindow_.tab_pane().add_new_tab(file);
     }
 
-    loadFmlIntoCurrentTab(file);
+    load_fml_into_current_tab(file);
 
-    SettingsHandler::getInstance()->updateRecentFiles(file);
+    SettingsHandler::get_instance()->update_recent_files(file);
     mainwindow_.update_menu_and_actions();
 }
 
-int FileActions::saveFile(CanvasView* canvasView, const QString& path)
+int FileActions::save_file(CanvasView* canvasView, const QString& path)
 {
     QFile file(path);
     if (!file.exists()) {
-        return saveFileAs();
+        return save_file_as();
     }
 
     // Synchronous (not backgrounded like loadFmlIntoCurrentTab()): several
@@ -190,11 +190,11 @@ int FileActions::saveFile(CanvasView* canvasView, const QString& path)
     // save has already completed - threading it would need those flows
     // reworked to wait on ThreadedIO::finished first.
     FmlResult result = FmlArchive::save(canvasView->scene(),
-                                        canvasView->canvasRect(),
+                                        canvasView->canvas_rect(),
                                         path);
 
     if (!result.error.isEmpty()) {
-        showMessageBox(QMessageBox::Critical,
+        show_message_box(QMessageBox::Critical,
                        &mainwindow_,
                        QObject::tr("Could not save file"),
                        result.error);
@@ -206,7 +206,7 @@ int FileActions::saveFile(CanvasView* canvasView, const QString& path)
         for (const QString& e : result.itemErrors) {
             lines.append(QStringLiteral("<li>%1</li>").arg(e));
         }
-        showMessageBox(QMessageBox::Warning,
+        show_message_box(QMessageBox::Warning,
                        &mainwindow_,
                        QObject::tr("Problem saving project"),
                        QObject::tr("%1 item(s) could not be saved.<ul>%2</ul>")
@@ -221,28 +221,28 @@ int FileActions::saveFile(CanvasView* canvasView, const QString& path)
     // false) below is a redundant belt-and-suspenders default; the
     // clean-index tracking is what actually stays correct across
     // undo/redo).
-    canvasView->undoStack()->setClean();
-    canvasView->setModified(false);
+    canvasView->undo_stack()->setClean();
+    canvasView->set_modified(false);
 
     // See processOpenFile()'s comment - saveFileAs() reaches this via
     // its own call to saveFile(selected), so this covers both.
-    SettingsHandler::getInstance()->updateRecentFiles(path);
+    SettingsHandler::get_instance()->update_recent_files(path);
     mainwindow_.update_menu_and_actions();
 
     return QDialog::Accepted;
 }
 
-int FileActions::saveFile(const QString& path)
+int FileActions::save_file(const QString& path)
 {
-    return saveFile(mainwindow_.tabPane().currentWidget(), path);
+    return save_file(mainwindow_.tab_pane().current_widget(), path);
 }
 
-int FileActions::saveFile()
+int FileActions::save_file()
 {
-    return saveFile(mainwindow_.tabPane().currentWidget()->path());
+    return save_file(mainwindow_.tab_pane().current_widget()->path());
 }
 
-int FileActions::saveFileAs()
+int FileActions::save_file_as()
 {
     int retval = QDialog::Rejected;
     // showSaveFileDialog() already appends the right extension for
@@ -250,31 +250,31 @@ int FileActions::saveFileAs()
     // manually) and confirms overwrite internally. SVG/Adobe filter
     // entries removed - saveFile()/FmlArchive only ever write the .fml
     // zip+manifest format, there's no actual SVG/PSD export path here.
-    const QString selected = showSaveFileDialog(&mainwindow_,
+    const QString selected = show_save_file_dialog(&mainwindow_,
                                                 QObject::tr("Save As"),
                                                 QDir::homePath(),
                                                 QStringLiteral(
                                                     "Familiar (*.fml)"));
 
     if (!selected.isEmpty()) {
-        if (!mainwindow_.tabPane().currentWidget()->isUntitled()
-            && mainwindow_.tabPane().getCurrentTabProjectName()
+        if (!mainwindow_.tab_pane().current_widget()->is_untitled()
+            && mainwindow_.tab_pane().get_current_tab_project_name()
                    != QFileInfo(selected).fileName()) {
-            auto canvasView = mainwindow_.tabPane().currentWidget();
-            mainwindow_.tabPane().addNewTab(selected);
-            loadFmlIntoCurrentTab(canvasView->path());
+            auto canvasView = mainwindow_.tab_pane().current_widget();
+            mainwindow_.tab_pane().add_new_tab(selected);
+            load_fml_into_current_tab(canvasView->path());
         }
 
-        mainwindow_.tabPane().setCurrentTabPath(selected);
-        mainwindow_.tabPane().setCurrentTabTitle(QFileInfo(selected).fileName());
-        mainwindow_.tabPane().setCurrentTabProjectName(
+        mainwindow_.tab_pane().set_current_tab_path(selected);
+        mainwindow_.tab_pane().set_current_tab_title(QFileInfo(selected).fileName());
+        mainwindow_.tab_pane().set_current_tab_project_name(
             QFileInfo(selected).fileName());
 
         // Pre-touch the file into existence: saveFile(path) bails into
         // saveFileAs() again if the path doesn't exist yet, which would
         // recurse right back here for a genuinely new file.
         (void) QFile(selected).open(QFile::ReadWrite);
-        saveFile(selected);
+        save_file(selected);
         retval = QDialog::Accepted;
     }
 

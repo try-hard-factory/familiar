@@ -31,7 +31,7 @@ public:
     // entirely - used by a plain (non-SettingRowBase) HoverInfoLabel,
     // e.g. Keyboard Shortcuts' rows, which have no backing settings key
     // for either concept.
-    void setContent(const QString& title,
+    void set_content(const QString& title,
                     const QString& bodyHtml,
                     const QString& defaultText,
                     bool showResetHint);
@@ -64,14 +64,14 @@ class HoverInfoLabel : public QLabel
 public:
     explicit HoverInfoLabel(const QString& text, QWidget* parent = nullptr);
 
-    void setInfoText(const QString& html);
+    void set_info_text(const QString& html);
     // "Default: X" popup line - empty (the default) hides it.
-    void setDefaultText(const QString& text);
+    void set_default_text(const QString& text);
     // "Ctrl + Dbl click to restore default" popup footer hint - off by
     // default. Only SettingRowBase turns this on (see
     // SettingRowBase::refreshInfoPopup()) - the gesture doesn't mean
     // anything without a backing settings key.
-    void setShowResetHint(bool show);
+    void set_show_reset_hint(bool show);
 
 protected:
     bool event(QEvent* event) override;
@@ -114,11 +114,11 @@ public:
     // alongside a sibling (e.g. AutosaveIntervalRow while
     // AutosaveEnabledRow is unchecked) - the label should stay
     // explorable either way.
-    virtual void setControlEnabled(bool enabled) = 0;
+    virtual void set_control_enabled(bool enabled) = 0;
 
 protected:
-    virtual void setValue(const QVariant& value) = 0;
-    virtual QVariant convertValueFromQt(const QVariant& value) { return value; }
+    virtual void set_value(const QVariant& value) = 0;
+    virtual QVariant convert_value_from_qt(const QVariant& value) { return value; }
 
     // Human-readable default value for the info popup's "Default: X"
     // line. Base impl is fine for a plain scalar (IntegerSettingRow);
@@ -131,16 +131,16 @@ protected:
     // SettingRowBase's own constructor, where virtual dispatch would
     // still resolve to this base version regardless of the real type
     // under construction.
-    virtual QString defaultValueDisplayText() const;
+    virtual QString default_value_display_text() const;
 
     // Feeds label_'s popup its "Default: X" line + turns on the
     // "Ctrl + Dbl click to restore default" footer hint - see
     // defaultValueDisplayText()'s comment for why each concrete row
     // shape's constructor must call this itself, at the end of its body.
-    void refreshInfoPopup();
+    void refresh_info_popup();
 
-    void updateLabel();
-    void onValueChanged(const QVariant& value);
+    void update_label();
+    void on_value_changed(const QVariant& value);
 
     // Ctrl+double-click anywhere on the row (not already consumed by a
     // child widget, e.g. inside the spinbox's own line edit) resets just
@@ -159,7 +159,7 @@ protected:
     bool ignoreValueChanged_ = false;
 
 private slots:
-    void onRestoreDefaults();
+    void on_restore_defaults();
 };
 
 // ─── Concrete row shapes ────────────────────────────────────────────────────
@@ -179,11 +179,11 @@ public:
                              const QList<ComboOption>& options,
                              QWidget* parent = nullptr);
 
-    void setControlEnabled(bool enabled) override;
+    void set_control_enabled(bool enabled) override;
 
 protected:
-    void setValue(const QVariant& value) override;
-    QString defaultValueDisplayText() const override;
+    void set_value(const QVariant& value) override;
+    QString default_value_display_text() const override;
 
 private:
     QComboBox* input_ = nullptr;
@@ -198,7 +198,7 @@ public:
                                 const QString& key,
                                 QWidget* parent = nullptr);
 
-    void setControlEnabled(bool enabled) override;
+    void set_control_enabled(bool enabled) override;
 
 signals:
     // Same purpose as SingleCheckboxGroupWidget::toggled() used to serve
@@ -208,9 +208,9 @@ signals:
     void toggled(bool checked);
 
 protected:
-    void setValue(const QVariant& value) override;
-    QVariant convertValueFromQt(const QVariant& value) override;
-    QString defaultValueDisplayText() const override;
+    void set_value(const QVariant& value) override;
+    QVariant convert_value_from_qt(const QVariant& value) override;
+    QString default_value_display_text() const override;
 
 private:
     QCheckBox* input_ = nullptr; // actually a FlatCheckBox, see .cpp
@@ -226,10 +226,10 @@ public:
                                int max,
                                QWidget* parent = nullptr);
 
-    void setControlEnabled(bool enabled) override;
+    void set_control_enabled(bool enabled) override;
 
 protected:
-    void setValue(const QVariant& value) override;
+    void set_value(const QVariant& value) override;
 
 private:
     QSpinBox* input_ = nullptr;

@@ -34,7 +34,7 @@ class RestoreDefaultsDialog : public QDialog
 public:
     explicit RestoreDefaultsDialog(QWidget* parent = nullptr);
 
-    QList<familiar::SettingsCategory> checkedCategories() const;
+    QList<familiar::SettingsCategory> checked_categories() const;
 
     // FamSettings "Group/key" keys shown on that category's settings
     // page - empty for Colors/KeyboardShortcuts, which reset through a
@@ -44,14 +44,14 @@ public:
     // this mapping - both this dialog's own "pre-check what's actually
     // changed" logic and settings_window.cpp's real reset call this,
     // instead of keeping two copies of the same list in sync by hand.
-    static QStringList famSettingsKeysFor(familiar::SettingsCategory category);
+    static QStringList fam_settings_keys_for(familiar::SettingsCategory category);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    void onAllToggled_(int state);
-    void onCategoryToggled_();
+    void on_all_toggled(int state);
+    void on_category_toggled();
 
     QCheckBox* allCheckbox_ = nullptr;
     QMap<familiar::SettingsCategory, QCheckBox*> categoryCheckboxes_;

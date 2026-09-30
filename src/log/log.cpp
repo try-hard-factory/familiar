@@ -49,7 +49,7 @@ namespace {
 // pattern's literal text) so %(logger:<N) below pads the whole "[name]"
 // token, pushing the alignment spaces outside the closing bracket instead
 // of between the name and it.
-constexpr std::array<const char*, 10> kChannelNames = {
+constexpr std::array<const char*, 10> kchannelNames = {
     "[core]",
     "[scene]",
     "[view]",
@@ -62,9 +62,9 @@ constexpr std::array<const char*, 10> kChannelNames = {
     "[qt]",
 };
 
-std::array<quill::Logger*, kChannelNames.size()> g_loggers{};
-RingSink* g_ringSink = nullptr;
-QString g_filePath;
+std::array<quill::Logger*, kchannelNames.size()> gLoggers{};
+RingSink* gRingSink = nullptr;
+QString gFilePath;
 
 #ifdef _WIN32
 // quill's own SetUnhandledExceptionFilter (installed by
@@ -174,14 +174,14 @@ QString captureStackTrace(CONTEXT* context)
 
 LONG WINAPI writeMiniDumpAndChain(EXCEPTION_POINTERS* exceptionPointers)
 {
-    if (quill::Logger* core = channelLogger(Ch::Core)) {
+    if (quill::Logger* core = channel_logger(Ch::Core)) {
         const QString trace = captureStackTrace(
             exceptionPointers->ContextRecord);
         FLOG_CRITICAL(Ch::Core, "Crash call stack:\n{}", trace.toStdString());
         core->flush_log(0);
     }
 
-    const QString dumpDir = QFileInfo(g_filePath).absolutePath();
+    const QString dumpDir = QFileInfo(gFilePath).absolutePath();
     const QString dumpPath
         = dumpDir + QStringLiteral("/crash_")
           + QDateTime::currentDateTime().toString(
@@ -244,7 +244,7 @@ void installCrashDumpHandler()
 // "familiar.log" -> "familiar_old.log"). Falls back to a plain "_old"
 // suffix for the (currently unused) case of an extension-less --settings
 // override path.
-QString oldLogFilePath(const QString& filePath)
+QString old_log_file_path(const QString& filePath)
 {
     const QFileInfo fi(filePath);
     const QString ext = fi.suffix();
@@ -253,7 +253,7 @@ QString oldLogFilePath(const QString& filePath)
                                              + QStringLiteral("_old.") + ext);
 }
 
-bool stdoutIsTty()
+bool stdout_is_tty()
 {
 #ifdef _WIN32
     return _isatty(_fileno(stdout)) != 0;
@@ -262,14 +262,14 @@ bool stdoutIsTty()
 #endif
 }
 
-Level moreVerbose(Level a, Level b)
+Level more_verbose(Level a, Level b)
 {
     return static_cast<int>(a) < static_cast<int>(b) ? a : b;
 }
 
-void logSessionHeader(const QString& filePath)
+void log_session_header(const QString& filePath)
 {
-    quill::Logger* core = channelLogger(Ch::Core);
+    quill::Logger* core = channel_logger(Ch::Core);
     const std::string version = qApp->applicationVersion().toStdString();
     const std::string versionSuffix = version.empty() ? std::string()
                                                       : (version + " ");
@@ -291,13 +291,13 @@ void logSessionHeader(const QString& filePath)
                  geo.height(),
                  geo.x(),
                  geo.y(),
-                 double(screen->logicalDotsPerInch()));
+                 screen->logicalDotsPerInch());
     }
 }
 
 } // namespace
 
-Level levelFromName(const QString& name, Level fallback)
+Level level_from_name(const QString& name, Level fallback)
 {
     const QString upper = name.trimmed().toUpper();
     if (upper == QStringLiteral("TRACE")) {
@@ -324,7 +324,7 @@ Level levelFromName(const QString& name, Level fallback)
 
 namespace detail {
 
-quill::LogLevel toQuillLevel(Level level)
+quill::LogLevel to_quill_level(Level level)
 {
     switch (level) {
     case Level::Trace:
@@ -339,8 +339,10 @@ quill::LogLevel toQuillLevel(Level level)
         return quill::LogLevel::Error;
     case Level::Critical:
         return quill::LogLevel::Critical;
+    default:
+        // TODOLATER: unreachable?
+        return quill::LogLevel::Debug;
     }
-    return quill::LogLevel::Debug;
 }
 
 ScopeTimer::ScopeTimer(Ch channel,
@@ -348,7 +350,7 @@ ScopeTimer::ScopeTimer(Ch channel,
                        const char* file,
                        int line,
                        const char* function)
-    : logger_(channelLogger(channel))
+    : logger_(channel_logger(channel))
     , label_(label)
     , file_(file)
     , line_(line)
@@ -380,7 +382,7 @@ void init(const Options& options)
         = {"T", "T", "T", "D", "I", "N", "W", "E", "C", "B", "_", "D"};
 
     quill::SignalHandlerOptions signalOptions;
-    signalOptions.logger = kChannelNames[static_cast<size_t>(Ch::Core)];
+    signalOptions.logger = kchannelNames[static_cast<size_t>(Ch::Core)];
 
     quill::Backend::start<quill::FrontendOptions>(backendOptions, signalOptions);
 #ifdef _WIN32
@@ -389,31 +391,31 @@ void init(const Options& options)
 
     std::vector<std::shared_ptr<quill::Sink>> sinks;
 
-    if (options.console && stdoutIsTty()) {
+    if (options.console && stdout_is_tty()) {
         auto consoleSink
             = quill::Frontend::create_or_get_sink<quill::ConsoleSink>(
                 "console");
         consoleSink->set_log_level_filter(
-            detail::toQuillLevel(options.consoleLevel));
+            detail::to_quill_level(options.consoleLevel));
         sinks.push_back(std::move(consoleSink));
     }
 
     QString filePath = options.filePath;
     if (filePath.isEmpty()) {
-        QString dir = portableDataDir();
+        QString dir = portable_data_dir();
         if (dir.isEmpty()) {
             dir = QStandardPaths::writableLocation(
                 QStandardPaths::AppLocalDataLocation);
         }
         filePath = dir + "/" + qApp->applicationName() + ".log";
     }
-    g_filePath = filePath;
+    gFilePath = filePath;
 
     // Keep only the last 2 sessions' worth of logs: promote whatever the
     // previous session left behind to "_old" (dropping anything older),
     // then start this session with a fresh file - no size/count-based
     // rotation within a session, just a straight swap on launch.
-    const QString oldFilePath = oldLogFilePath(filePath);
+    const QString oldFilePath = old_log_file_path(filePath);
     QFile::remove(oldFilePath);
     QFile::rename(filePath, oldFilePath);
 
@@ -423,11 +425,11 @@ void init(const Options& options)
             cfg.set_open_mode('w');
             return cfg;
         }());
-    fileSink->set_log_level_filter(detail::toQuillLevel(options.fileLevel));
+    fileSink->set_log_level_filter(detail::to_quill_level(options.fileLevel));
     sinks.push_back(fileSink);
 
     auto ring = std::make_shared<RingSink>(options.ringCapacity);
-    g_ringSink = ring.get();
+    gRingSink = ring.get();
     sinks.push_back(std::move(ring));
 
     const quill::PatternFormatterOptions
@@ -439,23 +441,23 @@ void init(const Options& options)
 
     // Logger-level gate: the more verbose of console/file, so neither sink
     // starves - each sink still filters independently via its own level.
-    const quill::LogLevel loggerLevel = detail::toQuillLevel(
-        moreVerbose(options.consoleLevel, options.fileLevel));
+    const quill::LogLevel loggerLevel = detail::to_quill_level(
+        more_verbose(options.consoleLevel, options.fileLevel));
 
-    for (size_t i = 0; i < kChannelNames.size(); ++i) {
-        g_loggers[i] = quill::Frontend::create_or_get_logger(kChannelNames[i],
+    for (size_t i = 0; i < kchannelNames.size(); ++i) {
+        gLoggers[i] = quill::Frontend::create_or_get_logger(kchannelNames[i],
                                                              sinks,
                                                              pattern);
-        g_loggers[i]->set_log_level(loggerLevel);
+        gLoggers[i]->set_log_level(loggerLevel);
     }
 
-    logSessionHeader(filePath);
-    detail::installQtMessageBridge();
+    log_session_header(filePath);
+    detail::install_qt_message_bridge();
 }
 
 void shutdown()
 {
-    if (quill::Logger* core = channelLogger(Ch::Core)) {
+    if (quill::Logger* core = channel_logger(Ch::Core)) {
         core->flush_log();
     }
     quill::Backend::stop();
@@ -467,26 +469,26 @@ void shutdown()
 #endif
 }
 
-void setChannelLevel(Ch channel, Level level)
+void set_channel_level(Ch channel, Level level)
 {
-    if (quill::Logger* logger = channelLogger(channel)) {
-        logger->set_log_level(detail::toQuillLevel(level));
+    if (quill::Logger* logger = channel_logger(channel)) {
+        logger->set_log_level(detail::to_quill_level(level));
     }
 }
 
-quill::Logger* channelLogger(Ch channel)
+quill::Logger* channel_logger(Ch channel)
 {
-    return g_loggers[static_cast<size_t>(channel)];
+    return gLoggers[static_cast<size_t>(channel)];
 }
 
-RingSink* ringSink()
+RingSink* ring_sink()
 {
-    return g_ringSink;
+    return gRingSink;
 }
 
-QString logFilePath()
+QString log_file_path()
 {
-    return g_filePath;
+    return gFilePath;
 }
 
 } // namespace familiar::log

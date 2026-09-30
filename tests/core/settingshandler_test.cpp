@@ -35,189 +35,189 @@ CL makeColorList(int seed)
 
 TEST(SettingsHandlerTest, CurrentPresetGetSetRoundTrips)
 {
-    auto* h = SettingsHandler::getInstance();
-    h->setCurrentPreset(EPresets::kCustom2);
-    EXPECT_EQ(h->currentPreset(), int(EPresets::kCustom2));
-    h->remove(QStringLiteral("currentPreset"));
+    auto* h = SettingsHandler::get_instance();
+    h->set_current_preset(EPresets::kCustom2);
+    EXPECT_EQ(h->current_preset(), int(EPresets::kCustom2));
+    h->remove(QStringLiteral("current_preset"));
 }
 
 TEST(SettingsHandlerTest, MasterOpacityGetSetRoundTrips)
 {
-    auto* h = SettingsHandler::getInstance();
+    auto* h = SettingsHandler::get_instance();
     const OL opacities{{kDarkPreset, 100},
                        {kLightPreset, 150},
                        {kCustom1, 200},
                        {kCustom2, 255},
                        {kCustom3, 10},
                        {kCustom4, 0}};
-    h->setMasterOpacity(opacities);
-    EXPECT_EQ(h->masterOpacity(), opacities);
-    h->remove(QStringLiteral("masterOpacity"));
+    h->set_master_opacity(opacities);
+    EXPECT_EQ(h->master_opacity(), opacities);
+    h->remove(QStringLiteral("master_opacity"));
 }
 
 TEST(SettingsHandlerTest, ColorPresetGetSetRoundTrips)
 {
-    auto* h = SettingsHandler::getInstance();
+    auto* h = SettingsHandler::get_instance();
     const CL preset = makeColorList(42);
 
-    h->setDarkColorPreset(preset);
-    EXPECT_EQ(h->darkColorPreset(), preset);
+    h->set_dark_color_preset(preset);
+    EXPECT_EQ(h->dark_color_preset(), preset);
 
-    h->remove(QStringLiteral("darkColorPreset"));
+    h->remove(QStringLiteral("dark_color_preset"));
 }
 
 TEST(SettingsHandlerTest, GetCurrentColorPresetDispatchesOnCurrentPreset)
 {
-    auto* h = SettingsHandler::getInstance();
+    auto* h = SettingsHandler::get_instance();
     const CL lightPreset = makeColorList(11);
     const CL custom1Preset = makeColorList(22);
 
-    h->setCurrentPreset(EPresets::kLightPreset);
-    h->setLightColorPreset(lightPreset);
-    EXPECT_EQ(h->getCurrentColorPreset(), lightPreset);
+    h->set_current_preset(EPresets::kLightPreset);
+    h->set_light_color_preset(lightPreset);
+    EXPECT_EQ(h->get_current_color_preset(), lightPreset);
 
-    h->setCurrentPreset(EPresets::kCustom1);
-    h->setCustomPreset1(custom1Preset);
-    EXPECT_EQ(h->getCurrentColorPreset(), custom1Preset);
+    h->set_current_preset(EPresets::kCustom1);
+    h->set_custom_preset1(custom1Preset);
+    EXPECT_EQ(h->get_current_color_preset(), custom1Preset);
 
-    h->remove(QStringLiteral("currentPreset"));
-    h->remove(QStringLiteral("lightColorPreset"));
-    h->remove(QStringLiteral("customPreset1"));
+    h->remove(QStringLiteral("current_preset"));
+    h->remove(QStringLiteral("light_color_preset"));
+    h->remove(QStringLiteral("custom_preset1"));
 }
 
 TEST(SettingsHandlerTest, SetCurrentColorPresetDispatchesOnCurrentPreset)
 {
-    auto* h = SettingsHandler::getInstance();
+    auto* h = SettingsHandler::get_instance();
     const CL preset = makeColorList(77);
 
-    h->setCurrentPreset(EPresets::kCustom3);
-    h->setCurrentColorPreset(preset);
-    EXPECT_EQ(h->customPreset3(), preset);
+    h->set_current_preset(EPresets::kCustom3);
+    h->set_current_color_preset(preset);
+    EXPECT_EQ(h->custom_preset3(), preset);
     // Only the dispatched-to preset changed - a sibling stays untouched.
-    EXPECT_NE(h->customPreset4(), preset);
+    EXPECT_NE(h->custom_preset4(), preset);
 
-    h->remove(QStringLiteral("currentPreset"));
-    h->remove(QStringLiteral("customPreset3"));
+    h->remove(QStringLiteral("current_preset"));
+    h->remove(QStringLiteral("custom_preset3"));
 }
 
 TEST(SettingsHandlerTest, GetSetCurrentOpacityTargetsTheActivePresetSlot)
 {
-    auto* h = SettingsHandler::getInstance();
-    h->setCurrentPreset(EPresets::kDarkPreset);
+    auto* h = SettingsHandler::get_instance();
+    h->set_current_preset(EPresets::kDarkPreset);
 
-    h->setCurrentOpacity(128);
-    EXPECT_EQ(h->getCurrentOpacity(), 128);
-    EXPECT_EQ(h->masterOpacity()[EPresets::kDarkPreset], 128);
+    h->set_current_opacity(128);
+    EXPECT_EQ(h->get_current_opacity(), 128);
+    EXPECT_EQ(h->master_opacity()[EPresets::kDarkPreset], 128);
 
-    h->remove(QStringLiteral("currentPreset"));
-    h->remove(QStringLiteral("masterOpacity"));
+    h->remove(QStringLiteral("current_preset"));
+    h->remove(QStringLiteral("master_opacity"));
 }
 
 TEST(SettingsHandlerTest, SetDefaultCurrentPresetResetsColorsAndOpacity)
 {
-    auto* h = SettingsHandler::getInstance();
-    h->setCurrentPreset(EPresets::kDarkPreset);
+    auto* h = SettingsHandler::get_instance();
+    h->set_current_preset(EPresets::kDarkPreset);
     const CL custom = makeColorList(99);
-    h->setDarkColorPreset(custom);
-    h->setCurrentOpacity(50);
+    h->set_dark_color_preset(custom);
+    h->set_current_opacity(50);
 
-    h->setDefaultCurrentPreset();
+    h->set_default_current_preset();
 
     // setDefaultCurrentPreset() removes the JSON key entirely (falls
     // back to the built-in default), so it no longer reads back as the
     // custom value that was just written.
-    EXPECT_NE(h->darkColorPreset(), custom);
-    EXPECT_EQ(h->getCurrentOpacity(), 255);
+    EXPECT_NE(h->dark_color_preset(), custom);
+    EXPECT_EQ(h->get_current_opacity(), 255);
 
-    h->remove(QStringLiteral("currentPreset"));
+    h->remove(QStringLiteral("current_preset"));
 }
 
 TEST(SettingsHandlerTest, JsonValueSetRemoveRoundTrip)
 {
-    auto* h = SettingsHandler::getInstance();
-    h->removeJsonGroup(QStringLiteral("TestGroup"));
+    auto* h = SettingsHandler::get_instance();
+    h->remove_json_group(QStringLiteral("TestGroup"));
 
     EXPECT_TRUE(
-        h->jsonValue(QStringLiteral("TestGroup"), QStringLiteral("key"))
+        h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
             .isUndefined());
 
-    h->setJsonValue(QStringLiteral("TestGroup"),
+    h->set_json_value(QStringLiteral("TestGroup"),
                     QStringLiteral("key"),
                     QJsonValue(QStringLiteral("value")));
-    EXPECT_EQ(h->jsonValue(QStringLiteral("TestGroup"), QStringLiteral("key"))
+    EXPECT_EQ(h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
                   .toString(),
               QStringLiteral("value"));
 
-    h->removeJsonValue(QStringLiteral("TestGroup"), QStringLiteral("key"));
+    h->remove_json_value(QStringLiteral("TestGroup"), QStringLiteral("key"));
     EXPECT_TRUE(
-        h->jsonValue(QStringLiteral("TestGroup"), QStringLiteral("key"))
+        h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
             .isUndefined());
 
-    h->removeJsonGroup(QStringLiteral("TestGroup"));
+    h->remove_json_group(QStringLiteral("TestGroup"));
 }
 
 TEST(SettingsHandlerTest, RecentFilesRawRoundTrips)
 {
-    auto* h = SettingsHandler::getInstance();
+    auto* h = SettingsHandler::get_instance();
     const QStringList files{QStringLiteral("/a.fml"), QStringLiteral("/b.fml")};
-    h->setRecentFilesRaw(files);
-    EXPECT_EQ(h->recentFilesRaw(), files);
-    h->setRecentFilesRaw({});
+    h->set_recent_files_raw(files);
+    EXPECT_EQ(h->recent_files_raw(), files);
+    h->set_recent_files_raw({});
 }
 
 TEST(SettingsHandlerTest, ExportThenImportRestoresJsonValue)
 {
-    auto* h = SettingsHandler::getInstance();
-    h->setJsonValue(QStringLiteral("TestGroup"),
+    auto* h = SettingsHandler::get_instance();
+    h->set_json_value(QStringLiteral("TestGroup"),
                     QStringLiteral("key"),
                     QJsonValue(123));
 
     QTemporaryDir dir;
     ASSERT_TRUE(dir.isValid());
     const QString exportPath = dir.filePath(QStringLiteral("exported.json"));
-    ASSERT_TRUE(h->exportSettingsTo(exportPath));
+    ASSERT_TRUE(h->export_settings_to(exportPath));
 
     // Mutate the live document after exporting - import should overwrite
     // it back to what was on disk, not merge with the current state.
-    h->setJsonValue(QStringLiteral("TestGroup"),
+    h->set_json_value(QStringLiteral("TestGroup"),
                     QStringLiteral("key"),
                     QJsonValue(456));
 
-    ASSERT_TRUE(h->importSettingsFrom(exportPath));
+    ASSERT_TRUE(h->import_settings_from(exportPath));
     EXPECT_EQ(
-        h->jsonValue(QStringLiteral("TestGroup"), QStringLiteral("key")).toInt(),
+        h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key")).toInt(),
         123);
 
-    h->removeJsonGroup(QStringLiteral("TestGroup"));
+    h->remove_json_group(QStringLiteral("TestGroup"));
 }
 
 TEST(SettingsHandlerTest, ImportFromMissingFileFails)
 {
-    auto* h = SettingsHandler::getInstance();
-    EXPECT_FALSE(h->importSettingsFrom(
+    auto* h = SettingsHandler::get_instance();
+    EXPECT_FALSE(h->import_settings_from(
         QStringLiteral("/nonexistent/path/does-not-exist.json")));
 }
 
 TEST(SettingsHandlerTest, ExportToUnwritablePathFails)
 {
-    auto* h = SettingsHandler::getInstance();
-    EXPECT_FALSE(h->exportSettingsTo(
+    auto* h = SettingsHandler::get_instance();
+    EXPECT_FALSE(h->export_settings_to(
         QStringLiteral("/nonexistent-dir-xyz/out.json")));
 }
 
 TEST(SettingsHandlerTest, ValueRemoveResetRoundTrip)
 {
-    auto* h = SettingsHandler::getInstance();
+    auto* h = SettingsHandler::get_instance();
     h->remove(QStringLiteral("option0"));
 
     // Unset -> Bool's fallback (true, see recognizedGeneralOptions in
     // core/settingshandler.cpp).
     EXPECT_TRUE(h->value(QStringLiteral("option0")).toBool());
 
-    h->setValue(QStringLiteral("option0"), false);
+    h->set_value(QStringLiteral("option0"), false);
     EXPECT_FALSE(h->value(QStringLiteral("option0")).toBool());
 
-    h->resetValue(QStringLiteral("option0"));
+    h->reset_value(QStringLiteral("option0"));
     EXPECT_TRUE(h->value(QStringLiteral("option0")).toBool());
 
     h->remove(QStringLiteral("option0"));

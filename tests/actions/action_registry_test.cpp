@@ -45,9 +45,9 @@ TEST(ActionRegistryTest, AddIsUpsertAndPreservesInsertionOrder)
 
 TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
 {
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_a"));
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_b"));
 
     ActionRegistry registry;
@@ -61,23 +61,23 @@ TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
                               {QStringLiteral("Ctrl+L")}));
 
     EXPECT_EQ(registry
-                 .findByShortcut(QStringLiteral("reg_test_b"),
+                 .find_by_shortcut(QStringLiteral("reg_test_b"),
                                  QStringLiteral("Ctrl+K"))
                  ->id,
              QStringLiteral("reg_test_a"));
     // Excluding the owning action itself finds nothing, even though its
     // shortcut matches.
-    EXPECT_EQ(registry.findByShortcut(QStringLiteral("reg_test_a"),
+    EXPECT_EQ(registry.find_by_shortcut(QStringLiteral("reg_test_a"),
                                      QStringLiteral("Ctrl+K")),
              nullptr);
     // Empty shortcut short-circuits to nullptr (findByShortcut()'s own
     // guard) rather than matching an action with no shortcuts at all.
-    EXPECT_EQ(registry.findByShortcut(QStringLiteral("reg_test_b"), QString()),
+    EXPECT_EQ(registry.find_by_shortcut(QStringLiteral("reg_test_b"), QString()),
              nullptr);
 
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_a"));
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), QStringLiteral("reg_test_b"));
 }
 
@@ -85,13 +85,13 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
 {
     Action a
         = Action::make(QStringLiteral("reg_test_mouse_a"), QStringLiteral("A"));
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
 
     Binding stored;
     stored.mouseButton = QStringLiteral("Middle");
     stored.mouseModifiers = {QStringLiteral("Ctrl")};
-    a.setMouseBindings({stored});
+    a.set_mouse_bindings({stored});
 
     ActionRegistry registry;
     registry.add(a);
@@ -101,13 +101,13 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
     candidate.mouseModifiers = {QStringLiteral("Ctrl")};
 
     EXPECT_EQ(
-        registry.findByMouseBinding(QStringLiteral("other"), candidate)->id,
+        registry.find_by_mouse_binding(QStringLiteral("other"), candidate)->id,
         QStringLiteral("reg_test_mouse_a"));
-    EXPECT_EQ(registry.findByMouseBinding(QStringLiteral("reg_test_mouse_a"),
+    EXPECT_EQ(registry.find_by_mouse_binding(QStringLiteral("reg_test_mouse_a"),
                                          candidate),
              nullptr);
 
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
 }
 
@@ -126,7 +126,7 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
 // asserts the registry stays empty.
 TEST(GlobalActionRegistryTest, EveryRegisteredActionHasNonEmptyIdAndText)
 {
-    const QList<Action*> all = getActions().all();
+    const QList<Action*> all = get_actions().all();
     EXPECT_FALSE(all.isEmpty());
     for (const Action* a : all) {
         EXPECT_FALSE(a->id.isEmpty());
@@ -135,9 +135,9 @@ TEST(GlobalActionRegistryTest, EveryRegisteredActionHasNonEmptyIdAndText)
         // getKeySequence()/get_shortcuts() are how every keybinding path
         // (ActionMouseDispatcher, KeyboardShortcutsPage) reads these back.
         for (int i = 0; i < a->shortcuts.size(); ++i) {
-            EXPECT_FALSE(a->getKeySequence(i).isEmpty())
+            EXPECT_FALSE(a->get_key_sequence(i).isEmpty())
                 << "action id: " << a->id.toStdString();
         }
     }
-    EXPECT_EQ(getActions().keys().size(), all.size());
+    EXPECT_EQ(get_actions().keys().size(), all.size());
 }

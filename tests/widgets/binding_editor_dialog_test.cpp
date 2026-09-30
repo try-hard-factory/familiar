@@ -26,11 +26,11 @@ public:
         : BindingEditorDialogBase(target, nullptr)
     {}
 
-    using BindingEditorDialogBase::collectBinding;
-    using BindingEditorDialogBase::populateFrom;
+    using BindingEditorDialogBase::collect_binding;
+    using BindingEditorDialogBase::populate_from;
 
 protected:
-    void onAccepted(const Binding&) override {}
+    void on_accepted(const Binding&) override {}
 };
 
 // tryAccept() itself IS exercised here, but only its no-conflict fast
@@ -48,12 +48,12 @@ public:
         : BindingEditorDialogBase(target, nullptr)
     {}
 
-    using BindingEditorDialogBase::tryAccept;
+    using BindingEditorDialogBase::try_accept;
 
     bool onAcceptedCalled = false;
 
 protected:
-    void onAccepted(const Binding&) override { onAcceptedCalled = true; }
+    void on_accepted(const Binding&) override { onAcceptedCalled = true; }
 };
 
 // Finds a QDialogButtonBox's button by its (translated) label - both
@@ -88,9 +88,9 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
 {
     Action action = Action::make(QStringLiteral("test_add_alias_dialog"),
                                  QStringLiteral("Test"));
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), action.id + QStringLiteral("_mouse"));
     ActionBindingTarget target(&action);
     ASSERT_TRUE(target.bindings().isEmpty());
@@ -104,7 +104,7 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
     // An exotic combo no real Action/Control ships with by default -
     // guaranteed not to trip tryAccept()'s conflict detection (which
     // would otherwise open a real, blocking showMessageBox()).
-    keyField->setSequence(QStringLiteral("Ctrl+Alt+Shift+F24"));
+    keyField->set_sequence(QStringLiteral("Ctrl+Alt+Shift+F24"));
 
     QPushButton* applyBtn = findButton(dialog, QObject::tr("Apply"));
     ASSERT_NE(applyBtn, nullptr);
@@ -116,9 +116,9 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
              QStringLiteral("Ctrl+Alt+Shift+F24"));
     EXPECT_EQ(dialog.result(), int(QDialog::Accepted));
 
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), action.id + QStringLiteral("_mouse"));
 }
 
@@ -134,7 +134,7 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
                                  QStringLiteral("Test"),
                                  {},
                                  {QStringLiteral("Ctrl+Alt+Shift+F20")});
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
     ActionBindingTarget target(&action);
     ASSERT_EQ(target.bindings().size(), 1); // the default, not yet overridden
@@ -148,7 +148,7 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
     EXPECT_EQ(keyField->sequence(),
              QStringLiteral("Ctrl+Alt+Shift+F20")); // pre-filled
 
-    keyField->setSequence(QStringLiteral("Ctrl+Alt+Shift+F23"));
+    keyField->set_sequence(QStringLiteral("Ctrl+Alt+Shift+F23"));
     QPushButton* applyBtn = findButton(dialog, QObject::tr("Apply"));
     ASSERT_NE(applyBtn, nullptr);
     QTest::mouseClick(applyBtn, Qt::LeftButton);
@@ -158,7 +158,7 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
     EXPECT_EQ(bindings.first().keySequence,
              QStringLiteral("Ctrl+Alt+Shift+F23"));
 
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
 }
 
@@ -168,11 +168,12 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
                                  QStringLiteral("Test"),
                                  {},
                                  {QStringLiteral("Ctrl+Alt+Shift+F20")});
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
     ActionBindingTarget target(&action);
     // Diverge from the default first, same as RebindDialogTest above.
-    target.setBindings({Binding{QStringLiteral("Ctrl+Alt+Shift+F22")}});
+    target.set_bindings(
+        {Binding{QStringLiteral("Ctrl+Alt+Shift+F22"), {}, {}}});
 
     RebindDialog dialog(&target, /*bindingIndex=*/0, nullptr);
     dialog.show();
@@ -190,18 +191,18 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
     EXPECT_EQ(bindings.first().keySequence,
              QStringLiteral("Ctrl+Alt+Shift+F20"));
 
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                      action.id);
 }
 
 TEST(BindingEditorDialogBaseTest,
     TryAcceptWithNoConflictAcceptsWithoutShowingAMessageBox)
 {
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1];
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];
     MouseConfigBindingTarget target(&panCfg, BindingTargetKind::MouseControl);
     RecordingBindingEditorDialog dialog(&target);
 
-    dialog.tryAccept();
+    dialog.try_accept();
 
     EXPECT_TRUE(dialog.onAcceptedCalled);
     EXPECT_EQ(dialog.result(), int(QDialog::Accepted));
@@ -212,15 +213,15 @@ TEST(BindingEditorDialogBaseTest,
 {
     // "pan" (MouseConfig, not invertible) - see
     // KeyboardSettings::mouseActions() (core/controls.cpp).
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1];
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];
     MouseConfigBindingTarget target(&panCfg, BindingTargetKind::MouseControl);
     TestBindingEditorDialog dialog(&target);
 
     Binding original;
     original.keySequence = QStringLiteral("Ctrl+P");
-    dialog.populateFrom(original);
+    dialog.populate_from(original);
 
-    const Binding collected = dialog.collectBinding();
+    const Binding collected = dialog.collect_binding();
     EXPECT_EQ(collected.keySequence, QStringLiteral("Ctrl+P"));
     EXPECT_TRUE(collected.mouseButton.isEmpty());
 }
@@ -228,15 +229,15 @@ TEST(BindingEditorDialogBaseTest,
 TEST(BindingEditorDialogBaseTest,
     PopulateThenCollectRoundTripsMouseButtonBinding)
 {
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1];
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];
     MouseConfigBindingTarget target(&panCfg, BindingTargetKind::MouseControl);
     TestBindingEditorDialog dialog(&target);
 
     Binding original;
     original.mouseButton = QStringLiteral("Middle");
-    dialog.populateFrom(original);
+    dialog.populate_from(original);
 
-    EXPECT_EQ(dialog.collectBinding().mouseButton, QStringLiteral("Middle"));
+    EXPECT_EQ(dialog.collect_binding().mouseButton, QStringLiteral("Middle"));
 }
 
 TEST(BindingEditorDialogBaseTest, WheelControlUsesModifierCheckboxesNotButton)
@@ -244,7 +245,7 @@ TEST(BindingEditorDialogBaseTest, WheelControlUsesModifierCheckboxesNotButton)
     // "pan_horizontal" (MouseWheelConfig, invertible=true) - see
     // KeyboardSettings::mousewheelActions().
     const MouseWheelConfig& panHCfg
-        = KeyboardSettings::mousewheelActions()[0];
+        = KeyboardSettings::mousewheel_actions()[0];
     MouseConfigBindingTarget target(&panHCfg,
                                     BindingTargetKind::MouseWheelControl);
     TestBindingEditorDialog dialog(&target);
@@ -252,9 +253,9 @@ TEST(BindingEditorDialogBaseTest, WheelControlUsesModifierCheckboxesNotButton)
     Binding original;
     original.mouseModifiers = {QStringLiteral("Shift")};
     original.inverted = true;
-    dialog.populateFrom(original);
+    dialog.populate_from(original);
 
-    const Binding collected = dialog.collectBinding();
+    const Binding collected = dialog.collect_binding();
     EXPECT_EQ(collected.mouseModifiers, QStringList{QStringLiteral("Shift")});
     // Wheel targets never populate the button field - see
     // BindingEditorDialogBase's own constructor comment (no button to

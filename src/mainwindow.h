@@ -23,7 +23,7 @@
 #include <QMessageBox>
 #include <QPointer>
 #include <QWindow>
-class project_settings;
+class ProjectSettings;
 class QFileDialog;
 class SaveAllDialog;
 class QShortcut;
@@ -33,7 +33,7 @@ class QVariantAnimation;
 class QTimer;
 class HierarchyPanel;
 
-constexpr QPoint kInvalidPoint(-1, -1);
+constexpr QPoint kinvalidPoint(-1, -1);
 
 class MainWindow : public ActionsMixin<QMainWindow>
 {
@@ -51,19 +51,19 @@ public:
     MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
-    void quitProject();
-    void saveAllWindowSaveCB(SaveAllDialog* w, std::map<int, bool>&& m);
-    void cleanupWorkplace();
-    void exitProject();
-    TabPane& tabPane();
-    FileActions& fileActions();
+    void quit_project();
+    void save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&& m);
+    void cleanup_workplace();
+    void exit_project();
+    TabPane& tab_pane();
+    FileActions& file_actions();
 
     // Call after any scene mutation that bypasses the undo stack (e.g. a
     // background file load's add_queued_items() - see hierarchy_panel.h's
     // own comment) so the Hierarchy panel picks it up. Normal
     // command-driven mutations don't need this - they're already covered
     // by hookedUndoStack_'s indexChanged, hooked in resyncActionsForTab().
-    void notifyStructuralChange();
+    void notify_structural_change();
 
     // Call once from main() INSTEAD OF a bare show() - if
     // familiar::recovery::scan() finds anything left over from a session
@@ -86,17 +86,17 @@ public:
     // stale duplicate straight from disk (the recovery dialog should
     // still show up as normal, just without ending up with two tabs
     // for the same file afterward).
-    void showOrOfferRecovery(const QString& startupFile = QString());
+    void show_or_offer_recovery(const QString& startupFile = QString());
 
-    void clipboardItems(QVector<QGraphicsItem*> ci) noexcept
+    void clipboard_items(QVector<QGraphicsItem*> ci) noexcept
     {
         clipboardItems_ = ci;
     }
-    QVector<QGraphicsItem*>& clipboardItems() noexcept
+    QVector<QGraphicsItem*>& clipboard_items() noexcept
     {
         return clipboardItems_;
     }
-    void clearClipboardItems() { clipboardItems_.clear(); }
+    void clear_clipboard_items() { clipboardItems_.clear(); }
 
 public slots:
     // Window-level actions: MainWindow owns the single, app-wide QAction
@@ -127,7 +127,7 @@ public slots:
     // HelpDialog's "Keyboard Shortcuts" link - opens the settings window
     // already on that category, not just settingsWindow()'s own
     // default/last-used one.
-    void openKeyboardShortcutsSettings();
+    void open_keyboard_shortcuts_settings();
 
     // Per-tab actions: thin forwarders to tabpane_->currentWidget().
     // Real logic stays on CanvasView; see there for implementations.
@@ -199,7 +199,7 @@ protected:
 protected:
     void mouseMoveEvent(QMouseEvent* event) override
     {
-        updateResizeCursor(event->pos());
+        update_resize_cursor(event->pos());
         QMainWindow::mouseMoveEvent(event);
     }
 
@@ -231,8 +231,8 @@ protected:
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             const QPoint pos = mapFromGlobal(
                 mouseEvent->globalPosition().toPoint());
-            updateResizeCursor(pos);
-            handleUiHover_(pos);
+            update_resize_cursor(pos);
+            handle_ui_hover(pos);
         } else if (event->type() == QEvent::MouseButtonPress) {
             auto* mouseEvent = static_cast<QMouseEvent*>(event);
             const QPoint pos = mapFromGlobal(
@@ -240,7 +240,7 @@ protected:
             // Resize wins over drag: the top kResizeBorder pixels overlap
             // the menu bar, and the thin border is harder to hit.
             if (mouseEvent->button() == Qt::LeftButton
-                && (tryStartSystemResize(pos) || tryStartWindowDrag_(pos))) {
+                && (try_start_system_resize(pos) || try_start_window_drag(pos))) {
                 return true;
             }
         }
@@ -248,22 +248,22 @@ protected:
     }
 
 private:
-    static constexpr int kResizeBorder
+    static constexpr int kresizeBorder
         = 5; // Толщина невидимой границы для ресайза, в пикселях
 
-    Qt::Edges resizeEdgesAt(const QPoint& pos) const
+    Qt::Edges resize_edges_at(const QPoint& pos) const
     {
         Qt::Edges edges;
-        if (pos.x() < kResizeBorder) {
+        if (pos.x() < kresizeBorder) {
             edges |= Qt::LeftEdge;
         }
-        if (pos.x() > width() - kResizeBorder) {
+        if (pos.x() > width() - kresizeBorder) {
             edges |= Qt::RightEdge;
         }
-        if (pos.y() < kResizeBorder) {
+        if (pos.y() < kresizeBorder) {
             edges |= Qt::TopEdge;
         }
-        if (pos.y() > height() - kResizeBorder) {
+        if (pos.y() > height() - kresizeBorder) {
             edges |= Qt::BottomEdge;
         }
         return edges;
@@ -273,14 +273,14 @@ private:
     // consume the press event - otherwise it falls through to whatever's
     // underneath (e.g. CanvasScene), which would start a rubber-band
     // selection for the same click.
-    bool tryStartSystemResize(const QPoint& pos)
+    bool try_start_system_resize(const QPoint& pos)
     {
         if (!rect().contains(pos) || !windowHandle()) {
             return false;
         }
 
         // Запуск нативного изменения размера (доступно в Qt 5.15 и новее)
-        const Qt::Edges edges = resizeEdgesAt(pos);
+        const Qt::Edges edges = resize_edges_at(pos);
         if (edges) {
             windowHandle()->startSystemResize(edges);
             return true;
@@ -288,14 +288,14 @@ private:
         return false;
     }
 
-    void updateResizeCursor(const QPoint& pos)
+    void update_resize_cursor(const QPoint& pos)
     {
         if (!rect().contains(pos)) {
             unsetCursor();
             return;
         }
 
-        const Qt::Edges edges = resizeEdgesAt(pos);
+        const Qt::Edges edges = resize_edges_at(pos);
 
         if ((edges & Qt::LeftEdge && edges & Qt::TopEdge)
             || (edges & Qt::RightEdge && edges & Qt::BottomEdge)) {
@@ -313,13 +313,13 @@ private:
     }
 
 private:
-    QPoint pos_ = kInvalidPoint;
+    QPoint pos_ = kinvalidPoint;
 
 private:
-    bool checkSave();
+    bool check_save();
 
 public slots:
-    void settingsChangedSlot();
+    void settings_changed_slot();
 private slots:
     // Periodic autosave. onAutosaveTimeout_() fires
     // every autosaveTimer_ tick; restartAutosaveTimer_() re-reads
@@ -327,8 +327,8 @@ private slots:
     // (re)starts or stops the timer accordingly - called once at startup
     // and again live whenever either setting changes (see
     // SettingsEvents::autosaveSettingsChanged).
-    void onAutosaveTimeout_();
-    void restartAutosaveTimer_();
+    void on_autosave_timeout();
+    void restart_autosave_timer();
 
     // Crash recovery - independent of the above and
     // NOT gated by Save/autosave_enabled: it writes into its own
@@ -338,21 +338,21 @@ private slots:
     // recovery.h). The startup check itself is showOrOfferRecovery()
     // above, called explicitly from main() rather than from in here -
     // see its own comment for why.
-    void onRecoveryTimeout_();
-    void saveAll();
-    void newFile();
-    void settingsWindow();
-    void saveFile();
+    void on_recovery_timeout();
+    void save_all();
+    void new_file();
+    void settings_window();
+    void save_file();
     void quit();
-    void openFile();
-    void saveFileAs();
+    void open_file();
+    void save_file_as();
 
 private slots:
     // Resync the shared action enabled-state to whichever tab is now
     // active (connected to TabPane::currentTabChanged). Everything else
     // in this group reacts to the currently-hooked tab's scene_/
     // undoStack_ signals - see resyncActionsForTab().
-    void onCurrentTabChanged(int index);
+    void on_current_tab_changed(int index);
     void on_active_scene_changed();
     void on_active_selection_changed();
     void on_active_can_undo_changed(bool canUndo);
@@ -365,7 +365,7 @@ private:
     // - these are edge-triggered signals with no "replay current value"
     // on connect. `cv` may be null for the brief moment TabPane::
     // onTabClosed() has zero tabs while replacing the last closed one.
-    void resyncActionsForTab(CanvasView* cv);
+    void resync_actions_for_tab(CanvasView* cv);
 
     // QPointer, not raw CanvasScene*/QUndoStack* (or the owning
     // CanvasView*): this can be re-entered from inside the old tab's own
@@ -390,23 +390,23 @@ private:
     // the menu bar AND the tab bar out when the cursor leaves the top
     // strip; both keep their layout space, so nothing underneath ever
     // moves or gets covered.
-    void ensureMenubar_();
-    void applyMenubarState_();
-    void updateMenubarGeometry();
-    void updateWindowControlsStyle_();
+    void ensure_menubar();
+    void apply_menubar_state();
+    void update_menubar_geometry();
+    void update_window_controls_style();
     // The QMenuBar strip itself (File/Edit/... labels) - separate from
     // updateWindowControlsStyle_() above, which only covers the
     // always-on-top/minimize/maximize/close corner widget living inside
     // it. QMenuBar has its own subcontrols (::item etc.), unrelated to
     // QMenu's (action_mixin.h's menuStyleSheet_()) despite the similar
     // native-native chrome.
-    void updateMenubarStyle_();
-    void startUiFade_(bool visible);
-    void onUiHideTimeout_();
-    void handleUiHover_(const QPoint& pos);
-    bool tryStartWindowDrag_(const QPoint& pos);
-    bool uiStripContains_(const QPoint& pos) const;
-    int uiStripHeight_() const;
+    void update_menubar_style();
+    void start_ui_fade(bool visible);
+    void on_ui_hide_timeout();
+    void handle_ui_hover(const QPoint& pos);
+    bool try_start_window_drag(const QPoint& pos);
+    bool ui_strip_contains(const QPoint& pos) const;
+    int ui_strip_height() const;
 
     QMenuBar* menubar_ = nullptr;
     // Corner widget with the window-control buttons; restyled from the

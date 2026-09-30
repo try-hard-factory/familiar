@@ -8,9 +8,9 @@
 namespace {
 void cleanupAction(const QString& id)
 {
-    SettingsHandler::getInstance()->removeJsonValue(QStringLiteral("Actions"),
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
                                                     id);
-    SettingsHandler::getInstance()->removeJsonValue(
+    SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("Actions"), id + QStringLiteral("_mouse"));
 }
 } // namespace
@@ -30,11 +30,11 @@ TEST(ActionBindingTargetTest, WrapsActionIdTextAndBindings)
     // "Open Recent", not "Open Recent...".
     EXPECT_EQ(target.text(), QStringLiteral("Open Recent"));
     EXPECT_EQ(target.kind(), BindingTargetKind::Action);
-    EXPECT_FALSE(target.isInvertible());
+    EXPECT_FALSE(target.is_invertible());
 
     ASSERT_EQ(target.bindings().size(), 1);
     EXPECT_EQ(target.bindings().first().keySequence, QStringLiteral("Ctrl+R"));
-    EXPECT_FALSE(target.bindingsChanged());
+    EXPECT_FALSE(target.bindings_changed());
 
     cleanupAction(action.id);
 }
@@ -52,7 +52,7 @@ TEST(ActionBindingTargetTest, SetBindingsSplitsKeyboardAndMouseAliases)
     Binding mouseOnly;
     mouseOnly.mouseButton = QStringLiteral("Middle");
 
-    target.setBindings({keyOnly, mouseOnly});
+    target.set_bindings({keyOnly, mouseOnly});
 
     EXPECT_EQ(action.get_shortcuts(), QStringList{QStringLiteral("Ctrl+K")});
     ASSERT_EQ(action.get_mouse_bindings().size(), 1);
@@ -64,12 +64,12 @@ TEST(ActionBindingTargetTest, SetBindingsSplitsKeyboardAndMouseAliases)
 
 TEST(MouseConfigBindingTargetTest, DelegatesToWrappedMouseConfig)
 {
-    const MouseConfig& zoom = KeyboardSettings::mouseActions()[0]; // "zoom"
+    const MouseConfig& zoom = KeyboardSettings::mouse_actions()[0]; // "zoom"
     MouseConfigBindingTarget target(&zoom, BindingTargetKind::MouseControl);
 
     EXPECT_EQ(target.id(), zoom.id());
     EXPECT_EQ(target.text(), zoom.text());
     EXPECT_EQ(target.kind(), BindingTargetKind::MouseControl);
-    EXPECT_EQ(target.isInvertible(), zoom.isInvertible());
-    EXPECT_EQ(target.defaultBindings(), zoom.defaultBindings());
+    EXPECT_EQ(target.is_invertible(), zoom.is_invertible());
+    EXPECT_EQ(target.default_bindings(), zoom.default_bindings());
 }

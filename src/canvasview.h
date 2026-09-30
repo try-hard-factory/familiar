@@ -17,7 +17,7 @@
 #include <QWheelEvent>
 
 class MainWindow;
-class project_settings;
+class ProjectSettings;
 class CanvasScene;
 class QUndoStack;
 class IBaseItem;
@@ -47,30 +47,30 @@ class CanvasView : public MainControlsMixin<CanvasView, QGraphicsView>
 {
     Q_OBJECT
 public:
-    enum ActiveMode { ModeNone, ModePan, ModeZoom, ModeSampleColor };
+    enum ActiveMode { kModeNone, kModePan, kModeZoom, kModeSampleColor };
 
     CanvasView(MainWindow& mw, QWidget* parent = nullptr);
     ~CanvasView();
 
-    void setProjectSettings(project_settings* ps);
+    void set_project_settings(ProjectSettings* ps);
     void do_insert_images(const QList<QUrl>& urls,
                           std::optional<QPoint> pos = std::nullopt);
-    void handleDrop(const QMimeData* mimedata, const QPoint& pos);
+    void handle_drop(const QMimeData* mimedata, const QPoint& pos);
 
     // Folder-picker + threaded export, factored out of
     // on_action_export_images() so HierarchyPanel's per-picture/
     // per-group "Export" context menu item can reuse the exact same
     // flow (conflict-resolution dialog, progress dialog, ...) for an
     // explicit subset instead of every picture in the scene.
-    void exportPictures(const QList<PixmapItem*>& pictures);
+    void export_pictures(const QList<PixmapItem*>& pictures);
 
     // Used by MainWindow to (re)wire action enabled-state to whichever
     // tab is currently active (see MainWindow::resyncActionsForTab).
     CanvasScene* scene() const { return scene_; }
-    QUndoStack* undoStack() const { return undoStack_.get(); }
+    QUndoStack* undo_stack() const { return undoStack_.get(); }
 
     qreal get_scale() const { return transform().m11(); }
-    QPointF getViewCenter() const;
+    QPointF get_view_center() const;
 
     // 1.0 while this window is active or the cursor is hovering this
     // view ("peek" - see updateSelectionVisibility()),
@@ -80,7 +80,7 @@ public:
     // another window, but still glances back on hover. Individual
     // items' own selection outlines are unaffected - see
     // MultiSelectItem::fades_with_window_focus() in selector.h.
-    qreal selectionOutlineOpacity() const { return selectionOutlineOpacity_; }
+    qreal selection_outline_opacity() const { return selectionOutlineOpacity_; }
 
     // Recomputes whether selection chrome should be visible right now
     // (this window active, or the cursor hovering this view) and either
@@ -89,32 +89,32 @@ public:
     // and from MainWindow::changeEvent() (ActivationChange isn't
     // delivered to child widgets like this one, only to the actual
     // top-level window).
-    void updateSelectionVisibility();
+    void update_selection_visibility();
 
-    void resetPreviousTransform(QGraphicsItem* toggleItem = nullptr);
-    void fitRect(const QRectF& rect, QGraphicsItem* toggleItem = nullptr);
+    void reset_previous_transform(QGraphicsItem* toggleItem = nullptr);
+    void fit_rect(const QRectF& rect, QGraphicsItem* toggleItem = nullptr);
 
-    void cancelActiveModes();
-    void cancelSampleColorMode();
+    void cancel_active_modes();
+    void cancel_sample_color_mode();
 
-    void cleanupWorkplace();
+    void cleanup_workplace();
     QString path();
-    void setPath(const QString& path);
-    QString projectName();
-    void setProjectName(const QString& pn);
-    bool isModified();
-    void setModified(bool mod);
-    bool isUntitled();
-    QUuid recoveryId();
+    void set_path(const QString& path);
+    QString project_name();
+    void set_project_name(const QString& pn);
+    bool is_modified();
+    void set_modified(bool mod);
+    bool is_untitled();
+    QUuid recovery_id();
 
     // The drawn canvas frame's extent - see canvasRect_ and
-    // CanvasScene::rememberedBoundingRect().
-    QRectF canvasRect() const { return canvasRect_; }
+    // CanvasScene::remembered_bounding_rect().
+    QRectF canvas_rect() const { return canvasRect_; }
     // Applied right after loading a project (see FileActions::
     // loadFmlIntoCurrentTab()): seeds canvasRect_ from the manifest's
     // stored value and marks this tab as an existing (not fresh/
     // untitled) scene, regardless of whether it currently has any items.
-    void restoreCanvasRect(const QRectF& rect)
+    void restore_canvas_rect(const QRectF& rect)
     {
         canvasRect_ = rect;
         sceneEverHadItems_ = true;
@@ -135,7 +135,7 @@ public slots:
     void on_cursor_changed(QCursor cursor);
     void on_cursor_cleared();
     void on_undo_clean_changed(bool clean);
-    void settingsChangedSlot();
+    void settings_changed_slot();
 
 public:
     // Per-tab action bodies. No longer QMetaObject::invokeMethod-driven
@@ -236,32 +236,32 @@ protected:
     void leaveEvent(QEvent* event) override;
 
 private:
-    void recalcSceneRect();
-    void doScale(qreal sx, qreal sy);
-    double getZoomSize(std::function<double(double, double)> func) const;
+    void recalc_scene_rect();
+    void do_scale(qreal sx, qreal sy);
+    double get_zoom_size(std::function<double(double, double)> func) const;
     // Discrete one-step nudge for a Control keyboard-alias (see
     // widgets/controls/binding_dialogs.cpp - Controls can now carry a
     // keySequence too), reusing wheelEvent()'s existing single-notch step
     // convention. Only Zoom and the two wheel Pan groups have a
     // well-defined single-press meaning; the drag-based mouse Pan group
     // doesn't and is left unhandled here - returns false for that.
-    bool tryControlKeyNudge(QKeyEvent* event);
+    bool try_control_key_nudge(QKeyEvent* event);
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
-    QString getSupportedImageFormats() const;
+    QString get_supported_image_formats() const;
     // Keeps the floating text toolbar glued above the item being edited
     // through pans (scrollbar valueChanged), zooms (doScale) and view
     // resizes.
-    void updateTextToolbarPos_();
+    void update_text_toolbar_pos();
     // Same idea, for the GIF playback toolbar - glued below the item
     // instead of above (see updateGifToolbarPos_()'s own comment for
     // why), shown/hidden from on_selection_changed() rather than a
     // dedicated signal: unlike text editing, GIF playback controls apply
     // as soon as the item is simply selected.
-    void updateGifToolbarPos_();
+    void update_gif_toolbar_pos();
     // Same idea again, for the group toolbar -
     // shown/hidden from on_selection_changed() same as the GIF one.
-    void updateGroupToolbarPos_();
+    void update_group_toolbar_pos();
     // Shows RawImportDialog and applies the answer to imageImportSession_
     // (setQueueChoice()/setOneShotChoice(), plus persisting to
     // Items/raw_import_choice if "Remember choice" was checked) - shared
@@ -271,7 +271,7 @@ private:
     // on_raw_import_choice_required()'s mid-load pause for any LATER RAW
     // file in the same batch, if "Apply choice to this queue" wasn't
     // checked the first time. Returns false if the user canceled.
-    bool resolveRawImportChoice(const QString& filename);
+    bool resolve_raw_import_choice(const QString& filename);
 
     qreal selectionOutlineOpacity_ = 1.0;
     bool selectionOutlineHover_ = false;
@@ -286,7 +286,7 @@ private:
     CanvasScene* scene_;
     uint64_t zCounter_ = 0;
 
-    ActiveMode activeMode_ = ModeNone;
+    ActiveMode activeMode_ = kModeNone;
     QPointF eventStart_;
     QPointF eventAnchor_;
     bool eventInverted_ = false;

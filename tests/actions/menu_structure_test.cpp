@@ -42,6 +42,7 @@ void checkWellFormed(const MenuNode& node)
         }
         break;
     case MenuNode::Type::Separator:
+    default:
         break;
     }
 }
@@ -49,7 +50,7 @@ void checkWellFormed(const MenuNode& node)
 
 TEST(MenuStructureTest, EveryNodeIsWellFormed)
 {
-    const QList<MenuNode>& top = menuStructure();
+    const QList<MenuNode>& top = menu_structure();
     EXPECT_FALSE(top.isEmpty());
     for (const MenuNode& node : top) {
         checkWellFormed(node);

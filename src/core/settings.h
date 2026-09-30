@@ -26,11 +26,11 @@ public:
     // JSON settings file to read/write instead of the default location
     // (QStandardPaths::AppConfigLocation + "settings.json") - see
     // SettingsHandler::SettingsHandler() (core/settingshandler.cpp).
-    QString settingsFile() const { return settingsFile_; }
+    QString settings_file() const { return settingsFile_; }
     QString loglevel() const { return loglevel_; }
-    bool debugBoundingRects() const { return debugBoundingRects_; }
-    bool debugShapes() const { return debugShapes_; }
-    bool debugHandles() const { return debugHandles_; }
+    bool debug_bounding_rects() const { return debugBoundingRects_; }
+    bool debug_shapes() const { return debugShapes_; }
+    bool debug_handles() const { return debugHandles_; }
 
 private:
     CommandlineArgs() = default;
@@ -54,15 +54,15 @@ public:
     static SettingsEvents& instance();
 
 signals:
-    void restoreDefaults();
-    void restoreKeyboardDefaults();
+    void restore_defaults();
+    void restore_keyboard_defaults();
     // Fired from both Save/autosave_enabled's and
     // Save/autosave_interval_seconds' postSaveCallback so MainWindow's
     // autosave QTimer can pick up either change live, instead of only on
     // next launch (see FamSettings::setValue()). No payload - the
     // listener just re-reads both settings fresh, since either one alone
     // doesn't have the other's current value.
-    void autosaveSettingsChanged();
+    void autosave_settings_changed();
 
 private:
     SettingsEvents() = default;
@@ -93,19 +93,19 @@ public:
     static const QMap<QString, FieldConfig>& fields();
 
     // Returns stored value with cast + validation applied; falls back to default.
-    QVariant valueOrDefault(const QString& key) const;
+    QVariant value_or_default(const QString& key) const;
 
     // Returns true if stored value differs from FIELDS default.
-    bool valueChanged(const QString& key) const;
+    bool value_changed(const QString& key) const;
 
     // Remove all FIELDS keys from storage and emit SettingsEvents::restoreDefaults.
-    void restoreDefaults();
+    void restore_defaults();
 
     // Apply startup-time settings (e.g. image allocation limit).
-    void onStartup();
+    void on_startup();
 
     // Fires postSaveCallback when defined for `key`.
-    void setValue(const QString& key, const QVariant& value);
+    void set_value(const QString& key, const QVariant& value);
 
     // Raw read for keys that aren't in fields() (e.g. Action::settingsKey's
     // ad-hoc checkbox state, written via setValue() above) - same
@@ -116,10 +116,10 @@ public:
     // Fires postSaveCallback when defined for `key`.
     void remove(const QString& key);
 
-    void updateRecentFiles(const QString& filename);
-    QStringList getRecentFiles(bool existingOnly = false) const;
+    void update_recent_files(const QString& filename);
+    QStringList get_recent_files(bool existingOnly = false) const;
 
-    QString fileName() const;
+    QString file_name() const;
 };
 
 #endif // SETTINGS_H

@@ -21,7 +21,7 @@ const Palette& palette()
     return p;
 }
 
-QString rootStyleSheet()
+QString root_style_sheet()
 {
     const Palette& p = palette();
     return QStringLiteral("* {"
@@ -160,7 +160,7 @@ QString rootStyleSheet()
              p.popupItemHover.name());
 }
 
-QString sidebarButtonStyleSheet()
+QString sidebar_button_style_sheet()
 {
     const Palette& p = palette();
     return QStringLiteral("QPushButton#categoryButton {"
@@ -178,7 +178,7 @@ QString sidebarButtonStyleSheet()
         .arg(p.navIdleBg.name(), p.navSelectedBg.name(), p.navHoverBg.name());
 }
 
-QString shortcutChipStyleSheet()
+QString shortcut_chip_style_sheet()
 {
     const Palette& p = palette();
     return QStringLiteral("QPushButton {"
@@ -197,7 +197,7 @@ QString shortcutChipStyleSheet()
              p.chipBackground.darker(112).name());
 }
 
-QString miniButtonStyleSheet()
+QString mini_button_style_sheet()
 {
     const Palette& p = palette();
     // Same box as shortcutChipStyleSheet() (chipBackground fill + a real
@@ -223,7 +223,7 @@ QString miniButtonStyleSheet()
              p.chipBackground.darker(112).name());
 }
 
-QString outlineButtonStyleSheet()
+QString outline_button_style_sheet()
 {
     const Palette& p = palette();
     // Explicit :focus/:default color rules, not just the base
@@ -255,7 +255,7 @@ QString outlineButtonStyleSheet()
         .arg(p.text.name(), p.border.name(), p.hoverBg.name(), p.accent.name());
 }
 
-QString filledButtonStyleSheet()
+QString filled_button_style_sheet()
 {
     const Palette& p = palette();
     // Same :focus/:default/outline reasoning as outlineButtonStyleSheet()
@@ -285,7 +285,7 @@ QString filledButtonStyleSheet()
              p.navSelectedBg.name());
 }
 
-QString sliderStyleSheet()
+QString slider_style_sheet()
 {
     const Palette& p = palette();
     // Same 4px groove / 14px round handle proportions as

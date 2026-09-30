@@ -42,9 +42,9 @@ using namespace familiar::log;
 
 namespace {
 
-constexpr int kFormatVersion = 1;
-const char kFormatMagic[] = "familiar";
-const unsigned char kZipMagic[4] = {'P', 'K', 0x03, 0x04};
+constexpr int kformatVersion = 1;
+const char kformatMagic[] = "familiar";
+const unsigned char kzipMagic[4] = {'P', 'K', 0x03, 0x04};
 
 // ── Format versioning ────────────────────────────────────────────────
 // Documented in docs/fml_format_design.md §6 but never implemented until
@@ -67,7 +67,7 @@ const unsigned char kZipMagic[4] = {'P', 'K', 0x03, 0x04};
 // reading old data (a renamed/restructured/reinterpreted field) - purely
 // additive fields don't need one, since unknown fields are already
 // ignored on read (§6, "Незнакомое поле JSON — молча игнорировать").
-const QMap<int, std::function<void(QJsonObject&)>>& formatMigrations()
+const QMap<int, std::function<void(QJsonObject&)>>& format_migrations()
 {
     static const QMap<int, std::function<void(QJsonObject&)>> migrations = {
         // {1, [](QJsonObject& root) { ... }},
@@ -75,16 +75,16 @@ const QMap<int, std::function<void(QJsonObject&)>>& formatMigrations()
     return migrations;
 }
 
-void applyFormatMigrations(QJsonObject& root, int fromVersion)
+void apply_format_migrations(QJsonObject& root, int fromVersion)
 {
-    const auto& migrations = formatMigrations();
-    for (int v = fromVersion; v < kFormatVersion; ++v) {
+    const auto& migrations = format_migrations();
+    for (int v = fromVersion; v < kformatVersion; ++v) {
         auto it = migrations.find(v);
         if (it != migrations.end()) {
             it.value()(root);
         }
     }
-    root[QStringLiteral("formatVersion")] = kFormatVersion;
+    root[QStringLiteral("formatVersion")] = kformatVersion;
 }
 
 struct ManifestItem
@@ -103,10 +103,10 @@ struct ManifestItem
 
 struct Manifest
 {
-    int formatVersion = kFormatVersion;
+    int formatVersion = kformatVersion;
     QString appVersion;
     // The scene's remembered bounding rect (CanvasScene::
-    // rememberedBoundingRect()) - empty if the scene never had content.
+    // remembered_bounding_rect()) - empty if the scene never had content.
     // Round-tripped so a project saved with zero items still shows its
     // old "empty space" frame instead of looking brand-new on reload.
     QRectF sceneBoundingRect;
@@ -116,7 +116,7 @@ struct Manifest
 QByteArray write_manifest(const Manifest& manifest)
 {
     QJsonObject root;
-    root[QStringLiteral("format")] = QString::fromLatin1(kFormatMagic);
+    root[QStringLiteral("format")] = QString::fromLatin1(kformatMagic);
     root[QStringLiteral("formatVersion")] = manifest.formatVersion;
     root[QStringLiteral("appVersion")] = manifest.appVersion;
 
@@ -175,7 +175,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     QJsonObject root = doc.object();
 
     if (root.value(QStringLiteral("format")).toString()
-        != QString::fromLatin1(kFormatMagic)) {
+        != QString::fromLatin1(kformatMagic)) {
         error = QStringLiteral(
             "Not a familiar project file (missing format marker)");
         FLOG_ERROR(Ch::IO, "{}", error);
@@ -183,7 +183,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     }
 
     int formatVersion = root.value(QStringLiteral("formatVersion")).toInt(-1);
-    if (formatVersion <= 0 || formatVersion > kFormatVersion) {
+    if (formatVersion <= 0 || formatVersion > kformatVersion) {
         error = QStringLiteral("This file was created by a newer version of "
                                "familiar (formatVersion %1)")
                     .arg(formatVersion);
@@ -193,12 +193,12 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     // No-op today (formatVersion is always already kFormatVersion, since
     // it's never been bumped) - see applyFormatMigrations() above for why
     // this is here regardless.
-    if (formatVersion < kFormatVersion) {
-        applyFormatMigrations(root, formatVersion);
+    if (formatVersion < kformatVersion) {
+        apply_format_migrations(root, formatVersion);
     }
 
     Manifest manifest;
-    manifest.formatVersion = kFormatVersion;
+    manifest.formatVersion = kformatVersion;
     manifest.appVersion = root.value(QStringLiteral("appVersion")).toString();
 
     QJsonArray boundingRect = root.value(QStringLiteral("scene"))
@@ -259,7 +259,7 @@ public:
     ZipWriter(const ZipWriter&) = delete;
     ZipWriter& operator=(const ZipWriter&) = delete;
 
-    bool initHeap() { return mz_zip_writer_init_heap(&archive_, 0, 0); }
+    bool init_heap() { return mz_zip_writer_init_heap(&archive_, 0, 0); }
     mz_zip_archive* get() { return &archive_; }
 
 private:
@@ -275,7 +275,7 @@ public:
     ZipReader(const ZipReader&) = delete;
     ZipReader& operator=(const ZipReader&) = delete;
 
-    bool initMem(const void* mem, size_t size)
+    bool init_mem(const void* mem, size_t size)
     {
         return mz_zip_reader_init_mem(&archive_, mem, size, 0);
     }
@@ -289,7 +289,7 @@ bool looks_like_zip(QFile& file)
 {
     QByteArray header = file.peek(4);
     return header.size() == 4
-           && std::memcmp(header.constData(), kZipMagic, 4) == 0;
+           && std::memcmp(header.constData(), kzipMagic, 4) == 0;
 }
 
 // ============================================================================
@@ -316,7 +316,7 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
     }
 
     if (worker) {
-        emit worker->beginProcessing(count);
+        emit worker->begin_processing(count);
     }
 
     for (int i = 0; i < count; ++i) {
@@ -398,7 +398,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     QList<QGraphicsItem*> items = scene->items_for_save();
 
     ZipWriter zip;
-    if (!zip.initHeap()) {
+    if (!zip.init_heap()) {
         result.error = QStringLiteral("Could not initialize zip writer");
         FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
         return result;
@@ -437,7 +437,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     manifest.sceneBoundingRect = canvasRect;
 
     if (worker) {
-        emit worker->beginProcessing(items.size());
+        emit worker->begin_processing(static_cast<int>(items.size()));
     }
 
     bool canceled = false;
@@ -583,7 +583,7 @@ FmlResult FmlArchive::load(const QString& filename,
     file.close();
 
     ZipReader zip;
-    if (!zip.initMem(bytes.constData(), static_cast<size_t>(bytes.size()))) {
+    if (!zip.init_mem(bytes.constData(), static_cast<size_t>(bytes.size()))) {
         result.error
             = QStringLiteral("%1 is not a valid zip archive").arg(filename);
         FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
@@ -627,10 +627,11 @@ FmlResult FmlArchive::load(const QString& filename,
     // sees this value - Qt's queued cross-thread signal delivery
     // provides the necessary happens-before ordering, so no extra
     // locking is needed for this single write-before-emit.
-    scene->setRememberedBoundingRect(manifest->sceneBoundingRect);
+    scene->set_remembered_bounding_rect(manifest->sceneBoundingRect);
 
     if (worker) {
-        emit worker->beginProcessing(manifest->items.size());
+        emit worker->begin_processing(
+            static_cast<int>(manifest->items.size()));
     }
 
     for (int i = 0; i < manifest->items.size(); ++i) {

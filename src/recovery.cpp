@@ -19,26 +19,26 @@ using namespace familiar::log;
 namespace familiar::recovery {
 namespace {
 
-QString idStem(const QUuid& id)
+QString id_stem(const QUuid& id)
 {
     return id.toString(QUuid::WithoutBraces);
 }
 
-QString sidecarPathFor(const QDir& dir, const QUuid& id)
+QString sidecar_path_for(const QDir& dir, const QUuid& id)
 {
-    return dir.filePath(idStem(id) + QStringLiteral(".json"));
+    return dir.filePath(id_stem(id) + QStringLiteral(".json"));
 }
 
-QString fmlPathFor(const QDir& dir, const QUuid& id)
+QString fml_path_for(const QDir& dir, const QUuid& id)
 {
-    return dir.filePath(idStem(id) + QStringLiteral(".fml"));
+    return dir.filePath(id_stem(id) + QStringLiteral(".fml"));
 }
 
 } // namespace
 
-QString recoveryDir()
+QString recovery_dir()
 {
-    QString dir = portableDataDir();
+    QString dir = portable_data_dir();
     if (dir.isEmpty()) {
         dir = QStandardPaths::writableLocation(
             QStandardPaths::AppLocalDataLocation);
@@ -48,14 +48,14 @@ QString recoveryDir()
 
 void save(CanvasView* canvasView)
 {
-    const QDir dir(recoveryDir());
+    const QDir dir(recovery_dir());
     QDir().mkpath(dir.absolutePath());
 
-    const QUuid id = canvasView->recoveryId();
-    const QString fmlPath = fmlPathFor(dir, id);
+    const QUuid id = canvasView->recovery_id();
+    const QString fmlPath = fml_path_for(dir, id);
 
     FmlResult result = FmlArchive::save(canvasView->scene(),
-                                        canvasView->canvasRect(),
+                                        canvasView->canvas_rect(),
                                         fmlPath);
     if (!result.error.isEmpty()) {
         FLOG_WARN(Ch::IO,
@@ -65,7 +65,7 @@ void save(CanvasView* canvasView)
         return;
     }
 
-    const bool untitled = canvasView->isUntitled();
+    const bool untitled = canvasView->is_untitled();
     QJsonObject sidecar;
     sidecar[QStringLiteral("originalPath")] = untitled ? QString()
                                                        : canvasView->path();
@@ -75,7 +75,7 @@ void save(CanvasView* canvasView)
                              QStringLiteral("dd.MM HH:mm")))
                    : QFileInfo(canvasView->path()).fileName();
 
-    QFile sidecarFile(sidecarPathFor(dir, id));
+    QFile sidecarFile(sidecar_path_for(dir, id));
     if (sidecarFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         sidecarFile.write(QJsonDocument(sidecar).toJson(QJsonDocument::Compact));
     } else {
@@ -87,14 +87,14 @@ void save(CanvasView* canvasView)
 
 void remove(const QUuid& id)
 {
-    const QDir dir(recoveryDir());
-    QFile::remove(fmlPathFor(dir, id));
-    QFile::remove(sidecarPathFor(dir, id));
+    const QDir dir(recovery_dir());
+    QFile::remove(fml_path_for(dir, id));
+    QFile::remove(sidecar_path_for(dir, id));
 }
 
 void clear()
 {
-    QDir dir(recoveryDir());
+    QDir dir(recovery_dir());
     if (dir.exists()) {
         dir.removeRecursively();
     }
@@ -103,7 +103,7 @@ void clear()
 QList<Entry> scan()
 {
     QList<Entry> entries;
-    const QDir dir(recoveryDir());
+    const QDir dir(recovery_dir());
     if (!dir.exists()) {
         return entries;
     }
@@ -121,7 +121,7 @@ QList<Entry> scan()
         entry.id = id;
         entry.fmlPath = dir.filePath(fmlFile);
 
-        QFile sidecarFile(sidecarPathFor(dir, id));
+        QFile sidecarFile(sidecar_path_for(dir, id));
         if (sidecarFile.open(QIODevice::ReadOnly)) {
             const QJsonObject obj
                 = QJsonDocument::fromJson(sidecarFile.readAll()).object();

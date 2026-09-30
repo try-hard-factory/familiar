@@ -72,9 +72,9 @@ struct RawProgressContext
 // ORDER these fire in, and that there are exactly 20 of them for a
 // typical file, is inferred from libraw_const.h's own enum declaration
 // order, not observed against a real decode yet.
-constexpr int kRawProgressKnownStages = 20;
+constexpr int krawProgressKnownStages = 20;
 
-int rawProgressCallback(void* data,
+int raw_progress_callback(void* data,
                         LibRaw_progress stage,
                         int /*iteration*/,
                         int /*expected*/)
@@ -100,9 +100,9 @@ int rawProgressCallback(void* data,
         bit >>= 1;
         ++bitPos;
     }
-    if (bitPos < kRawProgressKnownStages) {
-        const int percent = ((bitPos + 1) * 100) / kRawProgressKnownStages;
-        emit ctx->worker->rawDecodeProgress(percent);
+    if (bitPos < krawProgressKnownStages) {
+        const int percent = ((bitPos + 1) * 100) / krawProgressKnownStages;
+        emit ctx->worker->raw_decode_progress(percent);
     }
     return 0; // non-zero would throw LIBRAW_EXCEPTION_CANCELLED_BY_CALLBACK
               // internally (libraw.h's RUN_CALLBACK macro) - not wired up
@@ -148,7 +148,7 @@ QImage decode_raw_via_demosaic(const QString& filename,
 {
     LibRaw processor;
     RawProgressContext progressCtx{worker};
-    processor.set_progress_handler(&rawProgressCallback, &progressCtx);
+    processor.set_progress_handler(&raw_progress_callback, &progressCtx);
     // processor.imgdata.params.use_camera_wb = 1;
     if (fast) {
         processor.imgdata.params.user_qual = 0;
@@ -182,7 +182,9 @@ QImage decode_raw_via_demosaic(const QString& filename,
     return result;
 }
 
-QImage decode_raw(const QString& filename, RawImportChoice choice, ThreadedIO* worker)
+QImage decode_raw(const QString& filename,
+                  RawImportChoice choice,
+                  ThreadedIO* worker)
 {
     return decode_raw_via_demosaic(filename,
                                    worker,
@@ -191,8 +193,8 @@ QImage decode_raw(const QString& filename, RawImportChoice choice, ThreadedIO* w
 
 bool is_image_large(const QImage& img)
 {
-    return img.width() > kLargeImageMaxDimension
-           || img.height() > kLargeImageMaxDimension;
+    return img.width() > klargeImageMaxDimension
+           || img.height() > klargeImageMaxDimension;
 }
 
 // Classifies WHY `reader` can't produce an image, without attempting the
@@ -208,7 +210,7 @@ bool is_image_large(const QImage& img)
 // (genuinely corrupt/truncated data); the caller is expected to fall
 // back to ImageLoadFailure::Corrupt itself in that case, since this
 // function never performs the real decode.
-std::optional<ImageLoadFailure> precheckReader(QImageReader& reader,
+std::optional<ImageLoadFailure> precheck_reader(QImageReader& reader,
                                                qint64 allocationLimitBytes)
 {
     if (!reader.canRead()) {
@@ -235,7 +237,7 @@ std::optional<ImageLoadFailure> precheckReader(QImageReader& reader,
 // download that never got any data back at all) falls back to Corrupt -
 // the real reason is already in the network-layer FLOG_WARN from
 // download_image() above.
-ImageLoadFailure classifyFailedLoad(const QByteArray& bytes,
+ImageLoadFailure classify_failed_load(const QByteArray& bytes,
                                     qint64 allocationLimitBytes)
 {
     if (bytes.isEmpty()) {
@@ -245,7 +247,7 @@ ImageLoadFailure classifyFailedLoad(const QByteArray& bytes,
     buf.setData(bytes);
     buf.open(QIODevice::ReadOnly);
     QImageReader reader(&buf);
-    if (auto failure = precheckReader(reader, allocationLimitBytes)) {
+    if (auto failure = precheck_reader(reader, allocationLimitBytes)) {
         return *failure;
     }
     return ImageLoadFailure::Corrupt;
@@ -258,8 +260,8 @@ void downscale_to_limit(QImage& img)
     if (!is_image_large(img)) {
         return;
     }
-    img = img.scaled(kLargeImageMaxDimension,
-                     kLargeImageMaxDimension,
+    img = img.scaled(klargeImageMaxDimension,
+                     klargeImageMaxDimension,
                      Qt::KeepAspectRatio,
                      Qt::SmoothTransformation);
 }
@@ -291,7 +293,7 @@ LoadedImage decode_data_url(const QUrl& url)
         return {};
     }
     QString payload = full.mid(5);
-    int commaIdx = payload.indexOf(QLatin1Char(','));
+    int commaIdx = static_cast<int>(payload.indexOf(QLatin1Char(',')));
     if (commaIdx < 0) {
         return {};
     }
@@ -309,8 +311,8 @@ LoadedImage decode_data_url(const QUrl& url)
     return {img, bytes};
 }
 
-constexpr int kDownloadTimeoutMs = 15000;
-constexpr int kCancelPollMs = 200;
+constexpr int kdownloadTimeoutMs = 15000;
+constexpr int kcancelPollMs = 200;
 
 // Blocking download: ImageImportSession::run() runs on ThreadedIO's background
 // thread, which has no event loop of its own to deliver
@@ -343,7 +345,7 @@ LoadedImage download_image(QNetworkAccessManager& manager,
     QTimer timeoutTimer;
     timeoutTimer.setSingleShot(true);
     QObject::connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timeoutTimer.start(kDownloadTimeoutMs);
+    timeoutTimer.start(kdownloadTimeoutMs);
 
     QTimer cancelPollTimer;
     QObject::connect(&cancelPollTimer,
@@ -354,7 +356,7 @@ LoadedImage download_image(QNetworkAccessManager& manager,
                              loop.quit();
                          }
                      });
-    cancelPollTimer.start(kCancelPollMs);
+    cancelPollTimer.start(kcancelPollMs);
 
     loop.exec();
 
@@ -406,13 +408,13 @@ ThreadedIO::~ThreadedIO()
 void ThreadedIO::run()
 {
     FLOG_DEBUG(Ch::IO,
-              "ThreadedIO::run() this={} thread={}",
-              static_cast<void*>(this),
-              static_cast<void*>(QThread::currentThreadId()));
+               "ThreadedIO::run() this={} thread={}",
+               static_cast<void*>(this),
+               QThread::currentThreadId());
     func_(this);
 }
 
-void ThreadedIO::onCanceled()
+void ThreadedIO::on_canceled()
 {
     canceled = true;
 }
@@ -424,20 +426,20 @@ bool is_raw_file(const QString& filename)
         QStringLiteral("cr2"), QStringLiteral("cr3"),
         QStringLiteral("crw"), // Canon
         QStringLiteral("arw"), QStringLiteral("srf"),
-        QStringLiteral("sr2"), // Sony
-        QStringLiteral("orf"), // Olympus
-        QStringLiteral("raf"), // Fujifilm
-        QStringLiteral("rw2"), // Panasonic/Leica
+        QStringLiteral("sr2"),                        // Sony
+        QStringLiteral("orf"),                        // Olympus
+        QStringLiteral("raf"),                        // Fujifilm
+        QStringLiteral("rw2"),                        // Panasonic/Leica
         QStringLiteral("pef"), QStringLiteral("ptx"), // Pentax
-        QStringLiteral("srw"), // Samsung
+        QStringLiteral("srw"),                        // Samsung
         QStringLiteral("dng"), // Adobe DNG (any manufacturer)
         QStringLiteral("x3f"), // Sigma (Foveon)
         QStringLiteral("3fr"), // Hasselblad
         QStringLiteral("iiq"), // Phase One
         QStringLiteral("dcr"), QStringLiteral("kdc"), // Kodak
-        QStringLiteral("mos"), // Leaf
-        QStringLiteral("erf"), // Epson
-        QStringLiteral("mef"), // Mamiya
+        QStringLiteral("mos"),                        // Leaf
+        QStringLiteral("erf"),                        // Epson
+        QStringLiteral("mef"),                        // Mamiya
     };
     return kRawExtensions.contains(QFileInfo(filename).suffix().toLower());
 }
@@ -459,34 +461,35 @@ void ImageImportSession::run(ThreadedIO* worker)
     // progress(N) with N >= 1 only makes sense if urls_.size() > 1, or
     // if this is genuinely a second run() call resuming past index 0.
     FLOG_DEBUG(Ch::IO,
-              "ImageImportSession::run() this={} worker={} urls={} "
-              "nextIndex={}",
-              static_cast<void*>(this),
-              static_cast<void*>(worker),
-              urls_.size(),
-              nextIndex_);
+               "ImageImportSession::run() this={} worker={} urls={} "
+               "nextIndex={}",
+               static_cast<void*>(this),
+               static_cast<void*>(worker),
+               urls_.size(),
+               nextIndex_);
     // Only on the very first call, not a resume after
     // rawImportChoiceRequired() - re-emitting this would reset the
     // ProgressDialog's bar back to 0, even though everything before
     // nextIndex_ already loaded.
     if (nextIndex_ == 0) {
-        emit worker->beginProcessing(urls_.size());
+        emit worker->begin_processing(static_cast<int>(urls_.size()));
     }
 
     const QString optimizeMode
-        = SettingsHandler::getInstance()->autoOptimizeImportedImages();
+        = SettingsHandler::get_instance()->auto_optimize_imported_images();
     // 0 = no limitation (Items/image_allocation_limit's own convention -
     // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
     // both already treat <= 0 as "never TooLarge".
     const qint64 allocationLimitBytes
         = qint64(FamSettings()
-                     .valueOrDefault(QStringLiteral("Items/image_allocation_limit"))
+                     .value_or_default(
+                         QStringLiteral("Items/image_allocation_limit"))
                      .toInt())
           * 1024 * 1024;
-    const QString rawImportSetting
-        = FamSettings()
-              .valueOrDefault(QStringLiteral("Items/raw_import_choice"))
-              .toString();
+    const QString rawImportSetting = FamSettings()
+                                         .value_or_default(QStringLiteral(
+                                             "Items/raw_import_choice"))
+                                         .toString();
 
     // Only constructed if actually needed (most drops are local files).
     QNetworkAccessManager* netManager = nullptr;
@@ -505,7 +508,7 @@ void ImageImportSession::run(ThreadedIO* worker)
         // (widgets/dialogs.h) - a local file's basename rather than its
         // full path, which would just get elided into uselessness in a
         // narrow dialog; anything else shows as-is.
-        emit worker->currentItemChanged(
+        emit worker->current_item_changed(
             rawUrl.isLocalFile() ? QFileInfo(rawUrl.toLocalFile()).fileName()
                                  : rawUrl.toString());
 
@@ -518,7 +521,7 @@ void ImageImportSession::run(ThreadedIO* worker)
                 if (rawImportSetting == QLatin1String("always_optimize")) {
                     choice = RawImportChoice::Optimize;
                 } else if (rawImportSetting
-                          == QLatin1String("always_keep_original")) {
+                           == QLatin1String("always_keep_original")) {
                     choice = RawImportChoice::KeepOriginal;
                 } else if (queueChoice_) {
                     choice = *queueChoice_;
@@ -532,23 +535,23 @@ void ImageImportSession::run(ThreadedIO* worker)
                     // exact file - see ThreadedIO::
                     // rawImportChoiceRequired's own doc comment.
                     FLOG_DEBUG(Ch::IO,
-                              "Pausing for RAW import choice: {}",
-                              label);
+                               "Pausing for RAW import choice: {}",
+                               label);
                     pendingRawFile_ = label;
                     nextIndex_ = i;
                     delete netManager;
-                    emit worker->rawImportChoiceRequired(label);
+                    emit worker->raw_import_choice_required(label);
                     return;
                 }
                 FLOG_DEBUG(Ch::IO,
-                          "Decoding RAW file ({}) {}",
-                          choice == RawImportChoice::Optimize
-                              ? "fast half-size demosaic"
-                              : "full-resolution demosaic",
-                          label);
-                emit worker->rawDecodeStateChanged(true);
+                           "Decoding RAW file ({}) {}",
+                           choice == RawImportChoice::Optimize
+                               ? "fast half-size demosaic"
+                               : "full-resolution demosaic",
+                           label);
+                emit worker->raw_decode_state_changed(true);
                 img = decode_raw(label, choice, worker);
-                emit worker->rawDecodeStateChanged(false);
+                emit worker->raw_decode_state_changed(false);
                 // No raw-byte preservation (Max's explicit call - see
                 // ImageImportSession's own doc comment in fileio.h) -
                 // `bytes` stays empty, same as any decode failure below;
@@ -602,10 +605,10 @@ void ImageImportSession::run(ThreadedIO* worker)
         // emission's worker pointer + thread, to line up against
         // ProgressDialog's own DIAG logs and any crash backtrace.
         FLOG_DEBUG(Ch::IO,
-                  "emit progress({}) worker={} thread={}",
-                  i,
-                  static_cast<void*>(worker),
-                  static_cast<void*>(QThread::currentThreadId()));
+                   "emit progress({}) worker={} thread={}",
+                   i,
+                   static_cast<void*>(worker),
+                   QThread::currentThreadId());
         // Checked HERE, before anything is made of `img` - the old check
         // sat at the very bottom of the loop, i.e. only after the
         // in-flight item had already been queued onto the scene, so
@@ -629,7 +632,7 @@ void ImageImportSession::run(ThreadedIO* worker)
 
         if (img.isNull()) {
             const ImageLoadFailure failure
-                = classifyFailedLoad(bytes, allocationLimitBytes);
+                = classify_failed_load(bytes, allocationLimitBytes);
             switch (failure) {
             case ImageLoadFailure::UnsupportedFormat:
                 FLOG_WARN(Ch::IO, "Unsupported image format: {}", label);
@@ -645,6 +648,9 @@ void ImageImportSession::run(ThreadedIO* worker)
             case ImageLoadFailure::Corrupt:
                 FLOG_WARN(Ch::IO, "Could not load (corrupt file?): {}", label);
                 corruptErrors.append(label);
+                break;
+            default:
+                // TODOLATER: unreachable?
                 break;
             }
             continue;
@@ -700,7 +706,7 @@ void ImageImportSession::run(ThreadedIO* worker)
         itemData[QStringLiteral("y")] = topLeft.y();
         scene_->add_item_later(itemData, true);
 
-        worker->sleepMs(10);
+        worker->sleep_ms(10);
     }
 
     delete netManager;
@@ -713,11 +719,11 @@ void ImageImportSession::run(ThreadedIO* worker)
     // noise: they already know they stopped it.
     if (!worker->canceled) {
         if (!largeImages.isEmpty()) {
-            emit worker->largeImagesFound(largeImages);
+            emit worker->large_images_found(largeImages);
         }
         if (!unsupportedFormatErrors.isEmpty() || !tooLargeErrors.isEmpty()
             || !corruptErrors.isEmpty()) {
-            emit worker->imageLoadFailures(unsupportedFormatErrors,
+            emit worker->image_load_failures(unsupportedFormatErrors,
                                            tooLargeErrors,
                                            corruptErrors);
         }
@@ -725,8 +731,8 @@ void ImageImportSession::run(ThreadedIO* worker)
     // Flat list for finished()'s own `errors` param - unchanged shape for
     // whatever else still just wants "what failed", the 3-way breakdown
     // above is additive, not a replacement.
-    const QStringList errors
-        = unsupportedFormatErrors + tooLargeErrors + corruptErrors;
+    const QStringList errors = unsupportedFormatErrors + tooLargeErrors
+                               + corruptErrors;
     // DIAG (ProgressDialog SIGSEGV investigation).
     FLOG_DEBUG(Ch::IO, "emit finished() worker={}", static_cast<void*>(worker));
     emit worker->finished(QString(), errors);
@@ -762,12 +768,12 @@ void save_fml(const QString& filename,
     // TODOLATER: no CanvasView here to read canvasRect() from (this
     // wrapper isn't actually called anywhere yet - see
     // FileActions::saveFile(), which calls FmlArchive::save() directly
-    // instead so it can pass the real one). scene->rememberedBoundingRect()
+    // instead so it can pass the real one). scene->remembered_bounding_rect()
     // is a reasonable stand-in once this does get wired up, but it's
     // really meant as a one-shot value read right after a load, not an
     // ongoing substitute for the view's own canvasRect().
     FmlResult result = FmlArchive::save(scene,
-                                        scene->rememberedBoundingRect(),
+                                        scene->remembered_bounding_rect(),
                                         filename,
                                         worker);
 

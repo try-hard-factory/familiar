@@ -26,14 +26,14 @@ public:
     // Button name from MouseConfigBase::buttonMap() ("Left"/"Middle"/
     // "Right"), or empty if unset.
     QString button() const { return button_; }
-    void setButton(const QString& button);
-    void clearBinding();
+    void set_button(const QString& button);
+    void clear_binding();
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    void updateDisplay();
+    void update_display();
 
     QString button_;
 };
@@ -52,14 +52,14 @@ public:
     explicit KeySequenceCaptureField(QWidget* parent = nullptr);
 
     QString sequence() const { return sequence_; }
-    void setSequence(const QString& seq);
-    void clearSequence();
+    void set_sequence(const QString& seq);
+    void clear_sequence();
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
-    void updateDisplay();
+    void update_display();
 
     QString sequence_;
 };
@@ -78,16 +78,16 @@ class BindingEditorDialogBase : public QDialog
 protected:
     BindingEditorDialogBase(BindingTarget* target, QWidget* parent);
 
-    void populateFrom(const Binding& binding);
-    Binding collectBinding() const;
+    void populate_from(const Binding& binding);
+    Binding collect_binding() const;
 
     // Runs conflict detection appropriate to target_->kind() (keyboard
     // shortcuts vs. Action, or button+modifiers vs. other Controls
     // groups), offers to steal the binding from the conflicting owner via
     // showMessageBox, then calls onAccepted() and closes the dialog.
     // Returns without doing anything if the user declines the conflict.
-    void tryAccept();
-    virtual void onAccepted(const Binding& candidate) = 0;
+    void try_accept();
+    virtual void on_accepted(const Binding& candidate) = 0;
 
     BindingTarget* target_;
 
@@ -106,7 +106,7 @@ public:
     AddAliasDialog(BindingTarget* target, QWidget* parent);
 
 protected:
-    void onAccepted(const Binding& candidate) override;
+    void on_accepted(const Binding& candidate) override;
 };
 
 class RebindDialog : public BindingEditorDialogBase
@@ -117,7 +117,7 @@ public:
     RebindDialog(BindingTarget* target, int bindingIndex, QWidget* parent);
 
 protected:
-    void onAccepted(const Binding& candidate) override;
+    void on_accepted(const Binding& candidate) override;
 
 private:
     int bindingIndex_;

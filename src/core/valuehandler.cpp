@@ -103,9 +103,9 @@ QVariant KeySequence::process(const QVariant& val)
 // BOUNDED INT
 
 BoundedInt::BoundedInt(int min, int max, int def)
-    : m_min(min)
-    , m_max(max)
-    , m_def(def)
+    : mMin_(min)
+    , mMax_(max)
+    , mDef_(def)
 {}
 
 bool BoundedInt::check(const QVariant& val)
@@ -113,24 +113,24 @@ bool BoundedInt::check(const QVariant& val)
     QString str = val.toString();
     bool conversionOk;
     int num = str.toInt(&conversionOk);
-    return conversionOk && m_min <= num && num <= m_max;
+    return conversionOk && mMin_ <= num && num <= mMax_;
 }
 
 QVariant BoundedInt::fallback()
 {
-    return m_def;
+    return mDef_;
 }
 
 QString BoundedInt::expected()
 {
-    return QStringLiteral("number between %1 and %2").arg(m_min).arg(m_max);
+    return QStringLiteral("number between %1 and %2").arg(mMin_).arg(mMax_);
 }
 
 
 // COLOR
 
 Color::Color(QColor def)
-    : m_def(std::move(def))
+    : mDef_(std::move(def))
 {}
 
 bool Color::check(const QVariant& val)
@@ -160,7 +160,7 @@ QVariant Color::process(const QVariant& val)
 
 QVariant Color::fallback()
 {
-    return m_def;
+    return mDef_;
 }
 
 QVariant Color::representation(const QVariant& val)
@@ -187,10 +187,10 @@ QString Color::expected()
 // COLOR LIST
 
 ColorList::ColorList(QMap<int, QColor> def)
-    : m_def(def)
+    : mDef_(def)
 {}
 
-bool ColorList::check(const QVariant& val)
+bool ColorList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
@@ -215,7 +215,7 @@ QVariant ColorList::process(const QVariant& val)
 
 QVariant ColorList::fallback()
 {
-    return QVariant::fromValue(m_def);
+    return QVariant::fromValue(mDef_);
 }
 
 QVariant ColorList::representation(const QVariant& val)
@@ -237,10 +237,10 @@ QString ColorList::expected()
 // OPACITY LIST
 
 OpacityList::OpacityList(QMap<int, int> def)
-    : m_def(def)
+    : mDef_(def)
 {}
 
-bool OpacityList::check(const QVariant& val)
+bool OpacityList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
@@ -258,7 +258,7 @@ QVariant OpacityList::process(const QVariant& val)
 
 QVariant OpacityList::fallback()
 {
-    return QVariant::fromValue(m_def);
+    return QVariant::fromValue(mDef_);
 }
 
 QVariant OpacityList::representation(const QVariant& val)

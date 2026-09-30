@@ -24,7 +24,7 @@ InsertItemsCommand::InsertItemsCommand(CanvasScene* scene,
     ownedRefs_.reserve(items.size());
     for (auto* item : items) {
         items_.append(item);
-        ownedRefs_.append(item->acquireShared());
+        ownedRefs_.append(item->acquire_shared());
     }
 }
 
@@ -65,7 +65,7 @@ void InsertItemsCommand::redo()
         // setSelected(true) below triggers automatically. A plain item
         // (attachedToUid().isNull()) - including a copied GROUP and its
         // non-attached members - keeps the previous behavior unchanged.
-        if (item->attachedToUid().isNull()) {
+        if (item->attached_to_uid().isNull()) {
             graphicsItem->setSelected(true);
         }
         item->bring_to_front();
@@ -103,7 +103,7 @@ DeleteItemsCommand::DeleteItemsCommand(CanvasScene* scene,
     for (auto* item : items) {
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         if (baseItem) {
-            ownedRefs_.append(baseItem->acquireShared());
+            ownedRefs_.append(baseItem->acquire_shared());
             owningGroups_.append(scene_->find_owning_group(baseItem->uid()));
         } else {
             owningGroups_.append(nullptr);
@@ -482,7 +482,7 @@ ResetCropCommand::ResetCropCommand(const QList<IBaseItem*>& items)
     // Filter only croppable items
     for (auto* item : items) {
         if (item->is_image()) {
-            items_.append((PixmapItem*) item);
+            items_.append(static_cast<PixmapItem*>( item));
         }
     }
 }
@@ -769,7 +769,7 @@ void ToggleGrayscaleCommand::redo()
 {
     FLOG_DEBUG(Ch::Undo, "ToggleGrayscaleCommand::redo() ({} item(s))", items_.size());
     for (auto* item : items_) {
-        item->setGrayscale(!item->grayscale());
+        item->set_grayscale(!item->grayscale());
     }
 }
 
@@ -791,7 +791,7 @@ GroupCommand::GroupCommand(CanvasScene* scene,
     , scene_(scene)
     , group_(group)
     , members_(members)
-    , groupRef_(group->acquireShared())
+    , groupRef_(group->acquire_shared())
 {}
 
 void GroupCommand::redo()
@@ -828,7 +828,7 @@ UngroupCommand::UngroupCommand(CanvasScene* scene, GroupItem* group)
     , scene_(scene)
     , group_(group)
     , members_(group->resolve_children())
-    , groupRef_(group->acquireShared())
+    , groupRef_(group->acquire_shared())
 {}
 
 void UngroupCommand::redo()

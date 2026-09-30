@@ -40,7 +40,7 @@ protected:
     void dropEvent(QDropEvent* event) override;
 
 private:
-    static constexpr char txt[] = R"(
+    static constexpr char ktxt[] = R"(
         <p>Paste or drop images here.</p>
         <p>Right-click for more options.</p>
     )";
