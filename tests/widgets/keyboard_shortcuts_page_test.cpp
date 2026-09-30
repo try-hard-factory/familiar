@@ -19,9 +19,9 @@ TEST(KeyboardShortcutsPageTest, SearchFilterMatchesAgainstControlsSection)
     SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
     KeyboardShortcutsPage page;
 
-    EXPECT_TRUE(page.applySearchFilter(QStringLiteral("zoom")));
+    EXPECT_TRUE(page.apply_search_filter(QStringLiteral("zoom")));
     EXPECT_FALSE(
-        page.applySearchFilter(QStringLiteral("this-will-never-match")));
+        page.apply_search_filter(QStringLiteral("this-will-never-match")));
     // Empty text clears the filter - everything visible again.
-    EXPECT_TRUE(page.applySearchFilter(QString()));
+    EXPECT_TRUE(page.apply_search_filter(QString()));
 }

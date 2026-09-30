@@ -104,10 +104,27 @@ echo
 # just a warning, but the same command line carries -Werror, so every
 # single file died with "Found compiler error(s)" before clang-tidy got
 # to run a check at all - a whole 60-file run producing nothing but that.
+#
+# run-clang-tidy's argparse registers single-dash flags (-fix, -format,
+# -quiet), so a GNU-style --fix isn't a synonym there - it's rejected
+# outright with "unrecognized arguments" before any file is analysed.
+# Both spellings are accepted here and handed over as the one it knows.
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --fix) ARGS+=(-fix) ;;
+        *) ARGS+=("$arg") ;;
+    esac
+done
+
 run-clang-tidy -p "$ROOT" -j"$(nproc)" \
     -extra-arg=-Wno-unknown-warning-option \
-    "${CHECKS[@]}" "$@" "$FILE_RE" 2>&1 |
+    "${CHECKS[@]}" "${ARGS[@]}" "$FILE_RE" 2>&1 |
     tee "$LOG"
+# PIPESTATUS, not $?: the latter is tee's status, which is 0 even when
+# run-clang-tidy died. Needed for the "no findings" case below - a run
+# that never started looks exactly like a clean one in the log.
+RC=${PIPESTATUS[0]}
 
 echo
 echo "───────────────────────────────────────────────────────────"
@@ -119,6 +136,16 @@ UNIQ=$(grep -hoE '^[^ ]+:[0-9]+:[0-9]+: (warning|error): .*' "$LOG" 2>/dev/null 
     sed "s|^$ROOT/||" | grep -vE '^(include|build_|obj-)/' | sort -u)
 
 if [ -z "$UNIQ" ]; then
+    # A non-zero status alone doesn't mean failure: .clang-tidy sets
+    # WarningsAsErrors for the naming check, so a run that found things
+    # exits non-zero by design. It's the COMBINATION of no findings and a
+    # non-zero status that means the run itself never produced any -
+    # a bad flag, a missing binary, a compile error in every file.
+    if [ "$RC" -ne 0 ]; then
+        echo "run-clang-tidy failed (exit $RC) - nothing was analysed."
+        echo "see $LOG"
+        exit "$RC"
+    fi
     echo "no findings"
     exit 0
 fi

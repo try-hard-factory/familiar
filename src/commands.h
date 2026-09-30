@@ -312,8 +312,8 @@ public:
     // the selection would vanish right as content faded out completely.
     // One 8-bit alpha step is visually indistinguishable from fully
     // transparent, so this costs nothing.
-    void setOpacity(qreal opacity) { opacity_ = qMax(opacity, 1.0 / 255.0); }
-    void setIgnoreFirstRedo(bool value) { ignoreFirstRedo_ = value; }
+    void set_opacity(qreal opacity) { opacity_ = qMax(opacity, 1.0 / 255.0); }
+    void set_ignore_first_redo(bool value) { ignoreFirstRedo_ = value; }
 
 private:
     QList<QGraphicsItem*> items_;

@@ -17,7 +17,7 @@
 #include "utils/utils.h"
 
 namespace {
-constexpr int kIconSize = 72;
+constexpr int kiconSize = 72;
 }
 
 AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
@@ -65,7 +65,7 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     // QWidget::windowIcon()'s own app-wide fallback, not a raw file
     // path of its own.
     auto* iconLabel = new QLabel(this);
-    iconLabel->setPixmap(wm->windowIcon().pixmap(kIconSize, kIconSize));
+    iconLabel->setPixmap(wm->windowIcon().pixmap(kiconSize, kiconSize));
     iconLabel->setAlignment(Qt::AlignCenter);
     outer->addWidget(iconLabel);
     outer->addSpacing(4);
@@ -117,12 +117,12 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
         QStringLiteral("color: %1;").arg(dimText.name(QColor::HexArgb)));
     outer->addWidget(copyrightLabel);
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("AboutDialog",
+    setStyleSheet(familiar::dialog_style::panel_style_sheet("AboutDialog",
                                                           background,
                                                           border,
                                                           textColor,
                                                           /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("adCloseBtn",
+                  + familiar::dialog_style::close_button_style_sheet("adCloseBtn",
                                                                   textColor,
                                                                   accent));
 

@@ -60,7 +60,7 @@ public:
     QList<Entry> entries() const;
 
 signals:
-    void entryAdded(Level level, const QString& line);
+    void entry_added(Level level, const QString& line);
 
 private:
     mutable QMutex mutex_;

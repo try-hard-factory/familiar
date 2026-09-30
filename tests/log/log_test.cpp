@@ -18,37 +18,37 @@ using namespace familiar::log;
 
 TEST(LevelFromNameTest, ParsesEachRecognizedLevelCaseInsensitively)
 {
-    EXPECT_EQ(levelFromName(QStringLiteral("trace")), Level::Trace);
-    EXPECT_EQ(levelFromName(QStringLiteral("DEBUG")), Level::Debug);
-    EXPECT_EQ(levelFromName(QStringLiteral("Info")), Level::Info);
-    EXPECT_EQ(levelFromName(QStringLiteral("warning")), Level::Warning);
-    EXPECT_EQ(levelFromName(QStringLiteral("WARN")), Level::Warning);
-    EXPECT_EQ(levelFromName(QStringLiteral("error")), Level::Error);
-    EXPECT_EQ(levelFromName(QStringLiteral("critical")), Level::Critical);
-    EXPECT_EQ(levelFromName(QStringLiteral("FATAL")), Level::Critical);
+    EXPECT_EQ(level_from_name(QStringLiteral("trace")), Level::Trace);
+    EXPECT_EQ(level_from_name(QStringLiteral("DEBUG")), Level::Debug);
+    EXPECT_EQ(level_from_name(QStringLiteral("Info")), Level::Info);
+    EXPECT_EQ(level_from_name(QStringLiteral("warning")), Level::Warning);
+    EXPECT_EQ(level_from_name(QStringLiteral("WARN")), Level::Warning);
+    EXPECT_EQ(level_from_name(QStringLiteral("error")), Level::Error);
+    EXPECT_EQ(level_from_name(QStringLiteral("critical")), Level::Critical);
+    EXPECT_EQ(level_from_name(QStringLiteral("FATAL")), Level::Critical);
 }
 
 TEST(LevelFromNameTest, TrimsWhitespaceAroundTheName)
 {
-    EXPECT_EQ(levelFromName(QStringLiteral("  info  ")), Level::Info);
+    EXPECT_EQ(level_from_name(QStringLiteral("  info  ")), Level::Info);
 }
 
 TEST(LevelFromNameTest, UnrecognizedNameFallsBackToGivenDefault)
 {
-    EXPECT_EQ(levelFromName(QStringLiteral("nonsense"), Level::Critical),
+    EXPECT_EQ(level_from_name(QStringLiteral("nonsense"), Level::Critical),
              Level::Critical);
     // Own default (Level::Info) when the caller doesn't specify one.
-    EXPECT_EQ(levelFromName(QStringLiteral("nonsense")), Level::Info);
+    EXPECT_EQ(level_from_name(QStringLiteral("nonsense")), Level::Info);
 }
 
 TEST(ToQuillLevelTest, MapsEveryFamiliarLevelToItsQuillCounterpart)
 {
-    EXPECT_EQ(detail::toQuillLevel(Level::Trace), quill::LogLevel::TraceL1);
-    EXPECT_EQ(detail::toQuillLevel(Level::Debug), quill::LogLevel::Debug);
-    EXPECT_EQ(detail::toQuillLevel(Level::Info), quill::LogLevel::Info);
-    EXPECT_EQ(detail::toQuillLevel(Level::Warning), quill::LogLevel::Warning);
-    EXPECT_EQ(detail::toQuillLevel(Level::Error), quill::LogLevel::Error);
-    EXPECT_EQ(detail::toQuillLevel(Level::Critical),
+    EXPECT_EQ(detail::to_quill_level(Level::Trace), quill::LogLevel::TraceL1);
+    EXPECT_EQ(detail::to_quill_level(Level::Debug), quill::LogLevel::Debug);
+    EXPECT_EQ(detail::to_quill_level(Level::Info), quill::LogLevel::Info);
+    EXPECT_EQ(detail::to_quill_level(Level::Warning), quill::LogLevel::Warning);
+    EXPECT_EQ(detail::to_quill_level(Level::Error), quill::LogLevel::Error);
+    EXPECT_EQ(detail::to_quill_level(Level::Critical),
              quill::LogLevel::Critical);
 }
 
@@ -57,21 +57,21 @@ TEST(LogFacadeTest, LogFilePathIsResolvedAfterInit)
     // LogTestEnvironment redirects this to a temp file - the point here
     // is only that init() actually resolved *something*, not that it
     // matches a specific real location.
-    EXPECT_FALSE(logFilePath().isEmpty());
+    EXPECT_FALSE(log_file_path().isEmpty());
 }
 
 TEST(LogFacadeTest, RingSinkIsAvailableAfterInit)
 {
-    ASSERT_NE(ringSink(), nullptr);
+    ASSERT_NE(ring_sink(), nullptr);
 }
 
 TEST(LogFacadeTest, SetChannelLevelChangesTheLoggerLevel)
 {
-    quill::Logger* logger = channelLogger(Ch::UI);
+    quill::Logger* logger = channel_logger(Ch::UI);
     ASSERT_NE(logger, nullptr);
     const quill::LogLevel original = logger->get_log_level();
 
-    setChannelLevel(Ch::UI, Level::Error);
+    set_channel_level(Ch::UI, Level::Error);
     EXPECT_EQ(logger->get_log_level(), quill::LogLevel::Error);
 
     // Restore - every other test in this binary logs through Ch::UI too,
@@ -82,15 +82,15 @@ TEST(LogFacadeTest, SetChannelLevelChangesTheLoggerLevel)
 
 TEST(LogFacadeTest, FlogInfoIsCapturedByTheRingSinkAfterFlush)
 {
-    ASSERT_NE(ringSink(), nullptr);
+    ASSERT_NE(ring_sink(), nullptr);
 
     FLOG_INFO(Ch::UI, "ring sink marker RSMARKER8842");
     // quill is async - the backend thread only picks up a queued record
     // once flush_log() has actually waited for it (blocking by default),
     // otherwise reading entries() below would be racing the backend.
-    channelLogger(Ch::UI)->flush_log();
+    channel_logger(Ch::UI)->flush_log();
 
-    const QList<RingSink::Entry> lines = ringSink()->entries();
+    const QList<RingSink::Entry> lines = ring_sink()->entries();
     const bool found = std::any_of(
         lines.begin(), lines.end(), [](const RingSink::Entry& e) {
             return e.line.contains(QStringLiteral("RSMARKER8842"));
@@ -101,9 +101,9 @@ TEST(LogFacadeTest, FlogInfoIsCapturedByTheRingSinkAfterFlush)
 TEST(LogFacadeTest, FlogTimerLogsElapsedTimeAtScopeExit)
 {
     { FLOG_TIMER(Ch::UI, "flog_timer marker TMMARKER7331"); }
-    channelLogger(Ch::UI)->flush_log();
+    channel_logger(Ch::UI)->flush_log();
 
-    const QList<RingSink::Entry> lines = ringSink()->entries();
+    const QList<RingSink::Entry> lines = ring_sink()->entries();
     const bool found = std::any_of(
         lines.begin(), lines.end(), [](const RingSink::Entry& e) {
             return e.line.contains(QStringLiteral("TMMARKER7331"))
@@ -120,7 +120,7 @@ TEST(DebugStringTest, CapturesQDebugStreamOutputForATypeWithNoFormatter)
     // Checking substrings, not an exact string, since QDebug's own
     // punctuation/spacing around a container isn't this function's
     // contract to preserve.
-    const QString result = debugString(QList<int>{1, 2, 3});
+    const QString result = debug_string(QList<int>{1, 2, 3});
     EXPECT_TRUE(result.contains(QStringLiteral("1")));
     EXPECT_TRUE(result.contains(QStringLiteral("2")));
     EXPECT_TRUE(result.contains(QStringLiteral("3")));

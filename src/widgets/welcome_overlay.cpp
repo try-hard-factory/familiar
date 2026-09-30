@@ -27,7 +27,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     filesWidget_->hide();
 
     // Help text (always visible, transparent to mouse so WelcomeOverlay stays the grabber)
-    label_ = new QLabel(txt, this);
+    label_ = new QLabel(ktxt, this);
     label_->setAlignment(Qt::AlignVCenter | Qt::AlignCenter);
     label_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     layout_ = new QHBoxLayout(this);
@@ -78,7 +78,7 @@ void WelcomeOverlay::on_context_menu(const QPoint& point)
 
 void WelcomeOverlay::mousePressEvent(QMouseEvent* event)
 {
-    if (mousePressEventMainControls(event)) {
+    if (mouse_press_event_main_controls(event)) {
         return;
     }
     QWidget::mousePressEvent(event);
@@ -86,7 +86,7 @@ void WelcomeOverlay::mousePressEvent(QMouseEvent* event)
 
 void WelcomeOverlay::mouseMoveEvent(QMouseEvent* event)
 {
-    if (mouseMoveEventMainControls(event)) {
+    if (mouse_move_event_main_controls(event)) {
         return;
     }
     QWidget::mouseMoveEvent(event);
@@ -94,7 +94,7 @@ void WelcomeOverlay::mouseMoveEvent(QMouseEvent* event)
 
 void WelcomeOverlay::mouseReleaseEvent(QMouseEvent* event)
 {
-    if (mouseReleaseEventMainControls(event)) {
+    if (mouse_release_event_main_controls(event)) {
         return;
     }
     QWidget::mouseReleaseEvent(event);
@@ -102,7 +102,7 @@ void WelcomeOverlay::mouseReleaseEvent(QMouseEvent* event)
 
 void WelcomeOverlay::keyPressEvent(QKeyEvent* event)
 {
-    if (keyPressEventMainControls(event)) {
+    if (key_press_event_main_controls(event)) {
         return;
     }
     QWidget::keyPressEvent(event);
@@ -113,7 +113,7 @@ void WelcomeOverlay::dropEvent(QDropEvent* event)
     FLOG_DEBUG(Ch::UI, "WelcomeOverlay::Handling file drop:");
     if (auto* canvas = qobject_cast<CanvasView*>(parent())) {
         QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
-        canvas->handleDrop(event->mimeData(), pos);
+        canvas->handle_drop(event->mimeData(), pos);
     }
     event->acceptProposedAction();
 }

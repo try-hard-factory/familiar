@@ -15,10 +15,10 @@
 #include "log/log.h"
 using namespace familiar::log;
 namespace {
-constexpr char CHANGED_SYMBOL[] = "✎";
+constexpr char kchangedSymbol[] = "✎";
 
-constexpr int kControlWidth = 200;
-constexpr int kInfoPopupWidth = 320;
+constexpr int kcontrolWidth = 200;
+constexpr int kinfoPopupWidth = 320;
 } // namespace
 
 // ─── SettingInfoPopup ───────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     // (ChangeOpacityDialog etc., widgets/dialogs.h) - missed here at
     // first.
     setAttribute(Qt::WA_StyledBackground);
-    setFixedWidth(kInfoPopupWidth);
+    setFixedWidth(kinfoPopupWidth);
 
     // Square, not dialog_style::panelStyleSheet()'s usual rounded panel
     // (border-radius baked into that shared helper, paired with
@@ -95,7 +95,7 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     layout->addWidget(hintLabel_);
 }
 
-void SettingInfoPopup::setContent(const QString& title,
+void SettingInfoPopup::set_content(const QString& title,
                                   const QString& bodyHtml,
                                   const QString& defaultText,
                                   bool showResetHint)
@@ -120,7 +120,7 @@ HoverInfoLabel::HoverInfoLabel(const QString& text, QWidget* parent)
     setCursor(Qt::WhatsThisCursor);
 }
 
-void HoverInfoLabel::setInfoText(const QString& html)
+void HoverInfoLabel::set_info_text(const QString& html)
 {
     infoHtml_ = html;
     // Kept in sync even though the native tooltip never actually
@@ -130,12 +130,12 @@ void HoverInfoLabel::setInfoText(const QString& html)
     setToolTip(html);
 }
 
-void HoverInfoLabel::setDefaultText(const QString& text)
+void HoverInfoLabel::set_default_text(const QString& text)
 {
     defaultText_ = text;
 }
 
-void HoverInfoLabel::setShowResetHint(bool show)
+void HoverInfoLabel::set_show_reset_hint(bool show)
 {
     showResetHint_ = show;
 }
@@ -147,7 +147,7 @@ bool HoverInfoLabel::event(QEvent* event)
             if (!popup_) {
                 popup_ = new SettingInfoPopup(window());
             }
-            popup_->setContent(title_, infoHtml_, defaultText_, showResetHint_);
+            popup_->set_content(title_, infoHtml_, defaultText_, showResetHint_);
 
             QPoint pos = mapToGlobal(QPoint(0, height() + 4));
             // Clamp to the screen this label is actually on, same idea
@@ -195,60 +195,60 @@ SettingRowBase::SettingRowBase(const QString& label,
     // settings_window.cpp) - raw label, no "✎" changed-marker.
     setObjectName(label);
     hbox_->setContentsMargins(0, 4, 0, 4);
-    label_->setInfoText(familiar::setting_descriptions::forSettingsKey(key));
+    label_->set_info_text(familiar::setting_descriptions::for_settings_key(key));
     hbox_->addWidget(label_);
     hbox_->addStretch(1);
 
     connect(&SettingsEvents::instance(),
-            &SettingsEvents::restoreDefaults,
+            &SettingsEvents::restore_defaults,
             this,
-            &SettingRowBase::onRestoreDefaults);
+            &SettingRowBase::on_restore_defaults);
 
-    updateLabel();
+    update_label();
 }
 
-void SettingRowBase::updateLabel()
+void SettingRowBase::update_label()
 {
     FamSettings settings;
     QString text = baseLabel_;
-    if (settings.valueChanged(key_)) {
-        text += QStringLiteral(" ") + QString::fromUtf8(CHANGED_SYMBOL);
+    if (settings.value_changed(key_)) {
+        text += QStringLiteral(" ") + QString::fromUtf8(kchangedSymbol);
     }
     label_->setText(text);
 }
 
-void SettingRowBase::onValueChanged(const QVariant& value)
+void SettingRowBase::on_value_changed(const QVariant& value)
 {
     if (ignoreValueChanged_) {
         return;
     }
 
     FamSettings settings;
-    const QVariant converted = convertValueFromQt(value);
-    if (converted != settings.valueOrDefault(key_)) {
-        settings.setValue(key_, converted);
-        updateLabel();
+    const QVariant converted = convert_value_from_qt(value);
+    if (converted != settings.value_or_default(key_)) {
+        settings.set_value(key_, converted);
+        update_label();
     }
 }
 
-void SettingRowBase::onRestoreDefaults()
+void SettingRowBase::on_restore_defaults()
 {
     FamSettings settings;
     ignoreValueChanged_ = true;
-    setValue(settings.valueOrDefault(key_));
+    set_value(settings.value_or_default(key_));
     ignoreValueChanged_ = false;
-    updateLabel();
+    update_label();
 }
 
-QString SettingRowBase::defaultValueDisplayText() const
+QString SettingRowBase::default_value_display_text() const
 {
-    return FamSettings().valueOrDefault(key_).toString();
+    return FamSettings().value_or_default(key_).toString();
 }
 
-void SettingRowBase::refreshInfoPopup()
+void SettingRowBase::refresh_info_popup()
 {
-    label_->setDefaultText(tr("Default: %1").arg(defaultValueDisplayText()));
-    label_->setShowResetHint(true);
+    label_->set_default_text(tr("Default: %1").arg(default_value_display_text()));
+    label_->set_show_reset_hint(true);
 }
 
 void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
@@ -266,9 +266,9 @@ void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
         // re-apply immediately too, not just the display.
         settings.remove(key_);
         ignoreValueChanged_ = true;
-        setValue(settings.valueOrDefault(key_));
+        set_value(settings.value_or_default(key_));
         ignoreValueChanged_ = false;
-        updateLabel();
+        update_label();
         event->accept();
         return;
     }
@@ -297,11 +297,11 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     for (const ComboOption& opt : options_) {
         input_->addItem(opt.label);
     }
-    input_->setFixedWidth(kControlWidth);
+    input_->setFixedWidth(kcontrolWidth);
     // setValue() (via setCurrentIndex) happens before this connect(), so
     // it can't fire onValueChanged() with nothing listening yet - no
     // ignoreValueChanged_ guard needed.
-    setValue(settings.valueOrDefault(key_));
+    set_value(settings.value_or_default(key_));
     hbox_->addWidget(input_);
     ignoreValueChanged_ = false;
 
@@ -310,17 +310,17 @@ ComboSettingRow::ComboSettingRow(const QString& label,
             this,
             [this](int index) {
                 if (index >= 0 && index < options_.size()) {
-                    onValueChanged(options_[index].value);
+                    on_value_changed(options_[index].value);
                 }
             });
 
     // options_ (used by defaultValueDisplayText() below) is fully set by
     // now - see that method's own comment for why this can't happen from
     // SettingRowBase's constructor instead.
-    refreshInfoPopup();
+    refresh_info_popup();
 }
 
-void ComboSettingRow::setValue(const QVariant& value)
+void ComboSettingRow::set_value(const QVariant& value)
 {
     const QString str = value.toString();
     for (int i = 0; i < options_.size(); ++i) {
@@ -331,9 +331,9 @@ void ComboSettingRow::setValue(const QVariant& value)
     }
 }
 
-QString ComboSettingRow::defaultValueDisplayText() const
+QString ComboSettingRow::default_value_display_text() const
 {
-    const QString def = FamSettings().valueOrDefault(key_).toString();
+    const QString def = FamSettings().value_or_default(key_).toString();
     for (const ComboOption& opt : options_) {
         if (opt.value == def) {
             return opt.label;
@@ -342,7 +342,7 @@ QString ComboSettingRow::defaultValueDisplayText() const
     return def;
 }
 
-void ComboSettingRow::setControlEnabled(bool enabled)
+void ComboSettingRow::set_control_enabled(bool enabled)
 {
     input_->setEnabled(enabled);
 }
@@ -370,7 +370,7 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     input_->setFixedSize(22, 22);
 
     FamSettings settings;
-    setValue(settings.valueOrDefault(key_));
+    set_value(settings.value_or_default(key_));
     hbox_->addWidget(input_);
     ignoreValueChanged_ = false;
 
@@ -387,7 +387,7 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
             &QCheckBox::checkStateChanged,
             this,
             [this](Qt::CheckState state) {
-                onValueChanged(QVariant::fromValue(state));
+                on_value_changed(QVariant::fromValue(state));
                 emit toggled(state == Qt::Checked);
             });
 #else
@@ -401,26 +401,26 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
             });
 #endif
 
-    refreshInfoPopup();
+    refresh_info_popup();
 }
 
-void CheckboxSettingRow::setValue(const QVariant& value)
+void CheckboxSettingRow::set_value(const QVariant& value)
 {
     input_->setChecked(value.toBool());
 }
 
-QVariant CheckboxSettingRow::convertValueFromQt(const QVariant& value)
+QVariant CheckboxSettingRow::convert_value_from_qt(const QVariant& value)
 {
     return value.value<Qt::CheckState>() == Qt::Checked;
 }
 
-QString CheckboxSettingRow::defaultValueDisplayText() const
+QString CheckboxSettingRow::default_value_display_text() const
 {
-    return FamSettings().valueOrDefault(key_).toBool() ? tr("Checked")
+    return FamSettings().value_or_default(key_).toBool() ? tr("Checked")
                                                        : tr("Unchecked");
 }
 
-void CheckboxSettingRow::setControlEnabled(bool enabled)
+void CheckboxSettingRow::set_control_enabled(bool enabled)
 {
     input_->setEnabled(enabled);
 }
@@ -440,24 +440,24 @@ IntegerSettingRow::IntegerSettingRow(
 {
     FamSettings settings;
     input_->setRange(min, max);
-    input_->setFixedWidth(kControlWidth);
-    setValue(settings.valueOrDefault(key_));
+    input_->setFixedWidth(kcontrolWidth);
+    set_value(settings.value_or_default(key_));
     hbox_->addWidget(input_);
     ignoreValueChanged_ = false;
 
     connect(input_, &QSpinBox::valueChanged, this, [this](int v) {
-        onValueChanged(v);
+        on_value_changed(v);
     });
 
-    refreshInfoPopup();
+    refresh_info_popup();
 }
 
-void IntegerSettingRow::setValue(const QVariant& value)
+void IntegerSettingRow::set_value(const QVariant& value)
 {
     input_->setValue(value.toInt());
 }
 
-void IntegerSettingRow::setControlEnabled(bool enabled)
+void IntegerSettingRow::set_control_enabled(bool enabled)
 {
     input_->setEnabled(enabled);
 }

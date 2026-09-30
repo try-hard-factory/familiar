@@ -36,7 +36,7 @@ public:
     // than each thinking it's the sole owner (which would double-free).
     // The first call for a given object creates the control block; every
     // later call (from anyone) just shares it.
-    std::shared_ptr<IBaseItem> acquireShared()
+    std::shared_ptr<IBaseItem> acquire_shared()
     {
         if (auto existing = weak_from_this().lock()) {
             return existing;
@@ -109,7 +109,7 @@ public:
     // TextItem/PixmapItem actually store anything; a type that can never
     // be attached (GroupItem, ErrorItem, MultiSelectItem) just keeps
     // returning a null uid.
-    virtual QUuid attachedToUid() const { return QUuid(); }
+    virtual QUuid attached_to_uid() const { return QUuid(); }
     virtual void set_attached_to(const QUuid& uid) { Q_UNUSED(uid); }
 };
 
@@ -313,8 +313,8 @@ class SelectableMixin : public BaseItemMixin<T>
     qreal rotateOrigDegrees_;
     QPointF eventAnchor_;
     qreal rotateStartAngle_;
-    int viewport_scale_{1};
-    bool is_editable_{false};
+    int viewportScale_{1};
+    bool isEditable_{false};
 
     // kFieldResizeMode drag state (edit-mode square handles only - see
     // ItemMixin::resize_field(), moveitem.h). eventAnchor_ above holds
@@ -338,7 +338,7 @@ class SelectableMixin : public BaseItemMixin<T>
     QSizeF fieldResizeOrigSize_;
 
     //QVector<QPointF> corners;
-    QVector<QRectF> flipBounds;
+    QVector<QRectF> flipBounds_;
 
 public:
     // Was FlipBounds/flip_v - these edge zones used to trigger a flip on
@@ -373,8 +373,8 @@ public:
         this->setAcceptHoverEvents(true);
         this->setFlag(QGraphicsItem::ItemIsMovable, true);
         this->setFlag(QGraphicsItem::ItemIsSelectable, true);
-        viewport_scale_ = 1;
-        is_editable_ = false;
+        viewportScale_ = 1;
+        isEditable_ = false;
     }
 
     qreal fixed_length_for_viewport(qreal value) const
@@ -433,13 +433,13 @@ public:
 
         const auto& args = CommandlineArgs::instance();
 
-        if (args.debugShapes()) {
+        if (args.debug_shapes()) {
             draw_debug_shape(painter, this->shape(), 255, 0, 0);
         }
-        if (args.debugBoundingRects()) {
+        if (args.debug_bounding_rects()) {
             draw_debug_shape(painter, this->boundingRect(), 0, 255, 0);
         }
-        if (args.debugHandles()
+        if (args.debug_handles()
             && static_cast<Mixin*>(this)->has_selection_handles()) {
             for (const QPointF& corner : corners()) {
                 draw_debug_shape(painter, get_scale_bounds(corner), 0, 0, 255);
@@ -474,7 +474,7 @@ public:
             QList<QGraphicsView*> views = this->scene()->views();
             if (!views.isEmpty()) {
                 if (CanvasView* view = dynamic_cast<CanvasView*>(views.at(0))) {
-                    outlineOpacity = view->selectionOutlineOpacity();
+                    outlineOpacity = view->selection_outline_opacity();
                 }
             }
         }
@@ -642,39 +642,39 @@ public:
 
     std::vector<EdgeBounds> get_edge_bounds()
     {
-        qreal outer_margin = select_resize_size() / 2;
-        qreal inner_margin = select_resize_size() / 2;
+        qreal outerMargin = select_resize_size() / 2;
+        qreal innerMargin = select_resize_size() / 2;
         QPointF origin = this->bounding_rect_unselected().topLeft();
 
         std::vector<EdgeBounds> edgeBounds;
         edgeBounds.reserve(4);
 
         // Top
-        edgeBounds.push_back({QRectF(origin.x() + inner_margin,
-                                     origin.y() - outer_margin,
-                                     this->width() - 2 * inner_margin,
-                                     outer_margin + inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() + innerMargin,
+                                     origin.y() - outerMargin,
+                                     this->width() - 2 * innerMargin,
+                                     outerMargin + innerMargin),
                               true});
 
         // Bottom
-        edgeBounds.push_back({QRectF(origin.x() + inner_margin,
-                                     origin.y() + this->height() - inner_margin,
-                                     this->width() - 2 * inner_margin,
-                                     outer_margin + inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() + innerMargin,
+                                     origin.y() + this->height() - innerMargin,
+                                     this->width() - 2 * innerMargin,
+                                     outerMargin + innerMargin),
                               true});
 
         // Left
-        edgeBounds.push_back({QRectF(origin.x() - outer_margin,
-                                     origin.y() + inner_margin,
-                                     outer_margin + inner_margin,
-                                     this->height() - 2 * inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() - outerMargin,
+                                     origin.y() + innerMargin,
+                                     outerMargin + innerMargin,
+                                     this->height() - 2 * innerMargin),
                               false});
 
         // Right
-        edgeBounds.push_back({QRectF(origin.x() + this->width() - inner_margin,
-                                     origin.y() + inner_margin,
-                                     outer_margin + inner_margin,
-                                     this->height() - 2 * inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() + this->width() - innerMargin,
+                                     origin.y() + innerMargin,
+                                     outerMargin + innerMargin,
+                                     this->height() - 2 * innerMargin),
                               false});
 
         return edgeBounds;
@@ -742,7 +742,7 @@ protected:
         }
 
         QPointF pos = event->pos();
-        if (isInHandleFreeCenter(pos)) {
+        if (is_in_handle_free_center(pos)) {
             this->unset_cursor();
             return;
         }
@@ -752,10 +752,10 @@ protected:
         const bool resizeOnly
             = static_cast<Mixin*>(this)->paints_edit_mode_handles();
         for (const QPointF& corner : corners()) {
-            if (isInScaleHandle(corner, pos)) {
+            if (is_in_scale_handle(corner, pos)) {
                 this->set_cursor(get_corner_scale_cursor(corner));
                 return;
-            } else if (!resizeOnly && isInRotateHandle(corner, pos)) {
+            } else if (!resizeOnly && is_in_rotate_handle(corner, pos)) {
                 // TODOLATER: custom rotate icon
                 this->set_cursor(QCursor(Qt::SizeAllCursor));
                 return;
@@ -763,7 +763,7 @@ protected:
         }
 
         for (const auto& edge : get_edge_bounds()) {
-            if (isInEdgeHandle(edge.rect, pos)) {
+            if (is_in_edge_handle(edge.rect, pos)) {
                 if (is_edge_vertical(edge)) {
                     this->set_cursor(QCursor(Qt::SizeVerCursor));
                 } else {
@@ -793,7 +793,7 @@ protected:
         eventStart_ = event->scenePos();
         auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
         // TODOLATER: assert view?
-        view->resetPreviousTransform(this);
+        view->reset_previous_transform(this);
 
         if (!this->isSelected()) {
             //User has just selected this item with this click; don't
@@ -808,7 +808,7 @@ protected:
             return;
         }
 
-        if (isInHandleFreeCenter(event->pos())) {
+        if (is_in_handle_free_center(event->pos())) {
             //This area should always trigger regular move operations,
             //even if it is covered by selection scale/flip/... handles.
             //This ensures that small items can always still be moved/edited.
@@ -860,7 +860,7 @@ protected:
                 }
 
                 //Check if we are in one of the corner's rotate areas
-                if (!resizeOnly && isInRotateHandle(corner, event->pos())) {
+                if (!resizeOnly && is_in_rotate_handle(corner, event->pos())) {
                     active_mode_ = kRotateMode;
                     eventAnchor_ = this->center_scene_coords();
                     rotateStartAngle_ = get_rotate_angle(event->scenePos());
@@ -879,7 +879,7 @@ protected:
             //edge (get_scale_anchor() mirrors any local point around the
             //item's center, corner or edge midpoint alike).
             for (const auto& edge : get_edge_bounds()) {
-                if (isInEdgeHandle(edge.rect, event->pos())) {
+                if (is_in_edge_handle(edge.rect, event->pos())) {
                     if (resizeOnly) {
                         // Edit mode: resize the field along whichever
                         // one axis this edge governs, leaving the other
@@ -975,7 +975,7 @@ protected:
     {
         auto delta = get_rotate_angle(pos) - rotateStartAngle_;
         if (snap) {
-            auto target = roundTo(rotateOrigDegrees_ + delta, 15);
+            auto target = round_to(rotateOrigDegrees_ + delta, 15);
             delta = target - rotateOrigDegrees_;
         }
 
@@ -1039,7 +1039,7 @@ protected:
             // Reset previous transform when movement exceeds threshold
             CanvasView* view = dynamic_cast<CanvasView*>(
                 this->scene()->views().at(0));
-            view->resetPreviousTransform(nullptr);
+            view->reset_previous_transform(nullptr);
         }
 
         if (active_mode_ == kScaleMode) {
@@ -1122,7 +1122,7 @@ protected:
         T::mouseMoveEvent(event); // see mousePressEvent() comment above
     }
 
-    void resetActions() { active_mode_ = kNone; }
+    void reset_actions() { active_mode_ = kNone; }
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
@@ -1139,7 +1139,7 @@ protected:
                                             true));
             }
             event->accept();
-            resetActions();
+            reset_actions();
             return;
         } else if (active_mode_ == kRotateMode) {
             CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -1154,7 +1154,7 @@ protected:
                                              true));
             }
             event->accept();
-            resetActions();
+            reset_actions();
             return;
         } else if (active_mode_ == kFieldResizeMode) {
             static_cast<Mixin*>(this)
@@ -1163,11 +1163,11 @@ protected:
                                       fieldResizeAnchorRight_,
                                       fieldResizeAnchorBottom_);
             event->accept();
-            resetActions();
+            reset_actions();
             return;
         }
 
-        resetActions();
+        reset_actions();
         T::mouseReleaseEvent(event); // see mousePressEvent() comment above
     }
 
@@ -1194,24 +1194,24 @@ protected:
 
 
 public:
-    bool isInHandleFreeCenter(const QPointF& pos) const
+    bool is_in_handle_free_center(const QPointF& pos) const
     {
         QRectF rect = select_handle_free_center();
         return rect.contains(pos);
     }
 
-    bool isInScaleHandle(const QPointF& corner, const QPointF& pos) const
+    bool is_in_scale_handle(const QPointF& corner, const QPointF& pos) const
     {
         QPainterPath rect = get_scale_bounds(corner);
         return rect.contains(pos);
     }
 
-    bool isInRotateHandle(const QPointF& corner, const QPointF& pos) const
+    bool is_in_rotate_handle(const QPointF& corner, const QPointF& pos) const
     {
         QPainterPath rect = get_rotate_bounds(corner);
         return rect.contains(pos);
     }
-    bool isInEdgeHandle(const QRectF& rect, const QPointF& pos) const
+    bool is_in_edge_handle(const QRectF& rect, const QPointF& pos) const
     {
         return rect.contains(pos);
     }
@@ -1226,10 +1226,10 @@ public:
         : SelectableMixin<MultiSelectItem, QGraphicsRectItem>(parent)
     {
         this->init_selectable();
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("MultiSelectItem %1 x %2")
             .arg(this->width())
@@ -1398,7 +1398,7 @@ public:
         this->setPen(pen);
     }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("RubberbandItem %1 x %2")
             .arg(this->width())
@@ -1411,7 +1411,7 @@ public:
         this->setRect(get_rect_from_points(point1, point2));
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Updated rubberband {}",
-                   toString());
+                   to_string());
     }
 
     IBaseItem* create_copy() override

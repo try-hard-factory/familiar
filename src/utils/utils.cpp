@@ -14,12 +14,12 @@ QRectF get_rect_from_points(const QPointF& point1, const QPointF& point2)
     return QRectF(topLeft, bottomRight);
 }
 
-double roundTo(double number, double base)
+double round_to(double number, double base)
 {
     return base * std::round(number / base);
 }
 
-QString portableDataDir()
+QString portable_data_dir()
 {
 #ifdef RUN_IN_PLACE
     // A "data" sibling folder, not directly next to the .exe - keeps

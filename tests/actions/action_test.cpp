@@ -23,11 +23,11 @@ TEST(ActionTest, DisplayTextStripsMnemonicButKeepsEscapedAmpersand)
 {
     Action a = Action::make(QStringLiteral("dt_a"),
                             QStringLiteral("&Open Recent"));
-    EXPECT_EQ(a.displayText(), QStringLiteral("Open Recent"));
+    EXPECT_EQ(a.display_text(), QStringLiteral("Open Recent"));
 
     Action b = Action::make(QStringLiteral("dt_b"),
                             QStringLiteral("Save && Close"));
-    EXPECT_EQ(b.displayText(), QStringLiteral("Save & Close"));
+    EXPECT_EQ(b.display_text(), QStringLiteral("Save & Close"));
 }
 
 TEST(ActionTest, GetShortcutsFallsBackToDefaultThenPersistsOverride)
@@ -39,12 +39,12 @@ TEST(ActionTest, GetShortcutsFallsBackToDefaultThenPersistsOverride)
     cleanupAction(a.id);
 
     EXPECT_EQ(a.get_shortcuts(), QStringList{QStringLiteral("Ctrl+T")});
-    EXPECT_FALSE(a.shortcutsChanged());
+    EXPECT_FALSE(a.shortcuts_changed());
 
-    a.setShortcuts({QStringLiteral("Ctrl+Shift+T")});
+    a.set_shortcuts({QStringLiteral("Ctrl+Shift+T")});
     EXPECT_EQ(a.get_shortcuts(),
              QStringList{QStringLiteral("Ctrl+Shift+T")});
-    EXPECT_TRUE(a.shortcutsChanged());
+    EXPECT_TRUE(a.shortcuts_changed());
 
     cleanupAction(a.id);
 }
@@ -58,12 +58,12 @@ TEST(ActionTest, GetKeySequenceAndDefaultShortcutAreIndexBased)
                              QStringLiteral("Ctrl+B")});
     cleanupAction(a.id);
 
-    EXPECT_EQ(a.getKeySequence(0), QKeySequence(QStringLiteral("Ctrl+A")));
-    EXPECT_EQ(a.getKeySequence(1), QKeySequence(QStringLiteral("Ctrl+B")));
-    EXPECT_EQ(a.getKeySequence(5), QKeySequence()); // out of range -> empty
+    EXPECT_EQ(a.get_key_sequence(0), QKeySequence(QStringLiteral("Ctrl+A")));
+    EXPECT_EQ(a.get_key_sequence(1), QKeySequence(QStringLiteral("Ctrl+B")));
+    EXPECT_EQ(a.get_key_sequence(5), QKeySequence()); // out of range -> empty
 
-    EXPECT_EQ(a.getDefaultShortcut(0), QStringLiteral("Ctrl+A"));
-    EXPECT_EQ(a.getDefaultShortcut(5), QString());
+    EXPECT_EQ(a.get_default_shortcut(0), QStringLiteral("Ctrl+A"));
+    EXPECT_EQ(a.get_default_shortcut(5), QString());
 
     cleanupAction(a.id);
 }
@@ -79,7 +79,7 @@ TEST(ActionTest, MouseBindingsRoundTrip)
     Binding b;
     b.mouseButton = QStringLiteral("Middle");
     b.mouseModifiers = {QStringLiteral("Ctrl")};
-    a.setMouseBindings({b});
+    a.set_mouse_bindings({b});
 
     const QList<Binding> stored = a.get_mouse_bindings();
     ASSERT_EQ(stored.size(), 1);

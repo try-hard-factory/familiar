@@ -31,7 +31,7 @@ TEST(SvPickerTest, MousePressComputesSaturationAndValueFromPosition)
     picker.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&picker));
 
-    QSignalSpy spy(&picker, &SvPicker::svChanged);
+    QSignalSpy spy(&picker, &SvPicker::sv_changed);
     // Half width, full height (bottom) - s = 0.5, v = 1 - 1.0 = 0.
     QTest::mousePress(&picker, Qt::LeftButton, {}, QPoint(110, 170));
 
@@ -47,7 +47,7 @@ TEST(SvPickerTest, ClampsOutOfBoundsPositions)
     picker.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&picker));
 
-    QSignalSpy spy(&picker, &SvPicker::svChanged);
+    QSignalSpy spy(&picker, &SvPicker::sv_changed);
     QTest::mousePress(&picker, Qt::LeftButton, {}, QPoint(-50, -50));
 
     ASSERT_EQ(spy.count(), 1);
@@ -62,7 +62,7 @@ TEST(HueSliderTest, MousePressComputesHueFromXPositionAndClamps)
     slider.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&slider));
 
-    QSignalSpy spy(&slider, &HueSlider::hueChanged);
+    QSignalSpy spy(&slider, &HueSlider::hue_changed);
 
     QTest::mousePress(&slider, Qt::LeftButton, {}, QPoint(180, 9));
     EXPECT_EQ(slider.hue(), int(180 / 360.0 * 359));
@@ -83,7 +83,7 @@ TEST(AlphaSliderTest, MousePressComputesAlphaFromXPositionAndClamps)
     slider.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&slider));
 
-    QSignalSpy spy(&slider, &AlphaSlider::alphaChanged);
+    QSignalSpy spy(&slider, &AlphaSlider::alpha_changed);
 
     QTest::mousePress(&slider, Qt::LeftButton, {}, QPoint(128, 9));
     ASSERT_EQ(spy.count(), 1);
@@ -107,7 +107,7 @@ TEST(SwatchRowTest, ClickingASwatchEmitsItsColor)
     row.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&row));
 
-    QSignalSpy spy(&row, &SwatchRow::swatchPicked);
+    QSignalSpy spy(&row, &SwatchRow::swatch_picked);
     QTest::mousePress(&row, Qt::LeftButton, {}, QPoint(20, row.height() / 2));
 
     ASSERT_EQ(spy.count(), 1);
@@ -121,7 +121,7 @@ TEST(SwatchRowTest, ClickingTheGapBetweenSwatchesEmitsNothing)
     row.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&row));
 
-    QSignalSpy spy(&row, &SwatchRow::swatchPicked);
+    QSignalSpy spy(&row, &SwatchRow::swatch_picked);
     // cellRect_(0) is a centered 26px square inside a 40px cell (see
     // cellRect_()'s own comment) - x=35 falls in the surrounding gap.
     QTest::mousePress(&row, Qt::LeftButton, {}, QPoint(35, row.height() / 2));
@@ -136,7 +136,7 @@ TEST(SwatchRowTest, WithNonePrependsTransparentSwatch)
     row.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&row));
 
-    QSignalSpy spy(&row, &SwatchRow::swatchPicked);
+    QSignalSpy spy(&row, &SwatchRow::swatch_picked);
     QTest::mousePress(&row, Qt::LeftButton, {}, QPoint(20, row.height() / 2));
 
     ASSERT_EQ(spy.count(), 1);

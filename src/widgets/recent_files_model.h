@@ -48,7 +48,7 @@ public:
         return QVariant();
     }
 
-    void setFiles(const QStringList& files) { files_ = files; }
+    void set_files(const QStringList& files) { files_ = files; }
 
 private:
     QStringList files_;

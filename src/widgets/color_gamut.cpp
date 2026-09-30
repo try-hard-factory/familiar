@@ -12,14 +12,14 @@
 // TODOLATER:
 GamutPainterThread::GamutPainterThread(GamutWidget* parent, PixmapItem* item)
     : QThread(parent)
-    , m_item(item)
+    , mItem_(item)
 {}
 
 void GamutPainterThread::run()
 {
-    const PixmapItem::ColorGamut& gamut = m_item->color_gamut();
+    const PixmapItem::ColorGamut& gamut = mItem_->color_gamut();
 
-    QImage image(RADIUS * 2, RADIUS * 2, QImage::Format_ARGB32);
+    QImage image(kradius * 2, kradius * 2, QImage::Format_ARGB32);
     image.fill(QColor(0, 0, 0, 0));
 
     QPainter painter(&image);
@@ -27,16 +27,16 @@ void GamutPainterThread::run()
     painter.setBrush(QBrush(Qt::black));
     painter.setPen(Qt::NoPen);
 
-    QPoint center(RADIUS, RADIUS);
-    painter.drawEllipse(center, RADIUS, RADIUS);
+    QPoint center(kradius, kradius);
+    painter.drawEllipse(center, kradius, kradius);
 
     for (auto it = gamut.constBegin(); it != gamut.constEnd(); ++it) {
-        if (it.value() < m_threshold) {
+        if (it.value() < mThreshold_) {
             continue;
         }
         int hue = it.key().first;
         int saturation = it.key().second;
-        double hypotenuse = saturation / 255.0 * RADIUS;
+        double hypotenuse = saturation / 255.0 * kradius;
         double angle = M_PI / 180.0 * (-90.0 - hue);
         int x = int(std::sin(angle) * hypotenuse) + center.x();
         int y = int(std::cos(angle) * hypotenuse) + center.y();
@@ -46,7 +46,7 @@ void GamutPainterThread::run()
         painter.drawEllipse(QPoint(x, y), 3, 3);
     }
 
-    emit imageReady(image);
+    emit image_ready(image);
 }
 
 
@@ -54,14 +54,14 @@ void GamutPainterThread::run()
 
 GamutWidget::GamutWidget(QWidget* parent, PixmapItem* item)
     : QWidget(parent)
-    , m_worker(new GamutPainterThread(this, item))
+    , mWorker_(new GamutPainterThread(this, item))
 {
-    connect(m_worker,
-            &GamutPainterThread::imageReady,
+    connect(mWorker_,
+            &GamutPainterThread::image_ready,
             this,
-            &GamutWidget::onImageReady);
-    m_worker->setThreshold(threshold());
-    m_worker->start();
+            &GamutWidget::on_image_ready);
+    mWorker_->set_threshold(threshold());
+    mWorker_->start();
 }
 
 int GamutWidget::threshold() const
@@ -70,17 +70,17 @@ int GamutWidget::threshold() const
     return dialog ? dialog->threshold() : 20;
 }
 
-void GamutWidget::updateValues()
+void GamutWidget::update_values()
 {
-    m_worker->setThreshold(threshold());
-    if (!m_worker->isRunning()) {
-        m_worker->start();
+    mWorker_->set_threshold(threshold());
+    if (!mWorker_->isRunning()) {
+        mWorker_->start();
     }
 }
 
-void GamutWidget::onImageReady(const QImage& image)
+void GamutWidget::on_image_ready(const QImage& image)
 {
-    m_image = image;
+    mImage_ = image;
     update();
 }
 
@@ -88,11 +88,11 @@ void GamutWidget::paintEvent(QPaintEvent*)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
-    if (!m_image.isNull()) {
+    if (!mImage_.isNull()) {
         int size = std::min(width(), height());
         double x = std::max((width() - size) / 2.0, 0.0);
         double y = std::max((height() - size) / 2.0, 0.0);
-        painter.drawImage(QRectF(x, y, size, size), m_image);
+        painter.drawImage(QRectF(x, y, size, size), mImage_);
     } else {
         painter.drawText(10, 20, "Counting pixels...");
     }
@@ -118,15 +118,15 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     QVBoxLayout* controlsLayout = new QVBoxLayout();
     controlsLayout->addWidget(new QLabel("Threshold:", this));
 
-    m_thresholdInput = new QSlider(this);
-    m_thresholdInput->setRange(0, 500);
-    m_thresholdInput->setValue(20);
-    m_thresholdInput->setTracking(false);
-    connect(m_thresholdInput,
+    mThresholdInput_ = new QSlider(this);
+    mThresholdInput_->setRange(0, 500);
+    mThresholdInput_->setValue(20);
+    mThresholdInput_->setTracking(false);
+    connect(mThresholdInput_,
             &QSlider::valueChanged,
             this,
-            &GamutDialog::onValueChanged);
-    controlsLayout->addWidget(m_thresholdInput, 0, Qt::AlignHCenter);
+            &GamutDialog::on_value_changed);
+    controlsLayout->addWidget(mThresholdInput_, 0, Qt::AlignHCenter);
 
     QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -135,14 +135,14 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     QHBoxLayout* layout = new QHBoxLayout();
     setLayout(layout);
 
-    m_gamutWidget = new GamutWidget(this, item);
-    layout->addWidget(m_gamutWidget, 1);
+    mGamutWidget_ = new GamutWidget(this, item);
+    layout->addWidget(mGamutWidget_, 1);
     layout->addLayout(controlsLayout, 0);
 
     show();
 }
 
-void GamutDialog::onValueChanged(int /*value*/)
+void GamutDialog::on_value_changed(int /*value*/)
 {
-    m_gamutWidget->updateValues();
+    mGamutWidget_->update_values();
 }

@@ -108,9 +108,9 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     // whenever that happens so it doesn't drift off its centered/clamped
     // spot (see GifPlaybackToolbar::geometryChanged()'s doc comment).
     connect(gifToolbar_,
-            &GifPlaybackToolbar::geometryChanged,
+            &GifPlaybackToolbar::geometry_changed,
             this,
-            &CanvasView::updateGifToolbarPos_);
+            &CanvasView::update_gif_toolbar_pos);
 
     // Floating group toolbar; hidden until a
     // GroupItem is selected - same "applies as soon as simply selected,
@@ -118,26 +118,26 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     groupToolbar_ = new GroupToolbar(viewport());
     groupToolbar_->hide();
     connect(groupToolbar_,
-            &GroupToolbar::geometryChanged,
+            &GroupToolbar::geometry_changed,
             this,
-            &CanvasView::updateGroupToolbarPos_);
+            &CanvasView::update_group_toolbar_pos);
 
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, [this] {
-        updateTextToolbarPos_();
-        updateGifToolbarPos_();
-        updateGroupToolbarPos_();
+        update_text_toolbar_pos();
+        update_gif_toolbar_pos();
+        update_group_toolbar_pos();
     });
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this] {
-        updateTextToolbarPos_();
-        updateGifToolbarPos_();
-        updateGroupToolbarPos_();
+        update_text_toolbar_pos();
+        update_gif_toolbar_pos();
+        update_group_toolbar_pos();
     });
 
     connect(SettingsHandler::get_instance(),
             &SettingsHandler::settings_changed,
             this,
-            &CanvasView::settingsChangedSlot);
-    settingsChangedSlot();
+            &CanvasView::settings_changed_slot);
+    settings_changed_slot();
 
     init_main_controls(&mw);
     setContextMenuPolicy(Qt::DefaultContextMenu);
@@ -237,13 +237,13 @@ void CanvasView::on_scene_changed()
         welcomeOverlay_->clearFocus();
         welcomeOverlay_->hide();
     }
-    recalcSceneRect();
+    recalc_scene_rect();
     // Keeps the GIF/group toolbars glued to their item while it's being
     // dragged (this fires on every scene change, animation ticks
     // included, but repositioning to an unchanged position is cheap -
     // simpler than hooking drag-specific events separately).
-    updateGifToolbarPos_();
-    updateGroupToolbarPos_();
+    update_gif_toolbar_pos();
+    update_group_toolbar_pos();
 }
 
 void CanvasView::on_selection_changed()
@@ -264,7 +264,7 @@ void CanvasView::on_selection_changed()
     if (gifItem) {
         gifToolbar_->show();
         gifToolbar_->raise();
-        updateGifToolbarPos_();
+        update_gif_toolbar_pos();
     } else {
         gifToolbar_->hide();
     }
@@ -279,7 +279,7 @@ void CanvasView::on_selection_changed()
     if (groupItem) {
         groupToolbar_->show();
         groupToolbar_->raise();
-        updateGroupToolbarPos_();
+        update_group_toolbar_pos();
     } else {
         groupToolbar_->hide();
     }
@@ -292,24 +292,24 @@ void CanvasView::on_context_menu(const QPoint& point)
 
 void CanvasView::on_cursor_changed(QCursor cursor)
 {
-    if (activeMode_ == ModeNone) {
+    if (activeMode_ == kModeNone) {
         viewport()->setCursor(cursor);
     }
 }
 
 void CanvasView::on_cursor_cleared()
 {
-    if (activeMode_ == ModeNone) {
+    if (activeMode_ == kModeNone) {
         viewport()->unsetCursor();
     }
 }
 
 void CanvasView::on_undo_clean_changed(bool clean)
 {
-    setModified(!clean);
+    set_modified(!clean);
 }
 
-void CanvasView::settingsChangedSlot()
+void CanvasView::settings_changed_slot()
 {
     auto* settings = SettingsHandler::get_instance();
     auto colorPreset = settings->get_current_color_preset();
@@ -317,21 +317,21 @@ void CanvasView::settingsChangedSlot()
     borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
     currentOpacity_ = settings->get_current_opacity();
     if (textToolbar_) {
-        textToolbar_->restyleFromPreset();
+        textToolbar_->restyle_from_preset();
     }
     if (gifToolbar_) {
-        gifToolbar_->restyleFromPreset();
+        gifToolbar_->restyle_from_preset();
     }
     if (groupToolbar_) {
-        groupToolbar_->restyleFromPreset();
+        groupToolbar_->restyle_from_preset();
     }
 }
 
 // ─── Active modes ─────────────────────────────────────────────────────────────
 
-void CanvasView::cancelSampleColorMode()
+void CanvasView::cancel_sample_color_mode()
 {
-    activeMode_ = ModeNone;
+    activeMode_ = kModeNone;
     viewport()->unsetCursor();
     if (sampleColorWidget_) {
         delete sampleColorWidget_;
@@ -342,21 +342,21 @@ void CanvasView::cancelSampleColorMode()
     }
 }
 
-void CanvasView::cancelActiveModes()
+void CanvasView::cancel_active_modes()
 {
     scene_->cancel_active_modes();
-    cancelSampleColorMode();
-    activeMode_ = ModeNone;
+    cancel_sample_color_mode();
+    activeMode_ = kModeNone;
 }
 
 // ─── View geometry ────────────────────────────────────────────────────────────
 
-QPointF CanvasView::getViewCenter() const
+QPointF CanvasView::get_view_center() const
 {
     return QPointF(qRound(size().width() / 2.0), qRound(size().height() / 2.0));
 }
 
-void CanvasView::recalcSceneRect()
+void CanvasView::recalc_scene_rect()
 {
     if (previousTransform_) {
         return;
@@ -386,7 +386,7 @@ void CanvasView::recalcSceneRect()
     setSceneRect(QRectF(topleft, bottomright));
 }
 
-void CanvasView::resetPreviousTransform(QGraphicsItem* toggleItem)
+void CanvasView::reset_previous_transform(QGraphicsItem* toggleItem)
 {
     if (previousTransform_ && previousTransform_->toggleItem != toggleItem) {
         // TODOLATER: std::optional ???
@@ -394,7 +394,7 @@ void CanvasView::resetPreviousTransform(QGraphicsItem* toggleItem)
     }
 }
 
-void CanvasView::fitRect(const QRectF& rect, QGraphicsItem* toggleItem)
+void CanvasView::fit_rect(const QRectF& rect, QGraphicsItem* toggleItem)
 {
     if (toggleItem && previousTransform_) {
         setTransform(previousTransform_->transform);
@@ -406,25 +406,25 @@ void CanvasView::fitRect(const QRectF& rect, QGraphicsItem* toggleItem)
         previousTransform_ = std::make_unique<PreviousTransform>();
         previousTransform_->toggleItem = toggleItem;
         previousTransform_->transform = transform();
-        previousTransform_->center = mapToScene(getViewCenter().toPoint());
+        previousTransform_->center = mapToScene(get_view_center().toPoint());
     } else {
         previousTransform_.reset();
     }
     fitInView(rect, Qt::KeepAspectRatio);
-    recalcSceneRect();
+    recalc_scene_rect();
     fitInView(rect, Qt::KeepAspectRatio);
 }
 
 // ─── Zoom / pan ───────────────────────────────────────────────────────────────
 
-void CanvasView::doScale(qreal sx, qreal sy)
+void CanvasView::do_scale(qreal sx, qreal sy)
 {
     QGraphicsView::scale(sx, sy);
     scene_->on_view_scale_change();
-    recalcSceneRect();
-    updateTextToolbarPos_();
-    updateGifToolbarPos_();
-    updateGroupToolbarPos_();
+    recalc_scene_rect();
+    update_text_toolbar_pos();
+    update_gif_toolbar_pos();
+    update_group_toolbar_pos();
 }
 
 void CanvasView::on_edit_item_changed(TextItem* item)
@@ -433,13 +433,13 @@ void CanvasView::on_edit_item_changed(TextItem* item)
     if (item) {
         textToolbar_->show();
         textToolbar_->raise();
-        updateTextToolbarPos_();
+        update_text_toolbar_pos();
     } else {
         textToolbar_->hide();
     }
 }
 
-void CanvasView::updateTextToolbarPos_()
+void CanvasView::update_text_toolbar_pos()
 {
     if (!textToolbar_ || !textToolbar_->isVisible() || !textToolbar_->item()) {
         return;
@@ -456,7 +456,7 @@ void CanvasView::updateTextToolbarPos_()
     textToolbar_->move(x, y);
 }
 
-void CanvasView::updateGifToolbarPos_()
+void CanvasView::update_gif_toolbar_pos()
 {
     if (!gifToolbar_ || !gifToolbar_->isVisible() || !gifToolbar_->item()) {
         return;
@@ -481,10 +481,10 @@ void CanvasView::updateGifToolbarPos_()
     // filmstrip open), the toolbar's own center no longer lines up with
     // the item's, and a row simply centered within the toolbar would
     // drift away from the item towards the middle of the filmstrip.
-    gifToolbar_->positionControlsRow(itemCenterView - x);
+    gifToolbar_->position_controls_row(itemCenterView - x);
 }
 
-void CanvasView::updateGroupToolbarPos_()
+void CanvasView::update_group_toolbar_pos()
 {
     if (!groupToolbar_ || !groupToolbar_->isVisible()
         || !groupToolbar_->item()) {
@@ -505,7 +505,7 @@ void CanvasView::updateGroupToolbarPos_()
     groupToolbar_->move(x, y);
 }
 
-double CanvasView::getZoomSize(std::function<double(double, double)> func) const
+double CanvasView::get_zoom_size(std::function<double(double, double)> func) const
 {
     QRectF rect = scene_->itemsBoundingRect();
     QPoint tl = mapFromScene(rect.topLeft());
@@ -538,25 +538,25 @@ void CanvasView::zoom(double delta, QPointF anchor)
     // canvas has nothing to clamp against and should just zoom freely.
     bool hasItems = !scene_->items().isEmpty();
     if (delta > 0) {
-        if (!hasItems || getZoomSize([](double w, double h) {
+        if (!hasItems || get_zoom_size([](double w, double h) {
                              return std::max(w, h);
                          }) < 10000000.0) {
-            doScale(factor, factor);
+            do_scale(factor, factor);
         } else {
             return;
         }
     } else {
-        if (!hasItems || getZoomSize([](double w, double h) {
+        if (!hasItems || get_zoom_size([](double w, double h) {
                              return std::min(w, h);
                          }) > 10.0) {
-            doScale(1.0 / factor, 1.0 / factor);
+            do_scale(1.0 / factor, 1.0 / factor);
         } else {
             return;
         }
     }
 
     pan(QPointF(mapFromScene(refPoint)) - QPointF(anchorPt));
-    resetPreviousTransform();
+    reset_previous_transform();
 }
 
 void CanvasView::pan(QPointF delta)
@@ -610,17 +610,17 @@ void CanvasView::wheelEvent(QWheelEvent* event)
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
-    if (mousePressEventMainControls(event)) {
+    if (mouse_press_event_main_controls(event)) {
         return;
     }
 
-    if (activeMode_ == ModeSampleColor) {
+    if (activeMode_ == kModeSampleColor) {
         if (event->button() == Qt::LeftButton) {
             QColor color = scene_->sample_color_at(mapToScene(event->pos()));
             if (color.isValid()) {
                 QString name = color.name();
                 QApplication::clipboard()->setText(name);
-                scene_->internal_clipboard.clear();
+                scene_->internalClipboard.clear();
                 FLOG_DEBUG(Ch::View, "Copied color to clipboard: {}", name);
                 new FamNotification(this,
                                     QString("Copied color to clipboard: %1")
@@ -629,7 +629,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
                 FLOG_DEBUG(Ch::View, "No color found");
             }
         }
-        cancelSampleColorMode();
+        cancel_sample_color_mode();
         event->accept();
         return;
     }
@@ -637,7 +637,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     auto match = SettingsHandler::get_instance()->mouse_action_for_event(event);
     if (match) {
         if (match->group == QLatin1String("zoom")) {
-            activeMode_ = ModeZoom;
+            activeMode_ = kModeZoom;
             eventStart_ = event->position();
             eventAnchor_ = event->position();
             eventInverted_ = match->inverted;
@@ -645,7 +645,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
             return;
         }
         if (match->group == QLatin1String("pan")) {
-            activeMode_ = ModePan;
+            activeMode_ = kModePan;
             eventStart_ = event->position();
             viewport()->setCursor(Qt::ClosedHandCursor);
             event->accept();
@@ -670,8 +670,8 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
 void CanvasView::mouseMoveEvent(QMouseEvent* event)
 {
-    if (activeMode_ == ModePan) {
-        resetPreviousTransform();
+    if (activeMode_ == kModePan) {
+        reset_previous_transform();
         QPointF pos = event->position();
         pan(eventStart_ - pos);
         eventStart_ = pos;
@@ -679,8 +679,8 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (activeMode_ == ModeZoom) {
-        resetPreviousTransform();
+    if (activeMode_ == kModeZoom) {
+        reset_previous_transform();
         QPointF pos = event->position();
         double delta = (eventStart_ - pos).y();
         if (eventInverted_) {
@@ -692,7 +692,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (activeMode_ == ModeSampleColor) {
+    if (activeMode_ == kModeSampleColor) {
         sampleColorWidget_->update(event->position(),
                                    scene_->sample_color_at(
                                        mapToScene(event->pos())));
@@ -700,7 +700,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (mouseMoveEventMainControls(event)) {
+    if (mouse_move_event_main_controls(event)) {
         return;
     }
 
@@ -729,18 +729,18 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
                "CanvasView::mouseReleaseEvent activeMode_={} spontaneous={}",
                int(activeMode_),
                event->spontaneous());
-    if (activeMode_ == ModePan) {
+    if (activeMode_ == kModePan) {
         viewport()->unsetCursor();
-        activeMode_ = ModeNone;
+        activeMode_ = kModeNone;
         event->accept();
         return;
     }
-    if (activeMode_ == ModeZoom) {
-        activeMode_ = ModeNone;
+    if (activeMode_ == kModeZoom) {
+        activeMode_ = kModeNone;
         event->accept();
         return;
     }
-    if (mouseReleaseEventMainControls(event)) {
+    if (mouse_release_event_main_controls(event)) {
         return;
     }
     QGraphicsView::mouseReleaseEvent(event);
@@ -756,7 +756,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
             && selected.first() == item) {
             gifToolbar_->show();
             gifToolbar_->raise();
-            updateGifToolbarPos_();
+            update_gif_toolbar_pos();
         }
     }
     if (GroupItem* item = groupToolbar_->item()) {
@@ -764,7 +764,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
             && selected.first() == item) {
             groupToolbar_->show();
             groupToolbar_->raise();
-            updateGroupToolbarPos_();
+            update_group_toolbar_pos();
         }
     }
 }
@@ -776,15 +776,15 @@ void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
 
 void CanvasView::keyPressEvent(QKeyEvent* event)
 {
-    if (keyPressEventMainControls(event)) {
+    if (key_press_event_main_controls(event)) {
         return;
     }
-    if (activeMode_ == ModeSampleColor) {
-        cancelSampleColorMode();
+    if (activeMode_ == kModeSampleColor) {
+        cancel_sample_color_mode();
         event->accept();
         return;
     }
-    if (tryControlKeyNudge(event)) {
+    if (try_control_key_nudge(event)) {
         event->accept();
         return;
     }
@@ -809,7 +809,7 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
     }
 }
 
-bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
+bool CanvasView::try_control_key_nudge(QKeyEvent* event)
 {
     const QString pressed = key_event_to_sequence_string(event);
     if (pressed.isEmpty()) {
@@ -822,7 +822,7 @@ bool CanvasView::tryControlKeyNudge(QKeyEvent* event)
         }
         for (const Binding& b : cfg.get_bindings()) {
             if (b.keySequence == pressed) {
-                zoom(120.0, getViewCenter());
+                zoom(120.0, get_view_center());
                 return true;
             }
         }
@@ -859,7 +859,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
     }
 
     QGraphicsView::resizeEvent(event);
-    recalcSceneRect();
+    recalc_scene_rect();
     if (dx != 0) {
         horizontalScrollBar()->setValue(horizontalScrollBar()->value() + dx);
     }
@@ -867,9 +867,9 @@ void CanvasView::resizeEvent(QResizeEvent* event)
         verticalScrollBar()->setValue(verticalScrollBar()->value() + dy);
     }
     welcomeOverlay_->resize(size());
-    updateTextToolbarPos_();
-    updateGifToolbarPos_();
-    updateGroupToolbarPos_();
+    update_text_toolbar_pos();
+    update_gif_toolbar_pos();
+    update_group_toolbar_pos();
 }
 
 
@@ -887,14 +887,14 @@ void CanvasView::drawBackground(QPainter* painter,
     // canvasRect_ (see on_scene_changed()) reimplements the same
     // grow-never-shrink look ourselves, with an explicit reset to empty
     // when the scene genuinely has zero items.
-    static constexpr qreal kCanvasMargin = 10;
+    static constexpr qreal kcanvasMargin = 10;
     const QRectF paddedCanvasRect = canvasRect_.isEmpty()
                                         ? canvasRect_
                                         : canvasRect_.marginsAdded(
-                                              QMarginsF(kCanvasMargin,
-                                                        kCanvasMargin,
-                                                        kCanvasMargin,
-                                                        kCanvasMargin));
+                                              QMarginsF(kcanvasMargin,
+                                                        kcanvasMargin,
+                                                        kcanvasMargin,
+                                                        kcanvasMargin));
     painter->fillRect(paddedCanvasRect, scene_->backgroundBrush());
     // Cosmetic: keeps the border a constant width in screen pixels
     // regardless of zoom, matching the selection outline's pen (see
@@ -927,7 +927,7 @@ QString extract_first_img_src(const QString& html)
 void CanvasView::dropEvent(QDropEvent* event)
 {
     QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
-    handleDrop(event->mimeData(), pos);
+    handle_drop(event->mimeData(), pos);
     event->acceptProposedAction();
 }
 
@@ -935,17 +935,17 @@ void CanvasView::enterEvent(QEnterEvent* event)
 {
     QGraphicsView::enterEvent(event);
     selectionOutlineHover_ = true;
-    updateSelectionVisibility();
+    update_selection_visibility();
 }
 
 void CanvasView::leaveEvent(QEvent* event)
 {
     QGraphicsView::leaveEvent(event);
     selectionOutlineHover_ = false;
-    updateSelectionVisibility();
+    update_selection_visibility();
 }
 
-void CanvasView::updateSelectionVisibility()
+void CanvasView::update_selection_visibility()
 {
     // qApp->activeWindow(), not isActiveWindow(): the latter is specific
     // to THIS top-level window, so it goes false the moment any other
@@ -969,16 +969,16 @@ void CanvasView::updateSelectionVisibility()
     }
 }
 
-void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
+void CanvasView::handle_drop(const QMimeData* mimedata, const QPoint& pos)
 {
     FLOG_DEBUG(Ch::View,
                "CanvasView::Handling file drop: {}",
-               debugString(mimedata->formats()));
+               debug_string(mimedata->formats()));
 
     if (mimedata->hasUrls()) {
         FLOG_DEBUG(Ch::View,
                    "Found dropped urls: {}",
-                   debugString(mimedata->urls()));
+                   debug_string(mimedata->urls()));
 
         QList<QUrl> urls = mimedata->urls();
         // Some sites' drag data doesn't give a direct image link at all -
@@ -1033,22 +1033,22 @@ void CanvasView::handleDrop(const QMimeData* mimedata, const QPoint& pos)
 
 void CanvasView::on_action_save()
 {
-    cancelActiveModes();
-    mainwindow_.fileActions().saveFile();
+    cancel_active_modes();
+    mainwindow_.file_actions().save_file();
 }
 
 void CanvasView::on_action_save_as()
 {
-    cancelActiveModes();
-    mainwindow_.fileActions().saveFileAs();
+    cancel_active_modes();
+    mainwindow_.file_actions().save_file_as();
 }
 
 void CanvasView::on_action_export_scene()
 {
-    cancelActiveModes();
+    cancel_active_modes();
 
     if (scene_->itemsBoundingRect().isEmpty()) {
-        showMessageBox(QMessageBox::Information,
+        show_message_box(QMessageBox::Information,
                        &mainwindow_,
                        tr("Export Scene"),
                        tr("The scene is empty - nothing to export."));
@@ -1060,7 +1060,7 @@ void CanvasView::on_action_export_scene()
     // doesn't have one, so the old manual ".png" fallback isn't needed
     // separately.
     const QString filename
-        = showSaveFileDialog(this,
+        = show_save_file_dialog(this,
                              tr("Export Scene to Image"),
                              path().isEmpty()
                                  ? QDir::homePath()
@@ -1073,14 +1073,14 @@ void CanvasView::on_action_export_scene()
         return;
     }
 
-    sceneExporter_ = createSceneExporter(QFileInfo(filename).suffix(), scene_);
-    if (!sceneExporter_->getUserInput(this)) {
+    sceneExporter_ = create_scene_exporter(QFileInfo(filename).suffix(), scene_);
+    if (!sceneExporter_->get_user_input(this)) {
         sceneExporter_.reset();
         return;
     }
 
     auto* worker = new ThreadedIO([this, filename](ThreadedIO* w) {
-        sceneExporter_->exportTo(filename, w);
+        sceneExporter_->export_to(filename, w);
     });
     connect(worker,
             &ThreadedIO::finished,
@@ -1097,7 +1097,7 @@ void CanvasView::on_export_scene_finished(const QString& filename,
 {
     sceneExporter_.reset();
     if (!errors.isEmpty()) {
-        showMessageBox(QMessageBox::Warning,
+        show_message_box(QMessageBox::Warning,
                        &mainwindow_,
                        tr("Problem writing file"),
                        tr("<p>Problem writing file %1</p><p>%2</p>")
@@ -1113,15 +1113,15 @@ void CanvasView::on_action_export_images()
             pictures.append(pixmapItem);
         }
     }
-    exportPictures(pictures);
+    export_pictures(pictures);
 }
 
-void CanvasView::exportPictures(const QList<PixmapItem*>& pictures)
+void CanvasView::export_pictures(const QList<PixmapItem*>& pictures)
 {
-    cancelActiveModes();
+    cancel_active_modes();
 
     if (pictures.isEmpty()) {
-        showMessageBox(QMessageBox::Information,
+        show_message_box(QMessageBox::Information,
                        &mainwindow_,
                        tr("Export Images"),
                        tr("There are no images to export."));
@@ -1129,7 +1129,7 @@ void CanvasView::exportPictures(const QList<PixmapItem*>& pictures)
     }
 
     const QString directory
-        = showSelectFolderDialog(this,
+        = show_select_folder_dialog(this,
                                  tr("Export Images"),
                                  path().isEmpty()
                                      ? QDir::homePath()
@@ -1142,9 +1142,9 @@ void CanvasView::exportPictures(const QList<PixmapItem*>& pictures)
                                                                   directory);
 
     imageExportWorker_ = new ThreadedIO(
-        [this](ThreadedIO* w) { imagesExporter_->exportTo(w); });
+        [this](ThreadedIO* w) { imagesExporter_->export_to(w); });
     connect(imageExportWorker_,
-            &ThreadedIO::userInputRequired,
+            &ThreadedIO::user_input_required,
             this,
             &CanvasView::on_export_images_file_exists);
     connect(imageExportWorker_,
@@ -1168,7 +1168,7 @@ void CanvasView::on_export_images_file_exists(const QString& filename)
 {
     ExportImagesFileExistsDialog dlg(this, filename);
     if (dlg.exec() == QDialog::Accepted) {
-        imagesExporter_->setHandleExisting(dlg.getAnswer());
+        imagesExporter_->set_handle_existing(dlg.get_answer());
         new ProgressDialog(tr("Exporting to %1").arg(imagesExporter_->dirname()),
                            imageExportWorker_,
                            0,
@@ -1186,7 +1186,7 @@ void CanvasView::on_export_images_finished(const QString& dirname,
 {
     Q_UNUSED(dirname)
     if (!errors.isEmpty()) {
-        showMessageBox(QMessageBox::Warning,
+        show_message_box(QMessageBox::Warning,
                        &mainwindow_,
                        tr("Problem writing file"),
                        tr("<p>Problem writing files</p><p>%1</p>")
@@ -1203,7 +1203,7 @@ void CanvasView::on_export_images_finished(const QString& dirname,
 
 void CanvasView::on_action_undo()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     // Mirrors the suppression on_action_delete_items()/on_action_cut()
     // set for the initial action: undoing an InsertItemsCommand can
     // empty the scene the same way a delete does, and on_scene_changed()
@@ -1226,7 +1226,7 @@ void CanvasView::on_action_undo()
 
 void CanvasView::on_action_redo()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     // See on_action_undo(): redoing a DeleteItemsCommand re-empties the
     // scene the same way the original delete/cut action did, but that
     // action's own suppressNextEmptySceneReset_ was already consumed by
@@ -1256,11 +1256,11 @@ void CanvasView::on_action_deselect_all()
 
 void CanvasView::on_action_delete_items()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     // Dropping items can include whatever previousTransform_->toggleItem
     // points to (set by double-click zoom-to-fit); left dangling, it
     // would permanently block recalcSceneRect()'s early-return guard.
-    resetPreviousTransform();
+    reset_previous_transform();
     // Same as on_action_cut(): don't snap the zoom back to identity for
     // what might just be a transient empty scene - e.g. Undo bringing
     // the deleted item(s) straight back. suppressNextEmptySceneReset_
@@ -1285,7 +1285,7 @@ void CanvasView::on_action_cut()
     // group members or attached items behind on the canvas.
     on_action_copy();
     suppressNextEmptySceneReset_ = true;
-    resetPreviousTransform();
+    reset_previous_transform();
     undoStack_->push(new DeleteItemsCommand(scene_,
                                             scene_->with_related_items(
                                                 scene_->selectedItems(true))));
@@ -1294,7 +1294,7 @@ void CanvasView::on_action_cut()
 void CanvasView::on_action_copy()
 {
     FLOG_DEBUG(Ch::View, "Copying to clipboard...");
-    cancelActiveModes();
+    cancel_active_modes();
     QClipboard* clipboard = QApplication::clipboard();
     QList<QGraphicsItem*> items = scene_->selectedItems(true);
     if (items.isEmpty()) {
@@ -1330,13 +1330,13 @@ void CanvasView::on_action_copy()
 
 void CanvasView::on_action_duplicate()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     scene_->duplicate_selection();
 }
 
 void CanvasView::on_action_paste()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     FLOG_DEBUG(Ch::View, "Pasting from clipboard...");
     QClipboard* clipboard = QApplication::clipboard();
     QPoint pos = mapFromGlobal(cursor().pos());
@@ -1344,8 +1344,8 @@ void CanvasView::on_action_paste()
     // See if we need to look up the internal clipboard:
     QByteArray marker = clipboard->mimeData()->data(
         QStringLiteral("familiar/items"));
-    FLOG_DEBUG(Ch::View, "Custom data in clipboard: {}", debugString(marker));
-    if (!marker.isEmpty() && !scene_->internal_clipboard.isEmpty()) {
+    FLOG_DEBUG(Ch::View, "Custom data in clipboard: {}", debug_string(marker));
+    if (!marker.isEmpty() && !scene_->internalClipboard.isEmpty()) {
         // Checking that the internal clipboard exists since the user
         // may have opened a new scene since copying.
         bool wasEmpty = scene_->items().isEmpty();
@@ -1449,29 +1449,29 @@ void CanvasView::on_action_fit_scene()
     // fitInView() silently no-ops on a null rect, so this is a no-op
     // itself for a scene that's genuinely never had any content either.
     QRectF rect = scene_->itemsBoundingRect();
-    fitRect(rect.isEmpty() ? canvasRect_ : rect);
+    fit_rect(rect.isEmpty() ? canvasRect_ : rect);
 }
 
 void CanvasView::on_action_fit_selection()
 {
-    fitRect(scene_->itemsBoundingRect(true));
+    fit_rect(scene_->itemsBoundingRect(true));
 }
 
 void CanvasView::on_action_zoom_in()
 {
     // 120 matches one wheelEvent() notch (angleDelta().y() == ±120) -
     // same visible step size as scrolling to zoom.
-    zoom(120.0, getViewCenter());
+    zoom(120.0, get_view_center());
 }
 
 void CanvasView::on_action_zoom_out()
 {
-    zoom(-120.0, getViewCenter());
+    zoom(-120.0, get_view_center());
 }
 
 // ─── Insert actions ───────────────────────────────────────────────────────────
 
-QString CanvasView::getSupportedImageFormats() const
+QString CanvasView::get_supported_image_formats() const
 {
     QStringList formats;
     for (const QByteArray& f : QImageReader::supportedImageFormats()) {
@@ -1482,12 +1482,12 @@ QString CanvasView::getSupportedImageFormats() const
 
 void CanvasView::on_action_insert_images()
 {
-    cancelActiveModes();
-    const QString formats = getSupportedImageFormats();
+    cancel_active_modes();
+    const QString formats = get_supported_image_formats();
     FLOG_DEBUG(Ch::View, "Supported image types for reading: {}", formats);
 
     const QStringList filenames
-        = showOpenFilesDialog(&mainwindow_,
+        = show_open_files_dialog(&mainwindow_,
                               tr("Select one or more images to open"),
                               QString(),
                               tr("Images (%1)").arg(formats));
@@ -1504,7 +1504,7 @@ void CanvasView::on_action_insert_images()
 
 void CanvasView::on_action_insert_text()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     auto* item = new TextItem();
     QPointF pos = mapToScene(mapFromGlobal(cursor().pos()));
     item->setScale(1.0 / get_scale());
@@ -1524,14 +1524,14 @@ void CanvasView::on_action_insert_text()
             // given, hence the half-height. The gap is in screen pixels
             // (same 1/get_scale() convention as the note's own scale
             // above), so it looks the same at any zoom.
-            constexpr qreal kNoteGap = 10.0;
+            constexpr qreal knoteGap = 10.0;
             const QRectF pictureRect
                 = scene_->itemsBoundingRect(false,
                                             QList<QGraphicsItem*>{picture});
             const QRectF noteRect
                 = scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item});
             pos = QPointF(pictureRect.center().x(),
-                          pictureRect.top() - kNoteGap / get_scale()
+                          pictureRect.top() - knoteGap / get_scale()
                               - noteRect.height() / 2.0);
         } else if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
             targetGroup = group;
@@ -1594,28 +1594,28 @@ void CanvasView::on_action_flip_vertically()
 
 void CanvasView::on_action_reset_scale()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     undoStack_->push(new ResetScaleCommand(scene_->selectedItems(true),
                                            scene_->get_selection_center()));
 }
 
 void CanvasView::on_action_reset_rotation()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     undoStack_->push(new ResetRotationCommand(scene_->selectedItems(true),
                                               scene_->get_selection_center()));
 }
 
 void CanvasView::on_action_reset_flip()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     undoStack_->push(new ResetFlipCommand(scene_->selectedItems(true),
                                           scene_->get_selection_center()));
 }
 
 void CanvasView::on_action_reset_crop()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     QList<IBaseItem*> items;
     for (QGraphicsItem* item : scene_->selectedItems(true)) {
         items.append(dynamic_cast<IBaseItem*>(item));
@@ -1625,7 +1625,7 @@ void CanvasView::on_action_reset_crop()
 
 void CanvasView::on_action_reset_transforms()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     QList<IBaseItem*> items;
     for (QGraphicsItem* item : scene_->selectedItems(true)) {
         items.append(dynamic_cast<IBaseItem*>(item));
@@ -1710,10 +1710,10 @@ void CanvasView::on_action_show_color_gamut()
 
 void CanvasView::on_action_sample_color()
 {
-    cancelActiveModes();
+    cancel_active_modes();
     FLOG_DEBUG(Ch::View, "Entering sample color mode");
     viewport()->setCursor(Qt::CrossCursor);
-    activeMode_ = ModeSampleColor;
+    activeMode_ = kModeSampleColor;
 
     if (scene_->has_multi_selection()) {
         // We don't want to sample the multi select item, so temporarily
@@ -1730,14 +1730,14 @@ void CanvasView::on_action_sample_color()
 
 // ─── Project helpers (existing interface) ────────────────────────────────────
 
-void CanvasView::setProjectSettings(project_settings* ps)
+void CanvasView::set_project_settings(ProjectSettings* ps)
 {
-    scene_->setProjectSettings(ps);
+    scene_->set_project_settings(ps);
 }
 
 namespace {
 
-QString listAsHtml(const QStringList& names)
+QString list_as_html(const QStringList& names)
 {
     QStringList items;
     for (const QString& fn : names) {
@@ -1797,16 +1797,16 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     // guess at both simultaneously. Populated by the connect() to
     // ThreadedIO::imageLoadFailures() below (do_insert_images()).
     if (!insertImagesUnsupportedFormat_.isEmpty()) {
-        showMessageBox(
+        show_message_box(
             QMessageBox::Warning,
             this,
             tr("Problem loading images"),
             tr("%1 image(s) use a format familiar doesn't support.<ul>%2</ul>")
                 .arg(insertImagesUnsupportedFormat_.size())
-                .arg(listAsHtml(insertImagesUnsupportedFormat_)));
+                .arg(list_as_html(insertImagesUnsupportedFormat_)));
     }
     if (!insertImagesTooLarge_.isEmpty()) {
-        showMessageBox(
+        show_message_box(
             QMessageBox::Warning,
             this,
             tr("Problem loading images"),
@@ -1814,17 +1814,17 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
                "limit.<br/>Raise \"Maximum Image Size\" under Performance "
                "settings to allow bigger files.<ul>%2</ul>")
                 .arg(insertImagesTooLarge_.size())
-                .arg(listAsHtml(insertImagesTooLarge_)));
+                .arg(list_as_html(insertImagesTooLarge_)));
     }
     if (!insertImagesCorrupt_.isEmpty()) {
-        showMessageBox(
+        show_message_box(
             QMessageBox::Warning,
             this,
             tr("Problem loading images"),
             tr("%1 image(s) could not be read - the file may be corrupt or "
                "truncated.<ul>%2</ul>")
                 .arg(insertImagesCorrupt_.size())
-                .arg(listAsHtml(insertImagesCorrupt_)));
+                .arg(list_as_html(insertImagesCorrupt_)));
     }
 
     if (!insertImagesLargeItems_.isEmpty()) {
@@ -1832,7 +1832,7 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
         for (const QString& fn : insertImagesLargeItems_) {
             names.append(QStringLiteral("<li>%1</li>").arg(fn));
         }
-        showMessageBox(
+        show_message_box(
             QMessageBox::Information,
             this,
             tr("Large images imported"),
@@ -1841,7 +1841,7 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
                "under Performance settings to downscale these "
                "automatically.<ul>%3</ul>")
                 .arg(insertImagesLargeItems_.size())
-                .arg(kLargeImageMaxDimension)
+                .arg(klargeImageMaxDimension)
                 .arg(names.join(QStringLiteral("\n"))));
     }
 
@@ -1903,7 +1903,7 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
 void CanvasView::do_insert_images(const QList<QUrl>& urls,
                                   std::optional<QPoint> pos)
 {
-    QPoint insertPos = pos.value_or(getViewCenter().toPoint());
+    QPoint insertPos = pos.value_or(get_view_center().toPoint());
     QPointF scenePos = mapToScene(insertPos);
 
     insertImagesNewScene_ = scene_->items().isEmpty();
@@ -1949,13 +1949,13 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // on_raw_import_choice_required() - only the very first decision
     // point moves up front.
     const QString rawImportSetting = FamSettings()
-                                         .valueOrDefault(QStringLiteral(
+                                         .value_or_default(QStringLiteral(
                                              "Items/raw_import_choice"))
                                          .toString();
     if (rawImportSetting == QLatin1String("ask")) {
         for (const QUrl& url : validUrls) {
             if (url.isLocalFile() && is_raw_file(url.toLocalFile())) {
-                if (!resolveRawImportChoice(url.toLocalFile())) {
+                if (!resolve_raw_import_choice(url.toLocalFile())) {
                     imageImportSession_.reset();
                     return;
                 }
@@ -1976,13 +1976,13 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
             this,
             &CanvasView::on_insert_images_finished);
     connect(imageImportWorker_,
-            &ThreadedIO::largeImagesFound,
+            &ThreadedIO::large_images_found,
             this,
             [this](const QStringList& filenames) {
                 insertImagesLargeItems_ += filenames;
             });
     connect(imageImportWorker_,
-            &ThreadedIO::imageLoadFailures,
+            &ThreadedIO::image_load_failures,
             this,
             [this](const QStringList& unsupportedFormat,
                    const QStringList& tooLarge,
@@ -1992,7 +1992,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
                 insertImagesCorrupt_ += corrupt;
             });
     connect(imageImportWorker_,
-            &ThreadedIO::rawImportChoiceRequired,
+            &ThreadedIO::raw_import_choice_required,
             this,
             &CanvasView::on_raw_import_choice_required);
 
@@ -2030,7 +2030,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         // on_finished()'s normal self-delete, since do_insert_images()
         // reuses it (rebind(), below) instead of constructing a fresh
         // one every import.
-        imageImportProgressDialog_->setReusable(true);
+        imageImportProgressDialog_->set_reusable(true);
     } else {
         imageImportProgressDialog_->rebind(imageImportWorker_);
     }
@@ -2058,7 +2058,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
 
 void CanvasView::on_raw_import_choice_required(const QString& filename)
 {
-    if (!resolveRawImportChoice(filename)) {
+    if (!resolve_raw_import_choice(filename)) {
         // Cancel - matches on_export_images_file_exists()'s own Reject
         // branch: this session is simply abandoned. Anything already
         // added to the scene before this pause stays (same as the
@@ -2086,21 +2086,21 @@ void CanvasView::on_raw_import_choice_required(const QString& filename)
     imageImportWorker_->start();
 }
 
-bool CanvasView::resolveRawImportChoice(const QString& filename)
+bool CanvasView::resolve_raw_import_choice(const QString& filename)
 {
     RawImportDialog dialog(this, filename);
     if (dialog.exec() != QDialog::Accepted) {
         return false;
     }
 
-    if (dialog.applyToQueue()) {
-        imageImportSession_->setQueueChoice(dialog.choice());
+    if (dialog.apply_to_queue()) {
+        imageImportSession_->set_queue_choice(dialog.choice());
     } else {
-        imageImportSession_->setOneShotChoice(dialog.choice());
+        imageImportSession_->set_one_shot_choice(dialog.choice());
     }
-    if (dialog.rememberChoice()) {
+    if (dialog.remember_choice()) {
         FamSettings settings;
-        settings.setValue(QStringLiteral("Items/raw_import_choice"),
+        settings.set_value(QStringLiteral("Items/raw_import_choice"),
                           dialog.choice() == RawImportChoice::Optimize
                               ? QStringLiteral("always_optimize")
                               : QStringLiteral("always_keep_original"));
@@ -2114,40 +2114,40 @@ void CanvasView::on_items_loaded(int /*value*/)
     insertImagesInsertedItems_ += scene_->add_queued_items();
 }
 
-void CanvasView::cleanupWorkplace()
+void CanvasView::cleanup_workplace()
 {
-    scene_->cleanupWorkplace();
+    scene_->cleanup_workplace();
 }
 
 QString CanvasView::path()
 {
     return scene_->path();
 }
-void CanvasView::setPath(const QString& path)
+void CanvasView::set_path(const QString& path)
 {
-    scene_->setPath(path);
+    scene_->set_path(path);
 }
-QString CanvasView::projectName()
+QString CanvasView::project_name()
 {
-    return scene_->projectName();
+    return scene_->project_name();
 }
-void CanvasView::setProjectName(const QString& pn)
+void CanvasView::set_project_name(const QString& pn)
 {
-    scene_->setProjectName(pn);
+    scene_->set_project_name(pn);
 }
-bool CanvasView::isModified()
+bool CanvasView::is_modified()
 {
-    return scene_->isModified();
+    return scene_->is_modified();
 }
-void CanvasView::setModified(bool mod)
+void CanvasView::set_modified(bool mod)
 {
-    scene_->setModified(mod);
+    scene_->set_modified(mod);
 }
-bool CanvasView::isUntitled()
+bool CanvasView::is_untitled()
 {
-    return scene_->isUntitled();
+    return scene_->is_untitled();
 }
-QUuid CanvasView::recoveryId()
+QUuid CanvasView::recovery_id()
 {
-    return scene_->recoveryId();
+    return scene_->recovery_id();
 }

@@ -19,14 +19,14 @@
 using familiar::SettingsCategory;
 
 namespace {
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
 
 // FlatCheckBox's paintEvent only ever draws checked/unchecked (see its
 // own comment on why) - no third "some but not all children checked"
 // glyph, so "All" just reflects "are all four currently checked" as a
 // plain on/off, not a real tristate indicator. Good enough for what
 // this dialog needs.
-QString categoryLabel(SettingsCategory category)
+QString category_label(SettingsCategory category)
 {
     switch (category) {
     case SettingsCategory::Performance:
@@ -42,7 +42,7 @@ QString categoryLabel(SettingsCategory category)
     }
 }
 
-const QList<SettingsCategory>& allCategories()
+const QList<SettingsCategory>& all_categories()
 {
     static const QList<SettingsCategory> categories = {
         SettingsCategory::Performance,
@@ -57,19 +57,19 @@ const QList<SettingsCategory>& allCategories()
 // - matches SettingsHandler::setDefaultCurrentPreset()'s own switch
 // exactly (that's the removal side of this, this is just "does it
 // exist at all").
-QString currentPresetJsonKey()
+QString current_preset_json_key()
 {
-    switch (SettingsHandler::get_instance()->currentPreset()) {
+    switch (SettingsHandler::get_instance()->current_preset()) {
     case EPresets::kDarkPreset:
-        return QStringLiteral("darkColorPreset");
+        return QStringLiteral("dark_color_preset");
     case EPresets::kLightPreset:
-        return QStringLiteral("lightColorPreset");
+        return QStringLiteral("light_color_preset");
     case EPresets::kCustom1:
-        return QStringLiteral("customPreset1");
+        return QStringLiteral("custom_preset1");
     case EPresets::kCustom2:
-        return QStringLiteral("customPreset2");
+        return QStringLiteral("custom_preset2");
     case EPresets::kCustom3:
-        return QStringLiteral("customPreset3");
+        return QStringLiteral("custom_preset3");
     default:
         return {};
     }
@@ -79,15 +79,15 @@ QString currentPresetJsonKey()
 // if restored - used to pre-check its checkbox, so the dialog opens
 // with only the categories that have real, saved customizations ticked
 // instead of everything unchecked by default.
-bool categoryHasChanges(SettingsCategory category)
+bool category_has_changes(SettingsCategory category)
 {
     switch (category) {
     case SettingsCategory::Performance:
     case SettingsCategory::ImagesAndItems: {
         FamSettings settings;
         for (const QString& key :
-             RestoreDefaultsDialog::famSettingsKeysFor(category)) {
-            if (settings.valueChanged(key)) {
+             RestoreDefaultsDialog::fam_settings_keys_for(category)) {
+            if (settings.value_changed(key)) {
                 return true;
             }
         }
@@ -113,7 +113,7 @@ bool categoryHasChanges(SettingsCategory category)
         // value against its true default (opacityListDef's 255, same
         // for every preset) is the only check that works here.
         return !SettingsHandler::get_instance()
-                    ->json_value(QStringLiteral("Colors"), currentPresetJsonKey())
+                    ->json_value(QStringLiteral("Colors"), current_preset_json_key())
                     .isUndefined()
             || SettingsHandler::get_instance()->get_current_opacity() != 255;
     case SettingsCategory::KeyboardShortcuts:
@@ -138,7 +138,7 @@ bool categoryHasChanges(SettingsCategory category)
 
 } // namespace
 
-QStringList RestoreDefaultsDialog::famSettingsKeysFor(SettingsCategory category)
+QStringList RestoreDefaultsDialog::fam_settings_keys_for(SettingsCategory category)
 {
     switch (category) {
     case SettingsCategory::Performance:
@@ -213,9 +213,9 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     topRow->setSpacing(12);
 
     auto* iconLabel = new QLabel(this);
-    iconLabel->setFixedSize(kIconSize, kIconSize);
+    iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
-        familiar::dialog_style::severityIcon(QMessageBox::Warning,
+        familiar::dialog_style::severity_icon(QMessageBox::Warning,
                                              accent,
                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
@@ -259,7 +259,7 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
     connect(allCheckbox_, &QCheckBox::checkStateChanged, this,
             [this](Qt::CheckState state) {
-                onAllToggled_(static_cast<int>(state));
+                on_all_toggled(static_cast<int>(state));
             });
 #else
     connect(allCheckbox_, &QCheckBox::stateChanged, this,
@@ -267,8 +267,8 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
 #endif
     listLayout->addWidget(allCheckbox_);
 
-    for (SettingsCategory category : allCategories()) {
-        auto* checkbox = new FlatCheckBox(categoryLabel(category),
+    for (SettingsCategory category : all_categories()) {
+        auto* checkbox = new FlatCheckBox(category_label(category),
                                           textColor,
                                           border,
                                           accent,
@@ -276,13 +276,13 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
         // Pre-check only categories that actually have a saved
         // customization, so opening the dialog highlights what's
         // actually changeable instead of starting fully unchecked.
-        checkbox->setChecked(categoryHasChanges(category));
+        checkbox->setChecked(category_has_changes(category));
         // Same Qt 6.9 checkStateChanged/stateChanged split as
         // allCheckbox_ above - the value itself isn't needed here
         // either way, just that *something* changed.
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
         connect(checkbox, &QCheckBox::checkStateChanged, this,
-                [this](Qt::CheckState) { onCategoryToggled_(); });
+                [this](Qt::CheckState) { on_category_toggled(); });
 #else
         connect(checkbox, &QCheckBox::stateChanged, this,
                 [this](int) { onCategoryToggled_(); });
@@ -297,7 +297,7 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     // Reflects "All" against whatever the pre-check loop above just
     // set, in case every category happened to have changes already -
     // same logic a later manual toggle would use, just run once here.
-    onCategoryToggled_();
+    on_category_toggled();
 
     outer->addLayout(listLayout);
 
@@ -306,29 +306,29 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     buttonRow->addStretch();
 
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-    familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
     connect(cancelBtn, &QPushButton::clicked, this, &RestoreDefaultsDialog::reject);
     buttonRow->addWidget(cancelBtn);
 
     auto* restoreBtn = new QPushButton(tr("Restore to Default"), this);
-    familiar::dialog_style::stylePrimaryButton(restoreBtn, destructive);
+    familiar::dialog_style::style_primary_button(restoreBtn, destructive);
     connect(restoreBtn, &QPushButton::clicked, this, &RestoreDefaultsDialog::accept);
     buttonRow->addWidget(restoreBtn);
 
     outer->addLayout(buttonRow);
 
     setStyleSheet(
-        familiar::dialog_style::panelStyleSheet("RestoreDefaultsDialog",
+        familiar::dialog_style::panel_style_sheet("RestoreDefaultsDialog",
                                                 background,
                                                 border,
                                                 textColor,
                                                 /*radiusPx=*/0)
-        + familiar::dialog_style::closeButtonStyleSheet("rddCloseBtn",
+        + familiar::dialog_style::close_button_style_sheet("rddCloseBtn",
                                                         textColor,
                                                         accent));
 }
 
-QList<SettingsCategory> RestoreDefaultsDialog::checkedCategories() const
+QList<SettingsCategory> RestoreDefaultsDialog::checked_categories() const
 {
     QList<SettingsCategory> result;
     for (auto it = categoryCheckboxes_.constBegin();
@@ -353,7 +353,7 @@ void RestoreDefaultsDialog::mousePressEvent(QMouseEvent* event)
     QDialog::mousePressEvent(event);
 }
 
-void RestoreDefaultsDialog::onAllToggled_(int state)
+void RestoreDefaultsDialog::on_all_toggled(int state)
 {
     if (syncing_) {
         return;
@@ -366,7 +366,7 @@ void RestoreDefaultsDialog::onAllToggled_(int state)
     syncing_ = false;
 }
 
-void RestoreDefaultsDialog::onCategoryToggled_()
+void RestoreDefaultsDialog::on_category_toggled()
 {
     if (syncing_) {
         return;

@@ -20,7 +20,7 @@
 
 namespace {
 
-QString buttonNameFor(Qt::MouseButton btn)
+QString button_name_for(Qt::MouseButton btn)
 {
     for (const auto& pair : MouseConfigBase::button_map()) {
         if (pair.second == btn && pair.second != Qt::NoButton) {
@@ -30,7 +30,7 @@ QString buttonNameFor(Qt::MouseButton btn)
     return {};
 }
 
-Qt::MouseButton buttonFlagFor(const QString& name)
+Qt::MouseButton button_flag_for(const QString& name)
 {
     for (const auto& pair : MouseConfigBase::button_map()) {
         if (pair.first == name) {
@@ -61,12 +61,12 @@ void invoke(QWidget* target, const Action* action)
 // for this frameless/custom-mouse-handling MainWindow turned out to be
 // MainWindow itself, not the canvas (confirmed via logging: the release
 // was delivered but never reached CanvasView/CanvasScene at all).
-void releasePressTargetBeforeAction(QWidget* invokeTarget,
+void release_press_target_before_action(QWidget* invokeTarget,
                                     Qt::MouseButton flag,
                                     Qt::KeyboardModifiers modifiers)
 {
     auto* mainWindow = qobject_cast<MainWindow*>(invokeTarget);
-    CanvasView* canvasView = mainWindow ? mainWindow->tabPane().currentWidget()
+    CanvasView* canvasView = mainWindow ? mainWindow->tab_pane().current_widget()
                                         : nullptr;
     QWidget* releaseTarget = canvasView ? canvasView->viewport() : nullptr;
     if (!releaseTarget) {
@@ -85,7 +85,7 @@ void releasePressTargetBeforeAction(QWidget* invokeTarget,
 
 // Don't hijack normal typing (e.g. a filename field) with a bound
 // shortcut just because it happens to match a key the user is typing.
-bool focusIsTextInput()
+bool focus_is_text_input()
 {
     QWidget* focused = qApp->focusWidget();
     if (!focused) {
@@ -96,7 +96,7 @@ bool focusIsTextInput()
            || qobject_cast<QPlainTextEdit*>(focused);
 }
 
-const QSet<QString>& bareModifierNames()
+const QSet<QString>& bare_modifier_names()
 {
     static const QSet<QString> names = {QStringLiteral("Ctrl"),
                                         QStringLiteral("Shift"),
@@ -117,22 +117,22 @@ bool ActionMouseDispatcher::eventFilter(QObject* watched, QEvent* event)
 {
     Q_UNUSED(watched)
     if (event->type() == QEvent::MouseButtonPress) {
-        return tryMousePress(static_cast<QMouseEvent*>(event));
+        return try_mouse_press(static_cast<QMouseEvent*>(event));
     }
     if (event->type() == QEvent::KeyPress) {
-        return tryKeyPress(static_cast<QKeyEvent*>(event));
+        return try_key_press(static_cast<QKeyEvent*>(event));
     }
     return false;
 }
 
-bool ActionMouseDispatcher::tryMousePress(QMouseEvent* event)
+bool ActionMouseDispatcher::try_mouse_press(QMouseEvent* event)
 {
-    const QString btn = buttonNameFor(event->button());
+    const QString btn = button_name_for(event->button());
     if (btn.isEmpty()) {
         return false;
     }
 
-    for (Action* action : getActions().all()) {
+    for (Action* action : get_actions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
             if (!b.is_mouse_only() || b.mouseButton != btn) {
                 continue;
@@ -147,14 +147,14 @@ bool ActionMouseDispatcher::tryMousePress(QMouseEvent* event)
     return false;
 }
 
-bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
+bool ActionMouseDispatcher::try_key_press(QKeyEvent* event)
 {
     // Bare-modifier Action shortcuts (just Ctrl/Alt/Shift/Meta alone, no
     // other key) - Qt's native QShortcutMap can't represent/match these
     // at all (QKeySequence has no "modifier alone" concept), so they're
     // dispatched here regardless of whether a mouse button is held. Tried
     // first since it doesn't depend on HeldButtonsTracker state.
-    if (tryBareModifierAction(event)) {
+    if (try_bare_modifier_action(event)) {
         return true;
     }
 
@@ -165,7 +165,7 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
 
     // Don't hijack normal typing (e.g. a filename field) just because the
     // user happens to be holding a mouse button incidentally.
-    if (focusIsTextInput()) {
+    if (focus_is_text_input()) {
         return false;
     }
 
@@ -179,17 +179,17 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
                int(held),
                pressed.toStdString());
 
-    for (Action* action : getActions().all()) {
+    for (Action* action : get_actions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
             if (!b.is_mixed() || b.keySequence != pressed) {
                 continue;
             }
-            const Qt::MouseButton flag = buttonFlagFor(b.mouseButton);
+            const Qt::MouseButton flag = button_flag_for(b.mouseButton);
             if (flag != Qt::NoButton && (held & flag)) {
                 FLOG_DEBUG(familiar::log::Ch::UI,
                            "tryKeyPress: matched mixed alias for action '{}'",
                            action->id.toStdString());
-                releasePressTargetBeforeAction(target_,
+                release_press_target_before_action(target_,
                                                flag,
                                                event->modifiers());
                 invoke(target_, action);
@@ -200,13 +200,13 @@ bool ActionMouseDispatcher::tryKeyPress(QKeyEvent* event)
     return false;
 }
 
-bool ActionMouseDispatcher::tryBareModifierAction(QKeyEvent* event)
+bool ActionMouseDispatcher::try_bare_modifier_action(QKeyEvent* event)
 {
     const QString pressed = key_event_to_sequence_string(event);
-    if (!bareModifierNames().contains(pressed)) {
+    if (!bare_modifier_names().contains(pressed)) {
         return false;
     }
-    if (focusIsTextInput()) {
+    if (focus_is_text_input()) {
         return false;
     }
 
@@ -215,7 +215,7 @@ bool ActionMouseDispatcher::tryBareModifierAction(QKeyEvent* event)
     // this has nothing to do with the mouse. Native QAction dispatch
     // already handles every other entry in that list; this only ever
     // fires for the bare-modifier ones it can't.
-    for (Action* action : getActions().all()) {
+    for (Action* action : get_actions().all()) {
         if (action->get_shortcuts().contains(pressed)) {
             invoke(target_, action);
             return true;

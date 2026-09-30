@@ -19,15 +19,15 @@
 
 namespace {
 
-constexpr int kButtonSize = 30;
-constexpr int kIconSize = 18;
+constexpr int kbuttonSize = 30;
+constexpr int kiconSize = 18;
 
 // Simple drawn padlock glyph - shackle (arc) + body (rounded rect), same
 // QPainter-drawn-icon approach as gif_playback_toolbar.cpp's makeStepIcon()
 // etc.
-QIcon makeLockIcon(const QColor& glyphColor, qreal dpr)
+QIcon make_lock_icon(const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -40,20 +40,20 @@ QIcon makeLockIcon(const QColor& glyphColor, qreal dpr)
     p.setPen(shacklePen);
     p.setBrush(Qt::NoBrush);
     QPainterPath shackle;
-    const QRectF shackleRect(kIconSize * 0.28,
-                             kIconSize * 0.12,
-                             kIconSize * 0.44,
-                             kIconSize * 0.44);
+    const QRectF shackleRect(kiconSize * 0.28,
+                             kiconSize * 0.12,
+                             kiconSize * 0.44,
+                             kiconSize * 0.44);
     shackle.arcMoveTo(shackleRect, 0);
     shackle.arcTo(shackleRect, 0, 180);
     p.drawPath(shackle);
 
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
-    p.drawRoundedRect(QRectF(kIconSize * 0.18,
-                             kIconSize * 0.46,
-                             kIconSize * 0.64,
-                             kIconSize * 0.42),
+    p.drawRoundedRect(QRectF(kiconSize * 0.18,
+                             kiconSize * 0.46,
+                             kiconSize * 0.64,
+                             kiconSize * 0.42),
                       2.0,
                       2.0);
 
@@ -68,11 +68,11 @@ QIcon makeLockIcon(const QColor& glyphColor, qreal dpr)
 // dark fill - no letter glyph needed (unlike TextEditToolbar's B/H/BG
 // buttons, this is the ONLY color control on this bar, nothing to
 // disambiguate).
-QIcon makeFillColorIcon(const QColor& fillColor,
+QIcon make_fill_color_icon(const QColor& fillColor,
                         const QColor& borderColor,
                         qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -83,7 +83,7 @@ QIcon makeFillColorIcon(const QColor& fillColor,
     border.setWidthF(1.2);
     p.setPen(border);
     p.setBrush(fillColor);
-    p.drawRoundedRect(QRectF(1.5, 1.5, kIconSize - 3.0, kIconSize - 3.0),
+    p.drawRoundedRect(QRectF(1.5, 1.5, kiconSize - 3.0, kiconSize - 3.0),
                       3.0,
                       3.0);
 
@@ -95,9 +95,9 @@ QIcon makeFillColorIcon(const QColor& fillColor,
 
 // Small downward chevron - opens showSettingsPopup_(). Same drawn-icon
 // approach as every other button on this bar, no external asset.
-QIcon makeChevronIcon(const QColor& glyphColor, qreal dpr)
+QIcon make_chevron_icon(const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -111,9 +111,9 @@ QIcon makeChevronIcon(const QColor& glyphColor, qreal dpr)
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
     QPainterPath chevron;
-    chevron.moveTo(kIconSize * 0.28, kIconSize * 0.4);
-    chevron.lineTo(kIconSize * 0.5, kIconSize * 0.62);
-    chevron.lineTo(kIconSize * 0.72, kIconSize * 0.4);
+    chevron.moveTo(kiconSize * 0.28, kiconSize * 0.4);
+    chevron.lineTo(kiconSize * 0.5, kiconSize * 0.62);
+    chevron.lineTo(kiconSize * 0.72, kiconSize * 0.4);
     p.drawPath(chevron);
 
     p.end();
@@ -148,21 +148,21 @@ GroupToolbar::GroupToolbar(QWidget* parent)
     lockBtn_->setToolTip(tr("Lock group"));
     lockBtn_->setCheckable(true);
     lockBtn_->setAutoRaise(true);
-    lockBtn_->setFixedSize(kButtonSize, kButtonSize);
+    lockBtn_->setFixedSize(kbuttonSize, kbuttonSize);
     lockBtn_->setFocusPolicy(Qt::NoFocus);
     lay->addWidget(lockBtn_);
 
     fillColorBtn_ = new QToolButton(row);
     fillColorBtn_->setToolTip(tr("Group fill color"));
     fillColorBtn_->setAutoRaise(true);
-    fillColorBtn_->setFixedSize(kButtonSize, kButtonSize);
+    fillColorBtn_->setFixedSize(kbuttonSize, kbuttonSize);
     fillColorBtn_->setFocusPolicy(Qt::NoFocus);
     lay->addWidget(fillColorBtn_);
 
     chevronBtn_ = new QToolButton(row);
     chevronBtn_->setToolTip(tr("Group settings"));
     chevronBtn_->setAutoRaise(true);
-    chevronBtn_->setFixedSize(kButtonSize, kButtonSize);
+    chevronBtn_->setFixedSize(kbuttonSize, kbuttonSize);
     chevronBtn_->setFocusPolicy(Qt::NoFocus);
     lay->addWidget(chevronBtn_);
 
@@ -171,7 +171,7 @@ GroupToolbar::GroupToolbar(QWidget* parent)
     connect(lockBtn_,
             &QToolButton::toggled,
             this,
-            &GroupToolbar::onLockToggled_);
+            &GroupToolbar::on_lock_toggled);
     connect(fillColorBtn_, &QToolButton::clicked, this, [this] {
         if (!item_) {
             return;
@@ -186,16 +186,16 @@ GroupToolbar::GroupToolbar(QWidget* parent)
         // command on accept.
         ColorPickerDialog dialog(this, initial, tr("Group fill color"));
         connect(&dialog,
-                &ColorPickerDialog::colorChanged,
+                &ColorPickerDialog::color_changed,
                 this,
                 [this](QColor c) {
                     if (item_) {
                         item_->set_fill_color(c);
-                        updateFillColorIcon_();
+                        update_fill_color_icon();
                     }
                 });
         if (dialog.exec() == QDialog::Accepted) {
-            const QColor color = dialog.selectedColor();
+            const QColor color = dialog.selected_color();
             if (auto* scene = dynamic_cast<CanvasScene*>(item_->scene())) {
                 // Undo the live preview first so the undo command's own
                 // redo() (which runs immediately on push()) is the only
@@ -209,14 +209,14 @@ GroupToolbar::GroupToolbar(QWidget* parent)
         } else {
             item_->set_fill_color(oldColor);
         }
-        updateFillColorIcon_();
+        update_fill_color_icon();
     });
     connect(chevronBtn_,
             &QToolButton::clicked,
             this,
-            &GroupToolbar::showSettingsPopup_);
+            &GroupToolbar::show_settings_popup);
 
-    restyleFromPreset();
+    restyle_from_preset();
 }
 
 void GroupToolbar::attach(GroupItem* item)
@@ -226,27 +226,27 @@ void GroupToolbar::attach(GroupItem* item)
         const QSignalBlocker blocker(lockBtn_);
         lockBtn_->setChecked(item_->locked());
     }
-    updateFillColorIcon_();
+    update_fill_color_icon();
 }
 
-void GroupToolbar::onLockToggled_(bool checked)
+void GroupToolbar::on_lock_toggled(bool checked)
 {
     if (item_) {
         item_->set_locked(checked);
     }
 }
 
-void GroupToolbar::updateFillColorIcon_()
+void GroupToolbar::update_fill_color_icon()
 {
     if (!item_) {
         return;
     }
-    fillColorBtn_->setIcon(makeFillColorIcon(item_->fill_color(),
+    fillColorBtn_->setIcon(make_fill_color_icon(item_->fill_color(),
                                              iconGlyphColor_,
                                              devicePixelRatioF()));
 }
 
-void GroupToolbar::showSettingsPopup_()
+void GroupToolbar::show_settings_popup()
 {
     if (!item_) {
         return;
@@ -319,10 +319,10 @@ void GroupToolbar::showSettingsPopup_()
 void GroupToolbar::resizeEvent(QResizeEvent* event)
 {
     QWidget::resizeEvent(event);
-    emit geometryChanged();
+    emit geometry_changed();
 }
 
-void GroupToolbar::restyleFromPreset()
+void GroupToolbar::restyle_from_preset()
 {
     auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
@@ -364,7 +364,7 @@ void GroupToolbar::restyleFromPreset()
                            rgba(selection, 170),
                            background.name()));
 
-    lockBtn_->setIcon(makeLockIcon(iconGlyphColor_, devicePixelRatioF()));
-    chevronBtn_->setIcon(makeChevronIcon(iconGlyphColor_, devicePixelRatioF()));
-    updateFillColorIcon_();
+    lockBtn_->setIcon(make_lock_icon(iconGlyphColor_, devicePixelRatioF()));
+    chevronBtn_->setIcon(make_chevron_icon(iconGlyphColor_, devicePixelRatioF()));
+    update_fill_color_icon();
 }

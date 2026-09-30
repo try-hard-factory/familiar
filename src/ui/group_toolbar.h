@@ -29,14 +29,14 @@ public:
 
     // Re-derive the QSS from the current color preset (called on attach
     // and whenever settings change).
-    void restyleFromPreset();
+    void restyle_from_preset();
 
 signals:
     // Fired whenever the widget's own size changes - see
     // GifPlaybackToolbar::geometryChanged() (same reasoning: CanvasView
     // needs to reposition when internal content resizes this widget
     // without CanvasView itself calling move()).
-    void geometryChanged();
+    void geometry_changed();
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
@@ -51,11 +51,11 @@ private:
     // Reused across clicks (see GifPlaybackToolbar::speedPopup_) rather
     // than recreated every time, so repeated clicks don't stack popups.
     QWidget* settingsPopup_ = nullptr;
-    void showSettingsPopup_();
-    void updateFillColorIcon_();
+    void show_settings_popup();
+    void update_fill_color_icon();
 
 private slots:
-    void onLockToggled_(bool checked);
+    void on_lock_toggled(bool checked);
 };
 
 #endif // GROUP_TOOLBAR_H

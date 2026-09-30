@@ -32,7 +32,7 @@ namespace {
 // only failing much later with a generic "file not found" from the
 // file-opening code - this catches the same "clearly not meant as a
 // path" case up front instead, with a proper CLI-style error.
-bool looksLikeAPlaceholderNotAPath(const QString& arg)
+bool looks_like_a_placeholder_not_a_path(const QString& arg)
 {
     const QString trimmed = arg.trimmed();
     if (trimmed.isEmpty()) {
@@ -48,7 +48,7 @@ bool looksLikeAPlaceholderNotAPath(const QString& arg)
 
 } // namespace
 
-static void addOptions(QCommandLineParser& parser)
+static void add_options(QCommandLineParser& parser)
 {
     parser.addOption(
         {QStringList{QStringLiteral("f"), QStringLiteral("file")},
@@ -89,7 +89,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
         "images."));
     const QCommandLineOption helpOption = parser.addHelpOption();
     const QCommandLineOption versionOption = parser.addVersionOption();
-    addOptions(parser);
+    add_options(parser);
 
     // parser.parse() + manual handling below, not parser.process(app) -
     // process() exits on error with Qt's own terse one-liner ("familiar:
@@ -121,7 +121,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
 
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty()) {
-        if (looksLikeAPlaceholderNotAPath(positional.first())) {
+        if (looks_like_a_placeholder_not_a_path(positional.first())) {
             const QString msg = QStringLiteral(
                                     "%1: Not a valid file path: \"%2\".\n\n")
                                     .arg(QCoreApplication::applicationName(),
@@ -146,7 +146,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
 void CommandlineArgs::parse(const QStringList& args)
 {
     QCommandLineParser parser;
-    addOptions(parser);
+    add_options(parser);
     parser.parse(args); // does not exit on unknown options
 
     const QStringList positional = parser.positionalArguments();
@@ -181,12 +181,12 @@ SettingsEvents& SettingsEvents::instance()
 namespace {
 
 // "Save/confirm_close_unsaved" -> group="Save", subkey="confirm_close_unsaved".
-QString keyGroup(const QString& key)
+QString key_group(const QString& key)
 {
     return key.section(QLatin1Char('/'), 0, 0);
 }
 
-QString keySubkey(const QString& key)
+QString key_subkey(const QString& key)
 {
     return key.section(QLatin1Char('/'), 1);
 }
@@ -323,7 +323,7 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              /*postSaveCallback*/
              .postSaveCallback =
                  [](const QVariant&) {
-                     emit SettingsEvents::instance().autosaveSettingsChanged();
+                     emit SettingsEvents::instance().autosave_settings_changed();
                  },
          }},
         {"Save/autosave_interval_seconds",
@@ -337,22 +337,22 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              },
              /*postSaveCallback*/
              .postSaveCallback=[](const QVariant&) {
-                 emit SettingsEvents::instance().autosaveSettingsChanged();
+                 emit SettingsEvents::instance().autosave_settings_changed();
              },
          }},
     };
     return map;
 }
 
-QVariant FamSettings::valueOrDefault(const QString& key) const
+QVariant FamSettings::value_or_default(const QString& key) const
 {
     const auto& f = fields();
     Q_ASSERT(f.contains(key));
     const FieldConfig& conf = f[key];
 
     const QJsonValue raw
-        = SettingsHandler::get_instance()->json_value(keyGroup(key),
-                                                    keySubkey(key));
+        = SettingsHandler::get_instance()->json_value(key_group(key),
+                                                    key_subkey(key));
     if (raw.isUndefined()) {
         return conf.defaultValue;
     }
@@ -382,12 +382,12 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
     return val;
 }
 
-bool FamSettings::valueChanged(const QString& key) const
+bool FamSettings::value_changed(const QString& key) const
 {
-    return valueOrDefault(key) != fields().value(key).defaultValue;
+    return value_or_default(key) != fields().value(key).defaultValue;
 }
 
-void FamSettings::restoreDefaults()
+void FamSettings::restore_defaults()
 {
     SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Save"));
     SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Items"));
@@ -397,26 +397,26 @@ void FamSettings::restoreDefaults()
             conf.postSaveCallback(conf.defaultValue);
         }
     }
-    emit SettingsEvents::instance().restoreDefaults();
+    emit SettingsEvents::instance().restore_defaults();
 }
 
-void FamSettings::onStartup()
+void FamSettings::on_startup()
 {
     const QByteArray envAlloc = qgetenv("QT_IMAGEIO_MAXALLOC");
     if (!envAlloc.isEmpty()) {
         QImageReader::setAllocationLimit(envAlloc.toInt());
     } else {
-        const int alloc = valueOrDefault(
+        const int alloc = value_or_default(
                               QStringLiteral("Items/image_allocation_limit"))
                               .toInt();
         QImageReader::setAllocationLimit(alloc);
     }
 }
 
-void FamSettings::setValue(const QString& key, const QVariant& value)
+void FamSettings::set_value(const QString& key, const QVariant& value)
 {
-    SettingsHandler::get_instance()->set_json_value(keyGroup(key),
-                                                 keySubkey(key),
+    SettingsHandler::get_instance()->set_json_value(key_group(key),
+                                                 key_subkey(key),
                                                  QJsonValue::fromVariant(value));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
@@ -428,26 +428,26 @@ QVariant FamSettings::value(const QString& key,
                             const QVariant& defaultValue) const
 {
     const QJsonValue raw
-        = SettingsHandler::get_instance()->json_value(keyGroup(key),
-                                                    keySubkey(key));
+        = SettingsHandler::get_instance()->json_value(key_group(key),
+                                                    key_subkey(key));
     return raw.isUndefined() ? defaultValue : raw.toVariant();
 }
 
 void FamSettings::remove(const QString& key)
 {
-    SettingsHandler::get_instance()->remove_json_value(keyGroup(key),
-                                                    keySubkey(key));
+    SettingsHandler::get_instance()->remove_json_value(key_group(key),
+                                                    key_subkey(key));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
-        f[key].postSaveCallback(valueOrDefault(key));
+        f[key].postSaveCallback(value_or_default(key));
     }
 }
 
-void FamSettings::updateRecentFiles(const QString& filename)
+void FamSettings::update_recent_files(const QString& filename)
 {
     const QString abs = QFileInfo(filename).absoluteFilePath();
 
-    QStringList values = getRecentFiles();
+    QStringList values = get_recent_files();
     values.removeAll(abs);
     values.prepend(abs);
     if (values.size() > 10) {
@@ -457,7 +457,7 @@ void FamSettings::updateRecentFiles(const QString& filename)
     SettingsHandler::get_instance()->set_recent_files_raw(values);
 }
 
-QStringList FamSettings::getRecentFiles(bool existingOnly) const
+QStringList FamSettings::get_recent_files(bool existingOnly) const
 {
     QStringList values = SettingsHandler::get_instance()->recent_files_raw();
 
@@ -472,7 +472,7 @@ QStringList FamSettings::getRecentFiles(bool existingOnly) const
     return values;
 }
 
-QString FamSettings::fileName() const
+QString FamSettings::file_name() const
 {
     return SettingsHandler::get_instance()->settings_file_path();
 }

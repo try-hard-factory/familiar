@@ -32,33 +32,33 @@ public:
 
     // Re-derive the QSS from the current color preset (called on attach
     // and whenever settings change).
-    void restyleFromPreset();
+    void restyle_from_preset();
 
 private:
-    void applyCharFormat(const QTextCharFormat& format);
+    void apply_char_format(const QTextCharFormat& format);
     // Toggles the current block(s) in/out of a list of the given style:
     // off if already that style, switched in place if a different style,
     // otherwise a new list is created from the selection. See
     // moveitem.h/QTextListFormat - a block-level format, not a
     // QTextCharFormat, so it doesn't go through applyCharFormat().
-    void toggleListStyle(int style);
+    void toggle_list_style(int style);
     // Small popup (URL field + browse-for-local-file + apply) anchored
     // under linkBtn_ - see the .cpp for the widget itself.
-    void showLinkPopup();
+    void show_link_popup();
     // Applies (or, if href is empty, does nothing - the popup's Apply
     // button already guards against that) an anchor format to the
     // current selection.
-    void applyLink(const QString& href);
+    void apply_link(const QString& href);
     // Reflect the char format under the item's cursor in the controls.
     // QGraphicsTextItem has no cursorPositionChanged signal, so this is
     // polled by syncTimer_ while the toolbar is visible.
-    void syncFromCursor();
+    void sync_from_cursor();
     // Redraws textColorBtn_/highlightColorBtn_/fillColorBtn_'s icons from
     // whatever color each currently represents - called from
     // syncFromCursor() (so the swatch tracks the cursor like B/I/U do)
     // and right after a color picker closes (so a pick is reflected
     // immediately, not only at the next poll).
-    void updateColorButtonIcons();
+    void update_color_button_icons();
 
     TextItem* item_ = nullptr;
     QToolButton* textColorBtn_ = nullptr;

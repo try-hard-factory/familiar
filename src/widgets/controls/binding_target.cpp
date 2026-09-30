@@ -9,7 +9,7 @@ QString ActionBindingTarget::id() const
 
 QString ActionBindingTarget::text() const
 {
-    QString t = action_->displayText();
+    QString t = action_->display_text();
     if (t.endsWith(QLatin1String("..."))) {
         t.chop(3);
     }
@@ -26,7 +26,7 @@ QList<Binding> ActionBindingTarget::bindings() const
     return out;
 }
 
-QList<Binding> ActionBindingTarget::defaultBindings() const
+QList<Binding> ActionBindingTarget::default_bindings() const
 {
     // No Action ships with a default mouse/mixed binding today.
     QList<Binding> out;
@@ -36,7 +36,7 @@ QList<Binding> ActionBindingTarget::defaultBindings() const
     return out;
 }
 
-void ActionBindingTarget::setBindings(const QList<Binding>& bindings)
+void ActionBindingTarget::set_bindings(const QList<Binding>& bindings)
 {
     QStringList seqs;
     QList<Binding> mouseBindings;
@@ -48,6 +48,6 @@ void ActionBindingTarget::setBindings(const QList<Binding>& bindings)
             seqs.append(b.keySequence);
         }
     }
-    action_->setShortcuts(seqs);
-    action_->setMouseBindings(mouseBindings);
+    action_->set_shortcuts(seqs);
+    action_->set_mouse_bindings(mouseBindings);
 }

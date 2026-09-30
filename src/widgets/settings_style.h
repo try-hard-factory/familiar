@@ -35,7 +35,7 @@ const Palette& palette();
 // palette(window)/palette(window-text). Also carries the QScrollBar
 // rules (thin rounded handle, no arrow buttons) since that's global to
 // every scroll area in the window, not any one widget's own chrome.
-QString rootStyleSheet();
+QString root_style_sheet();
 
 // CategoryNavButton (ui/settings_window.cpp) chrome: every row is a
 // filled gray box (not just the selected one) - navIdleBg normally,
@@ -45,27 +45,27 @@ QString rootStyleSheet();
 // itself is
 // painted directly in CategoryNavButton::paintEvent() (not through this
 // QSS - see that class for why).
-QString sidebarButtonStyleSheet();
+QString sidebar_button_style_sheet();
 
 // Shortcut "chip" (widgets/controls/bindings_tree_widget.cpp): a gray
 // rounded box around the shortcut text, matching the reference
 // design's own Configuration window - hover darkens the box slightly.
-QString shortcutChipStyleSheet();
+QString shortcut_chip_style_sheet();
 
 // Small square +/- alias buttons next to a chip: white bg, thin border,
 // rounded corners, centered glyph.
-QString miniButtonStyleSheet();
+QString mini_button_style_sheet();
 
 // Outline pill button - unused by the window's own chrome any more (see
 // filledButtonStyleSheet() below) but kept for other callers.
-QString outlineButtonStyleSheet();
+QString outline_button_style_sheet();
 
 // Restore Defaults / Import / Export: same filled-gray-box treatment as
 // the sidebar (sidebarButtonStyleSheet()) - navIdleBg normally,
 // navHoverBg on hover, navSelectedBg while pressed. No border, unlike
 // outlineButtonStyleSheet() - matches the sidebar buttons exactly rather
 // than the earlier white-outline design.
-QString filledButtonStyleSheet();
+QString filled_button_style_sheet();
 
 // QSlider chrome (ui/colors_widget.cpp's Master opacity slider): thin
 // rounded groove/fill + a round navSelectedBg-gray handle (not accent -
@@ -74,6 +74,6 @@ QString filledButtonStyleSheet();
 // own slider QSS uses (widgets/dialogs.h), not a bare "QSlider { color:
 // ... }" rule (kills native rendering with no sub-control targeted, per
 // this app's established QSS-subcontrol lesson).
-QString sliderStyleSheet();
+QString slider_style_sheet();
 
 } // namespace familiar::settings_style

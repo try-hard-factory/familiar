@@ -16,7 +16,7 @@
 #include <queue>
 
 class MainWindow;
-class project_settings;
+class ProjectSettings;
 class TextItem;
 class PixmapItem;
 class RubberbandItem;
@@ -298,7 +298,7 @@ public:
     // recursively via ordinary virtual dispatch and have no cycle check
     // of their own - they rely on the graph being acyclic by
     // construction, which this is the one gate that guarantees.
-    bool wouldCreateAttachCycle(const QUuid& itemUid,
+    bool would_create_attach_cycle(const QUuid& itemUid,
                                 const QUuid& targetUid) const;
     // Hierarchy panel drag-and-drop (current, interactive
     // tree): re-anchors item to targetUid (a PixmapItem/GifItem uid) as
@@ -394,7 +394,7 @@ public:
     // global; the actual items need to be too. Holding shared_ptr keeps
     // a copied item alive even if the scene it came from gets cleared/
     // closed before the paste happens.
-    static inline QList<std::shared_ptr<IBaseItem>> internal_clipboard;
+    static inline QList<std::shared_ptr<IBaseItem>> internalClipboard;
     TextItem* edit_item = nullptr;
     PixmapItem* crop_item = nullptr;
     QPointF event_start{};
@@ -403,30 +403,30 @@ public:
 
     // ────────────────────────────────────────────────────────────────────────
 
-    void pasteFromClipboard();
-    void copyToClipboard();
-    QGraphicsItem* getFirstItemUnderCursor(const QPointF& p);
-    void setProjectSettings(project_settings* ps);
-    void cleanupWorkplace();
+    void paste_from_clipboard();
+    void copy_to_clipboard();
+    QGraphicsItem* get_first_item_under_cursor(const QPointF& p);
+    void set_project_settings(ProjectSettings* ps);
+    void cleanup_workplace();
     QString path();
-    void setPath(const QString& path);
-    QString projectName();
-    void setProjectName(const QString& pn);
-    bool isModified();
-    void setModified(bool mod);
-    bool isUntitled();
-    QUuid recoveryId();
+    void set_path(const QString& path);
+    QString project_name();
+    void set_project_name(const QString& pn);
+    bool is_modified();
+    void set_modified(bool mod);
+    bool is_untitled();
+    QUuid recovery_id();
 
 public slots:
-    void settingsChangedSlot();
+    void settings_changed_slot();
 
 private slots:
-    void clipboardChanged();
+    void clipboard_changed();
 
 private:
-    qint16 objectsCount() const;
+    qint16 objects_count() const;
 
-    void handleImageFromClipboard(const QImage& image);
+    void handle_image_from_clipboard(const QImage& image);
 
     // Shared by paste_from_internal_clipboard()/duplicate_selection():
     // create_copy() on each source, then remap each clone's cross-
@@ -435,7 +435,7 @@ private:
     // same call) got - dropped instead of left pointing at the original
     // if that original wasn't part of `sources`. See paste_from_
     // internal_clipboard()'s own comment for the full rationale.
-    QList<IBaseItem*> clone_with_remap_(
+    QList<IBaseItem*> clone_with_remap(
         const QList<std::shared_ptr<IBaseItem>>& sources) const;
 
     void restore_drilled_in_members();
@@ -443,7 +443,7 @@ private:
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
     qreal parentViewScaleFactor_ = 1;
-    project_settings* projectSettings_;
+    ProjectSettings* projectSettings_;
     QRectF rememberedBoundingRect_;
     QPointF origin_;
     QRectF rubberBand_;

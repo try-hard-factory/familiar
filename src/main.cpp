@@ -32,7 +32,7 @@ namespace {
 // nothing is really attached to any more) - not a 100% guarantee on
 // every platform/Qt version, but good enough for "don't start a second
 // window" without reaching for a heavier IPC-based liveness check.
-bool acquireSingleInstanceLock(QSharedMemory& guard)
+bool acquire_single_instance_lock(QSharedMemory& guard)
 {
     if (guard.attach()) {
         guard.detach();
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
     // windows, which is exactly what this guards against.
     QSharedMemory singleInstanceGuard(
         QStringLiteral("familiar-single-instance-9f3b2c7a"));
-    if (!acquireSingleInstanceLock(singleInstanceGuard)) {
+    if (!acquire_single_instance_lock(singleInstanceGuard)) {
         // Plain native QMessageBox, not this app's own custom-chrome one
         // (widgets/message_box.h) - this fires before SettingsHandler/
         // the color preset system are initialized at all, and exiting
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
     a.setWindowIcon(appIcon);
 
     Options logOptions;
-    logOptions.consoleLevel = levelFromName(
+    logOptions.consoleLevel = level_from_name(
         CommandlineArgs::instance().loglevel());
     familiar::log::init(logOptions);
 
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
     // the logger is initialized is a real null-logger crash (confirmed
     // via a real backtrace: quill::LoggerBase::get_log_level() on a null
     // `this`).
-    FamSettings().onStartup();
+    FamSettings().on_startup();
 
 
 #ifdef NDEBUG
@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
     // below, if any) until it's dismissed - see
     // MainWindow::showOrOfferRecovery()'s own comment for why that
     // ordering matters.
-    w.showOrOfferRecovery(CommandlineArgs::instance().filename());
+    w.show_or_offer_recovery(CommandlineArgs::instance().filename());
 
     const int result = a.exec();
 

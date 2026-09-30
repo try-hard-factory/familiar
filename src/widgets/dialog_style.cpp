@@ -9,7 +9,7 @@
 
 namespace familiar::dialog_style {
 
-QColor severityColor(QMessageBox::Icon icon, const QColor& accent)
+QColor severity_color(QMessageBox::Icon icon, const QColor& accent)
 {
     switch (icon) {
     case QMessageBox::Warning:
@@ -26,11 +26,11 @@ QColor severityColor(QMessageBox::Icon icon, const QColor& accent)
 
 namespace {
 
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
 
 } // namespace
 
-QString panelStyleSheet(const char* className,
+QString panel_style_sheet(const char* className,
                         const QColor& background,
                         const QColor& border,
                         const QColor& text,
@@ -60,7 +60,7 @@ QString panelStyleSheet(const char* className,
         .arg(radiusPx);
 }
 
-void stylePrimaryButton(QPushButton* button, const QColor& accent)
+void style_primary_button(QPushButton* button, const QColor& accent)
 {
     button->setCursor(Qt::PointingHandCursor);
     button->setMinimumWidth(76);
@@ -81,7 +81,7 @@ void stylePrimaryButton(QPushButton* button, const QColor& accent)
                  accent.darker(115).name()));
 }
 
-void styleSecondaryButton(QPushButton* button,
+void style_secondary_button(QPushButton* button,
                           const QColor& text,
                           const QColor& border)
 {
@@ -102,7 +102,7 @@ void styleSecondaryButton(QPushButton* button,
             .arg(text.name(), border.name()));
 }
 
-QString closeButtonStyleSheet(const char* objectName,
+QString close_button_style_sheet(const char* objectName,
                               const QColor& text,
                               const QColor& accent)
 {
@@ -125,9 +125,9 @@ QString closeButtonStyleSheet(const char* objectName,
              QString::number(hover.alpha()));
 }
 
-QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
+QPixmap severity_icon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -135,21 +135,21 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::TextAntialiasing);
 
-    const QColor bg = severityColor(icon, accent);
+    const QColor bg = severity_color(icon, accent);
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
     if (icon == QMessageBox::Warning) {
         QPainterPath tri;
-        tri.moveTo(kIconSize * 0.5, kIconSize * 0.05);
-        tri.lineTo(kIconSize * 0.96, kIconSize * 0.92);
-        tri.lineTo(kIconSize * 0.04, kIconSize * 0.92);
+        tri.moveTo(kiconSize * 0.5, kiconSize * 0.05);
+        tri.lineTo(kiconSize * 0.96, kiconSize * 0.92);
+        tri.lineTo(kiconSize * 0.04, kiconSize * 0.92);
         tri.closeSubpath();
         p.drawPath(tri);
     } else {
-        p.drawEllipse(QRectF(kIconSize * 0.05,
-                             kIconSize * 0.05,
-                             kIconSize * 0.9,
-                             kIconSize * 0.9));
+        p.drawEllipse(QRectF(kiconSize * 0.05,
+                             kiconSize * 0.05,
+                             kiconSize * 0.9,
+                             kiconSize * 0.9));
     }
 
     QString glyph;
@@ -171,14 +171,14 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
         QFont font = p.font();
         font.setBold(true);
         font.setPixelSize(
-            int(kIconSize * (icon == QMessageBox::Warning ? 0.38 : 0.48)));
+            int(kiconSize * (icon == QMessageBox::Warning ? 0.38 : 0.48)));
         p.setFont(font);
         p.setPen(Qt::white);
         const QRectF textRect(0,
-                              icon == QMessageBox::Warning ? kIconSize * 0.12
+                              icon == QMessageBox::Warning ? kiconSize * 0.12
                                                            : 0,
-                              kIconSize,
-                              kIconSize);
+                              kiconSize,
+                              kiconSize);
         p.drawText(textRect, Qt::AlignHCenter | Qt::AlignVCenter, glyph);
     }
 
@@ -186,7 +186,7 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
     return pm;
 }
 
-void applyRoundedMask(QWidget* widget, int radiusPx)
+void apply_rounded_mask(QWidget* widget, int radiusPx)
 {
     QPainterPath path;
     path.addRoundedRect(widget->rect(), radiusPx, radiusPx);

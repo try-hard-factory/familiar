@@ -64,7 +64,7 @@ public:
 
     // Called from MainWindow::resyncActionsForTab() - both null when no
     // tab is active (transient zero-tab moment during tab-close).
-    void setScene(CanvasScene* scene, CanvasView* view);
+    void set_scene(CanvasScene* scene, CanvasView* view);
 
     // Rebuilds the tree from the currently bound scene right away.
     // Cheap to call liberally - a no-op while the panel itself is
@@ -83,11 +83,11 @@ public:
     // hooked the much noisier CanvasScene::changed() - see this class's
     // own comment above). At most one rebuild lands every ~150ms while
     // calls keep coming in.
-    void scheduleRefresh();
+    void schedule_refresh();
 
     // Highlights whichever row(s) match the scene's current selection,
     // without a full rebuild - call after CanvasScene::selectionChanged.
-    void syncSelectionFromScene();
+    void sync_selection_from_scene();
 
 protected:
     void showEvent(QShowEvent* event) override;
@@ -100,22 +100,22 @@ private:
     // construction). Node icons themselves are baked from the color
     // preset too (makeNode_()/addItemNode_()) but those already refresh
     // for free on the refresh() call the same connection also makes.
-    void applyColorStyle_();
-    void rebuild_();
-    void addItemNode_(QTreeWidgetItem* parent,
+    void apply_color_style();
+    void rebuild();
+    void add_item_node(QTreeWidgetItem* parent,
                       QGraphicsItem* item,
                       QSet<QUuid>& added);
-    QTreeWidgetItem* makeNode_(QGraphicsItem* item);
+    QTreeWidgetItem* make_node(QGraphicsItem* item);
     // Live-updates node's icon on every GIF frame instead of waiting for
     // the next full rebuild_() - see its own comment for why this is
     // safe now (it wasn't, back when a rebuild trigger was tied to the
     // same signal a playing gif spams).
-    void connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif);
-    void onItemClicked_(QTreeWidgetItem* node);
-    void onItemDoubleClicked_(QTreeWidgetItem* node);
-    void handleTreeDrop_(QTreeWidgetItem* dragged, QTreeWidgetItem* target);
+    void connect_gif_animation(QTreeWidgetItem* node, GifItem* gif);
+    void on_item_clicked(QTreeWidgetItem* node);
+    void on_item_double_clicked(QTreeWidgetItem* node);
+    void handle_tree_drop(QTreeWidgetItem* dragged, QTreeWidgetItem* target);
     // Rename (pictures only)/Export (pictures + groups, recursively).
-    void showContextMenu_(const QPoint& pos);
+    void show_context_menu(const QPoint& pos);
     // Shared by showContextMenu_()'s Rename item AND the F2 QShortcut. A
     // real modal top-level QDialog (RenameDialog, hierarchy_panel.cpp),
     // NOT an inline editor layered over the row - two different inline
@@ -131,7 +131,7 @@ private:
     // both, since it has its own independent backing store/compositing,
     // unlike a child widget layered inside this app's translucent
     // frameless MainWindow.
-    void startRename_(QTreeWidgetItem* node);
+    void start_rename(QTreeWidgetItem* node);
 
     QTreeWidget* tree_ = nullptr;
     // Custom titleBarWidget() (see the constructor) - "QDockWidget::title

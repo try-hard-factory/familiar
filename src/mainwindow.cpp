@@ -114,24 +114,24 @@ public:
         auto* buttonRow = new QHBoxLayout();
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+        familiar::dialog_style::style_secondary_button(cancelBtn,
                                                      textColor,
                                                      border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("OK"), this);
-        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        familiar::dialog_style::style_primary_button(okBtn, accent);
         okBtn->setDefault(true);
         connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
         buttonRow->addWidget(okBtn);
         outer->addLayout(buttonRow);
 
-        setStyleSheet(familiar::dialog_style::panelStyleSheet("QDialog",
+        setStyleSheet(familiar::dialog_style::panel_style_sheet("QDialog",
                                                               background,
                                                               border,
                                                               textColor,
                                                               /*radiusPx=*/0)
-                      + familiar::dialog_style::closeButtonStyleSheet(
+                      + familiar::dialog_style::close_button_style_sheet(
                           "transparentConfirmCloseBtn", textColor, accent));
     }
 
@@ -186,13 +186,13 @@ MainWindow::MainWindow(QWidget* parent)
 
     build_menu_and_actions();
     connect(tabpane_,
-            &TabPane::currentTabChanged,
+            &TabPane::current_tab_changed,
             this,
-            &MainWindow::onCurrentTabChanged);
+            &MainWindow::on_current_tab_changed);
     // The first tab's own currentChanged(0) already fired inside
     // TabPane's constructor, before the connect() above existed - sync
     // manually here so the initial action enabled-state is correct.
-    resyncActionsForTab(tabpane_->currentWidget());
+    resync_actions_for_tab(tabpane_->current_widget());
     setWindowTitle("Familiar");
     // mainwindow.ui used to set this via its geometry property (800x600);
     // now that ui->setupUi() is gone, set a sane default size explicitly.
@@ -214,8 +214,8 @@ MainWindow::MainWindow(QWidget* parent)
     connect(SettingsHandler::get_instance(),
             &SettingsHandler::settings_changed,
             this,
-            &MainWindow::settingsChangedSlot);
-    settingsChangedSlot();
+            &MainWindow::settings_changed_slot);
+    settings_changed_slot();
 
     tabpane_->setWindowFlags(Qt::FramelessWindowHint);
     tabpane_->setAttribute(Qt::WA_TranslucentBackground);
@@ -226,7 +226,7 @@ MainWindow::MainWindow(QWidget* parent)
     // The menu bar already exists (built by the initial checkable
     // callbacks inside build_menu_and_actions() above); re-raise it above
     // the freshly-installed central widget.
-    updateMenubarGeometry();
+    update_menubar_geometry();
 
     // WA_TranslucentBackground + frameless flags are set at the very top
     // of this constructor (see comment there) - don't re-apply here:
@@ -255,12 +255,12 @@ MainWindow::MainWindow(QWidget* parent)
     connect(autosaveTimer_,
             &QTimer::timeout,
             this,
-            &MainWindow::onAutosaveTimeout_);
+            &MainWindow::on_autosave_timeout);
     connect(&SettingsEvents::instance(),
-            &SettingsEvents::autosaveSettingsChanged,
+            &SettingsEvents::autosave_settings_changed,
             this,
-            &MainWindow::restartAutosaveTimer_);
-    restartAutosaveTimer_();
+            &MainWindow::restart_autosave_timer);
+    restart_autosave_timer();
 
     // Crash recovery - see onRecoveryTimeout_() in
     // mainwindow.h. Always-on (unlike autosaveTimer_ above, not gated by
@@ -271,7 +271,7 @@ MainWindow::MainWindow(QWidget* parent)
     connect(recoveryTimer_,
             &QTimer::timeout,
             this,
-            &MainWindow::onRecoveryTimeout_);
+            &MainWindow::on_recovery_timeout);
     recoveryTimer_->start(30000);
 
     // A clean exit means every tab's fate (saved or explicitly discarded)
@@ -298,25 +298,25 @@ MainWindow::~MainWindow()
 }
 
 
-void MainWindow::quitProject()
+void MainWindow::quit_project()
 {
-    if (checkSave()) {
-        exitProject();
+    if (check_save()) {
+        exit_project();
     }
 }
 
 
-void MainWindow::saveAll()
+void MainWindow::save_all()
 {
     for (int i = tabpane_->count() - 1; i >= 0; --i) {
-        tabpane_->setCurrentIndex(i);
+        tabpane_->set_current_index(i);
 
-        auto ret = fileactions_->saveFile();
+        auto ret = fileactions_->save_file();
         (void) ret;
     }
 }
 
-void MainWindow::onAutosaveTimeout_()
+void MainWindow::on_autosave_timeout()
 {
     // Unlike saveAll() above, this never touches tabpane_->setCurrentIndex()
     // - flipping the visibly-active tab every autosave tick would be a
@@ -324,23 +324,23 @@ void MainWindow::onAutosaveTimeout_()
     // path) exists specifically so this can save each tab in place.
     const int count = tabpane_->count();
     for (int i = 0; i < count; ++i) {
-        CanvasView* cv = tabpane_->widgetAt(i);
-        if (cv->isModified() && !cv->isUntitled()) {
+        CanvasView* cv = tabpane_->widget_at(i);
+        if (cv->is_modified() && !cv->is_untitled()) {
             FLOG_INFO(Ch::IO, "Autosaving {}", cv->path().toStdString());
-            fileactions_->saveFile(cv, cv->path());
+            fileactions_->save_file(cv, cv->path());
         }
     }
 }
 
-void MainWindow::restartAutosaveTimer_()
+void MainWindow::restart_autosave_timer()
 {
     autosaveTimer_->stop();
     FamSettings settings;
     const bool enabled
-        = settings.valueOrDefault(QStringLiteral("Save/autosave_enabled"))
+        = settings.value_or_default(QStringLiteral("Save/autosave_enabled"))
               .toBool();
     const int seconds = settings
-                            .valueOrDefault(QStringLiteral(
+                            .value_or_default(QStringLiteral(
                                 "Save/autosave_interval_seconds"))
                             .toInt();
     if (enabled) {
@@ -348,28 +348,28 @@ void MainWindow::restartAutosaveTimer_()
     }
 }
 
-void MainWindow::onRecoveryTimeout_()
+void MainWindow::on_recovery_timeout()
 {
     const int count = tabpane_->count();
     for (int i = 0; i < count; ++i) {
-        CanvasView* cv = tabpane_->widgetAt(i);
+        CanvasView* cv = tabpane_->widget_at(i);
         // Unlike onAutosaveTimeout_() above, untitled tabs are NOT
         // skipped here - they're exactly the highest-risk data (never
         // written anywhere else) that this feature exists to protect.
-        if (cv->isModified()) {
+        if (cv->is_modified()) {
             familiar::recovery::save(cv);
         }
     }
 }
 
-void MainWindow::showOrOfferRecovery(const QString& startupFile)
+void MainWindow::show_or_offer_recovery(const QString& startupFile)
 {
     const QList<familiar::recovery::Entry> entries = familiar::recovery::scan();
 
     if (entries.isEmpty()) {
         show();
         if (!startupFile.isEmpty()) {
-            fileactions_->processOpenFile(startupFile);
+            fileactions_->process_open_file(startupFile);
         }
         return;
     }
@@ -393,18 +393,18 @@ void MainWindow::showOrOfferRecovery(const QString& startupFile)
     connect(dlg, &QObject::destroyed, this, [this, startupFile]() {
         show();
         if (!startupFile.isEmpty()) {
-            fileactions_->processOpenFile(startupFile);
+            fileactions_->process_open_file(startupFile);
         }
     });
 }
 
-void MainWindow::newFile()
+void MainWindow::new_file()
 {
-    fileactions_->newFile();
+    fileactions_->new_file();
 }
 
 
-void MainWindow::settingsWindow()
+void MainWindow::settings_window()
 {
     SettingsWindow* widget = new SettingsWindow(this, this->parentWidget());
 
@@ -412,38 +412,38 @@ void MainWindow::settingsWindow()
     centered_widget(this, widget);
 }
 
-void MainWindow::openKeyboardShortcutsSettings()
+void MainWindow::open_keyboard_shortcuts_settings()
 {
     SettingsWindow* widget = new SettingsWindow(this, this->parentWidget());
-    widget->selectCategory(tr("Keyboard Shortcuts"));
+    widget->select_category(tr("Keyboard Shortcuts"));
     widget->show();
     centered_widget(this, widget);
 }
 
 
-void MainWindow::saveFile()
+void MainWindow::save_file()
 {
-    fileactions_->saveFile();
+    fileactions_->save_file();
 }
 
 
 void MainWindow::quit()
 {
-    quitProject();
+    quit_project();
 }
 
-void MainWindow::openFile()
+void MainWindow::open_file()
 {
-    fileactions_->openFile();
+    fileactions_->open_file();
 }
 
 
-void MainWindow::saveFileAs()
+void MainWindow::save_file_as()
 {
-    fileactions_->saveFileAs();
+    fileactions_->save_file_as();
 }
 
-void MainWindow::settingsChangedSlot()
+void MainWindow::settings_changed_slot()
 {
     auto* settings = SettingsHandler::get_instance();
     auto colorPreset = settings->get_current_color_preset();
@@ -489,22 +489,22 @@ void MainWindow::settingsChangedSlot()
                  rgb(borderColor)));
     setStyleSheet(
         "background: transparent; background-color: transparent; "); // + rgbaBackGroundStr_);
-    updateWindowControlsStyle_();
-    updateMenubarStyle_();
+    update_window_controls_style();
+    update_menubar_style();
     refresh_menu_style();
     update();
 }
 
 
-bool MainWindow::checkSave()
+bool MainWindow::check_save()
 {
     bool found = false;
     std::map<int, QString> items;
     int count = tabpane_->count();
     for (int i = 0; i < count; i++) {
-        if (tabpane_->widgetAt(i)->isModified()) {
+        if (tabpane_->widget_at(i)->is_modified()) {
             found = true;
-            items.emplace(i, tabpane_->widgetAt(i)->path());
+            items.emplace(i, tabpane_->widget_at(i)->path());
         }
     }
 
@@ -517,55 +517,55 @@ bool MainWindow::checkSave()
     return true;
 }
 
-void MainWindow::saveAllWindowSaveCB(SaveAllDialog* w, std::map<int, bool>&& m)
+void MainWindow::save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&& m)
 {
     w->close();
 
-    int exit_flag = 1;
+    int exitFlag = 1;
 
     for (auto it = m.rbegin(); it != m.rend(); it++) {
         if (!it->second) {
             FLOG_DEBUG(Ch::UI,
                        "close ID = {} {}",
                        it->first,
-                       tabpane_->getCurrentTabPath());
-            tabpane_->closeTabByIndex(it->first);
+                       tabpane_->get_current_tab_path());
+            tabpane_->close_tab_by_index(it->first);
         }
     }
 
     for (int i = tabpane_->count() - 1; i >= 0; --i) {
-        FLOG_DEBUG(Ch::UI, "save ID = {} {}", i, tabpane_->getCurrentTabPath());
-        tabpane_->setCurrentIndex(i);
+        FLOG_DEBUG(Ch::UI, "save ID = {} {}", i, tabpane_->get_current_tab_path());
+        tabpane_->set_current_index(i);
 
-        auto ret = fileactions_->saveFile();
+        auto ret = fileactions_->save_file();
         if (ret == QDialog::Rejected) {
-            exit_flag = 0;
+            exitFlag = 0;
         } else {
-            tabpane_->closeTabByIndex(i);
+            tabpane_->close_tab_by_index(i);
         }
     }
 
-    if (exit_flag) {
-        exitProject();
+    if (exitFlag) {
+        exit_project();
     }
 }
 
-void MainWindow::cleanupWorkplace()
+void MainWindow::cleanup_workplace()
 {
     //    canvasWidget->cleanupWorkplace();
 }
 
-void MainWindow::exitProject()
+void MainWindow::exit_project()
 {
     qApp->exit(0); // Is it correct way?
 }
 
-TabPane& MainWindow::tabPane()
+TabPane& MainWindow::tab_pane()
 {
     return *tabpane_;
 }
 
-FileActions& MainWindow::fileActions()
+FileActions& MainWindow::file_actions()
 {
     return *fileactions_;
 }
@@ -577,22 +577,22 @@ FileActions& MainWindow::fileActions()
 // File
 void MainWindow::on_action_new_scene()
 {
-    fileActions().newFile();
+    file_actions().new_file();
 }
 
 void MainWindow::on_action_open()
 {
-    fileActions().openFile();
+    file_actions().open_file();
 }
 
 void MainWindow::on_action_open_recent_file(const QString& filename)
 {
-    fileActions().processOpenFile(filename);
+    file_actions().process_open_file(filename);
 }
 
 void MainWindow::on_action_quit()
 {
-    quitProject();
+    quit_project();
 }
 
 // View
@@ -655,7 +655,7 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
             // right back into "checked=false" territory above and
             // return early anyway (harmless), but blocking it is more
             // direct about "this click didn't actually happen".
-            if (Action* a = getActions().find("transparent_to_mouse");
+            if (Action* a = get_actions().find("transparent_to_mouse");
                 a && a->qaction) {
                 const QSignalBlocker blocker(a->qaction);
                 a->qaction->setChecked(false);
@@ -673,7 +673,7 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
         // WE who flipped it; already-on beforehand means it's the user's
         // own independent choice, left alone either way.
         forcedAlwaysOnTopForTransparency_ = false;
-        if (Action* a = getActions().find("always_on_top");
+        if (Action* a = get_actions().find("always_on_top");
             a && a->qaction && !a->qaction->isChecked()) {
             a->qaction->setChecked(true);
             forcedAlwaysOnTopForTransparency_ = true;
@@ -686,7 +686,7 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
         sawDeactivationSinceTransparentEnabled_ = false;
     } else if (forcedAlwaysOnTopForTransparency_) {
         forcedAlwaysOnTopForTransparency_ = false;
-        if (Action* a = getActions().find("always_on_top"); a && a->qaction) {
+        if (Action* a = get_actions().find("always_on_top"); a && a->qaction) {
             a->qaction->setChecked(false);
         }
     }
@@ -711,12 +711,12 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
 
 void MainWindow::on_action_show_menubar(bool /*checked*/)
 {
-    applyMenubarState_();
+    apply_menubar_state();
 }
 
 void MainWindow::on_action_auto_hide_ui(bool /*checked*/)
 {
-    applyMenubarState_();
+    apply_menubar_state();
 }
 
 void MainWindow::on_action_hierarchy(bool checked)
@@ -724,7 +724,7 @@ void MainWindow::on_action_hierarchy(bool checked)
     hierarchyPanel_->setVisible(checked);
 }
 
-void MainWindow::ensureMenubar_()
+void MainWindow::ensure_menubar()
 {
     if (menubar_) {
         return;
@@ -732,7 +732,7 @@ void MainWindow::ensureMenubar_()
 
     menubar_ = create_menubar();
     menubar_->setParent(this);
-    updateMenubarStyle_();
+    update_menubar_style();
 
     // Window controls in the top-right corner. They live inside the menu
     // bar on purpose: with show_menubar off the app is a "clean" overlay
@@ -761,7 +761,7 @@ void MainWindow::ensureMenubar_()
     // Mirror the existing checkable always_on_top action instead of
     // duplicating its destroy()/create() logic - toggling either side
     // keeps the other in sync through the QAction.
-    if (Action* a = getActions().find("always_on_top"); a && a->qaction) {
+    if (Action* a = get_actions().find("always_on_top"); a && a->qaction) {
         onTopBtn->setCheckable(true);
         onTopBtn->setChecked(a->qaction->isChecked());
         connect(onTopBtn,
@@ -786,7 +786,7 @@ void MainWindow::ensureMenubar_()
     connect(closeBtn, &QToolButton::clicked, this, &MainWindow::close);
 
     menubar_->setCornerWidget(corner, Qt::TopRightCorner);
-    updateWindowControlsStyle_();
+    update_window_controls_style();
 
     // Fade machinery - same QVariantAnimation pattern as the selection
     // outline fade in CanvasView. One animation drives both opacity
@@ -797,10 +797,10 @@ void MainWindow::ensureMenubar_()
     menubarOpacity_->setEnabled(false);
     menubar_->setGraphicsEffect(menubarOpacity_);
 
-    tabbarOpacity_ = new QGraphicsOpacityEffect(tabpane_->tabBar());
+    tabbarOpacity_ = new QGraphicsOpacityEffect(tabpane_->tab_bar());
     tabbarOpacity_->setOpacity(1.0);
     tabbarOpacity_->setEnabled(false);
-    tabpane_->tabBar()->setGraphicsEffect(tabbarOpacity_);
+    tabpane_->tab_bar()->setGraphicsEffect(tabbarOpacity_);
 
     uiFadeAnim_ = new QVariantAnimation(this);
     connect(uiFadeAnim_,
@@ -825,10 +825,10 @@ void MainWindow::ensureMenubar_()
     uiHideTimer_ = new QTimer(this);
     uiHideTimer_->setSingleShot(true);
     uiHideTimer_->setInterval(400);
-    connect(uiHideTimer_, &QTimer::timeout, this, &MainWindow::onUiHideTimeout_);
+    connect(uiHideTimer_, &QTimer::timeout, this, &MainWindow::on_ui_hide_timeout);
 }
 
-void MainWindow::updateWindowControlsStyle_()
+void MainWindow::update_window_controls_style()
 {
     if (!windowControls_) {
         return;
@@ -876,7 +876,7 @@ void MainWindow::updateWindowControlsStyle_()
                  border.name()));
 }
 
-void MainWindow::updateMenubarStyle_()
+void MainWindow::update_menubar_style()
 {
     if (!menubar_) {
         return;
@@ -920,12 +920,12 @@ void MainWindow::updateMenubarStyle_()
                                      rgba(selection, 170)));
 }
 
-void MainWindow::applyMenubarState_()
+void MainWindow::apply_menubar_state()
 {
-    ensureMenubar_();
+    ensure_menubar();
 
-    Action* show = getActions().find("show_menubar");
-    Action* autoHide = getActions().find("auto_hide_ui");
+    Action* show = get_actions().find("show_menubar");
+    Action* autoHide = get_actions().find("auto_hide_ui");
     const bool shown = show && show->qaction && show->qaction->isChecked();
     const bool wantAutoHide = autoHide && autoHide->qaction
                               && autoHide->qaction->isChecked();
@@ -954,11 +954,11 @@ void MainWindow::applyMenubarState_()
         uiHideTimer_->start();
     }
 
-    updateMenubarGeometry();
+    update_menubar_geometry();
     update();
 }
 
-void MainWindow::updateMenubarGeometry()
+void MainWindow::update_menubar_geometry()
 {
     if (!menubar_) {
         return;
@@ -969,7 +969,7 @@ void MainWindow::updateMenubarGeometry()
     // call in the constructor, which would stack it above us.
     menubar_->raise();
 
-    Action* show = getActions().find("show_menubar");
+    Action* show = get_actions().find("show_menubar");
     const bool shown = show && show->qaction && show->qaction->isChecked();
     // The strip is reserved whenever the menu bar is enabled, auto-hide
     // included: the tab bar sits at the very top of the central widget,
@@ -980,7 +980,7 @@ void MainWindow::updateMenubarGeometry()
     setContentsMargins(0, shown ? h : 0, 0, 0);
 }
 
-void MainWindow::startUiFade_(bool visible)
+void MainWindow::start_ui_fade(bool visible)
 {
     uiFadeTargetVisible_ = visible;
     menubarOpacity_->setEnabled(true);
@@ -994,7 +994,7 @@ void MainWindow::startUiFade_(bool visible)
     uiFadeAnim_->start();
 }
 
-void MainWindow::onUiHideTimeout_()
+void MainWindow::on_ui_hide_timeout()
 {
     if (!autoHideUi_ || !uiFadeTargetVisible_) {
         return;
@@ -1003,30 +1003,30 @@ void MainWindow::onUiHideTimeout_()
     // cursor came back without generating a move (e.g. menu closed via
     // Esc) - re-arm and check again later.
     if (qApp->activePopupWidget()
-        || uiStripContains_(mapFromGlobal(QCursor::pos()))) {
+        || ui_strip_contains(mapFromGlobal(QCursor::pos()))) {
         uiHideTimer_->start();
         return;
     }
-    startUiFade_(false);
+    start_ui_fade(false);
 }
 
-void MainWindow::handleUiHover_(const QPoint& pos)
+void MainWindow::handle_ui_hover(const QPoint& pos)
 {
     if (!autoHideUi_) {
         return;
     }
 
-    if (uiStripContains_(pos)) {
+    if (ui_strip_contains(pos)) {
         uiHideTimer_->stop();
         if (!uiFadeTargetVisible_) {
-            startUiFade_(true);
+            start_ui_fade(true);
         }
     } else if (uiFadeTargetVisible_ && !uiHideTimer_->isActive()) {
         uiHideTimer_->start();
     }
 }
 
-bool MainWindow::tryStartWindowDrag_(const QPoint& pos)
+bool MainWindow::try_start_window_drag(const QPoint& pos)
 {
     if (!windowHandle()) {
         return false;
@@ -1049,7 +1049,7 @@ bool MainWindow::tryStartWindowDrag_(const QPoint& pos)
     // switches/closes it, anywhere else in the row - including the empty
     // space right of the last tab, which belongs to the QTabWidget, not
     // the QTabBar - drags the window.
-    if (QTabBar* tb = tabpane_ ? tabpane_->tabBar() : nullptr;
+    if (QTabBar* tb = tabpane_ ? tabpane_->tab_bar() : nullptr;
         tb && tb->isVisible()) {
         const QRect row(0,
                         tb->mapTo(this, QPoint(0, 0)).y(),
@@ -1068,12 +1068,12 @@ bool MainWindow::tryStartWindowDrag_(const QPoint& pos)
     return false;
 }
 
-bool MainWindow::uiStripContains_(const QPoint& pos) const
+bool MainWindow::ui_strip_contains(const QPoint& pos) const
 {
-    return QRect(0, 0, width(), uiStripHeight_()).contains(pos);
+    return QRect(0, 0, width(), ui_strip_height()).contains(pos);
 }
 
-int MainWindow::uiStripHeight_() const
+int MainWindow::ui_strip_height() const
 {
     if (!menubar_) {
         return 0;
@@ -1082,7 +1082,7 @@ int MainWindow::uiStripHeight_() const
     // the "don't hide yet" zone and the background region that fades
     // along with the widgets (paintEvent).
     int h = menubar_->sizeHint().height();
-    if (QTabBar* tb = tabpane_ ? tabpane_->tabBar() : nullptr) {
+    if (QTabBar* tb = tabpane_ ? tabpane_->tab_bar() : nullptr) {
         h += tb->height();
     }
     return h;
@@ -1091,7 +1091,7 @@ int MainWindow::uiStripHeight_() const
 // Settings / Help
 void MainWindow::on_action_settings()
 {
-    settingsWindow();
+    settings_window();
 }
 
 void MainWindow::on_action_open_settings_dir()
@@ -1125,25 +1125,25 @@ void MainWindow::on_action_debuglog()
 // File
 void MainWindow::on_action_save()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_save();
     }
 }
 void MainWindow::on_action_save_as()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_save_as();
     }
 }
 void MainWindow::on_action_export_scene()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_export_scene();
     }
 }
 void MainWindow::on_action_export_images()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_export_images();
     }
 }
@@ -1151,79 +1151,79 @@ void MainWindow::on_action_export_images()
 // Edit
 void MainWindow::on_action_undo()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_undo();
     }
 }
 void MainWindow::on_action_redo()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_redo();
     }
 }
 void MainWindow::on_action_select_all()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_select_all();
     }
 }
 void MainWindow::on_action_deselect_all()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_deselect_all();
     }
 }
 void MainWindow::on_action_cut()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_cut();
     }
 }
 void MainWindow::on_action_copy()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_copy();
     }
 }
 void MainWindow::on_action_paste()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_paste();
     }
 }
 void MainWindow::on_action_duplicate()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_duplicate();
     }
 }
 void MainWindow::on_action_delete_items()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_delete_items();
     }
 }
 void MainWindow::on_action_raise_to_top()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_raise_to_top();
     }
 }
 void MainWindow::on_action_lower_to_bottom()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_lower_to_bottom();
     }
 }
 void MainWindow::on_action_group()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_group();
     }
 }
 void MainWindow::on_action_ungroup()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_ungroup();
     }
 }
@@ -1231,38 +1231,38 @@ void MainWindow::on_action_ungroup()
 // View
 void MainWindow::on_action_fit_scene()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_fit_scene();
     }
 }
 void MainWindow::on_action_fit_selection()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_fit_selection();
     }
 }
 void MainWindow::on_action_zoom_in()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_zoom_in();
     }
 }
 void MainWindow::on_action_zoom_out()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_zoom_out();
     }
 }
 // Insert
 void MainWindow::on_action_insert_images()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_insert_images();
     }
 }
 void MainWindow::on_action_insert_text()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_insert_text();
     }
 }
@@ -1270,49 +1270,49 @@ void MainWindow::on_action_insert_text()
 // Transform
 void MainWindow::on_action_crop()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_crop();
     }
 }
 void MainWindow::on_action_flip_horizontally()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_flip_horizontally();
     }
 }
 void MainWindow::on_action_flip_vertically()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_flip_vertically();
     }
 }
 void MainWindow::on_action_reset_scale()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_reset_scale();
     }
 }
 void MainWindow::on_action_reset_rotation()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_reset_rotation();
     }
 }
 void MainWindow::on_action_reset_flip()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_reset_flip();
     }
 }
 void MainWindow::on_action_reset_crop()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_reset_crop();
     }
 }
 void MainWindow::on_action_reset_transforms()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_reset_transforms();
     }
 }
@@ -1320,19 +1320,19 @@ void MainWindow::on_action_reset_transforms()
 // Normalize
 void MainWindow::on_action_normalize_height()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_normalize_height();
     }
 }
 void MainWindow::on_action_normalize_width()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_normalize_width();
     }
 }
 void MainWindow::on_action_normalize_size()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_normalize_size();
     }
 }
@@ -1340,25 +1340,25 @@ void MainWindow::on_action_normalize_size()
 // Arrange
 void MainWindow::on_action_arrange_optimal()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_arrange_optimal();
     }
 }
 void MainWindow::on_action_arrange_horizontal()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_arrange_horizontal();
     }
 }
 void MainWindow::on_action_arrange_vertical()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_arrange_vertical();
     }
 }
 void MainWindow::on_action_arrange_square()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_arrange_square();
     }
 }
@@ -1366,32 +1366,32 @@ void MainWindow::on_action_arrange_square()
 // Images
 void MainWindow::on_action_change_opacity()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_change_opacity();
     }
 }
 void MainWindow::on_action_grayscale()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_grayscale();
     }
 }
 void MainWindow::on_action_show_color_gamut()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_show_color_gamut();
     }
 }
 void MainWindow::on_action_sample_color()
 {
-    if (auto* cv = tabpane_->currentWidget()) {
+    if (auto* cv = tabpane_->current_widget()) {
         cv->on_action_sample_color();
     }
 }
 
 // ─── Tab-switch action resync ─────────────────────────────────────────────────
 
-void MainWindow::resyncActionsForTab(CanvasView* cv)
+void MainWindow::resync_actions_for_tab(CanvasView* cv)
 {
     // hookedScene_/hookedUndoStack_ are QPointer: if the previously-hooked
     // tab's scene/undoStack were already destroyed (this function can be
@@ -1413,12 +1413,12 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
         // Transient zero-tab moment (TabPane::onTabClosed replacing the
         // last closed tab); the very next currentTabChanged call, still
         // in the same call stack, corrects this.
-        hierarchyPanel_->setScene(nullptr, nullptr);
+        hierarchyPanel_->set_scene(nullptr, nullptr);
         return;
     }
 
     hookedScene_ = cv->scene();
-    hookedUndoStack_ = cv->undoStack();
+    hookedUndoStack_ = cv->undo_stack();
 
     connect(hookedScene_,
             &CanvasScene::changed,
@@ -1455,9 +1455,9 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
     connect(hookedUndoStack_,
             &QUndoStack::indexChanged,
             this,
-            &MainWindow::notifyStructuralChange);
+            &MainWindow::notify_structural_change);
 
-    hierarchyPanel_->setScene(cv->scene(), cv);
+    hierarchyPanel_->set_scene(cv->scene(), cv);
 
     // Push current values immediately: the four signals above are
     // edge-triggered and don't replay the current state on connect.
@@ -1471,13 +1471,13 @@ void MainWindow::resyncActionsForTab(CanvasView* cv)
                             cv->scene()->has_multi_selection());
     actiongroup_set_enabled("active_when_group_selected",
                             cv->scene()->has_group_selected());
-    actiongroup_set_enabled("active_when_can_undo", cv->undoStack()->canUndo());
-    actiongroup_set_enabled("active_when_can_redo", cv->undoStack()->canRedo());
+    actiongroup_set_enabled("active_when_can_undo", cv->undo_stack()->canUndo());
+    actiongroup_set_enabled("active_when_can_redo", cv->undo_stack()->canRedo());
 }
 
-void MainWindow::onCurrentTabChanged(int index)
+void MainWindow::on_current_tab_changed(int index)
 {
-    resyncActionsForTab(tabpane_->widgetAt(index));
+    resync_actions_for_tab(tabpane_->widget_at(index));
 }
 
 void MainWindow::on_active_scene_changed()
@@ -1486,10 +1486,10 @@ void MainWindow::on_active_scene_changed()
                             !hookedScene_->items().isEmpty());
 }
 
-void MainWindow::notifyStructuralChange()
+void MainWindow::notify_structural_change()
 {
     FLOG_DEBUG(Ch::UI, "notifyStructuralChange");
-    hierarchyPanel_->scheduleRefresh();
+    hierarchyPanel_->schedule_refresh();
 }
 
 void MainWindow::on_active_selection_changed()
@@ -1502,7 +1502,7 @@ void MainWindow::on_active_selection_changed()
                             hookedScene_->has_multi_selection());
     actiongroup_set_enabled("active_when_group_selected",
                             hookedScene_->has_group_selected());
-    hierarchyPanel_->syncSelectionFromScene();
+    hierarchyPanel_->sync_selection_from_scene();
 }
 
 void MainWindow::on_active_can_undo_changed(bool canUndo)
@@ -1517,7 +1517,7 @@ void MainWindow::on_active_can_redo_changed(bool canRedo)
 
 void MainWindow::closeEvent(QCloseEvent* event)
 {
-    if (checkSave()) {
+    if (check_save()) {
         event->accept();
     } else {
         event->ignore();
@@ -1534,7 +1534,7 @@ void MainWindow::changeEvent(QEvent* event)
     // was visible when the window (de)activated.
     if (event->type() == QEvent::ActivationChange) {
         for (int i = 0; i < tabpane_->count(); ++i) {
-            tabpane_->widgetAt(i)->updateSelectionVisibility();
+            tabpane_->widget_at(i)->update_selection_visibility();
         }
 
         // Auto-exit from transparent-to-mouse: regaining
@@ -1562,7 +1562,7 @@ void MainWindow::changeEvent(QEvent* event)
                 // Posting this for the next event loop iteration lets
                 // Qt's own notification finish first.
                 QTimer::singleShot(0, this, [] {
-                    if (Action* a = getActions().find("transparent_to_mouse");
+                    if (Action* a = get_actions().find("transparent_to_mouse");
                         a && a->qaction) {
                         a->qaction->setChecked(false);
                     }
@@ -1575,7 +1575,7 @@ void MainWindow::changeEvent(QEvent* event)
 void MainWindow::resizeEvent(QResizeEvent* event)
 {
     QMainWindow::resizeEvent(event);
-    updateMenubarGeometry();
+    update_menubar_geometry();
 }
 
 void MainWindow::paintEvent(QPaintEvent* event)
@@ -1588,7 +1588,7 @@ void MainWindow::paintEvent(QPaintEvent* event)
     // there - once hidden, the strip is fully transparent and only the
     // canvas remains visible. The strip still belongs to the window, so
     // it keeps receiving the hover events that reveal the UI again.
-    const int stripH = autoHideUi_ ? uiStripHeight_() : 0;
+    const int stripH = autoHideUi_ ? ui_strip_height() : 0;
     if (stripH > 0) {
         const QRect strip
             = QRect(0, 0, width(), stripH).intersected(event->rect());

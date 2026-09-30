@@ -15,61 +15,61 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
                    | Qt::MSWindowsFixedSizeDialogHint);
     setWindowModality(Qt::ApplicationModal);
 
-    auto* layout_ = new QVBoxLayout(this);
+    auto* layout = new QVBoxLayout(this);
     // layout_->setAlignment(Qt::AlignLeft);
-    QPushButton* custom1_btn = new QPushButton("Custom 1");
-    connect(custom1_btn, &QPushButton::clicked, this, [this]() {
-        auto current_preset
+    QPushButton* custom1Btn = new QPushButton("Custom 1");
+    connect(custom1Btn, &QPushButton::clicked, this, [this]() {
+        auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        auto current_opacity
+        auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
-        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
-        master_opacity[kCustom1] = current_opacity;
-        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
-        SettingsHandler::get_instance()->setCustomPreset1(current_preset);
+        auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
+        masterOpacity[kCustom1] = currentOpacity;
+        SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
+        SettingsHandler::get_instance()->set_custom_preset1(currentPreset);
         close();
     });
-    QPushButton* custom2_btn = new QPushButton("Custom 2");
-    connect(custom2_btn, &QPushButton::clicked, this, [this]() {
-        auto current_preset
+    QPushButton* custom2Btn = new QPushButton("Custom 2");
+    connect(custom2Btn, &QPushButton::clicked, this, [this]() {
+        auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        auto current_opacity
+        auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
-        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
-        master_opacity[kCustom2] = current_opacity;
-        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
-        SettingsHandler::get_instance()->setCustomPreset2(current_preset);
+        auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
+        masterOpacity[kCustom2] = currentOpacity;
+        SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
+        SettingsHandler::get_instance()->set_custom_preset2(currentPreset);
         close();
     });
-    QPushButton* custom3_btn = new QPushButton("Custom 3");
-    connect(custom3_btn, &QPushButton::clicked, this, [this]() {
-        auto current_preset
+    QPushButton* custom3Btn = new QPushButton("Custom 3");
+    connect(custom3Btn, &QPushButton::clicked, this, [this]() {
+        auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        auto current_opacity
+        auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
-        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
-        master_opacity[kCustom3] = current_opacity;
-        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
-        SettingsHandler::get_instance()->setCustomPreset3(current_preset);
+        auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
+        masterOpacity[kCustom3] = currentOpacity;
+        SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
+        SettingsHandler::get_instance()->set_custom_preset3(currentPreset);
         close();
     });
-    QPushButton* custom4_btn = new QPushButton("Custom 4");
-    connect(custom4_btn, &QPushButton::clicked, this, [this]() {
-        auto current_preset
+    QPushButton* custom4Btn = new QPushButton("Custom 4");
+    connect(custom4Btn, &QPushButton::clicked, this, [this]() {
+        auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        auto current_opacity
+        auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
-        auto master_opacity = SettingsHandler::get_instance()->masterOpacity();
-        master_opacity[kCustom4] = current_opacity;
-        SettingsHandler::get_instance()->setMasterOpacity(master_opacity);
-        SettingsHandler::get_instance()->setCustomPreset4(current_preset);
+        auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
+        masterOpacity[kCustom4] = currentOpacity;
+        SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
+        SettingsHandler::get_instance()->set_custom_preset4(currentPreset);
         close();
     });
-    layout_->addWidget(custom1_btn);
-    layout_->addWidget(custom2_btn);
-    layout_->addWidget(custom3_btn);
-    layout_->addWidget(custom4_btn);
-    setLayout(layout_);
+    layout->addWidget(custom1Btn);
+    layout->addWidget(custom2Btn);
+    layout->addWidget(custom3Btn);
+    layout->addWidget(custom4Btn);
+    setLayout(layout);
 }
 
 void PresetSaveWindow::keyPressEvent(QKeyEvent* e)

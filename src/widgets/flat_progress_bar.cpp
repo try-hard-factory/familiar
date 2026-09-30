@@ -11,10 +11,10 @@ namespace {
 // Track thickness. Slim on purpose - the percentage lives in its own
 // label next to the bar (see the header), so this doesn't need to be
 // tall enough to hold text.
-constexpr int kBarHeight = 8;
+constexpr int kbarHeight = 8;
 // One marquee step, in pixels, per timer tick.
-constexpr int kMarqueeStepPx = 3;
-constexpr int kMarqueeIntervalMs = 16;
+constexpr int kmarqueeStepPx = 3;
+constexpr int kmarqueeIntervalMs = 16;
 
 } // namespace
 
@@ -26,17 +26,17 @@ FlatProgressBar::FlatProgressBar(const QColor& track,
     , accent_(accent)
 {
     setTextVisible(false);
-    setFixedHeight(kBarHeight);
+    setFixedHeight(kbarHeight);
     marqueeTimer_ = new QTimer(this);
-    marqueeTimer_->setInterval(kMarqueeIntervalMs);
+    marqueeTimer_->setInterval(kmarqueeIntervalMs);
     connect(marqueeTimer_, &QTimer::timeout, this, [this] {
         // Only actually repaints in the indeterminate state - a
         // determinate bar already repaints on every setValue(), so
         // ticking it here would just be redundant work.
-        if (!isIndeterminate()) {
+        if (!is_indeterminate()) {
             return;
         }
-        marqueeOffset_ += kMarqueeStepPx;
+        marqueeOffset_ += kmarqueeStepPx;
         update();
     });
 }
@@ -71,7 +71,7 @@ void FlatProgressBar::paintEvent(QPaintEvent*)
     painter.fillPath(trackPath, track_);
     painter.setClipPath(trackPath);
 
-    if (isIndeterminate()) {
+    if (is_indeterminate()) {
         const qreal segment = full.width() / 3.0;
         // The segment travels a full width + its own length, so it
         // slides fully off one end before reappearing at the other

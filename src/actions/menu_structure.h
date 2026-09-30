@@ -27,4 +27,4 @@ struct MenuNode
     }
 };
 
-const QList<MenuNode>& menuStructure();
+const QList<MenuNode>& menu_structure();

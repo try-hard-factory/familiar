@@ -80,7 +80,7 @@ TEST(BoundedIntValueHandlerTest, ExpectedDescribesRange)
 }
 
 // ─── ColorList ───────────────────────────────────────────────────────
-// The real storage shape for e.g. "darkColorPreset" (settingshandler.cpp)
+// The real storage shape for e.g. "dark_color_preset" (settingshandler.cpp)
 // - a JSON array of hex strings, index = QMap key. See ColorList::process()'s
 // own comment for why this replaced storing the QMap<int,QColor> directly.
 
@@ -138,7 +138,7 @@ TEST(ColorListValueHandlerTest, CheckIsAlwaysTrue)
 
 // ─── OpacityList ─────────────────────────────────────────────────────
 // Same indexed-storage shape as ColorList, just plain ints (used for
-// "masterOpacity" - one opacity per color preset).
+// "master_opacity" - one opacity per color preset).
 
 TEST(OpacityListValueHandlerTest, ProcessConvertsIndexedIntsToMap)
 {

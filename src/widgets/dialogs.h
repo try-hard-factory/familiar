@@ -82,12 +82,12 @@ class ProgressDialog : public QDialog
 {
     Q_OBJECT
 
-    static constexpr int kDialogWidth = 380;
+    static constexpr int kdialogWidth = 380;
     // Usable width inside outer's own left/right margins below - what
     // the "current item" line elides against. A constant rather than the
     // label's live width() so eliding is deterministic even before the
     // dialog has ever been laid out.
-    static constexpr int kContentWidth = kDialogWidth - 40;
+    static constexpr int kcontentWidth = kdialogWidth - 40;
 
 public:
     explicit ProgressDialog(const QString& label,
@@ -100,7 +100,7 @@ public:
         setAttribute(Qt::WA_TranslucentBackground, false);
         setAttribute(Qt::WA_StyledBackground);
         setWindowModality(Qt::WindowModal);
-        setFixedWidth(kDialogWidth);
+        setFixedWidth(kdialogWidth);
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -170,7 +170,7 @@ public:
         auto* buttonRow = new QHBoxLayout();
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+        familiar::dialog_style::style_secondary_button(cancelBtn,
                                                      textColor,
                                                      border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
@@ -178,11 +178,11 @@ public:
         outer->addLayout(buttonRow);
 
         setStyleSheet(
-            familiar::dialog_style::panelStyleSheet("ProgressDialog",
+            familiar::dialog_style::panel_style_sheet("ProgressDialog",
                                                     background,
                                                     border,
                                                     textColor)
-            + familiar::dialog_style::closeButtonStyleSheet("progressCloseBtn",
+            + familiar::dialog_style::close_button_style_sheet("progressCloseBtn",
                                                             textColor,
                                                             accent)
             // Overrides panelStyleSheet()'s blanket QLabel colour for
@@ -197,8 +197,8 @@ public:
 
         knownMaximum_ = maximum;
         bar_->setRange(0, maximum);
-        updatePercentText_();
-        bindWorker_(worker);
+        update_percent_text();
+        bind_worker(worker);
         show();
     }
 
@@ -238,8 +238,8 @@ public:
         finished_ = false;
         knownMaximum_ = 0;
         currentItemLabel_->clear();
-        setRange(0, 0);
-        bindWorker_(worker);
+        set_range(0, 0);
+        bind_worker(worker);
         show();
     }
 
@@ -250,7 +250,7 @@ public:
     // this false (the default) so on_finished() keeps self-deleting
     // normally. See on_finished()'s own comment for the real leak this
     // distinction fixes.
-    void setReusable(bool value) { reusable_ = value; }
+    void set_reusable(bool value) { reusable_ = value; }
 
     // DIAG (SIGSEGV investigation): logs this object's own address right
     // as it's actually destroyed - compare its timestamp/address against
@@ -299,13 +299,13 @@ protected:
     void resizeEvent(QResizeEvent* event) override
     {
         QDialog::resizeEvent(event);
-        familiar::dialog_style::applyRoundedMask(this, 10);
+        familiar::dialog_style::apply_rounded_mask(this, 10);
     }
 
 private:
     // Shared by the constructor and rebind() above - the actual
     // connect() calls, once, instead of duplicated in both places.
-    void bindWorker_(ThreadedIO* worker)
+    void bind_worker(ThreadedIO* worker)
     {
         // DIAG (SIGSEGV investigation): this object's own address, to
         // correlate against a crash backtrace's `this=` pointer and
@@ -316,7 +316,7 @@ private:
                    static_cast<void*>(worker));
         worker_ = worker;
         connect(worker,
-                &ThreadedIO::beginProcessing,
+                &ThreadedIO::begin_processing,
                 this,
                 &ProgressDialog::on_begin_processing);
         connect(worker,
@@ -328,11 +328,11 @@ private:
                 this,
                 &ProgressDialog::on_finished);
         connect(worker,
-                &ThreadedIO::currentItemChanged,
+                &ThreadedIO::current_item_changed,
                 this,
                 &ProgressDialog::on_current_item_changed);
         connect(worker,
-                &ThreadedIO::userInputRequired,
+                &ThreadedIO::user_input_required,
                 this,
                 [this](const QString&) { on_finished(QString(), {}); });
         // Deliberately NOT reacting to ThreadedIO::rawImportChoiceRequired
@@ -343,7 +343,7 @@ private:
         connect(this,
                 &ProgressDialog::canceled,
                 worker,
-                &ThreadedIO::onCanceled);
+                &ThreadedIO::on_canceled);
         // While a RAW file is actively decoding, this bar temporarily
         // shows THAT FILE's own 0-100 demosaic sub-progress
         // (rawDecodeProgress below - LibRaw::set_progress_handler(),
@@ -354,34 +354,34 @@ private:
         // moment this file's decode ends (on_raw_decode_state_changed(
         // false) below, and on_progress() itself as a backstop).
         connect(worker,
-                &ThreadedIO::rawDecodeStateChanged,
+                &ThreadedIO::raw_decode_state_changed,
                 this,
                 &ProgressDialog::on_raw_decode_state_changed);
         connect(worker,
-                &ThreadedIO::rawDecodeProgress,
+                &ThreadedIO::raw_decode_progress,
                 this,
                 &ProgressDialog::on_raw_decode_progress);
     }
 
     // ─── The QProgressDialog API this class used to inherit ─────────────
-    void setRange(int minimum, int maximum)
+    void set_range(int minimum, int maximum)
     {
         bar_->setRange(minimum, maximum);
-        updatePercentText_();
+        update_percent_text();
     }
 
-    void setMaximum(int maximum)
+    void set_maximum(int maximum)
     {
         bar_->setMaximum(maximum);
-        updatePercentText_();
+        update_percent_text();
     }
 
     int maximum() const { return bar_->maximum(); }
 
-    void setValue(int value)
+    void set_value(int value)
     {
         bar_->setValue(value);
-        updatePercentText_();
+        update_percent_text();
     }
 
     void reset() { bar_->setValue(bar_->minimum()); }
@@ -389,10 +389,10 @@ private:
     // Blank rather than "0%" while indeterminate (the marquee already
     // says "working, total unknown" on its own) or before any real range
     // exists - a hard 0% next to a sliding bar reads as stuck.
-    void updatePercentText_()
+    void update_percent_text()
     {
         const int span = bar_->maximum() - bar_->minimum();
-        if (bar_->isIndeterminate() || span <= 0) {
+        if (bar_->is_indeterminate() || span <= 0) {
             percentLabel_->clear();
             return;
         }
@@ -409,7 +409,7 @@ private slots:
         currentItemLabel_->setText(
             currentItemLabel_->fontMetrics().elidedText(name,
                                                         Qt::ElideMiddle,
-                                                        kContentWidth));
+                                                        kcontentWidth));
     }
 
     void on_progress(int value)
@@ -430,8 +430,8 @@ private slots:
         // mode was still active - belt-and-suspenders alongside
         // on_raw_decode_state_changed(false) below, which normally
         // already restores it right before this fires anyway.
-        setRange(0, knownMaximum_);
-        setValue(value);
+        set_range(0, knownMaximum_);
+        set_value(value);
     }
 
     void on_raw_decode_state_changed(bool decoding)
@@ -445,10 +445,10 @@ private slots:
             return;
         }
         if (decoding) {
-            setRange(0, 100);
-            setValue(0);
+            set_range(0, 100);
+            set_value(0);
         } else {
-            setRange(0, knownMaximum_);
+            set_range(0, knownMaximum_);
         }
     }
 
@@ -462,7 +462,7 @@ private slots:
         if (finished_) {
             return;
         }
-        setValue(percent);
+        set_value(percent);
     }
 
     void on_begin_processing(int value)
@@ -476,7 +476,7 @@ private slots:
             return;
         }
         knownMaximum_ = value;
-        setMaximum(value);
+        set_maximum(value);
     }
 
     void on_finished([[maybe_unused]] const QString& filename,
@@ -521,9 +521,9 @@ private slots:
         if (worker_) {
             worker_->disconnect(this);
         }
-        setRange(0, knownMaximum_); // in case a RAW decode's indeterminate
+        set_range(0, knownMaximum_); // in case a RAW decode's indeterminate
                                     // mode was somehow still active
-        setValue(maximum());
+        set_value(maximum());
         reset();
         currentItemLabel_->clear();
         hide();
@@ -600,11 +600,11 @@ public:
         setStyleSheet("* { background-color: palette(window); color: "
                       "palette(window-text); }");
         setWindowTitle(qApp->applicationName() + " Debug Log");
-        const QString logPath = familiar::log::logFilePath();
+        const QString logPath = familiar::log::log_file_path();
 
-        log = new QPlainTextEdit();
-        log->setReadOnly(true);
-        log->setLineWrapMode(QPlainTextEdit::NoWrap);
+        log_ = new QPlainTextEdit();
+        log_->setReadOnly(true);
+        log_->setLineWrapMode(QPlainTextEdit::NoWrap);
 
         // ─── Level filter checkboxes ────────────────────────────────────
         // FlatCheckBox (this app's own hand-painted checkbox - a plain
@@ -627,10 +627,10 @@ public:
         const QColor text = palette().color(QPalette::WindowText);
         const QColor border = palette().color(QPalette::Mid);
         const QColor warnAccent
-            = familiar::dialog_style::severityColor(QMessageBox::Warning,
+            = familiar::dialog_style::severity_color(QMessageBox::Warning,
                                                     border);
         const QColor errorAccent
-            = familiar::dialog_style::severityColor(QMessageBox::Critical,
+            = familiar::dialog_style::severity_color(QMessageBox::Critical,
                                                     border);
         struct LevelEntry
         {
@@ -654,7 +654,7 @@ public:
             {familiar::log::Level::Debug, tr("Debug"), text},
             {familiar::log::Level::Info,
              tr("Info"),
-             familiar::dialog_style::severityColor(QMessageBox::Information,
+             familiar::dialog_style::severity_color(QMessageBox::Information,
                                                    border)},
             {familiar::log::Level::Warning, tr("Warning"), warnAccent},
             {familiar::log::Level::Error, tr("Error"), errorAccent},
@@ -673,23 +673,23 @@ public:
             visibleLevels_[level] = true;
             connect(box, &QCheckBox::toggled, this, [this, level](bool on) {
                 visibleLevels_[level] = on;
-                refreshDisplay();
+                refresh_display();
             });
             filterRow->addWidget(box);
         }
         filterRow->addStretch(1);
 
-        if (familiar::log::RingSink* ring = familiar::log::ringSink()) {
+        if (familiar::log::RingSink* ring = familiar::log::ring_sink()) {
             allEntries_ = ring->entries();
-            refreshDisplay();
+            refresh_display();
             connect(ring,
-                    &familiar::log::RingSink::entryAdded,
+                    &familiar::log::RingSink::entry_added,
                     this,
-                    &DebugLogDialog::appendEntry);
+                    &DebugLogDialog::append_entry);
         }
         // Follow the tail as new lines come in, unless the user has
         // scrolled up to read something older.
-        QScrollBar* scrollBar = log->verticalScrollBar();
+        QScrollBar* scrollBar = log_->verticalScrollBar();
         connect(scrollBar, &QScrollBar::rangeChanged, this, [this, scrollBar] {
             if (followTail_) {
                 scrollBar->setValue(scrollBar->maximum());
@@ -702,12 +702,12 @@ public:
         QDialogButtonBox* buttons = new QDialogButtonBox(
             QDialogButtonBox::Close);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-        copyButton = new QPushButton("Co&py To Clipboard");
-        buttons->addButton(copyButton, QDialogButtonBox::ActionRole);
-        connect(copyButton,
+        copyButton_ = new QPushButton("Co&py To Clipboard");
+        buttons->addButton(copyButton_, QDialogButtonBox::ActionRole);
+        connect(copyButton_,
                 &QPushButton::released,
                 this,
-                &DebugLogDialog::copyToClipboard);
+                &DebugLogDialog::copy_to_clipboard);
 
         QVBoxLayout* layout = new QVBoxLayout();
         setLayout(layout);
@@ -715,14 +715,14 @@ public:
         nameWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         layout->addWidget(nameWidget);
         layout->addLayout(filterRow);
-        layout->addWidget(log);
+        layout->addWidget(log_);
         layout->addWidget(buttons);
         show();
     }
 
 private:
-    QPlainTextEdit* log;
-    QPushButton* copyButton;
+    QPlainTextEdit* log_;
+    QPushButton* copyButton_;
     bool followTail_ = true;
     // Every line seen so far, unfiltered - refreshDisplay() re-derives
     // what's actually shown from this plus visibleLevels_ below, so
@@ -734,17 +734,17 @@ private slots:
     // A single new line: cheap append instead of a full rebuild (the
     // common case - most log lines arrive with every filter already
     // settled, not mid-toggle).
-    void appendEntry(familiar::log::Level level, const QString& line)
+    void append_entry(familiar::log::Level level, const QString& line)
     {
         allEntries_.append({level, line});
         if (visibleLevels_.value(level, true)) {
-            log->appendPlainText(line);
+            log_->appendPlainText(line);
         }
     }
 
     // Full rebuild from allEntries_ - only needed right after a checkbox
     // toggle (or the initial seed from the ring), not per-line.
-    void refreshDisplay()
+    void refresh_display()
     {
         QStringList visible;
         visible.reserve(allEntries_.size());
@@ -753,13 +753,13 @@ private slots:
                 visible.append(entry.line);
             }
         }
-        log->setPlainText(visible.join('\n'));
+        log_->setPlainText(visible.join('\n'));
     }
 
-    void copyToClipboard()
+    void copy_to_clipboard()
     {
         QClipboard* clipboard = QApplication::clipboard();
-        clipboard->setText(log->toPlainText());
+        clipboard->setText(log_->toPlainText());
     }
 };
 
@@ -826,11 +826,11 @@ public:
         connect(restoreBtn,
                 &QPushButton::clicked,
                 this,
-                &RecoveryDialog::restoreAndDiscardUnchecked);
+                &RecoveryDialog::restore_and_discard_unchecked);
         connect(discardBtn,
                 &QPushButton::clicked,
                 this,
-                &RecoveryDialog::discardAll);
+                &RecoveryDialog::discard_all);
 
         show();
     }
@@ -841,12 +841,12 @@ private:
     QListWidget* list_ = nullptr;
 
 private slots:
-    void restoreAndDiscardUnchecked()
+    void restore_and_discard_unchecked()
     {
         // Captured BEFORE any restore starts - see FileActions::
         // closeTab()'s comment for why this can't just be re-found by
         // scanning "untitled && unmodified" again after the fact.
-        CanvasView* blankTab = fileActions_.findBlankTab();
+        CanvasView* blankTab = fileActions_.find_blank_tab();
 
         bool restoredAny = false;
         for (int i = 0; i < list_->count(); ++i) {
@@ -858,7 +858,7 @@ private slots:
                 // the load hasn't necessarily opened the file yet by the
                 // time this call returns (see FileActions::
                 // loadFmlIntoCurrentTab()).
-                fileActions_.restoreFromRecovery(e.fmlPath,
+                fileActions_.restore_from_recovery(e.fmlPath,
                                                  e.originalPath,
                                                  e.id);
                 restoredAny = true;
@@ -871,14 +871,14 @@ private slots:
         // Only if something was actually restored - otherwise this is
         // the only tab left open, and closing it would leave zero.
         if (restoredAny && blankTab) {
-            fileActions_.closeTab(blankTab);
+            fileActions_.close_tab(blankTab);
         }
         close();
     }
 
-    void discardAll()
+    void discard_all()
     {
-        const auto reply = showMessageBox(
+        const auto reply = show_message_box(
             QMessageBox::Question,
             this,
             tr("Discard all recoverable files?"),
@@ -902,17 +902,17 @@ class SceneToPixmapExporterDialog : public QDialog
 {
     Q_OBJECT
 
-    static constexpr int MIN_SIZE = 10;
-    static constexpr int MAX_SIZE = 100000;
+    static constexpr int kminSize = 10;
+    static constexpr int kmaxSize = 100000;
 
 public:
     SceneToPixmapExporterDialog(QWidget* parent, QSize defaultSize)
         : QDialog(parent)
         , defaultSize_(defaultSize)
-        , ignoreChange(false)
+        , ignoreChange_(false)
     {
-        if (defaultSize.width() > MAX_SIZE || defaultSize.width() >= MAX_SIZE) {
-            defaultSize.scale(MAX_SIZE, MAX_SIZE, Qt::KeepAspectRatio);
+        if (defaultSize.width() > kmaxSize || defaultSize.width() >= kmaxSize) {
+            defaultSize.scale(kmaxSize, kmaxSize, Qt::KeepAspectRatio);
         }
 
         // See FileActions::openFile(): MainWindow's translucent/frameless
@@ -927,24 +927,24 @@ public:
         setLayout(layout);
 
         layout->addWidget(new QLabel("Width:"), 0, 0);
-        widthInput = new QSpinBox();
-        widthInput->setRange(MIN_SIZE, MAX_SIZE);
-        widthInput->setValue(defaultSize.width());
-        connect(widthInput,
+        widthInput_ = new QSpinBox();
+        widthInput_->setRange(kminSize, kmaxSize);
+        widthInput_->setValue(defaultSize.width());
+        connect(widthInput_,
                 &QSpinBox::valueChanged,
                 this,
-                &SceneToPixmapExporterDialog::onWidthChanged);
-        layout->addWidget(widthInput, 0, 1);
+                &SceneToPixmapExporterDialog::on_width_changed);
+        layout->addWidget(widthInput_, 0, 1);
 
         layout->addWidget(new QLabel("Height:"), 1, 0);
-        heightInput = new QSpinBox();
-        heightInput->setRange(MIN_SIZE, MAX_SIZE);
-        heightInput->setValue(defaultSize.height());
-        connect(heightInput,
+        heightInput_ = new QSpinBox();
+        heightInput_->setRange(kminSize, kmaxSize);
+        heightInput_->setValue(defaultSize.height());
+        connect(heightInput_,
                 &QSpinBox::valueChanged,
                 this,
-                &SceneToPixmapExporterDialog::onHeightChanged);
-        layout->addWidget(heightInput, 1, 1);
+                &SceneToPixmapExporterDialog::on_height_changed);
+        layout->addWidget(heightInput_, 1, 1);
 
         QDialogButtonBox* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
@@ -955,39 +955,39 @@ public:
 
     QSize value() const
     {
-        return QSize(widthInput->value(), heightInput->value());
+        return QSize(widthInput_->value(), heightInput_->value());
     }
 
 private slots:
-    void onWidthChanged(int width)
+    void on_width_changed(int width)
     {
-        if (!ignoreChange) {
-            ignoreChange = true;
+        if (!ignoreChange_) {
+            ignoreChange_ = true;
             QSize scaled = defaultSize_.scaled(width,
-                                               MAX_SIZE,
+                                               kmaxSize,
                                                Qt::KeepAspectRatio);
-            heightInput->setValue(scaled.height());
-            ignoreChange = false;
+            heightInput_->setValue(scaled.height());
+            ignoreChange_ = false;
         }
     }
 
-    void onHeightChanged(int height)
+    void on_height_changed(int height)
     {
-        if (!ignoreChange) {
-            ignoreChange = true;
-            QSize scaled = defaultSize_.scaled(MAX_SIZE,
+        if (!ignoreChange_) {
+            ignoreChange_ = true;
+            QSize scaled = defaultSize_.scaled(kmaxSize,
                                                height,
                                                Qt::KeepAspectRatio);
-            widthInput->setValue(scaled.width());
-            ignoreChange = false;
+            widthInput_->setValue(scaled.width());
+            ignoreChange_ = false;
         }
     }
 
 private:
     QSize defaultSize_;
-    bool ignoreChange;
-    QSpinBox* widthInput;
-    QSpinBox* heightInput;
+    bool ignoreChange_;
+    QSpinBox* widthInput_;
+    QSpinBox* heightInput_;
 };
 
 
@@ -1007,7 +1007,7 @@ public:
         : QDialog(parent)
         , items_(items)
         , undoStack_(undoStack)
-        , command(new ChangeOpacityCommand(items, 1.0))
+        , command_(new ChangeOpacityCommand(items, 1.0))
     {
         int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
 
@@ -1065,23 +1065,23 @@ public:
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
 
-        label = new QLabel(tr("Opacity: %1%").arg(value), this);
-        outer->addWidget(label);
+        label_ = new QLabel(tr("Opacity: %1%").arg(value), this);
+        outer->addWidget(label_);
 
-        input = new QSlider(Qt::Horizontal, this);
-        input->setObjectName(QStringLiteral("changeOpacitySlider"));
-        input->setRange(0, 100);
-        connect(input,
+        input_ = new QSlider(Qt::Horizontal, this);
+        input_->setObjectName(QStringLiteral("changeOpacitySlider"));
+        input_->setRange(0, 100);
+        connect(input_,
                 &QSlider::valueChanged,
                 this,
-                &ChangeOpacityDialog::onValueChanged);
-        input->setValue(value);
-        outer->addWidget(input);
+                &ChangeOpacityDialog::on_value_changed);
+        input_->setValue(value);
+        outer->addWidget(input_);
 
         auto* buttonRow = new QHBoxLayout();
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+        familiar::dialog_style::style_secondary_button(cancelBtn,
                                                      textColor,
                                                      border);
         connect(cancelBtn,
@@ -1090,7 +1090,7 @@ public:
                 &ChangeOpacityDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("OK"), this);
-        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        familiar::dialog_style::style_primary_button(okBtn, accent);
         okBtn->setDefault(true);
         connect(okBtn,
                 &QPushButton::clicked,
@@ -1100,11 +1100,11 @@ public:
         outer->addLayout(buttonRow);
 
         setStyleSheet(
-            familiar::dialog_style::panelStyleSheet("ChangeOpacityDialog",
+            familiar::dialog_style::panel_style_sheet("ChangeOpacityDialog",
                                                     background,
                                                     border,
                                                     textColor)
-            + familiar::dialog_style::closeButtonStyleSheet(
+            + familiar::dialog_style::close_button_style_sheet(
                 "changeOpacityCloseBtn", textColor, accent)
             // Explicit ::groove/::handle rules, not just a bare QSlider
             // color rule - same reasoning as QRadioButton's ::indicator
@@ -1134,25 +1134,25 @@ public:
         show();
     }
 
-    ~ChangeOpacityDialog() { delete command; }
+    ~ChangeOpacityDialog() { delete command_; }
 
 public slots:
     void accept() override
     {
         if (!items_.isEmpty()) {
-            command->setIgnoreFirstRedo(true);
-            undoStack_->push(command);
-            command = nullptr;
+            command_->set_ignore_first_redo(true);
+            undoStack_->push(command_);
+            command_ = nullptr;
         }
         QDialog::accept();
     }
 
     void reject() override
     {
-        if (command) {
-            command->undo();
-            delete command;
-            command = nullptr;
+        if (command_) {
+            command_->undo();
+            delete command_;
+            command_ = nullptr;
         }
         QDialog::reject();
     }
@@ -1171,23 +1171,23 @@ protected:
     void resizeEvent(QResizeEvent* event) override
     {
         QDialog::resizeEvent(event);
-        familiar::dialog_style::applyRoundedMask(this, 10);
+        familiar::dialog_style::apply_rounded_mask(this, 10);
     }
 
 private slots:
-    void onValueChanged(int value)
+    void on_value_changed(int value)
     {
-        label->setText(tr("Opacity: %1%").arg(value));
-        command->setOpacity(value / 100.0);
-        command->redo();
+        label_->setText(tr("Opacity: %1%").arg(value));
+        command_->set_opacity(value / 100.0);
+        command_->redo();
     }
 
 private:
     QList<QGraphicsItem*> items_;
     QUndoStack* undoStack_;
-    ChangeOpacityCommand* command;
-    QLabel* label;
-    QSlider* input;
+    ChangeOpacityCommand* command_;
+    QLabel* label_;
+    QSlider* input_;
 };
 
 
@@ -1227,45 +1227,45 @@ class SampleColorWidget : public QWidget
 {
     Q_OBJECT
 
-    static constexpr int OFFSET = 10;
-    static constexpr int SIZE = 50;
+    static constexpr int koffset = 10;
+    static constexpr int ksize = 50;
 
 public:
     SampleColorWidget(QWidget* parent,
                       const QPointF& pos,
                       const QColor& color = QColor())
         : QWidget(parent)
-        , m_color(color)
+        , mColor_(color)
     {
-        setFixedSize(SIZE, SIZE);
-        setPos(pos);
+        setFixedSize(ksize, ksize);
+        set_pos(pos);
         show();
     }
 
-    void setPos(const QPointF& pos)
+    void set_pos(const QPointF& pos)
     {
-        move(int(pos.x() + OFFSET), int(pos.y() + OFFSET));
+        move(int(pos.x() + koffset), int(pos.y() + koffset));
     }
 
     void update(const QPointF& pos, const QColor& color)
     {
-        setPos(pos);
-        m_color = color;
+        set_pos(pos);
+        mColor_ = color;
         repaint();
     }
 
 protected:
     void paintEvent(QPaintEvent*) override
     {
-        QColor color = m_color.isValid() ? m_color : QColor(0, 0, 0, 0);
+        QColor color = mColor_.isValid() ? mColor_ : QColor(0, 0, 0, 0);
         QPainter painter(this);
         painter.setBrush(QBrush(color));
         painter.setPen(Qt::NoPen);
-        painter.drawRect(0, 0, SIZE, SIZE);
+        painter.drawRect(0, 0, ksize, ksize);
     }
 
 private:
-    QColor m_color;
+    QColor mColor_;
 };
 
 
@@ -1339,30 +1339,30 @@ public:
         };
         for (const auto& [value, label] : choices) {
             auto* btn = new QRadioButton(label, this);
-            radioButtons.insert(value, btn);
+            radioButtons_.insert(value, btn);
             outer->addWidget(btn);
         }
-        radioButtons[QStringLiteral("skip")]->setChecked(true);
+        radioButtons_[QStringLiteral("skip")]->setChecked(true);
 
         auto* buttonRow = new QHBoxLayout();
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-        familiar::dialog_style::styleSecondaryButton(cancelBtn,
+        familiar::dialog_style::style_secondary_button(cancelBtn,
                                                      textColor,
                                                      border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("Continue"), this);
-        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        familiar::dialog_style::style_primary_button(okBtn, accent);
         okBtn->setDefault(true);
         connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
         buttonRow->addWidget(okBtn);
         outer->addLayout(buttonRow);
 
         setStyleSheet(
-            familiar::dialog_style::panelStyleSheet(
+            familiar::dialog_style::panel_style_sheet(
                 "ExportImagesFileExistsDialog", background, border, textColor)
-            + familiar::dialog_style::closeButtonStyleSheet(
+            + familiar::dialog_style::close_button_style_sheet(
                 "exportExistsCloseBtn", textColor, accent)
             // Explicit ::indicator rules, not just a bare QRadioButton
             // color rule - QSS on a QRadioButton/QCheckBox with no
@@ -1386,9 +1386,9 @@ public:
                   .arg(textColor.name(), border.name(), accent.name()));
     }
 
-    QString getAnswer() const
+    QString get_answer() const
     {
-        for (auto it = radioButtons.constBegin(); it != radioButtons.constEnd();
+        for (auto it = radioButtons_.constBegin(); it != radioButtons_.constEnd();
              ++it) {
             if (it.value()->isChecked()) {
                 return it.key();
@@ -1411,9 +1411,9 @@ protected:
     void resizeEvent(QResizeEvent* event) override
     {
         QDialog::resizeEvent(event);
-        familiar::dialog_style::applyRoundedMask(this, 10);
+        familiar::dialog_style::apply_rounded_mask(this, 10);
     }
 
 private:
-    QMap<QString, QRadioButton*> radioButtons;
+    QMap<QString, QRadioButton*> radioButtons_;
 };

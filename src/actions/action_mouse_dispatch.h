@@ -27,9 +27,9 @@ protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
 
 private:
-    bool tryMousePress(QMouseEvent* event);
-    bool tryKeyPress(QKeyEvent* event);
-    bool tryBareModifierAction(QKeyEvent* event);
+    bool try_mouse_press(QMouseEvent* event);
+    bool try_key_press(QKeyEvent* event);
+    bool try_bare_modifier_action(QKeyEvent* event);
 
     QWidget* target_;
 };

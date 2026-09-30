@@ -428,7 +428,7 @@ const QList<MouseConfig>& KeyboardSettings::mouse_actions()
 
 namespace {
 
-QJsonArray toJsonArray(const QStringList& values)
+QJsonArray to_json_array(const QStringList& values)
 {
     QJsonArray arr;
     for (const QString& v : values) {
@@ -437,7 +437,7 @@ QJsonArray toJsonArray(const QStringList& values)
     return arr;
 }
 
-QStringList fromJsonArray(const QJsonValue& v)
+QStringList from_json_array(const QJsonValue& v)
 {
     QStringList out;
     for (const QJsonValue& e : v.toArray()) {
@@ -454,7 +454,7 @@ void KeyboardSettings::set_shortcuts(const QString& group,
 {
     SettingsHandler::get_instance()->set_json_value(group,
                                                  key,
-                                                 toJsonArray(values));
+                                                 to_json_array(values));
 }
 
 // TODOLATER: ?? this fn doesn't exist in python
@@ -464,7 +464,7 @@ QStringList KeyboardSettings::get_shortcuts(const QString& group,
 {
     const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     if (!v.isUndefined()) {
-        return fromJsonArray(v);
+        return from_json_array(v);
     }
     if (saveUnknownShortcuts) {
         set_shortcuts(group, key, defaultValues);
@@ -482,7 +482,7 @@ void KeyboardSettings::set_list(const QString& group,
     } else {
         SettingsHandler::get_instance()->set_json_value(group,
                                                      key,
-                                                     toJsonArray(values));
+                                                     to_json_array(values));
     }
 }
 
@@ -491,7 +491,7 @@ QStringList KeyboardSettings::get_list(const QString& group,
                                       const QStringList& defaultValues) const
 {
     const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
-    return v.isUndefined() ? defaultValues : fromJsonArray(v);
+    return v.isUndefined() ? defaultValues : from_json_array(v);
 }
 
 void KeyboardSettings::set_scalar(const QString& group,
@@ -533,7 +533,7 @@ void KeyboardSettings::restore_defaults()
     // code-level default change should still reach anyone who's reset
     // here on their next launch, not pin them to today's default
     // forever).
-    for (Action* action : getActions().all()) {
+    for (Action* action : get_actions().all()) {
         if (!action->qaction) {
             continue;
         }
@@ -543,7 +543,7 @@ void KeyboardSettings::restore_defaults()
         }
         action->qaction->setShortcuts(seqs);
     }
-    emit SettingsEvents::instance().restoreKeyboardDefaults();
+    emit SettingsEvents::instance().restore_keyboard_defaults();
 }
 
 std::optional<ControlMatch> KeyboardSettings::mousewheel_action_for_event(

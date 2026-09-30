@@ -35,7 +35,7 @@ public:
         // setModel(new RecentFilesModel(nullptr, files));
         // delete m;
         auto* model = dynamic_cast<RecentFilesModel*>(this->model());
-        model->setFiles(files_);
+        model->set_files(files_);
         reset();
     }
 

@@ -26,8 +26,8 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    void onCloseWithoutSave_();
-    void onSave_();
+    void on_close_without_save();
+    void on_save();
 
     MainWindow* window_;
     QMap<int, QCheckBox*> checkboxes_;

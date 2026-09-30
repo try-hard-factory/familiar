@@ -23,7 +23,7 @@ TEST(FamSettingsTest, ValueOrDefaultFallsBackWhenUnset)
 {
     FamSettings settings;
     settings.remove(QStringLiteral("Items/arrange_gap"));
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+    EXPECT_EQ(settings.value_or_default(QStringLiteral("Items/arrange_gap"))
                   .toInt(),
               0);
 }
@@ -31,8 +31,8 @@ TEST(FamSettingsTest, ValueOrDefaultFallsBackWhenUnset)
 TEST(FamSettingsTest, SetValueRoundTrips)
 {
     FamSettings settings;
-    settings.setValue(QStringLiteral("Items/arrange_gap"), 50);
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+    settings.set_value(QStringLiteral("Items/arrange_gap"), 50);
+    EXPECT_EQ(settings.value_or_default(QStringLiteral("Items/arrange_gap"))
                   .toInt(),
               50);
     settings.remove(QStringLiteral("Items/arrange_gap"));
@@ -47,8 +47,8 @@ TEST(FamSettingsTest, OutOfRangeValueFallsBackToDefaultOnRead)
     // as-is, but reading it back through valueOrDefault() silently
     // yields the field's default instead of the out-of-range value.
     FamSettings settings;
-    settings.setValue(QStringLiteral("Items/arrange_gap"), 9999);
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+    settings.set_value(QStringLiteral("Items/arrange_gap"), 9999);
+    EXPECT_EQ(settings.value_or_default(QStringLiteral("Items/arrange_gap"))
                   .toInt(),
               0);
     settings.remove(QStringLiteral("Items/arrange_gap"));
@@ -58,25 +58,25 @@ TEST(FamSettingsTest, ValueChangedTracksDefaultDrift)
 {
     FamSettings settings;
     settings.remove(QStringLiteral("Items/arrange_gap"));
-    EXPECT_FALSE(settings.valueChanged(QStringLiteral("Items/arrange_gap")));
-    settings.setValue(QStringLiteral("Items/arrange_gap"), 50);
-    EXPECT_TRUE(settings.valueChanged(QStringLiteral("Items/arrange_gap")));
+    EXPECT_FALSE(settings.value_changed(QStringLiteral("Items/arrange_gap")));
+    settings.set_value(QStringLiteral("Items/arrange_gap"), 50);
+    EXPECT_TRUE(settings.value_changed(QStringLiteral("Items/arrange_gap")));
     settings.remove(QStringLiteral("Items/arrange_gap"));
 }
 
 TEST(FamSettingsTest, RestoreDefaultsClearsItemsAndSaveGroups)
 {
     FamSettings settings;
-    settings.setValue(QStringLiteral("Items/arrange_gap"), 50);
-    settings.setValue(QStringLiteral("Save/autosave_interval_seconds"), 30);
+    settings.set_value(QStringLiteral("Items/arrange_gap"), 50);
+    settings.set_value(QStringLiteral("Save/autosave_interval_seconds"), 30);
 
-    settings.restoreDefaults();
+    settings.restore_defaults();
 
-    EXPECT_EQ(settings.valueOrDefault(QStringLiteral("Items/arrange_gap"))
+    EXPECT_EQ(settings.value_or_default(QStringLiteral("Items/arrange_gap"))
                   .toInt(),
               0);
     EXPECT_EQ(settings
-                  .valueOrDefault(
+                  .value_or_default(
                       QStringLiteral("Save/autosave_interval_seconds"))
                   .toInt(),
               5);
@@ -92,14 +92,14 @@ TEST(FamSettingsTest, UpdateRecentFilesDedupsPrependsAndCaps)
     // list this test reads back matches what it wrote verbatim instead
     // of depending on the current working directory.
     for (int i = 0; i < 12; ++i) {
-        settings.updateRecentFiles(QStringLiteral("/tmp/file_%1.fml").arg(i));
+        settings.update_recent_files(QStringLiteral("/tmp/file_%1.fml").arg(i));
     }
 
     // Re-adding an already-present file moves it to the front instead of
     // appearing twice.
-    settings.updateRecentFiles(QStringLiteral("/tmp/file_5.fml"));
+    settings.update_recent_files(QStringLiteral("/tmp/file_5.fml"));
 
-    const QStringList files = settings.getRecentFiles();
+    const QStringList files = settings.get_recent_files();
     EXPECT_EQ(files.size(), 10);
     EXPECT_EQ(files.first(), QStringLiteral("/tmp/file_5.fml"));
     EXPECT_EQ(files.count(QStringLiteral("/tmp/file_5.fml")), 1);

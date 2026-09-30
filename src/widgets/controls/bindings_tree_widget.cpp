@@ -23,7 +23,7 @@ namespace {
 // centered in the extra space). It's a floor, not a cap - setMinimumWidth
 // rather than setFixedWidth - so a longer chord (mouse bindings can read
 // e.g. "Left MB + Ctrl+Alt+Shift") still grows to fit instead of clipping.
-constexpr int kChipMinWidth = 104;
+constexpr int kchipMinWidth = 104;
 
 // A target's primary row (buildRow()'s showAdd==true case) - adds the
 // same Ctrl+double-click-to-reset gesture SettingRowBase's rows have
@@ -100,7 +100,7 @@ CollapsibleSection::CollapsibleSection(const QString& title,
     layout->addWidget(content_);
 }
 
-void CollapsibleSection::setExpanded(bool expanded)
+void CollapsibleSection::set_expanded(bool expanded)
 {
     headerBtn_->setChecked(expanded);
 }
@@ -123,18 +123,18 @@ BindingsTreeWidget::BindingsTreeWidget(const QList<BindingTarget*>& targets,
         containerLayout->setSpacing(0);
         rowContainers_[target] = container;
         layout->addWidget(container);
-        refreshTarget(target);
+        refresh_target(target);
     }
 }
 
-void BindingsTreeWidget::refreshAll()
+void BindingsTreeWidget::refresh_all()
 {
     for (BindingTarget* target : targets_) {
-        refreshTarget(target);
+        refresh_target(target);
     }
 }
 
-bool BindingsTreeWidget::applySearchFilter(const QString& text)
+bool BindingsTreeWidget::apply_search_filter(const QString& text)
 {
     searchFilter_ = text;
     bool anyVisible = false;
@@ -150,12 +150,12 @@ bool BindingsTreeWidget::applySearchFilter(const QString& text)
         anyVisible = anyVisible || matches;
         // Rebuilds the row's label with the new searchFilter_ so the
         // matched substring gets bolded (or un-bolded, once cleared).
-        refreshTarget(target);
+        refresh_target(target);
     }
     return anyVisible;
 }
 
-void BindingsTreeWidget::refreshTarget(BindingTarget* target)
+void BindingsTreeWidget::refresh_target(BindingTarget* target)
 {
     QWidget* container = rowContainers_.value(target);
     if (!container) {
@@ -182,7 +182,7 @@ void BindingsTreeWidget::refreshTarget(BindingTarget* target)
         extraLayout->setContentsMargins(0, 0, 0, 0);
         extraLayout->setSpacing(0);
         for (int i = 1; i < bindings.size(); ++i) {
-            extraLayout->addWidget(buildRow(target,
+            extraLayout->addWidget(build_row(target,
                                             QString(),
                                             i,
                                             /*showAdd=*/false,
@@ -190,7 +190,7 @@ void BindingsTreeWidget::refreshTarget(BindingTarget* target)
         }
     }
 
-    rowLayout->addWidget(buildRow(target,
+    rowLayout->addWidget(build_row(target,
                                   target->text(),
                                   bindings.isEmpty() ? -1 : 0,
                                   /*showAdd=*/true,
@@ -201,7 +201,7 @@ void BindingsTreeWidget::refreshTarget(BindingTarget* target)
     }
 }
 
-QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
+QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
                                       const QString& label,
                                       int bindingIndex,
                                       bool showAdd,
@@ -214,9 +214,9 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     QWidget* row = showAdd
                        ? new BindingRowWidget(
                              [this, target]() {
-                                 target->setBindings(target->defaultBindings());
-                                 refreshTarget(target);
-                                 emit bindingsChanged();
+                                 target->set_bindings(target->default_bindings());
+                                 refresh_target(target);
+                                 emit bindings_changed();
                              },
                              this)
                        : new QWidget(this);
@@ -257,27 +257,27 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
     // own rows read from (currently still a shared placeholder for
     // every id here, real per-action/control copy is a follow-up).
     auto* nameLabel
-        = new HoverInfoLabel(highlightSearchMatch(label, searchFilter_), row);
-    nameLabel->setInfoText(
-        familiar::setting_descriptions::forBindingTargetId(target->id()));
+        = new HoverInfoLabel(highlight_search_match(label, searchFilter_), row);
+    nameLabel->set_info_text(
+        familiar::setting_descriptions::for_binding_target_id(target->id()));
     // "Default: X" / the reset-gesture footer hint only apply to the
     // primary row - matches BindingRowWidget's own showAdd-only gate
     // above, and for the same reason (an alias has no "default" of its
     // own).
     if (showAdd) {
         QStringList defaultChords;
-        for (const Binding& b : target->defaultBindings()) {
+        for (const Binding& b : target->default_bindings()) {
             const QString dt = b.display_text();
             if (!dt.isEmpty()) {
                 defaultChords.append(dt);
             }
         }
-        nameLabel->setDefaultText(
+        nameLabel->set_default_text(
             tr("Default: %1")
                 .arg(defaultChords.isEmpty()
                          ? tr("(none)")
                          : defaultChords.join(QStringLiteral(", "))));
-        nameLabel->setShowResetHint(true);
+        nameLabel->set_show_reset_hint(true);
     }
     layout->addWidget(nameLabel);
     layout->addStretch(1);
@@ -288,16 +288,16 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
                                                             : b.display_text();
         auto* chip = new QPushButton(chipLabel, row);
         chip->setCursor(Qt::PointingHandCursor);
-        chip->setMinimumWidth(kChipMinWidth);
-        chip->setStyleSheet(familiar::settings_style::shortcutChipStyleSheet());
+        chip->setMinimumWidth(kchipMinWidth);
+        chip->setStyleSheet(familiar::settings_style::shortcut_chip_style_sheet());
         connect(chip,
                 &QPushButton::clicked,
                 this,
                 [this, target, bindingIndex]() {
                     auto* dlg = new RebindDialog(target, bindingIndex, this);
                     connect(dlg, &QDialog::accepted, this, [this, target]() {
-                        refreshTarget(target);
-                        emit bindingsChanged();
+                        refresh_target(target);
+                        emit bindings_changed();
                     });
                     dlg->exec();
                     dlg->deleteLater();
@@ -314,7 +314,7 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
             removeBtn->setText(QStringLiteral("-"));
             removeBtn->setCursor(Qt::PointingHandCursor);
             removeBtn->setStyleSheet(
-                familiar::settings_style::miniButtonStyleSheet());
+                familiar::settings_style::mini_button_style_sheet());
             connect(removeBtn,
                     &QToolButton::clicked,
                     this,
@@ -323,10 +323,10 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
                         if (bindingIndex >= 0
                             && bindingIndex < bindings.size()) {
                             bindings.removeAt(bindingIndex);
-                            target->setBindings(bindings);
+                            target->set_bindings(bindings);
                         }
-                        refreshTarget(target);
-                        emit bindingsChanged();
+                        refresh_target(target);
+                        emit bindings_changed();
                     });
             layout->addWidget(removeBtn);
         }
@@ -336,12 +336,12 @@ QWidget* BindingsTreeWidget::buildRow(BindingTarget* target,
         auto* addBtn = new QToolButton(row);
         addBtn->setText(QStringLiteral("+"));
         addBtn->setCursor(Qt::PointingHandCursor);
-        addBtn->setStyleSheet(familiar::settings_style::miniButtonStyleSheet());
+        addBtn->setStyleSheet(familiar::settings_style::mini_button_style_sheet());
         connect(addBtn, &QToolButton::clicked, this, [this, target]() {
             auto* dlg = new AddAliasDialog(target, this);
             connect(dlg, &QDialog::accepted, this, [this, target]() {
-                refreshTarget(target);
-                emit bindingsChanged();
+                refresh_target(target);
+                emit bindings_changed();
             });
             dlg->exec();
             dlg->deleteLater();

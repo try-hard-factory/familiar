@@ -41,6 +41,12 @@ class ValueHandler;
 template<class T>
 class QSharedPointer;
 
+// The settings.json key IS the getter's name, stringified. Renaming a
+// getter therefore renames the persisted key - keep the OPTION() entries
+// in recognizedGeneralOptions (settingshandler.cpp) and the literals in
+// set_default_current_preset() / restore_defaults_dialog.cpp in step with
+// it, or value_handler() hands back a null handler and
+// SettingsHandler::value() dereferences it.
 #define SETTINGS_GETTER(KEY, TYPE) \
     TYPE KEY() \
     { \
@@ -68,16 +74,16 @@ public:
     static SettingsHandler* get_instance();
 
     // GENERIC GETTERS AND SETTERS
-    SETTINGS_GETTER_SETTER(currentPreset, setCurrentPreset, int)
+    SETTINGS_GETTER_SETTER(current_preset, set_current_preset, int)
     using OL = QMap<int, int>;
-    SETTINGS_GETTER_SETTER(masterOpacity, setMasterOpacity, OL)
+    SETTINGS_GETTER_SETTER(master_opacity, set_master_opacity, OL)
     using CL = QMap<int, QColor>;
-    SETTINGS_GETTER_SETTER(darkColorPreset, setDarkColorPreset, CL)
-    SETTINGS_GETTER_SETTER(lightColorPreset, setLightColorPreset, CL)
-    SETTINGS_GETTER_SETTER(customPreset1, setCustomPreset1, CL)
-    SETTINGS_GETTER_SETTER(customPreset2, setCustomPreset2, CL)
-    SETTINGS_GETTER_SETTER(customPreset3, setCustomPreset3, CL)
-    SETTINGS_GETTER_SETTER(customPreset4, setCustomPreset4, CL)
+    SETTINGS_GETTER_SETTER(dark_color_preset, set_dark_color_preset, CL)
+    SETTINGS_GETTER_SETTER(light_color_preset, set_light_color_preset, CL)
+    SETTINGS_GETTER_SETTER(custom_preset1, set_custom_preset1, CL)
+    SETTINGS_GETTER_SETTER(custom_preset2, set_custom_preset2, CL)
+    SETTINGS_GETTER_SETTER(custom_preset3, set_custom_preset3, CL)
+    SETTINGS_GETTER_SETTER(custom_preset4, set_custom_preset4, CL)
 
     void set_default_current_preset();
 

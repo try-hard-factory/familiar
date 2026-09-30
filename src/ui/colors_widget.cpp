@@ -21,7 +21,7 @@ using namespace familiar::log;
 
 namespace {
 
-constexpr int kSwatchDiameter = 30;
+constexpr int kswatchDiameter = 30;
 
 // Fixed mid-gray, not settings_style::palette().border (#D8D8D8) - that
 // value is tuned for hairlines against this window's own fixed white
@@ -31,22 +31,22 @@ constexpr int kSwatchDiameter = 30;
 // visually). This is the swatch's own edge against the page, not a
 // window-chrome hairline, so it gets its own darker constant instead of
 // reusing that one.
-const QColor kSwatchBorderColor(0xB0, 0xB0, 0xB0);
+const QColor kswatchBorderColor(0xB0, 0xB0, 0xB0);
 
-QIcon makeSwatchIcon(const QColor& color, qreal dpr)
+QIcon make_swatch_icon(const QColor& color, qreal dpr)
 {
-    QPixmap pm(QSize(kSwatchDiameter, kSwatchDiameter) * dpr);
+    QPixmap pm(QSize(kswatchDiameter, kswatchDiameter) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
-    QPen border(kSwatchBorderColor);
+    QPen border(kswatchBorderColor);
     border.setWidthF(1.5);
     p.setPen(border);
     p.setBrush(color);
     p.drawEllipse(
-        QRectF(1.0, 1.0, kSwatchDiameter - 2.0, kSwatchDiameter - 2.0));
+        QRectF(1.0, 1.0, kswatchDiameter - 2.0, kswatchDiameter - 2.0));
     p.end();
 
     QIcon icon;
@@ -61,25 +61,25 @@ ColorsWidget::ColorsWidget(QWidget* parent)
     : QWidget(parent)
     , layout_(new QVBoxLayout(this))
     , opacitySlider_(new ExtendedSlider())
-    , header_layout_(new QHBoxLayout())
-    , body_layout_(new QHBoxLayout())
-    , slider_layout_(new QHBoxLayout())
-    , bottom_layout_(new QHBoxLayout())
+    , headerLayout_(new QHBoxLayout())
+    , bodyLayout_(new QHBoxLayout())
+    , sliderLayout_(new QHBoxLayout())
+    , bottomLayout_(new QHBoxLayout())
 {
     layout_->setAlignment(Qt::AlignTop);
 
-    labelsInit();
-    presetsInit();
-    colorInit();
-    sliderInit();
-    saveResetBtnsInit();
+    labels_init();
+    presets_init();
+    color_init();
+    slider_init();
+    save_reset_btns_init();
 
-    layout_->addLayout(header_layout_);
-    layout_->addLayout(body_layout_);
+    layout_->addLayout(headerLayout_);
+    layout_->addLayout(bodyLayout_);
     layout_->addSpacing(50);
-    layout_->addLayout(slider_layout_);
+    layout_->addLayout(sliderLayout_);
     layout_->addSpacing(50);
-    layout_->addLayout(bottom_layout_);
+    layout_->addLayout(bottomLayout_);
 
     setLayout(layout_);
 }
@@ -90,22 +90,22 @@ ColorsWidget::~ColorsWidget()
     delete layout_;
 }
 
-void ColorsWidget::labelsInit()
+void ColorsWidget::labels_init()
 {
-    auto* presets_lbl = new QLabel(tr("Presets"));
-    presets_lbl->setAlignment(Qt::AlignLeft);
-    auto* colors_lbl = new QLabel(tr("Colors"));
-    colors_lbl->setAlignment(Qt::AlignCenter);
-    header_layout_->addWidget(presets_lbl);
-    header_layout_->addWidget(colors_lbl);
+    auto* presetsLbl = new QLabel(tr("Presets"));
+    presetsLbl->setAlignment(Qt::AlignLeft);
+    auto* colorsLbl = new QLabel(tr("Colors"));
+    colorsLbl->setAlignment(Qt::AlignCenter);
+    headerLayout_->addWidget(presetsLbl);
+    headerLayout_->addWidget(colorsLbl);
 }
 
 
-void ColorsWidget::presetsInit()
+void ColorsWidget::presets_init()
 {
-    auto* presets_layout = new QVBoxLayout();
-    presets_layout->setAlignment(Qt::AlignLeft);
-    presets_layout->setSpacing(4);
+    auto* presetsLayout = new QVBoxLayout();
+    presetsLayout->setAlignment(Qt::AlignLeft);
+    presetsLayout->setSpacing(4);
 
     presetButtons_ = new QButtonGroup(this);
     presetButtons_->setExclusive(true);
@@ -153,7 +153,7 @@ void ColorsWidget::presetsInit()
         // longer category labels, so centered reads better. Same
         // selector, appended after the base sheet in this one combined
         // string - later wins on a tie, no separate stylesheet needed.
-        btn->setStyleSheet(familiar::settings_style::sidebarButtonStyleSheet()
+        btn->setStyleSheet(familiar::settings_style::sidebar_button_style_sheet()
                            + QStringLiteral("QPushButton#categoryButton {"
                                             "  padding: 4px 14px;"
                                             "  text-align: center;"
@@ -166,32 +166,32 @@ void ColorsWidget::presetsInit()
 
         const EPresets value = preset.preset;
         connect(btn, &QPushButton::clicked, this, [value]() {
-            SettingsHandler::get_instance()->setCurrentPreset(value);
+            SettingsHandler::get_instance()->set_current_preset(value);
             emit SettingsHandler::get_instance() -> presets_changed();
         });
 
         presetButtons_->addButton(btn, static_cast<int>(preset.preset));
-        presets_layout->addWidget(btn);
+        presetsLayout->addWidget(btn);
     }
 
     if (QAbstractButton* checked = presetButtons_->button(
-            SettingsHandler::get_instance()->currentPreset())) {
+            SettingsHandler::get_instance()->current_preset())) {
         checked->setChecked(true);
     }
 
     connect(SettingsHandler::get_instance(),
             &SettingsHandler::presets_changed,
             this,
-            &ColorsWidget::updateComponents);
+            &ColorsWidget::update_components);
 
-    body_layout_->addLayout(presets_layout);
+    bodyLayout_->addLayout(presetsLayout);
 }
 
 
-void ColorsWidget::colorInit()
+void ColorsWidget::color_init()
 {
-    auto* colors_layout = new QVBoxLayout();
-    colors_layout->setAlignment(Qt::AlignRight);
+    auto* colorsLayout = new QVBoxLayout();
+    colorsLayout->setAlignment(Qt::AlignRight);
 
     struct ColorRow
     {
@@ -207,38 +207,38 @@ void ColorsWidget::colorInit()
     };
 
     for (const ColorRow& row : rows) {
-        auto* row_layout = new QHBoxLayout();
-        row_layout->setAlignment(Qt::AlignRight);
+        auto* rowLayout = new QHBoxLayout();
+        rowLayout->setAlignment(Qt::AlignRight);
 
-        auto* color_lbl = new QLabel(row.label);
-        color_lbl->setAlignment(Qt::AlignRight);
-        row_layout->addWidget(color_lbl);
+        auto* colorLbl = new QLabel(row.label);
+        colorLbl->setAlignment(Qt::AlignRight);
+        rowLayout->addWidget(colorLbl);
 
         auto* swatch = new QToolButton(this);
-        swatch->setFixedSize(kSwatchDiameter, kSwatchDiameter);
+        swatch->setFixedSize(kswatchDiameter, kswatchDiameter);
         swatch->setAutoRaise(true);
         swatch->setCursor(Qt::PointingHandCursor);
         swatch->setStyleSheet(QStringLiteral(
             "QToolButton { border: none; background: transparent; }"));
-        row_layout->addWidget(swatch);
+        rowLayout->addWidget(swatch);
 
         colorSwatches_[row.idx] = swatch;
         const EPresetsColorIdx idx = row.idx;
         connect(swatch, &QToolButton::clicked, this, [this, idx]() {
-            pickColor_(idx);
+            pick_color(idx);
         });
 
-        colors_layout->addLayout(row_layout);
+        colorsLayout->addLayout(rowLayout);
     }
 
     for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
-        refreshSwatch_(static_cast<EPresetsColorIdx>(i));
+        refresh_swatch(static_cast<EPresetsColorIdx>(i));
     }
 
-    body_layout_->addLayout(colors_layout);
+    bodyLayout_->addLayout(colorsLayout);
 }
 
-void ColorsWidget::pickColor_(EPresetsColorIdx idx)
+void ColorsWidget::pick_color(EPresetsColorIdx idx)
 {
     auto* settings = SettingsHandler::get_instance();
     const auto preset = settings->get_current_color_preset();
@@ -254,13 +254,13 @@ void ColorsWidget::pickColor_(EPresetsColorIdx idx)
 
     ColorPickerDialog dialog(this, oldColor, titles.value(idx));
     connect(&dialog,
-            &ColorPickerDialog::colorChanged,
+            &ColorPickerDialog::color_changed,
             this,
             [this, settings, idx](QColor c) {
                 auto p = settings->get_current_color_preset();
                 p[idx] = c;
                 settings->set_current_color_preset(p);
-                refreshSwatch_(idx);
+                refresh_swatch(idx);
                 emit SettingsHandler::get_instance() -> settings_changed();
             });
 
@@ -271,23 +271,23 @@ void ColorsWidget::pickColor_(EPresetsColorIdx idx)
         auto p = settings->get_current_color_preset();
         p[idx] = oldColor;
         settings->set_current_color_preset(p);
-        refreshSwatch_(idx);
+        refresh_swatch(idx);
         emit SettingsHandler::get_instance() -> settings_changed();
     }
 }
 
-void ColorsWidget::refreshSwatch_(EPresetsColorIdx idx)
+void ColorsWidget::refresh_swatch(EPresetsColorIdx idx)
 {
     QToolButton* swatch = colorSwatches_[idx];
     if (!swatch) {
         return;
     }
     const auto preset = SettingsHandler::get_instance()->get_current_color_preset();
-    swatch->setIcon(makeSwatchIcon(preset[idx], devicePixelRatioF()));
+    swatch->setIcon(make_swatch_icon(preset[idx], devicePixelRatioF()));
 }
 
 
-void ColorsWidget::sliderInit()
+void ColorsWidget::slider_init()
 {
     // TODOLATER
     auto* settings = SettingsHandler::get_instance();
@@ -296,47 +296,47 @@ void ColorsWidget::sliderInit()
     opacitySlider_->setOrientation(Qt::Horizontal);
     opacitySlider_->setRange(0, 100);
     opacitySlider_->setCursor(Qt::PointingHandCursor);
-    opacitySlider_->setStyleSheet(familiar::settings_style::sliderStyleSheet());
-    slider_layout_->setAlignment(Qt::AlignBottom);
-    slider_layout_->addWidget(new QLabel(QStringLiteral("Master opacity:")));
-    slider_layout_->addWidget(opacitySlider_);
+    opacitySlider_->setStyleSheet(familiar::settings_style::slider_style_sheet());
+    sliderLayout_->setAlignment(Qt::AlignBottom);
+    sliderLayout_->addWidget(new QLabel(QStringLiteral("Master opacity:")));
+    sliderLayout_->addWidget(opacitySlider_);
 
-    opacitySlider_->setMapedValue(0, settings->get_current_opacity(), 255);
+    opacitySlider_->set_maped_value(0, settings->get_current_opacity(), 255);
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
         FLOG_DEBUG(Ch::UI,
                    "Master opacity from settings = {}",
-                   debugString(SettingsHandler::get_instance()->masterOpacity()));
+                   debug_string(SettingsHandler::get_instance()->master_opacity()));
         SettingsHandler::get_instance()->set_current_opacity(
-            opacitySlider_->mappedValue(0, 255));
+            opacitySlider_->mapped_value(0, 255));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
         emit SettingsHandler::get_instance() -> settings_changed();
     });
 }
 
 
-void ColorsWidget::saveResetBtnsInit()
+void ColorsWidget::save_reset_btns_init()
 {
     // Same filled-gray-box chrome as the window's own bottom row
     // (Restore Defaults/Import/Export, ui/settings_window.cpp) - not
     // dialog_style::styleSecondaryButton()'s outline look, which is for
     // separate modal dialogs, not buttons living inside this window.
-    QPushButton* save_to_preset_btn = new QPushButton(tr("Save to preset"),
+    QPushButton* saveToPresetBtn = new QPushButton(tr("Save to preset"),
                                                       this);
-    save_to_preset_btn->setStyleSheet(
-        familiar::settings_style::filledButtonStyleSheet());
-    connect(save_to_preset_btn,
+    saveToPresetBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
+    connect(saveToPresetBtn,
             &QPushButton::clicked,
             this,
-            &ColorsWidget::showPresetSaveWindow);
+            &ColorsWidget::show_preset_save_window);
 
     // "Reset to default" used to live here too - redundant now that the
     // window's own Restore Defaults button (settings_window.cpp) opens
     // RestoreDefaultsDialog with a Colors category covering exactly the
     // same reset, per-category checkbox and all. Max's call.
-    bottom_layout_->addWidget(save_to_preset_btn);
+    bottomLayout_->addWidget(saveToPresetBtn);
 }
 
-void ColorsWidget::showPresetSaveWindow()
+void ColorsWidget::show_preset_save_window()
 {
     PresetSaveWindow* widget = new PresetSaveWindow(parentWidget());
     widget->show();
@@ -344,18 +344,18 @@ void ColorsWidget::showPresetSaveWindow()
 }
 
 
-void ColorsWidget::updateComponents()
+void ColorsWidget::update_components()
 {
     auto* settings = SettingsHandler::get_instance();
 
     for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
-        refreshSwatch_(static_cast<EPresetsColorIdx>(i));
+        refresh_swatch(static_cast<EPresetsColorIdx>(i));
     }
 
-    opacitySlider_->setMapedValue(0, settings->get_current_opacity(), 255);
+    opacitySlider_->set_maped_value(0, settings->get_current_opacity(), 255);
 
     if (QAbstractButton* checked = presetButtons_->button(
-            settings->currentPreset())) {
+            settings->current_preset())) {
         checked->setChecked(true);
     }
 

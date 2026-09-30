@@ -148,7 +148,7 @@ void FlatComboBox::showPopup()
 
     // Маску ставим после геометрии
     QTimer::singleShot(0, container, [container]() {
-        familiar::dialog_style::applyRoundedMask(container, 6);
+        familiar::dialog_style::apply_rounded_mask(container, 6);
     });
 }
 
@@ -190,12 +190,12 @@ void FlatComboBox::paintEvent(QPaintEvent*)
 
     const qreal cx = arrowRect.center().x();
     const qreal cy = arrowRect.center().y();
-    constexpr qreal halfW = 4.0;
-    constexpr qreal halfH = 2.5;
+    constexpr qreal khalfW = 4.0;
+    constexpr qreal khalfH = 2.5;
     QPainterPath arrow;
-    arrow.moveTo(cx - halfW, cy - halfH);
-    arrow.lineTo(cx + halfW, cy - halfH);
-    arrow.lineTo(cx, cy + halfH);
+    arrow.moveTo(cx - khalfW, cy - khalfH);
+    arrow.lineTo(cx + khalfW, cy - khalfH);
+    arrow.lineTo(cx, cy + khalfH);
     arrow.closeSubpath();
     p.setPen(Qt::NoPen);
     p.setBrush(fg);

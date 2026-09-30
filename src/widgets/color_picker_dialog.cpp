@@ -23,9 +23,9 @@
 
 namespace {
 
-constexpr int kHandleRadius = 6;
+constexpr int khandleRadius = 6;
 
-QBrush checkerBrush()
+QBrush checker_brush()
 {
     // Same tiled-pixmap technique as every other drawn asset in this
     // app - built once per call is cheap enough (only paints while a
@@ -52,13 +52,13 @@ SvPicker::SvPicker(QWidget* parent)
     setCursor(Qt::CrossCursor);
 }
 
-void SvPicker::setHue(int hue)
+void SvPicker::set_hue(int hue)
 {
     hue_ = hue;
     update();
 }
 
-void SvPicker::setSv(qreal s, qreal v)
+void SvPicker::set_sv(qreal s, qreal v)
 {
     s_ = s;
     v_ = v;
@@ -90,28 +90,28 @@ void SvPicker::paintEvent(QPaintEvent* event)
     const qreal hy = (1.0 - v_) * height();
     p.setPen(QPen(Qt::white, 2));
     p.setBrush(Qt::NoBrush);
-    p.drawEllipse(QPointF(hx, hy), kHandleRadius, kHandleRadius);
+    p.drawEllipse(QPointF(hx, hy), khandleRadius, khandleRadius);
     p.setPen(QPen(QColor(0, 0, 0, 130), 1));
-    p.drawEllipse(QPointF(hx, hy), kHandleRadius + 1, kHandleRadius + 1);
+    p.drawEllipse(QPointF(hx, hy), khandleRadius + 1, khandleRadius + 1);
 }
 
-void SvPicker::pick_(const QPoint& pos)
+void SvPicker::pick(const QPoint& pos)
 {
     s_ = qBound(0.0, pos.x() / qreal(width()), 1.0);
     v_ = 1.0 - qBound(0.0, pos.y() / qreal(height()), 1.0);
     update();
-    emit svChanged(s_, v_);
+    emit sv_changed(s_, v_);
 }
 
 void SvPicker::mousePressEvent(QMouseEvent* event)
 {
-    pick_(event->pos());
+    pick(event->pos());
 }
 
 void SvPicker::mouseMoveEvent(QMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton) {
-        pick_(event->pos());
+        pick(event->pos());
     }
 }
 
@@ -126,7 +126,7 @@ HueSlider::HueSlider(QWidget* parent)
     setCursor(Qt::PointingHandCursor);
 }
 
-void HueSlider::setHue(int hue)
+void HueSlider::set_hue(int hue)
 {
     hue_ = hue;
     update();
@@ -153,22 +153,22 @@ void HueSlider::paintEvent(QPaintEvent* event)
     p.drawEllipse(QPointF(hx, height() / 2.0), r, r);
 }
 
-void HueSlider::pick_(const QPoint& pos)
+void HueSlider::pick(const QPoint& pos)
 {
     hue_ = qBound(0, int(pos.x() / qreal(width()) * 359), 359);
     update();
-    emit hueChanged(hue_);
+    emit hue_changed(hue_);
 }
 
 void HueSlider::mousePressEvent(QMouseEvent* event)
 {
-    pick_(event->pos());
+    pick(event->pos());
 }
 
 void HueSlider::mouseMoveEvent(QMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton) {
-        pick_(event->pos());
+        pick(event->pos());
     }
 }
 
@@ -183,13 +183,13 @@ AlphaSlider::AlphaSlider(QWidget* parent)
     setCursor(Qt::PointingHandCursor);
 }
 
-void AlphaSlider::setRgb(const QColor& rgb)
+void AlphaSlider::set_rgb(const QColor& rgb)
 {
     rgb_ = rgb;
     update();
 }
 
-void AlphaSlider::setAlpha(int alpha)
+void AlphaSlider::set_alpha(int alpha)
 {
     alpha_ = alpha;
     update();
@@ -204,7 +204,7 @@ void AlphaSlider::paintEvent(QPaintEvent* event)
     QPainterPath track;
     track.addRoundedRect(rect(), height() / 2.0, height() / 2.0);
     p.setClipPath(track);
-    p.fillRect(rect(), checkerBrush());
+    p.fillRect(rect(), checker_brush());
 
     QLinearGradient grad(0, 0, width(), 0);
     QColor c0 = rgb_;
@@ -223,22 +223,22 @@ void AlphaSlider::paintEvent(QPaintEvent* event)
     p.drawEllipse(QPointF(hx, height() / 2.0), r, r);
 }
 
-void AlphaSlider::pick_(const QPoint& pos)
+void AlphaSlider::pick(const QPoint& pos)
 {
     alpha_ = qBound(0, int(pos.x() / qreal(width()) * 255), 255);
     update();
-    emit alphaChanged(alpha_);
+    emit alpha_changed(alpha_);
 }
 
 void AlphaSlider::mousePressEvent(QMouseEvent* event)
 {
-    pick_(event->pos());
+    pick(event->pos());
 }
 
 void AlphaSlider::mouseMoveEvent(QMouseEvent* event)
 {
     if (event->buttons() & Qt::LeftButton) {
-        pick_(event->pos());
+        pick(event->pos());
     }
 }
 
@@ -246,8 +246,8 @@ void AlphaSlider::mouseMoveEvent(QMouseEvent* event)
 // SwatchRow
 // ============================================================================
 namespace {
-constexpr int kSwatchSize = 26;
-constexpr int kSwatchSpacing = 6;
+constexpr int kswatchSize = 26;
+constexpr int kswatchSpacing = 6;
 } // namespace
 
 SwatchRow::SwatchRow(bool withNone, const QColor& accent, QWidget* parent)
@@ -269,10 +269,10 @@ SwatchRow::SwatchRow(bool withNone, const QColor& accent, QWidget* parent)
         colors_.prepend(QColor(0, 0, 0, 0));
     }
 
-    setFixedHeight(kSwatchSize);
+    setFixedHeight(kswatchSize);
 }
 
-void SwatchRow::setCurrent(const QColor& color)
+void SwatchRow::set_current(const QColor& color)
 {
     current_ = color;
     update();
@@ -285,20 +285,20 @@ void SwatchRow::setCurrent(const QColor& color)
 // past the dialog's edge - fixed per-swatch pixel math clipped the last
 // couple of swatches off the right side of the panel, confirmed
 // visually).
-QRectF SwatchRow::cellRect_(int index) const
+QRectF SwatchRow::cell_rect(int index) const
 {
     const int count = static_cast<int>(colors_.size());
     if (count == 0) {
         return QRectF();
     }
     const qreal cellW = width() / qreal(count);
-    const qreal size = qMin(cellW - kSwatchSpacing, qreal(height()));
+    const qreal size = qMin(cellW - kswatchSpacing, qreal(height()));
     const qreal x = index * cellW + (cellW - size) / 2.0;
     const qreal y = (height() - size) / 2.0;
     return QRectF(x, y, size, size);
 }
 
-int SwatchRow::swatchAt_(const QPoint& pos) const
+int SwatchRow::swatch_at(const QPoint& pos) const
 {
     const int count = static_cast<int>(colors_.size());
     if (count == 0) {
@@ -308,7 +308,7 @@ int SwatchRow::swatchAt_(const QPoint& pos) const
     if (idx < 0 || idx >= count) {
         return -1;
     }
-    return cellRect_(idx).contains(pos) ? idx : -1;
+    return cell_rect(idx).contains(pos) ? idx : -1;
 }
 
 void SwatchRow::paintEvent(QPaintEvent* event)
@@ -318,7 +318,7 @@ void SwatchRow::paintEvent(QPaintEvent* event)
     p.setRenderHint(QPainter::Antialiasing);
 
     for (int i = 0; i < colors_.size(); ++i) {
-        const QRectF r = cellRect_(i);
+        const QRectF r = cell_rect(i);
         const QColor& c = colors_[i];
         if (c.alpha() == 0) {
             // "None" swatch - checkerboard + a diagonal slash, same
@@ -327,7 +327,7 @@ void SwatchRow::paintEvent(QPaintEvent* event)
             clip.addRoundedRect(r, 5, 5);
             p.save();
             p.setClipPath(clip);
-            p.fillRect(r, checkerBrush());
+            p.fillRect(r, checker_brush());
             p.setPen(QPen(QColor(200, 60, 60), 2));
             p.drawLine(r.topLeft(), r.bottomRight());
             p.restore();
@@ -351,9 +351,9 @@ void SwatchRow::paintEvent(QPaintEvent* event)
 
 void SwatchRow::mousePressEvent(QMouseEvent* event)
 {
-    const int idx = swatchAt_(event->pos());
+    const int idx = swatch_at(event->pos());
     if (idx >= 0) {
-        emit swatchPicked(colors_[idx]);
+        emit swatch_picked(colors_[idx]);
     }
 }
 
@@ -463,33 +463,33 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     buttonRow->setSpacing(8);
     buttonRow->addStretch();
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-    familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
     connect(cancelBtn, &QPushButton::clicked, this, &ColorPickerDialog::reject);
     buttonRow->addWidget(cancelBtn);
     auto* okBtn = new QPushButton(tr("OK"), this);
-    familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+    familiar::dialog_style::style_primary_button(okBtn, accent);
     okBtn->setDefault(true);
     connect(okBtn, &QPushButton::clicked, this, &ColorPickerDialog::accept);
     buttonRow->addWidget(okBtn);
     outer->addLayout(buttonRow);
 
-    connect(svPicker_, &SvPicker::svChanged, this, [this](qreal s, qreal v) {
+    connect(svPicker_, &SvPicker::sv_changed, this, [this](qreal s, qreal v) {
         QColor c = QColor::fromHsv(hueSlider_->hue(),
                                    int(s * 255),
                                    int(v * 255),
                                    current_.alpha());
-        setColor_(c, svPicker_);
+        set_color(c, svPicker_);
     });
-    connect(hueSlider_, &HueSlider::hueChanged, this, [this](int hue) {
+    connect(hueSlider_, &HueSlider::hue_changed, this, [this](int hue) {
         int h, s, v, a;
         current_.getHsv(&h, &s, &v, &a);
-        setColor_(QColor::fromHsv(hue, s, v, a), hueSlider_);
+        set_color(QColor::fromHsv(hue, s, v, a), hueSlider_);
     });
     if (alphaSlider_) {
-        connect(alphaSlider_, &AlphaSlider::alphaChanged, this, [this](int a) {
+        connect(alphaSlider_, &AlphaSlider::alpha_changed, this, [this](int a) {
             QColor c = current_;
             c.setAlpha(a);
-            setColor_(c, alphaSlider_);
+            set_color(c, alphaSlider_);
         });
     }
     connect(hexEdit_, &QLineEdit::editingFinished, this, [this] {
@@ -501,7 +501,7 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
             return;
         }
         c.setAlpha(current_.alpha());
-        setColor_(c, hexEdit_);
+        set_color(c, hexEdit_);
     });
     if (percentEdit_) {
         connect(percentEdit_, &QLineEdit::editingFinished, this, [this] {
@@ -512,24 +512,24 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
             }
             QColor c = current_;
             c.setAlpha(qRound(pct * 255.0 / 100.0));
-            setColor_(c, percentEdit_);
+            set_color(c, percentEdit_);
         });
     }
-    connect(swatchRow_, &SwatchRow::swatchPicked, this, [this](QColor c) {
+    connect(swatchRow_, &SwatchRow::swatch_picked, this, [this](QColor c) {
         if (!withAlpha_) {
             c.setAlpha(255);
         }
-        setColor_(c, swatchRow_);
+        set_color(c, swatchRow_);
     });
 
-    setColor_(current_, nullptr);
+    set_color(current_, nullptr);
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("ColorPickerDialog",
+    setStyleSheet(familiar::dialog_style::panel_style_sheet("ColorPickerDialog",
                                                           background,
                                                           border,
                                                           textColor,
                                                           /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("cpdCloseBtn",
+                  + familiar::dialog_style::close_button_style_sheet("cpdCloseBtn",
                                                                   textColor,
                                                                   accent)
                   + QStringLiteral("QLineEdit {"
@@ -544,7 +544,7 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     centered_widget(parent ? parent : this, this);
 }
 
-void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
+void ColorPickerDialog::set_color(const QColor& color, QObject* source)
 {
     current_ = color;
 
@@ -558,20 +558,20 @@ void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
     const int effectiveHue = h < 0 ? hueSlider_->hue() : h;
 
     if (source != hueSlider_) {
-        hueSlider_->setHue(effectiveHue);
+        hueSlider_->set_hue(effectiveHue);
     }
     if (source != svPicker_) {
-        svPicker_->setSv(s / 255.0, v / 255.0);
+        svPicker_->set_sv(s / 255.0, v / 255.0);
     }
     // Always resync, regardless of source - setHue() just repaints, it
     // doesn't emit anything, so this can't cause a feedback loop, and
     // the SV square's gradient needs the current hue to render at all.
-    svPicker_->setHue(effectiveHue);
+    svPicker_->set_hue(effectiveHue);
 
     if (alphaSlider_) {
-        alphaSlider_->setRgb(color);
+        alphaSlider_->set_rgb(color);
         if (source != alphaSlider_) {
-            alphaSlider_->setAlpha(color.alpha());
+            alphaSlider_->set_alpha(color.alpha());
         }
     }
     if (source != hexEdit_) {
@@ -583,7 +583,7 @@ void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
             + QStringLiteral("%"));
     }
 
-    swatchRow_->setCurrent(color);
+    swatchRow_->set_current(color);
 
     QPixmap pm(previewSwatch_->size());
     pm.fill(Qt::transparent);
@@ -593,12 +593,12 @@ void ColorPickerDialog::setColor_(const QColor& color, QObject* source)
         QPainterPath clip;
         clip.addRoundedRect(pm.rect(), 5, 5);
         p.setClipPath(clip);
-        p.fillRect(pm.rect(), checkerBrush());
+        p.fillRect(pm.rect(), checker_brush());
         p.fillRect(pm.rect(), color);
     }
     previewSwatch_->setPixmap(pm);
 
-    emit colorChanged(color);
+    emit color_changed(color);
 }
 
 void ColorPickerDialog::mousePressEvent(QMouseEvent* event)
@@ -611,7 +611,7 @@ void ColorPickerDialog::mousePressEvent(QMouseEvent* event)
     QDialog::mousePressEvent(event);
 }
 
-QColor showColorPickerDialog(QWidget* parent,
+QColor show_color_picker_dialog(QWidget* parent,
                              const QColor& initial,
                              const QString& title,
                              bool withAlpha)
@@ -620,5 +620,5 @@ QColor showColorPickerDialog(QWidget* parent,
     if (dlg.exec() != QDialog::Accepted) {
         return QColor();
     }
-    return dlg.selectedColor();
+    return dlg.selected_color();
 }

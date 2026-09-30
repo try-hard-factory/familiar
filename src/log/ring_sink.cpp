@@ -14,7 +14,7 @@ namespace {
 // for (this app never logs at those). Collapsed onto the closest real
 // severity rather than dropped, so a stray one still shows up somewhere
 // sensible instead of vanishing from the ring entirely.
-Level fromQuillLevel(quill::LogLevel level)
+Level from_quill_level(quill::LogLevel level)
 {
     switch (level) {
     case quill::LogLevel::TraceL3:
@@ -69,7 +69,7 @@ void RingSink::write_log(
                            ? logStatement.size() - 1
                            : logStatement.size();
     const QString line = QString::fromUtf8(logStatement.data(), int(len));
-    const Level level = fromQuillLevel(logLevel);
+    const Level level = from_quill_level(logLevel);
 
     {
         QMutexLocker locker(&mutex_);
@@ -79,7 +79,7 @@ void RingSink::write_log(
         }
     }
 
-    emit entryAdded(level, line);
+    emit entry_added(level, line);
 }
 
 void RingSink::flush_sink() noexcept {}
