@@ -39,11 +39,8 @@ Bool::Bool(bool def)
 
 bool Bool::check(const QVariant& val)
 {
-    QString str = val.toString();
-    if (str != "true" && str != "false") {
-        return false;
-    }
-    return true;
+    const QString str = val.toString();
+    return ((str == "true") || (str == "false"));
 }
 
 QVariant Bool::fallback()
@@ -64,11 +61,8 @@ KeySequence::KeySequence(const QKeySequence& fallback)
 
 bool KeySequence::check(const QVariant& val)
 {
-    QString str = val.toString();
-    if (!str.isEmpty() && QKeySequence(str).toString().isEmpty()) {
-        return false;
-    }
-    return true;
+    const QString str = val.toString();
+    return str.isEmpty() || !QKeySequence(str).toString().isEmpty();
 }
 
 QVariant KeySequence::fallback()
@@ -83,7 +77,7 @@ QString KeySequence::expected()
 
 QVariant KeySequence::representation(const QVariant& val)
 {
-    QString str(val.toString());
+    const QString str = val.toString();
     if (QKeySequence(str) == QKeySequence(Qt::Key_Return)) {
         return QStringLiteral("Enter");
     }
@@ -92,7 +86,7 @@ QVariant KeySequence::representation(const QVariant& val)
 
 QVariant KeySequence::process(const QVariant& val)
 {
-    QString str(val.toString());
+    const QString str = val.toString();
     if (str == "Enter") {
         return QKeySequence(Qt::Key_Return).toString();
     }
@@ -110,9 +104,9 @@ BoundedInt::BoundedInt(int min, int max, int def)
 
 bool BoundedInt::check(const QVariant& val)
 {
-    QString str = val.toString();
-    bool conversionOk;
-    int num = str.toInt(&conversionOk);
+    const QString str = val.toString();
+    bool conversionOk = false;
+    const int num = str.toInt(&conversionOk);
     return conversionOk && mMin_ <= num && num <= mMax_;
 }
 
@@ -149,7 +143,7 @@ QVariant Color::process(const QVariant& val)
     QColor color(str);
     if (str.length() == 9 && str[0] == '#') {
         // Convert #RRGGBBAA (flameshot) to #AARRGGBB (QColor)
-        int blue = color.blue();
+        const int blue = color.blue();
         color.setBlue(color.green());
         color.setGreen(color.red());
         color.setRed(color.alpha());
@@ -169,7 +163,7 @@ QVariant Color::representation(const QVariant& val)
     QColor color(str);
     if (str.length() == 9 && str[0] == '#') {
         // Convert #AARRGGBB (QColor) to #RRGGBBAA (flameshot)
-        int alpha = color.alpha();
+        const int alpha = color.alpha();
         color.setAlpha(color.red());
         color.setRed(color.green());
         color.setGreen(color.blue());

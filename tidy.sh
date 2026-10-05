@@ -117,11 +117,12 @@ for arg in "$@"; do
     esac
 done
 
-run-clang-tidy -p "$ROOT" -j"$(nproc)" \
+run-clang-tidy -p "$ROOT" -j"$(nproc)" -quiet \
     -extra-arg=-Wno-unknown-warning-option \
     "${CHECKS[@]}" "${ARGS[@]}" "$FILE_RE" 2>&1 |
+    grep --line-buffered -vE '^[0-9]+ warnings? generated\.$' |
     tee "$LOG"
-# PIPESTATUS, not $?: the latter is tee's status, which is 0 even when
+# PIPESTATUS[0], not $?: the latter is tee's status, which is 0 even when
 # run-clang-tidy died. Needed for the "no findings" case below - a run
 # that never started looks exactly like a clean one in the log.
 RC=${PIPESTATUS[0]}
