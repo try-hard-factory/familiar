@@ -369,8 +369,8 @@ void CanvasView::recalc_scene_rect()
     // scrolling back to whatever (tiny/default) sceneRect() Qt derives on
     // its own from zero items, so nothing ever actually scrolls there and
     // drawBackground() never gets asked to paint it.
-    QRectF itemsRect = scene_->itemsBoundingRect();
-    QRectF rect = itemsRect.isEmpty() ? canvasRect_ : itemsRect;
+    const QRectF itemsRect = scene_->itemsBoundingRect();
+    const QRectF rect = itemsRect.isEmpty() ? canvasRect_ : itemsRect;
     if (rect.isEmpty()) {
         return;
     }
@@ -507,9 +507,9 @@ void CanvasView::update_group_toolbar_pos()
 
 double CanvasView::get_zoom_size(std::function<double(double, double)> func) const
 {
-    QRectF rect = scene_->itemsBoundingRect();
-    QPoint tl = mapFromScene(rect.topLeft());
-    QPoint br = mapFromScene(rect.bottomRight());
+    const QRectF rect = scene_->itemsBoundingRect();
+    const QPoint tl = mapFromScene(rect.topLeft());
+    const QPoint br = mapFromScene(rect.bottomRight());
     return func(double(br.x() - tl.x()), double(br.y() - tl.y()));
 }
 
@@ -524,19 +524,19 @@ void CanvasView::zoom(double delta, QPointF anchor)
         return;
     }
 
-    QPoint anchorPt(qRound(anchor.x()), qRound(anchor.y()));
-    QPointF refPoint = mapToScene(anchorPt);
+    const QPoint anchorPt(qRound(anchor.x()), qRound(anchor.y()));
+    const QPointF refPoint = mapToScene(anchorPt);
 
     if (delta == 0.0) {
         return;
     }
 
-    double factor = 1.0 + std::abs(delta / 1000.0);
+    const double factor = 1.0 + std::abs(delta / 1000.0);
     // The min/max-size clamp below is measured against the items
     // themselves (getZoomSize() -> scene_->itemsBoundingRect()), so it's
     // meaningless with no items - an empty (but sceneEverHadItems_)
     // canvas has nothing to clamp against and should just zoom freely.
-    bool hasItems = !scene_->items().isEmpty();
+    const bool hasItems = !scene_->items().isEmpty();
     if (delta > 0) {
         if (!hasItems || get_zoom_size([](double w, double h) {
                              return std::max(w, h);
@@ -616,9 +616,9 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
     if (activeMode_ == kModeSampleColor) {
         if (event->button() == Qt::LeftButton) {
-            QColor color = scene_->sample_color_at(mapToScene(event->pos()));
+            const QColor color = scene_->sample_color_at(mapToScene(event->pos()));
             if (color.isValid()) {
-                QString name = color.name();
+                const QString name = color.name();
                 QApplication::clipboard()->setText(name);
                 scene_->internalClipboard.clear();
                 FLOG_DEBUG(Ch::View, "Copied color to clipboard: {}", name);
@@ -672,7 +672,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
 {
     if (activeMode_ == kModePan) {
         reset_previous_transform();
-        QPointF pos = event->position();
+        const QPointF pos = event->position();
         pan(eventStart_ - pos);
         eventStart_ = pos;
         event->accept();
@@ -681,7 +681,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
 
     if (activeMode_ == kModeZoom) {
         reset_previous_transform();
-        QPointF pos = event->position();
+        const QPointF pos = event->position();
         double delta = (eventStart_ - pos).y();
         if (eventInverted_) {
             delta *= -1;
@@ -751,7 +751,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
     // detached via on_selection_changed(), and re-showing it here too
     // would undo that.
     QList<QGraphicsItem*> selected = scene_->selectedItems(true);
-    if (GifItem* item = gifToolbar_->item()) {
+    if (const GifItem* item = gifToolbar_->item()) {
         if (!gifToolbar_->isVisible() && selected.size() == 1
             && selected.first() == item) {
             gifToolbar_->show();
@@ -759,7 +759,7 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
             update_gif_toolbar_pos();
         }
     }
-    if (GroupItem* item = groupToolbar_->item()) {
+    if (const GroupItem* item = groupToolbar_->item()) {
         if (!groupToolbar_->isVisible() && selected.size() == 1
             && selected.first() == item) {
             groupToolbar_->show();
@@ -876,7 +876,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
 void CanvasView::drawBackground(QPainter* painter,
                                 [[maybe_unused]] const QRectF& rect)
 {
-    qreal opacity = qreal(currentOpacity_) / 255.0;
+    const qreal opacity = qreal(currentOpacity_) / 255.0;
     painter->setOpacity(opacity);
     setCacheMode(CacheNone);
     painter->save();
@@ -918,7 +918,7 @@ QString extract_first_img_src(const QString& html)
     static const QRegularExpression
         re(QStringLiteral("<img[^>]*\\ssrc=[\"']([^\"']*)[\"']"),
            QRegularExpression::CaseInsensitiveOption);
-    QRegularExpressionMatch match = re.match(html);
+    const QRegularExpressionMatch match = re.match(html);
     return match.hasMatch() ? match.captured(1) : QString();
 }
 
@@ -926,7 +926,7 @@ QString extract_first_img_src(const QString& html)
 
 void CanvasView::dropEvent(QDropEvent* event)
 {
-    QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
+    const QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
     handle_drop(event->mimeData(), pos);
     event->acceptProposedAction();
 }
@@ -1003,9 +1003,9 @@ void CanvasView::handle_drop(const QMimeData* mimedata, const QPoint& pos)
             }
         }
         if (nonLocalIdx.size() == 1 && mimedata->hasHtml()) {
-            QString htmlSrc = extract_first_img_src(mimedata->html());
+            const QString htmlSrc = extract_first_img_src(mimedata->html());
             if (!htmlSrc.isEmpty()) {
-                QUrl htmlUrl(htmlSrc);
+                const QUrl htmlUrl(htmlSrc);
                 FLOG_DEBUG(Ch::View,
                            "Preferring rendered thumbnail over dropped page "
                            "URL: {}",
@@ -1019,7 +1019,7 @@ void CanvasView::handle_drop(const QMimeData* mimedata, const QPoint& pos)
         }
         this->do_insert_images(urls, pos);
     } else if (mimedata->hasImage()) {
-        QImage img = qvariant_cast<QImage>(mimedata->imageData());
+        const QImage img = qvariant_cast<QImage>(mimedata->imageData());
         if (!img.isNull()) {
             // TODOLATER: create PixmapItem and insert via InsertItems command
             FLOG_DEBUG(Ch::View, "Image drop not yet implemented");
@@ -1338,17 +1338,17 @@ void CanvasView::on_action_paste()
 {
     cancel_active_modes();
     FLOG_DEBUG(Ch::View, "Pasting from clipboard...");
-    QClipboard* clipboard = QApplication::clipboard();
+    const QClipboard* clipboard = QApplication::clipboard();
     QPoint pos = mapFromGlobal(cursor().pos());
 
     // See if we need to look up the internal clipboard:
-    QByteArray marker = clipboard->mimeData()->data(
+    const QByteArray marker = clipboard->mimeData()->data(
         QStringLiteral("familiar/items"));
     FLOG_DEBUG(Ch::View, "Custom data in clipboard: {}", debug_string(marker));
     if (!marker.isEmpty() && !scene_->internalClipboard.isEmpty()) {
         // Checking that the internal clipboard exists since the user
         // may have opened a new scene since copying.
-        bool wasEmpty = scene_->items().isEmpty();
+        const bool wasEmpty = scene_->items().isEmpty();
         scene_->paste_from_internal_clipboard(mapToScene(pos));
         if (wasEmpty) {
             // First items in this scene
@@ -1368,9 +1368,9 @@ void CanvasView::on_action_paste()
     // inside that page's own JS context, alongside the real image bytes
     // under image/* - grabbing that directly sidesteps the unusable URL
     // entirely rather than trying and failing to "download" it).
-    QImage img = clipboard->image();
+    const QImage img = clipboard->image();
     if (!img.isNull()) {
-        bool wasEmpty = scene_->items().isEmpty();
+        const bool wasEmpty = scene_->items().isEmpty();
         auto* item = new PixmapItem(img);
         undoStack_->push(new InsertItemsCommand(scene_,
                                                 QList<IBaseItem*>{item},
@@ -1398,14 +1398,14 @@ void CanvasView::on_action_paste()
     // dropped URL (handles a plain http(s) link, an embedded data: URI,
     // or a Google Images redirect - see fileio.cpp's ImageImportSession::run()).
     if (clipboard->mimeData()->hasHtml()) {
-        QString src = extract_first_img_src(clipboard->mimeData()->html());
+        const QString src = extract_first_img_src(clipboard->mimeData()->html());
         if (!src.isEmpty()) {
             do_insert_images(QList<QUrl>{QUrl(src)}, pos);
             return;
         }
     }
 
-    QString text = clipboard->text();
+    const QString text = clipboard->text();
     if (!text.isEmpty()) {
         auto* item = new TextItem(text);
         item->setScale(1.0 / get_scale());
@@ -1448,7 +1448,7 @@ void CanvasView::on_action_fit_scene()
     // project that was saved with zero items - QGraphicsView::
     // fitInView() silently no-ops on a null rect, so this is a no-op
     // itself for a scene that's genuinely never had any content either.
-    QRectF rect = scene_->itemsBoundingRect();
+    const QRectF rect = scene_->itemsBoundingRect();
     fit_rect(rect.isEmpty() ? canvasRect_ : rect);
 }
 
@@ -1721,7 +1721,7 @@ void CanvasView::on_action_sample_color()
         scene_->multiselect_item_->lower_behind_selection();
     }
 
-    QPoint pos = mapFromGlobal(cursor().pos());
+    const QPoint pos = mapFromGlobal(cursor().pos());
     sampleColorWidget_ = new SampleColorWidget(this,
                                                pos,
                                                scene_->sample_color_at(
@@ -1903,8 +1903,8 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
 void CanvasView::do_insert_images(const QList<QUrl>& urls,
                                   std::optional<QPoint> pos)
 {
-    QPoint insertPos = pos.value_or(get_view_center().toPoint());
-    QPointF scenePos = mapToScene(insertPos);
+    const QPoint insertPos = pos.value_or(get_view_center().toPoint());
+    const QPointF scenePos = mapToScene(insertPos);
 
     insertImagesNewScene_ = scene_->items().isEmpty();
     insertImagesInsertedItems_.clear();

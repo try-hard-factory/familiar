@@ -963,7 +963,7 @@ private slots:
     {
         if (!ignoreChange_) {
             ignoreChange_ = true;
-            QSize scaled = defaultSize_.scaled(width,
+            const QSize scaled = defaultSize_.scaled(width,
                                                kmaxSize,
                                                Qt::KeepAspectRatio);
             heightInput_->setValue(scaled.height());
@@ -975,7 +975,7 @@ private slots:
     {
         if (!ignoreChange_) {
             ignoreChange_ = true;
-            QSize scaled = defaultSize_.scaled(kmaxSize,
+            const QSize scaled = defaultSize_.scaled(kmaxSize,
                                                height,
                                                Qt::KeepAspectRatio);
             widthInput_->setValue(scaled.width());
@@ -1009,7 +1009,7 @@ public:
         , undoStack_(undoStack)
         , command_(new ChangeOpacityCommand(items, 1.0))
     {
-        int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
+        const int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
 
         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
@@ -1207,7 +1207,7 @@ public:
         layout->addWidget(label);
         setLayout(layout);
 
-        QColor color = QApplication::palette().color(QPalette::Window);
+        const QColor color = QApplication::palette().color(QPalette::Window);
         setStyleSheet(QString("background-color: rgba(%1, %2, %3, 0.9); "
                               "padding: 0.7em; border-radius: 5px;")
                           .arg(color.red())
@@ -1215,7 +1215,7 @@ public:
                           .arg(color.blue()));
 
         show();
-        int x = (parent->width() - width()) / 2;
+        const int x = (parent->width() - width()) / 2;
         move(x, 10);
 
         QTimer::singleShot(1000 * 3, this, &QObject::deleteLater);
@@ -1257,7 +1257,7 @@ public:
 protected:
     void paintEvent(QPaintEvent*) override
     {
-        QColor color = mColor_.isValid() ? mColor_ : QColor(0, 0, 0, 0);
+        const QColor color = mColor_.isValid() ? mColor_ : QColor(0, 0, 0, 0);
         QPainter painter(this);
         painter.setBrush(QBrush(color));
         painter.setPen(Qt::NoPen);

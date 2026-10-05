@@ -102,7 +102,7 @@ private:
             = SettingsHandler::get_instance()->get_current_color_preset();
         QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
         QColor text = colorPreset[EPresetsColorIdx::kTextColor];
-        QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
+        const QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
         QColor selection = colorPreset[EPresetsColorIdx::kSelectionColor];
 
         auto rgba = [](const QColor& c, int alpha) {
@@ -241,7 +241,7 @@ private:
     // Python's _post_create_functions loop in build_menu_and_actions().
     void fire_initial_checkable_callbacks()
     {
-        for (Action* action : get_actions().all()) {
+        for (const Action* action : get_actions().all()) {
             if (action->checkable && !action->callback.isEmpty()
                 && action->qaction) {
                 QMetaObject::invokeMethod(static_cast<T*>(this),
@@ -258,7 +258,7 @@ private:
         for (const MenuNode& node : nodes) {
             switch (node.type) {
             case MenuNode::Type::Action:
-                if (Action* a = get_actions().find(node.id)) {
+                if (const Action* a = get_actions().find(node.id)) {
                     menu->addAction(a->qaction);
                 }
                 break;
@@ -303,7 +303,7 @@ private:
             const QString aid = QStringLiteral("recent_files_%1").arg(i);
             const int key = (i == 9) ? 0 : i + 1;
 
-            Action a = Action::make(aid,
+            const Action a = Action::make(aid,
                                     QStringLiteral("File %1").arg(i + 1),
                                     {},
                                     {QStringLiteral("Ctrl+%1").arg(key)},

@@ -27,19 +27,19 @@ void GamutPainterThread::run()
     painter.setBrush(QBrush(Qt::black));
     painter.setPen(Qt::NoPen);
 
-    QPoint center(kradius, kradius);
+    const QPoint center(kradius, kradius);
     painter.drawEllipse(center, kradius, kradius);
 
     for (auto it = gamut.constBegin(); it != gamut.constEnd(); ++it) {
         if (it.value() < mThreshold_) {
             continue;
         }
-        int hue = it.key().first;
-        int saturation = it.key().second;
-        double hypotenuse = saturation / 255.0 * kradius;
-        double angle = M_PI / 180.0 * (-90.0 - hue);
-        int x = int(std::sin(angle) * hypotenuse) + center.x();
-        int y = int(std::cos(angle) * hypotenuse) + center.y();
+        const int hue = it.key().first;
+        const int saturation = it.key().second;
+        const double hypotenuse = saturation / 255.0 * kradius;
+        const double angle = M_PI / 180.0 * (-90.0 - hue);
+        const int x = int(std::sin(angle) * hypotenuse) + center.x();
+        const int y = int(std::cos(angle) * hypotenuse) + center.y();
         QColor color;
         color.setHsv(hue, saturation, 255);
         painter.setBrush(QBrush(color));
@@ -89,9 +89,9 @@ void GamutWidget::paintEvent(QPaintEvent*)
     QPainter painter(this);
     painter.setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
     if (!mImage_.isNull()) {
-        int size = std::min(width(), height());
-        double x = std::max((width() - size) / 2.0, 0.0);
-        double y = std::max((height() - size) / 2.0, 0.0);
+        const int size = std::min(width(), height());
+        const double x = std::max((width() - size) / 2.0, 0.0);
+        const double y = std::max((height() - size) / 2.0, 0.0);
         painter.drawImage(QRectF(x, y, size, size), mImage_);
     } else {
         painter.drawText(10, 20, "Counting pixels...");

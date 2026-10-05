@@ -34,8 +34,8 @@ QUrl unwrap_known_redirect(const QUrl& url)
 {
     if (url.host().endsWith(QStringLiteral("google.com"))
         && url.path().contains(QStringLiteral("imgres"))) {
-        QUrlQuery query(url);
-        QString imgUrl = query.queryItemValue(QStringLiteral("imgurl"),
+        const QUrlQuery query(url);
+        const QString imgUrl = query.queryItemValue(QStringLiteral("imgurl"),
                                               QUrl::FullyDecoded);
         if (!imgUrl.isEmpty()) {
             return QUrl(imgUrl);
@@ -277,7 +277,7 @@ bool is_animated(const QByteArray& bytes)
     QBuffer buf;
     buf.setData(bytes);
     buf.open(QIODevice::ReadOnly);
-    QImageReader reader(&buf);
+    const QImageReader reader(&buf);
     return reader.imageCount() > 1;
 }
 
@@ -288,20 +288,20 @@ bool is_animated(const QByteArray& bytes)
 // '+'/'/'/'=' along the way - safe either way.
 LoadedImage decode_data_url(const QUrl& url)
 {
-    QString full = url.toString(QUrl::FullyEncoded);
+    const QString full = url.toString(QUrl::FullyEncoded);
     if (!full.startsWith(QStringLiteral("data:"))) {
         return {};
     }
-    QString payload = full.mid(5);
-    int commaIdx = static_cast<int>(payload.indexOf(QLatin1Char(',')));
+    const QString payload = full.mid(5);
+    const int commaIdx = static_cast<int>(payload.indexOf(QLatin1Char(',')));
     if (commaIdx < 0) {
         return {};
     }
-    QString header = payload.left(commaIdx);
-    QByteArray decoded = QByteArray::fromPercentEncoding(
+    const QString header = payload.left(commaIdx);
+    const QByteArray decoded = QByteArray::fromPercentEncoding(
         payload.mid(commaIdx + 1).toLatin1());
 
-    QByteArray bytes = header.contains(QStringLiteral("base64"),
+    const QByteArray bytes = header.contains(QStringLiteral("base64"),
                                        Qt::CaseInsensitive)
                            ? QByteArray::fromBase64(decoded)
                            : decoded;
@@ -578,11 +578,11 @@ void ImageImportSession::run(ThreadedIO* worker)
                    == 0) {
             label = rawUrl.toString();
             FLOG_DEBUG(Ch::IO, "Decoding embedded data: image");
-            LoadedImage loaded = decode_data_url(rawUrl);
+            const LoadedImage loaded = decode_data_url(rawUrl);
             img = loaded.image;
             bytes = loaded.bytes;
         } else {
-            QUrl url = unwrap_known_redirect(rawUrl);
+            const QUrl url = unwrap_known_redirect(rawUrl);
             label = url.toString();
             if (url.scheme().compare(QStringLiteral("http"), Qt::CaseInsensitive)
                     == 0
@@ -593,7 +593,7 @@ void ImageImportSession::run(ThreadedIO* worker)
                 if (!netManager) {
                     netManager = new QNetworkAccessManager();
                 }
-                LoadedImage loaded = download_image(*netManager, url, worker);
+                const LoadedImage loaded = download_image(*netManager, url, worker);
                 img = loaded.image;
                 bytes = loaded.bytes;
             } else {
@@ -690,7 +690,7 @@ void ImageImportSession::run(ThreadedIO* worker)
         // matching what PixmapItem::set_pos_center() would do for a
         // fresh item (scale 1, rotation 0). Computed after the possible
         // downscale above so the item is centered on its final size.
-        QPointF topLeft = pos_ - QPointF(img.width() / 2.0, img.height() / 2.0);
+        const QPointF topLeft = pos_ - QPointF(img.width() / 2.0, img.height() / 2.0);
 
         QVariantMap itemData;
         if (animated) {
@@ -745,7 +745,7 @@ void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
 {
     FLOG_DEBUG(Ch::IO, "Loading from file {} ...", filename);
 
-    FmlResult result = FmlArchive::load(filename, scene, worker);
+    const FmlResult result = FmlArchive::load(filename, scene, worker);
 
     if (worker) {
         emit worker->finished(result.error, result.itemErrors);
@@ -772,7 +772,7 @@ void save_fml(const QString& filename,
     // is a reasonable stand-in once this does get wired up, but it's
     // really meant as a one-shot value read right after a load, not an
     // ongoing substitute for the view's own canvasRect().
-    FmlResult result = FmlArchive::save(scene,
+    const FmlResult result = FmlArchive::save(scene,
                                         scene->remembered_bounding_rect(),
                                         filename,
                                         worker);

@@ -382,9 +382,9 @@ public:
         qreal viewScale = 1.0;
 
         if (this->scene()) {
-            QList<QGraphicsView*> views = this->scene()->views();
+            const QList<QGraphicsView*> views = this->scene()->views();
             if (!views.isEmpty()) {
-                CanvasView* view = dynamic_cast<CanvasView*>(views.at(0));
+                const CanvasView* view = dynamic_cast<CanvasView*>(views.at(0));
                 viewScale = view->get_scale();
             }
         }
@@ -404,23 +404,23 @@ public:
 
     QRectF select_handle_free_center() const
     {
-        qreal size = fixed_length_for_viewport(selectFreeCenter_);
-        qreal x = this->center().x() - size / 2;
-        qreal y = this->center().y() - size / 2;
+        const qreal size = fixed_length_for_viewport(selectFreeCenter_);
+        const qreal x = this->center().x() - size / 2;
+        const qreal y = this->center().y() - size / 2;
         return QRectF(x, y, size, size);
     }
 
     void draw_debug_shape(
         QPainter* painter, const QRectF& shape, int r, int g, int b) const
     {
-        QColor color(r, g, b, 50);
+        const QColor color(r, g, b, 50);
         painter->fillRect(shape, color);
     }
 
     void draw_debug_shape(
         QPainter* painter, const QPainterPath& shape, int r, int g, int b) const
     {
-        QColor color(r, g, b, 50);
+        const QColor color(r, g, b, 50);
         painter->fillPath(shape, color);
     }
 
@@ -471,9 +471,9 @@ public:
         qreal outlineOpacity = 1.0;
         if (static_cast<Mixin*>(this)->fades_with_window_focus()
             && this->scene()) {
-            QList<QGraphicsView*> views = this->scene()->views();
+            const QList<QGraphicsView*> views = this->scene()->views();
             if (!views.isEmpty()) {
-                if (CanvasView* view = dynamic_cast<CanvasView*>(views.at(0))) {
+                if (const CanvasView* view = dynamic_cast<CanvasView*>(views.at(0))) {
                     outlineOpacity = view->selection_outline_opacity();
                 }
             }
@@ -600,9 +600,9 @@ public:
     QPainterPath get_scale_bounds(const QPointF& corner, qreal margin = 0) const
     {
         QPainterPath path;
-        qreal size = select_resize_size();
-        qreal x = corner.x() - size / 2 - margin;
-        qreal y = corner.y() - size / 2 - margin;
+        const qreal size = select_resize_size();
+        const qreal x = corner.x() - size / 2 - margin;
+        const qreal y = corner.y() - size / 2 - margin;
         path.addRect(x, y, size + 2 * margin, size + 2 * margin);
 
         return path;
@@ -642,9 +642,9 @@ public:
 
     std::vector<EdgeBounds> get_edge_bounds()
     {
-        qreal outerMargin = select_resize_size() / 2;
-        qreal innerMargin = select_resize_size() / 2;
-        QPointF origin = this->bounding_rect_unselected().topLeft();
+        const qreal outerMargin = select_resize_size() / 2;
+        const qreal innerMargin = select_resize_size() / 2;
+        const QPointF origin = this->bounding_rect_unselected().topLeft();
 
         std::vector<EdgeBounds> edgeBounds;
         edgeBounds.reserve(4);
@@ -741,7 +741,7 @@ protected:
             return;
         }
 
-        QPointF pos = event->pos();
+        const QPointF pos = event->pos();
         if (is_in_handle_free_center(pos)) {
             this->unset_cursor();
             return;
@@ -937,9 +937,9 @@ protected:
         // dimension for an edge-midpoint drag - using the diagonal for
         // both (as this used to) under-scaled edge drags, since the
         // diagonal is always longer than either side alone.
-        QPointF p = event->scenePos() - eventStart_;
-        QPointF direction = eventDirection_;
-        qreal delta = QPointF::dotProduct(direction, p) / scaleRefLength_;
+        const QPointF p = event->scenePos() - eventStart_;
+        const QPointF direction = eventDirection_;
+        const qreal delta = QPointF::dotProduct(direction, p) / scaleRefLength_;
         return (scaleOrigFactor_ + delta) / scaleOrigFactor_;
     }
 
@@ -961,13 +961,13 @@ protected:
     QPointF get_direction_from_center(const QPointF& pos) const
     {
         auto diff = pos - this->center_scene_coords();
-        qreal length = std::sqrt(QPointF::dotProduct(diff, diff));
+        const qreal length = std::sqrt(QPointF::dotProduct(diff, diff));
         return diff / length;
     }
 
     qreal get_rotate_angle(const QPointF& pos) const
     {
-        QPointF diff = pos - eventAnchor_;
+        const QPointF diff = pos - eventAnchor_;
         return -std::atan2(diff.x(), diff.y()) * 180 / M_PI;
     }
 
@@ -984,7 +984,7 @@ protected:
 
     Qt::CursorShape get_corner_scale_cursor(const QPointF& corner)
     {
-        bool isTopLeftOrBottomRight
+        const bool isTopLeftOrBottomRight
             = (corner == this->bounding_rect_unselected().topLeft()
                || corner == this->bounding_rect_unselected().bottomRight());
         return get_diag_cursor(isTopLeftOrBottomRight);
@@ -993,7 +993,7 @@ protected:
     Qt::CursorShape get_diag_cursor(bool isTopLeftOrBottomRight)
     {
         auto rotation = std::fmod(this->rotation(), 180);
-        bool flipped = (this->flip() == -1);
+        const bool flipped = (this->flip() == -1);
 
         if (isTopLeftOrBottomRight) {
             if ((22.5 < rotation) && (rotation < 67.5)) {
@@ -1034,7 +1034,7 @@ protected:
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        QPointF pos = event->scenePos();
+        const QPointF pos = event->scenePos();
         if ((pos - eventStart_).manhattanLength() > 5) {
             // Reset previous transform when movement exceeds threshold
             CanvasView* view = dynamic_cast<CanvasView*>(
@@ -1043,7 +1043,7 @@ protected:
         }
 
         if (active_mode_ == kScaleMode) {
-            qreal factor = get_scale_factor(event);
+            const qreal factor = get_scale_factor(event);
             // begin/end_group_batch(): a group's own scale drags every
             // one of selection_action_items()'s flat entries
             // independently, each already correctly anchored - an
@@ -1072,7 +1072,7 @@ protected:
                          || event->modifiers()
                                 == Qt::KeyboardModifier::ControlModifier);
 
-            qreal delta = get_rotate_delta(event->scenePos(), snap);
+            const qreal delta = get_rotate_delta(event->scenePos(), snap);
             // Same reasoning as kScaleMode above.
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             if (scene) {
@@ -1127,7 +1127,7 @@ protected:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
         if (active_mode_ == kScaleMode) {
-            qreal factor = get_scale_factor(event);
+            const qreal factor = get_scale_factor(event);
             if (factor != 1) {
                 // TODOLATER: static or dynamic? assert?
                 auto* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -1144,7 +1144,7 @@ protected:
         } else if (active_mode_ == kRotateMode) {
             CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
             scene->on_selection_change(); // or emit selectionChange()
-            qreal delta = get_rotate_delta(event->scenePos());
+            const qreal delta = get_rotate_delta(event->scenePos());
             if (delta != 0) {
                 scene->undo_stack_->push(
                     new RotateItemsByCommand(static_cast<Mixin*>(this)
@@ -1196,19 +1196,19 @@ protected:
 public:
     bool is_in_handle_free_center(const QPointF& pos) const
     {
-        QRectF rect = select_handle_free_center();
+        const QRectF rect = select_handle_free_center();
         return rect.contains(pos);
     }
 
     bool is_in_scale_handle(const QPointF& corner, const QPointF& pos) const
     {
-        QPainterPath rect = get_scale_bounds(corner);
+        const QPainterPath rect = get_scale_bounds(corner);
         return rect.contains(pos);
     }
 
     bool is_in_rotate_handle(const QPointF& corner, const QPointF& pos) const
     {
-        QPainterPath rect = get_rotate_bounds(corner);
+        const QPainterPath rect = get_rotate_bounds(corner);
         return rect.contains(pos);
     }
     bool is_in_edge_handle(const QRectF& rect, const QPointF& pos) const

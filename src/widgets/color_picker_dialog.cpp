@@ -474,7 +474,7 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     outer->addLayout(buttonRow);
 
     connect(svPicker_, &SvPicker::sv_changed, this, [this](qreal s, qreal v) {
-        QColor c = QColor::fromHsv(hueSlider_->hue(),
+        const QColor c = QColor::fromHsv(hueSlider_->hue(),
                                    int(s * 255),
                                    int(v * 255),
                                    current_.alpha());

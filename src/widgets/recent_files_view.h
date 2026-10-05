@@ -52,7 +52,7 @@ public:
             return QSize(0, 0);
         }
 
-        int height
+        const int height
             = std::accumulate(files_.begin(),
                               files_.end(),
                               0,
@@ -76,14 +76,14 @@ public:
                         ->index(static_cast<int>(files_.indexOf(file)), 0)
                         .column());
             });
-        int width = 2 + *std::ranges::max_element(columnWidths);
+        const int width = 2 + *std::ranges::max_element(columnWidths);
         return QSize(width, height);
     }
 
 protected:
     void mouseMoveEvent(QMouseEvent* event) override
     {
-        QModelIndex index = indexAt(event->position().toPoint());
+        const QModelIndex index = indexAt(event->position().toPoint());
         if (index.isValid()) {
             setCursor(Qt::PointingHandCursor);
         } else {
