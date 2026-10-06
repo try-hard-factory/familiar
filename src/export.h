@@ -47,10 +47,16 @@ public:
         = 0;
 
 protected:
-    CanvasScene* scene_;
+    CanvasScene* scene() const { return scene_; }
     // Scene's itemsBoundingRect() rounded to a QSize, grown by a 3%
     // margin - the size offered by SceneToPixmapExporterDialog and used
-    // unconditionally by SceneToSVGExporter (which doesn't ask).
+    // unconditionally by SceneToSVGExporter (which doesn't ask). Both are
+    // computed once in this class's constructor; subclasses only read them.
+    QSize default_size() const { return defaultSize_; }
+    qreal margin() const { return margin_; }
+
+private:
+    CanvasScene* scene_;
     QSize defaultSize_;
     qreal margin_ = 0;
 };

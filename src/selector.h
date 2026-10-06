@@ -146,8 +146,8 @@ public:
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
 
         if (scene) {
-            scene->max_z = qMax(scene->max_z, value);
-            scene->min_z = qMin(scene->min_z, value);
+            scene->set_max_z(qMax(scene->max_z(), value));
+            scene->set_min_z(qMin(scene->min_z(), value));
         } else {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "BaseItemMixin::setZValue Scene not found");
@@ -158,7 +158,7 @@ public:
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
-            set_z_value(scene->max_z + scene->Z_STEP);
+            set_z_value(scene->max_z() + scene->z_step());
         } else {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "BaseItemMixin::bring_to_front Scene not found");
@@ -362,8 +362,15 @@ public:
         kFieldResizeMode = 3,
     };
 
+private:
     EItemMode active_mode_{kNone};
 
+protected:
+    // Subclasses (GroupItem::itemChange()) need the exact mode, not just
+    // is_action_active()'s boolean.
+    EItemMode active_mode() const { return active_mode_; }
+
+public:
     explicit SelectableMixin(T* parent = nullptr)
         : BaseItemMixin<T>(parent)
     {}
@@ -1131,7 +1138,7 @@ protected:
             if (factor != 1) {
                 // TODOLATER: static or dynamic? assert?
                 auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new ScaleItemsByCommand(static_cast<Mixin*>(this)
                                                 ->selection_action_items(),
                                             factor,
@@ -1146,7 +1153,7 @@ protected:
             scene->on_selection_change(); // or emit selectionChange()
             const qreal delta = get_rotate_delta(event->scenePos());
             if (delta != 0) {
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new RotateItemsByCommand(static_cast<Mixin*>(this)
                                                  ->selection_action_items(),
                                              delta,
@@ -1303,7 +1310,7 @@ public:
         }
 
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        this->setZValue(minZ - scene->Z_STEP);
+        this->setZValue(minZ - scene->z_step());
     }
 
     void fit_selection_area(const QRectF& rect)
@@ -1450,6 +1457,7 @@ public:
         return QVector<QPointF>();
     }
 
+private:
     QColor color{Qt::black};
     QPen pen{color};
 };

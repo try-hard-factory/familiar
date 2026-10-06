@@ -655,10 +655,10 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
             // right back into "checked=false" territory above and
             // return early anyway (harmless), but blocking it is more
             // direct about "this click didn't actually happen".
-            if (Action* a = get_actions().find("transparent_to_mouse");
-                a && a->qaction) {
-                const QSignalBlocker blocker(a->qaction);
-                a->qaction->setChecked(false);
+            if (const Action* a = get_actions().find("transparent_to_mouse");
+                a && a->qaction()) {
+                const QSignalBlocker blocker(a->qaction());
+                a->qaction()->setChecked(false);
             }
             return;
         }
@@ -673,9 +673,9 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
         // WE who flipped it; already-on beforehand means it's the user's
         // own independent choice, left alone either way.
         forcedAlwaysOnTopForTransparency_ = false;
-        if (Action* a = get_actions().find("always_on_top");
-            a && a->qaction && !a->qaction->isChecked()) {
-            a->qaction->setChecked(true);
+        if (const Action* a = get_actions().find("always_on_top");
+            a && a->qaction() && !a->qaction()->isChecked()) {
+            a->qaction()->setChecked(true);
             forcedAlwaysOnTopForTransparency_ = true;
         }
         // The very act of destroy()+create()+show() below re-activating
@@ -686,8 +686,8 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
         sawDeactivationSinceTransparentEnabled_ = false;
     } else if (forcedAlwaysOnTopForTransparency_) {
         forcedAlwaysOnTopForTransparency_ = false;
-        if (Action* a = get_actions().find("always_on_top"); a && a->qaction) {
-            a->qaction->setChecked(false);
+        if (const Action* a = get_actions().find("always_on_top"); a && a->qaction()) {
+            a->qaction()->setChecked(false);
         }
     }
 
@@ -761,14 +761,14 @@ void MainWindow::ensure_menubar()
     // Mirror the existing checkable always_on_top action instead of
     // duplicating its destroy()/create() logic - toggling either side
     // keeps the other in sync through the QAction.
-    if (const Action* a = get_actions().find("always_on_top"); a && a->qaction) {
+    if (const Action* a = get_actions().find("always_on_top"); a && a->qaction()) {
         onTopBtn->setCheckable(true);
-        onTopBtn->setChecked(a->qaction->isChecked());
+        onTopBtn->setChecked(a->qaction()->isChecked());
         connect(onTopBtn,
                 &QToolButton::clicked,
-                a->qaction,
+                a->qaction(),
                 &QAction::setChecked);
-        connect(a->qaction,
+        connect(a->qaction(),
                 &QAction::toggled,
                 onTopBtn,
                 &QToolButton::setChecked);
@@ -925,14 +925,14 @@ void MainWindow::apply_menubar_state()
     ensure_menubar();
 
     const Action* show = get_actions().find("show_menubar");
-    Action* autoHide = get_actions().find("auto_hide_ui");
-    const bool shown = show && show->qaction && show->qaction->isChecked();
-    const bool wantAutoHide = autoHide && autoHide->qaction
-                              && autoHide->qaction->isChecked();
+    const Action* autoHide = get_actions().find("auto_hide_ui");
+    const bool shown = show && show->qaction() && show->qaction()->isChecked();
+    const bool wantAutoHide = autoHide && autoHide->qaction()
+                              && autoHide->qaction()->isChecked();
 
     // Auto-hide is meaningless without a menu bar - grey it out.
-    if (autoHide && autoHide->qaction) {
-        autoHide->qaction->setEnabled(shown);
+    if (autoHide && autoHide->qaction()) {
+        autoHide->qaction()->setEnabled(shown);
     }
 
     autoHideUi_ = shown && wantAutoHide;
@@ -970,7 +970,7 @@ void MainWindow::update_menubar_geometry()
     menubar_->raise();
 
     const Action* show = get_actions().find("show_menubar");
-    const bool shown = show && show->qaction && show->qaction->isChecked();
+    const bool shown = show && show->qaction() && show->qaction()->isChecked();
     // The strip is reserved whenever the menu bar is enabled, auto-hide
     // included: the tab bar sits at the very top of the central widget,
     // i.e. exactly under the reveal zone - an overlaying bar would cover
@@ -1562,9 +1562,9 @@ void MainWindow::changeEvent(QEvent* event)
                 // Posting this for the next event loop iteration lets
                 // Qt's own notification finish first.
                 QTimer::singleShot(0, this, [] {
-                    if (Action* a = get_actions().find("transparent_to_mouse");
-                        a && a->qaction) {
-                        a->qaction->setChecked(false);
+                    if (const Action* a = get_actions().find("transparent_to_mouse");
+                        a && a->qaction()) {
+                        a->qaction()->setChecked(false);
                     }
                 });
             }

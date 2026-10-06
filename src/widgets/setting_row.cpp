@@ -301,9 +301,9 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     // setValue() (via setCurrentIndex) happens before this connect(), so
     // it can't fire onValueChanged() with nothing listening yet - no
     // ignoreValueChanged_ guard needed.
-    set_value(settings.value_or_default(key_));
-    hbox_->addWidget(input_);
-    ignoreValueChanged_ = false;
+    set_value(settings.value_or_default(settings_key()));
+    hbox()->addWidget(input_);
+    set_ignore_value_changed(false);
 
     connect(input_,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -333,7 +333,7 @@ void ComboSettingRow::set_value(const QVariant& value)
 
 QString ComboSettingRow::default_value_display_text() const
 {
-    const QString def = FamSettings().value_or_default(key_).toString();
+    const QString def = FamSettings().value_or_default(settings_key()).toString();
     for (const ComboOption& opt : options_) {
         if (opt.value == def) {
             return opt.label;
@@ -370,9 +370,9 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     input_->setFixedSize(22, 22);
 
     const FamSettings settings;
-    set_value(settings.value_or_default(key_));
-    hbox_->addWidget(input_);
-    ignoreValueChanged_ = false;
+    set_value(settings.value_or_default(settings_key()));
+    hbox()->addWidget(input_);
+    set_ignore_value_changed(false);
 
     // checkStateChanged(Qt::CheckState) only exists from Qt 6.9 on;
     // stateChanged(int) is deprecated there but still present. This
@@ -416,7 +416,7 @@ QVariant CheckboxSettingRow::convert_value_from_qt(const QVariant& value)
 
 QString CheckboxSettingRow::default_value_display_text() const
 {
-    return FamSettings().value_or_default(key_).toBool() ? tr("Checked")
+    return FamSettings().value_or_default(settings_key()).toBool() ? tr("Checked")
                                                        : tr("Unchecked");
 }
 
@@ -441,9 +441,9 @@ IntegerSettingRow::IntegerSettingRow(
     const FamSettings settings;
     input_->setRange(min, max);
     input_->setFixedWidth(kcontrolWidth);
-    set_value(settings.value_or_default(key_));
-    hbox_->addWidget(input_);
-    ignoreValueChanged_ = false;
+    set_value(settings.value_or_default(settings_key()));
+    hbox()->addWidget(input_);
+    set_ignore_value_changed(false);
 
     connect(input_, &QSpinBox::valueChanged, this, [this](int v) {
         on_value_changed(v);

@@ -26,35 +26,38 @@ Action Action::make(const QString& id,
                     bool enabled,
                     const QString& menuId)
 {
-    return {id,
-            text,
-            callback,
-            shortcuts,
-            checkable,
-            checked,
-            group,
-            settingsKey,
-            enabled,
-            menuId,
-            nullptr};
+    // Field-by-field, not a braced aggregate init: the members are private
+    // now, which rules out aggregate initialization.
+    Action a;
+    a.id_ = id;
+    a.text_ = text;
+    a.callback_ = callback;
+    a.shortcuts_ = shortcuts;
+    a.checkable_ = checkable;
+    a.checked_ = checked;
+    a.group_ = group;
+    a.settingsKey_ = settingsKey;
+    a.enabled_ = enabled;
+    a.menuId_ = menuId;
+    return a;
 }
 
 QStringList Action::get_shortcuts() const
 {
     return SettingsHandler::get_instance()
-        ->get_shortcuts(QString::fromLatin1(ksettingsGroup), id, shortcuts);
+        ->get_shortcuts(QString::fromLatin1(ksettingsGroup), id_, shortcuts_);
 }
 
 void Action::set_shortcuts(const QStringList& values)
 {
     SettingsHandler::get_instance()
-        ->set_shortcuts(QString::fromLatin1(ksettingsGroup), id, values);
-    if (qaction) {
+        ->set_shortcuts(QString::fromLatin1(ksettingsGroup), id_, values);
+    if (qaction_) {
         QList<QKeySequence> seqs;
         for (const QString& s : values) {
             seqs.append(QKeySequence(s));
         }
-        qaction->setShortcuts(seqs);
+        qaction_->setShortcuts(seqs);
     }
 }
 
@@ -69,13 +72,13 @@ QKeySequence Action::get_key_sequence(int index) const
 
 bool Action::shortcuts_changed() const
 {
-    return get_shortcuts() != shortcuts;
+    return get_shortcuts() != shortcuts_;
 }
 
 QString Action::get_default_shortcut(int index) const
 {
-    if (index < shortcuts.size()) {
-        return shortcuts[index];
+    if (index < shortcuts_.size()) {
+        return shortcuts_[index];
     }
     return {};
 }
@@ -84,7 +87,7 @@ QList<Binding> Action::get_mouse_bindings() const
 {
     const QStringList serialized
         = KeyboardSettings().get_list(QString::fromLatin1(ksettingsGroup),
-                                     id + QStringLiteral("_mouse"),
+                                     id_ + QStringLiteral("_mouse"),
                                      {});
     QList<Binding> out;
     for (const QString& s : serialized) {
@@ -100,14 +103,14 @@ void Action::set_mouse_bindings(const QList<Binding>& values)
         serialized.append(b.serialize());
     }
     KeyboardSettings().set_list(QString::fromLatin1(ksettingsGroup),
-                               id + QStringLiteral("_mouse"),
+                               id_ + QStringLiteral("_mouse"),
                                serialized,
                                {});
 }
 
 QString Action::display_text() const
 {
-    QString t = text;
+    QString t = text_;
     t.replace(QLatin1String("&&"), QLatin1String("\x01"));
     t.remove(QLatin1Char('&'));
     t.replace(QLatin1String("\x01"), QLatin1String("&"));
@@ -118,7 +121,7 @@ QString Action::display_text() const
 
 void ActionRegistry::add(Action action)
 {
-    const QString id = action.id;
+    const QString id = action.id();
     if (!map_.contains(id)) {
         order_.append(id);
     }
@@ -164,7 +167,7 @@ Action* ActionRegistry::find_by_shortcut(const QString& excludeId,
         return nullptr;
     }
     for (Action* a : all()) {
-        if (a->id == excludeId) {
+        if (a->id() == excludeId) {
             continue;
         }
         if (a->get_shortcuts().contains(shortcut)) {
@@ -177,16 +180,16 @@ Action* ActionRegistry::find_by_shortcut(const QString& excludeId,
 Action* ActionRegistry::find_by_mouse_binding(const QString& excludeId,
                                            const Binding& candidate)
 {
-    if (candidate.mouseButton.isEmpty()) {
+    if (candidate.mouse_button().isEmpty()) {
         return nullptr;
     }
     for (Action* a : all()) {
-        if (a->id == excludeId) {
+        if (a->id() == excludeId) {
             continue;
         }
         for (const Binding& b : a->get_mouse_bindings()) {
-            if (b.mouseButton == candidate.mouseButton
-                && same_modifiers(b.mouseModifiers, candidate.mouseModifiers)) {
+            if (b.mouse_button() == candidate.mouse_button()
+                && same_modifiers(b.mouse_modifiers(), candidate.mouse_modifiers())) {
                 return a;
             }
         }

@@ -320,7 +320,7 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
     }
 
     for (int i = 0; i < count; ++i) {
-        if (worker && worker->canceled) {
+        if (worker && worker->is_canceled()) {
             break;
         }
 
@@ -442,7 +442,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
 
     bool canceled = false;
     for (int i = 0; i < items.size(); ++i) {
-        if (worker && worker->canceled) {
+        if (worker && worker->is_canceled()) {
             canceled = true;
             break;
         }
@@ -635,7 +635,7 @@ FmlResult FmlArchive::load(const QString& filename,
     }
 
     for (int i = 0; i < manifest->items.size(); ++i) {
-        if (worker && worker->canceled) {
+        if (worker && worker->is_canceled()) {
             break;
         }
 

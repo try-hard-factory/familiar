@@ -156,7 +156,10 @@ public:
     // dragged is always non-null (Qt doesn't start a drag without a
     // current item); target is null when dropped on empty space below
     // the last root row.
-    std::function<void(QTreeWidgetItem* dragged, QTreeWidgetItem* target)> onDrop;
+    using DropHandler
+        = std::function<void(QTreeWidgetItem* dragged, QTreeWidgetItem* target)>;
+
+    void set_on_drop(DropHandler handler) { onDrop_ = std::move(handler); }
 
 protected:
     void dropEvent(QDropEvent* event) override
@@ -180,10 +183,13 @@ protected:
         // thing that ever deletes tree nodes.
         event->setDropAction(Qt::IgnoreAction);
         event->accept();
-        if (dragged && onDrop) {
-            onDrop(dragged, target);
+        if (dragged && onDrop_) {
+            onDrop_(dragged, target);
         }
     }
+
+private:
+    DropHandler onDrop_;
 };
 
 // Rename prompt (HierarchyPanel::startRename_()) - a real, small, modal
@@ -344,9 +350,9 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     tree_->setAcceptDrops(true);
     tree_->setDropIndicatorShown(true);
     tree_->setDragDropMode(QAbstractItemView::InternalMove);
-    tree->onDrop = [this](QTreeWidgetItem* dragged, QTreeWidgetItem* target) {
+    tree->set_on_drop([this](QTreeWidgetItem* dragged, QTreeWidgetItem* target) {
         handle_tree_drop(dragged, target);
-    };
+    });
     connect(tree_,
             &QTreeWidget::itemClicked,
             this,
@@ -590,9 +596,9 @@ QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
         label = QObject::tr("Group");
         icon = make_group_icon(text);
     } else if (auto* picture = dynamic_cast<PixmapItem*>(item)) {
-        label = picture->filename_.isEmpty()
+        label = picture->filename().isEmpty()
                     ? QObject::tr("Untitled")
-                    : QFileInfo(picture->filename_).fileName();
+                    : QFileInfo(picture->filename()).fileName();
         icon = make_picture_icon(picture->pixmap(), text);
     } else if (auto* txt = dynamic_cast<TextItem*>(item)) {
         const QString plain = txt->toPlainText().trimmed();
@@ -818,9 +824,9 @@ void HierarchyPanel::start_rename(QTreeWidgetItem* node)
         return;
     }
 
-    const QString currentLabel = picture->filename_.isEmpty()
+    const QString currentLabel = picture->filename().isEmpty()
                                      ? tr("Untitled")
-                                     : QFileInfo(picture->filename_).fileName();
+                                     : QFileInfo(picture->filename()).fileName();
     const QString newName = dlg.text().trimmed();
     if (newName.isEmpty() || newName == currentLabel) {
         return;
@@ -830,8 +836,8 @@ void HierarchyPanel::start_rename(QTreeWidgetItem* node)
                "startRename_: '{}' -> '{}'",
                currentLabel.toStdString(),
                newName.toStdString());
-    scene_->undo_stack_->push(
-        new RenamePictureCommand(picture, picture->filename_, newName));
+    scene_->undo_stack()->push(
+        new RenamePictureCommand(picture, picture->filename(), newName));
 }
 
 void HierarchyPanel::sync_selection_from_scene()

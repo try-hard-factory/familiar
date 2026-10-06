@@ -89,9 +89,9 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
     Action action = Action::make(QStringLiteral("test_add_alias_dialog"),
                                  QStringLiteral("Test"));
     SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                     action.id);
+                                                     action.id());
     SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), action.id + QStringLiteral("_mouse"));
+        QStringLiteral("Actions"), action.id() + QStringLiteral("_mouse"));
     ActionBindingTarget target(&action);
     ASSERT_TRUE(target.bindings().isEmpty());
 
@@ -112,14 +112,14 @@ TEST(AddAliasDialogTest, ClickingApplyWithNoConflictAppendsBindingToTarget)
 
     const QList<Binding> bindings = target.bindings();
     ASSERT_EQ(bindings.size(), 1);
-    EXPECT_EQ(bindings.first().keySequence,
+    EXPECT_EQ(bindings.first().key_sequence(),
              QStringLiteral("Ctrl+Alt+Shift+F24"));
     EXPECT_EQ(dialog.result(), int(QDialog::Accepted));
 
     SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                     action.id);
+                                                     action.id());
     SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), action.id + QStringLiteral("_mouse"));
+        QStringLiteral("Actions"), action.id() + QStringLiteral("_mouse"));
 }
 
 TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
@@ -135,7 +135,7 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
                                  {},
                                  {QStringLiteral("Ctrl+Alt+Shift+F20")});
     SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                     action.id);
+                                                     action.id());
     ActionBindingTarget target(&action);
     ASSERT_EQ(target.bindings().size(), 1); // the default, not yet overridden
 
@@ -155,11 +155,11 @@ TEST(RebindDialogTest, ClickingApplyReplacesBindingAtIndex)
 
     const QList<Binding> bindings = target.bindings();
     ASSERT_EQ(bindings.size(), 1); // replaced in place, not appended
-    EXPECT_EQ(bindings.first().keySequence,
+    EXPECT_EQ(bindings.first().key_sequence(),
              QStringLiteral("Ctrl+Alt+Shift+F23"));
 
     SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                     action.id);
+                                                     action.id());
 }
 
 TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
@@ -169,7 +169,7 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
                                  {},
                                  {QStringLiteral("Ctrl+Alt+Shift+F20")});
     SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                     action.id);
+                                                     action.id());
     ActionBindingTarget target(&action);
     // Diverge from the default first, same as RebindDialogTest above.
     target.set_bindings(
@@ -188,11 +188,11 @@ TEST(RebindDialogTest, ClickingDefaultRestoresDefaultBindingAndApplies)
 
     const QList<Binding> bindings = target.bindings();
     ASSERT_EQ(bindings.size(), 1);
-    EXPECT_EQ(bindings.first().keySequence,
+    EXPECT_EQ(bindings.first().key_sequence(),
              QStringLiteral("Ctrl+Alt+Shift+F20"));
 
     SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                     action.id);
+                                                     action.id());
 }
 
 TEST(BindingEditorDialogBaseTest,
@@ -218,12 +218,12 @@ TEST(BindingEditorDialogBaseTest,
     TestBindingEditorDialog dialog(&target);
 
     Binding original;
-    original.keySequence = QStringLiteral("Ctrl+P");
+    original.set_key_sequence(QStringLiteral("Ctrl+P"));
     dialog.populate_from(original);
 
     const Binding collected = dialog.collect_binding();
-    EXPECT_EQ(collected.keySequence, QStringLiteral("Ctrl+P"));
-    EXPECT_TRUE(collected.mouseButton.isEmpty());
+    EXPECT_EQ(collected.key_sequence(), QStringLiteral("Ctrl+P"));
+    EXPECT_TRUE(collected.mouse_button().isEmpty());
 }
 
 TEST(BindingEditorDialogBaseTest,
@@ -234,10 +234,10 @@ TEST(BindingEditorDialogBaseTest,
     TestBindingEditorDialog dialog(&target);
 
     Binding original;
-    original.mouseButton = QStringLiteral("Middle");
+    original.set_mouse_button(QStringLiteral("Middle"));
     dialog.populate_from(original);
 
-    EXPECT_EQ(dialog.collect_binding().mouseButton, QStringLiteral("Middle"));
+    EXPECT_EQ(dialog.collect_binding().mouse_button(), QStringLiteral("Middle"));
 }
 
 TEST(BindingEditorDialogBaseTest, WheelControlUsesModifierCheckboxesNotButton)
@@ -251,16 +251,16 @@ TEST(BindingEditorDialogBaseTest, WheelControlUsesModifierCheckboxesNotButton)
     TestBindingEditorDialog dialog(&target);
 
     Binding original;
-    original.mouseModifiers = {QStringLiteral("Shift")};
-    original.inverted = true;
+    original.set_mouse_modifiers({QStringLiteral("Shift")});
+    original.set_inverted(true);
     dialog.populate_from(original);
 
     const Binding collected = dialog.collect_binding();
-    EXPECT_EQ(collected.mouseModifiers, QStringList{QStringLiteral("Shift")});
+    EXPECT_EQ(collected.mouse_modifiers(), QStringList{QStringLiteral("Shift")});
     // Wheel targets never populate the button field - see
     // BindingEditorDialogBase's own constructor comment (no button to
     // combine modifiers with for a wheel scroll).
-    EXPECT_TRUE(collected.mouseButton.isEmpty());
+    EXPECT_TRUE(collected.mouse_button().isEmpty());
     // invertCheck_ only exists because pan_horizontal isInvertible().
-    EXPECT_TRUE(collected.inverted);
+    EXPECT_TRUE(collected.is_inverted());
 }

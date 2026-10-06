@@ -161,8 +161,8 @@ private:
     {
         qaction->setCheckable(true);
 
-        const QString settingsKey = action->settingsKey;
-        const bool defaultChecked = action->checked;
+        const QString settingsKey = action->settings_key();
+        const bool defaultChecked = action->initially_checked();
         qaction->setChecked(defaultChecked);
 
         if (!settingsKey.isEmpty()) {
@@ -175,8 +175,8 @@ private:
             });
         }
 
-        if (!action->callback.isEmpty()) {
-            const QByteArray cb = action->callback.toUtf8();
+        if (!action->callback().isEmpty()) {
+            const QByteArray cb = action->callback().toUtf8();
             QObject::connect(qaction,
                              &QAction::toggled,
                              static_cast<T*>(this),
@@ -192,7 +192,7 @@ private:
     void create_actions()
     {
         for (Action* action : get_actions().all()) {
-            QAction* qaction = new QAction(action->text, static_cast<T*>(this));
+            QAction* qaction = new QAction(action->text(), static_cast<T*>(this));
             qaction->setAutoRepeat(false);
 
             const QStringList shortcuts = action->get_shortcuts();
@@ -204,10 +204,10 @@ private:
                 qaction->setShortcuts(seqs);
             }
 
-            if (action->checkable) {
+            if (action->is_checkable()) {
                 init_action_checkable(action, qaction);
-            } else if (!action->callback.isEmpty()) {
-                const QByteArray cb = action->callback.toUtf8();
+            } else if (!action->callback().isEmpty()) {
+                const QByteArray cb = action->callback().toUtf8();
                 QObject::connect(qaction,
                                  &QAction::triggered,
                                  static_cast<T*>(this),
@@ -221,14 +221,14 @@ private:
 
             static_cast<T*>(this)->addAction(qaction);
 
-            if (!action->group.isEmpty()) {
-                actionGroups_[action->group].append(qaction);
+            if (!action->group().isEmpty()) {
+                actionGroups_[action->group()].append(qaction);
                 qaction->setEnabled(false);
             } else {
-                qaction->setEnabled(action->enabled);
+                qaction->setEnabled(action->is_enabled());
             }
 
-            action->qaction = qaction;
+            action->set_qaction(qaction);
         }
     }
 
@@ -242,13 +242,13 @@ private:
     void fire_initial_checkable_callbacks()
     {
         for (const Action* action : get_actions().all()) {
-            if (action->checkable && !action->callback.isEmpty()
-                && action->qaction) {
+            if (action->is_checkable() && !action->callback().isEmpty()
+                && action->qaction()) {
                 QMetaObject::invokeMethod(static_cast<T*>(this),
-                                          action->callback.toUtf8().constData(),
+                                          action->callback().toUtf8().constData(),
                                           Qt::DirectConnection,
                                           Q_ARG(bool,
-                                                action->qaction->isChecked()));
+                                                action->qaction()->isChecked()));
             }
         }
     }
@@ -259,7 +259,7 @@ private:
             switch (node.type) {
             case MenuNode::Type::Action:
                 if (const Action* a = get_actions().find(node.id)) {
-                    menu->addAction(a->qaction);
+                    menu->addAction(a->qaction());
                 }
                 break;
             case MenuNode::Type::Separator:
@@ -338,7 +338,7 @@ private:
                                          Q_ARG(QString, filename));
                                  });
                 static_cast<T*>(this)->addAction(qa);
-                get_actions()[aid].qaction = qa;
+                get_actions()[aid].set_qaction(qa);
                 recentFilesSubmenu_->addAction(qa);
             }
         }
@@ -356,7 +356,7 @@ private:
 
         for (const QString& k : get_actions().keys()) {
             if (k.startsWith(QLatin1String("recent_files_"))) {
-                get_actions()[k].qaction = nullptr;
+                get_actions()[k].set_qaction(nullptr);
             }
         }
     }

@@ -46,7 +46,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     , undoStack_(std::make_unique<QUndoStack>(this))
 {
     // TODOLATER:
-    controlTarget_ = this;
+    set_control_target(this);
     setFrameShape(QFrame::NoFrame);
     setRenderHint(QPainter::Antialiasing, true);
 
@@ -338,7 +338,7 @@ void CanvasView::cancel_sample_color_mode()
         sampleColorWidget_ = nullptr;
     }
     if (scene_->has_multi_selection()) {
-        scene_->multiselect_item_->bring_to_front();
+        scene_->multiselect_item()->bring_to_front();
     }
 }
 
@@ -821,7 +821,7 @@ bool CanvasView::try_control_key_nudge(QKeyEvent* event)
             continue;
         }
         for (const Binding& b : cfg.get_bindings()) {
-            if (b.keySequence == pressed) {
+            if (b.key_sequence() == pressed) {
                 zoom(120.0, get_view_center());
                 return true;
             }
@@ -830,10 +830,10 @@ bool CanvasView::try_control_key_nudge(QKeyEvent* event)
 
     for (const MouseWheelConfig& cfg : KeyboardSettings::mousewheel_actions()) {
         for (const Binding& b : cfg.get_bindings()) {
-            if (b.keySequence != pressed) {
+            if (b.key_sequence() != pressed) {
                 continue;
             }
-            const double delta = b.inverted ? -120.0 : 120.0;
+            const double delta = b.is_inverted() ? -120.0 : 120.0;
             if (cfg.group() == QLatin1String("pan_horizontal")) {
                 pan(QPointF(0.0, 0.5 * delta));
                 return true;
@@ -1718,7 +1718,7 @@ void CanvasView::on_action_sample_color()
     if (scene_->has_multi_selection()) {
         // We don't want to sample the multi select item, so temporarily
         // send it to the back:
-        scene_->multiselect_item_->lower_behind_selection();
+        scene_->multiselect_item()->lower_behind_selection();
     }
 
     const QPoint pos = mapFromGlobal(cursor().pos());

@@ -33,28 +33,49 @@ QString key_event_to_sequence_string(const QKeyEvent* event);
 // reserved for a later phase (see memory/familiar_next_steps.md step 6).
 struct Binding
 {
-    QString keySequence;
-    QString mouseButton;
-    QStringList mouseModifiers;
-    bool inverted = false;
-    bool systemGlobal
-        = false; // stored for forward compat; no dispatch effect yet
+public:
+    Binding() = default;
+    // Positional, matching the old aggregate-init order the defaults table
+    // in controls.cpp is written in (Binding{{}, "Middle", {"Ctrl"}, false}).
+    Binding(QString keySequence,
+            QString mouseButton,
+            QStringList mouseModifiers,
+            bool inverted = false,
+            bool systemGlobal = false)
+        : keySequence_(std::move(keySequence))
+        , mouseButton_(std::move(mouseButton))
+        , mouseModifiers_(std::move(mouseModifiers))
+        , inverted_(inverted)
+        , systemGlobal_(systemGlobal)
+    {}
+
+    const QString& key_sequence() const { return keySequence_; }
+    void set_key_sequence(const QString& value) { keySequence_ = value; }
+    const QString& mouse_button() const { return mouseButton_; }
+    void set_mouse_button(const QString& value) { mouseButton_ = value; }
+    const QStringList& mouse_modifiers() const { return mouseModifiers_; }
+    void set_mouse_modifiers(const QStringList& value) { mouseModifiers_ = value; }
+    bool is_inverted() const { return inverted_; }
+    void set_inverted(bool value) { inverted_ = value; }
+    // Stored for forward compat; no dispatch effect yet.
+    bool is_system_global() const { return systemGlobal_; }
+    void set_system_global(bool value) { systemGlobal_ = value; }
 
     bool is_empty() const
     {
-        return keySequence.isEmpty() && mouseButton.isEmpty();
+        return keySequence_.isEmpty() && mouseButton_.isEmpty();
     }
     bool is_keyboard_only() const
     {
-        return mouseButton.isEmpty() && !keySequence.isEmpty();
+        return mouseButton_.isEmpty() && !keySequence_.isEmpty();
     }
     bool is_mouse_only() const
     {
-        return !mouseButton.isEmpty() && keySequence.isEmpty();
+        return !mouseButton_.isEmpty() && keySequence_.isEmpty();
     }
     bool is_mixed() const
     {
-        return !mouseButton.isEmpty() && !keySequence.isEmpty();
+        return !mouseButton_.isEmpty() && !keySequence_.isEmpty();
     }
 
     // Chip label, e.g. "Ctrl+S", "Middle MB", "Left MB + Ctrl+Alt+Shift".
@@ -65,10 +86,17 @@ struct Binding
 
     bool operator==(const Binding& o) const
     {
-        return keySequence == o.keySequence && mouseButton == o.mouseButton
-               && mouseModifiers == o.mouseModifiers && inverted == o.inverted
-               && systemGlobal == o.systemGlobal;
+        return keySequence_ == o.keySequence_ && mouseButton_ == o.mouseButton_
+               && mouseModifiers_ == o.mouseModifiers_
+               && inverted_ == o.inverted_ && systemGlobal_ == o.systemGlobal_;
     }
+
+private:
+    QString keySequence_;
+    QString mouseButton_;
+    QStringList mouseModifiers_;
+    bool inverted_ = false;
+    bool systemGlobal_ = false;
 };
 
 // ─── MouseConfigBase ──────────────────────────────────────────────────────────
@@ -88,10 +116,10 @@ public:
     virtual void remove_controls() const = 0;
 
     bool is_invertible() const { return invertible_; }
-    bool default_inverted() const { return defaultBindings_.value(0).inverted; }
+    bool default_inverted() const { return default_bindings_ref().value(0).is_inverted(); }
     QStringList default_modifiers() const
     {
-        return defaultBindings_.value(0).mouseModifiers;
+        return default_bindings_ref().value(0).mouse_modifiers();
     }
     virtual QString default_button() const { return {}; }
 
@@ -125,6 +153,17 @@ protected:
                     const QList<Binding>& defaultBindings,
                     bool invertible);
 
+    // Subclasses read these; only this class's constructor sets them.
+    const QString& id_ref() const { return id_; }
+    const QString& group_ref() const { return group_; }
+    const QString& text_ref() const { return text_; }
+    const QList<Binding>& default_bindings_ref() const
+    {
+        return defaultBindings_;
+    }
+    bool invertible_flag() const { return invertible_; }
+
+private:
     QString id_;
     QString group_;
     QString text_;
@@ -143,9 +182,9 @@ public:
                      const QList<Binding>& defaultBindings,
                      bool invertible);
 
-    const QString& id() const override { return id_; }
-    const QString& group() const override { return group_; }
-    const QString& text() const override { return text_; }
+    const QString& id() const override { return id_ref(); }
+    const QString& group() const override { return group_ref(); }
+    const QString& text() const override { return text_ref(); }
     const char* settings_group() const override;
 
     bool controls_changed() const override;
@@ -165,9 +204,9 @@ public:
                 const QList<Binding>& defaultBindings,
                 bool invertible);
 
-    const QString& id() const override { return id_; }
-    const QString& group() const override { return group_; }
-    const QString& text() const override { return text_; }
+    const QString& id() const override { return id_ref(); }
+    const QString& group() const override { return group_ref(); }
+    const QString& text() const override { return text_ref(); }
     const char* settings_group() const override;
 
     // "Not Configured" if the primary (index-0) binding has no mouse button.
@@ -247,7 +286,14 @@ public:
     int find_conflicting_wheel_group(const QString& excludeId,
                                   const Binding& candidate) const;
 
-    bool saveUnknownShortcuts = true;
+    bool save_unknown_shortcuts() const { return saveUnknownShortcuts_; }
+    void set_save_unknown_shortcuts(bool value)
+    {
+        saveUnknownShortcuts_ = value;
+    }
+
+private:
+    bool saveUnknownShortcuts_ = true;
 };
 
 #endif // CONTROLS_H

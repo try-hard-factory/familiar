@@ -12,7 +12,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     , mainWindow_(mainWindow)
 {
     setAutoFillBackground(true);
-    controlTarget_ = parent;
+    set_control_target(parent);
     init_main_controls(mainWindow);
     setContextMenuPolicy(Qt::DefaultContextMenu);
 

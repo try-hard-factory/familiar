@@ -20,13 +20,13 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
     };
 
     for (Action* action : get_actions().all()) {
-        if (action->id.startsWith(QLatin1String("recent_files_"))) {
+        if (action->id().startsWith(QLatin1String("recent_files_"))) {
             continue;
         }
-        if (action->text.isEmpty()) {
+        if (action->text().isEmpty()) {
             continue;
         }
-        if (shownUnderControls.contains(action->id)) {
+        if (shownUnderControls.contains(action->id())) {
             continue;
         }
         actionTargets_.append(new ActionBindingTarget(action));

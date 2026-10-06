@@ -144,7 +144,7 @@ public:
                 for (const QGraphicsItem* other : others) {
                     minZ = qMin(minZ, other->zValue());
                 }
-                this->set_z_value(minZ - scene->Z_STEP);
+                this->set_z_value(minZ - scene->z_step());
             }
         }
     }
@@ -158,10 +158,16 @@ public:
 class PixmapItem : public ItemMixin<PixmapItem, QGraphicsPixmapItem>
 {
 public:
-    const std::string type = "pixmap"; // static constexpr
-    const qreal cropHandleSize = 15; // static constexpr
     using ColorGamut = QMap<QPair<int, int>, int>;
     using CropHandleFn = QRectF (PixmapItem::*)() const;
+
+    const QString& filename() const { return filename_; }
+    void set_filename(const QString& value) { filename_ = value; }
+    const QRectF& crop() const { return crop_; }
+
+private:
+    const std::string type = "pixmap"; // static constexpr
+    const qreal cropHandleSize = 15; // static constexpr
     QString filename_;
     bool is_image_{true};
     bool crop_mode = false;
@@ -193,6 +199,7 @@ public:
     // this covers that for free.
     QUuid attachedToUid_;
 
+public:
     PixmapItem(const QImage& image,
                const QString& filename = QString(),
                QGraphicsPixmapItem* parent = nullptr)
@@ -806,7 +813,7 @@ public:
         this->grabKeyboard();
         this->update();
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->crop_item = this;
+        scene->set_crop_item(this);
     }
 
     void exit_crop_mode(bool confirm)
@@ -818,7 +825,7 @@ public:
         if (confirm && crop() != *crop_temp) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             // TODOLATER: interface
-            scene->undo_stack_->push(
+            scene->undo_stack()->push(
                 new CropItemCommand(this, crop_temp.value()));
         }
 
@@ -830,7 +837,7 @@ public:
         this->ungrabKeyboard();
         this->update();
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->crop_item = nullptr;
+        scene->set_crop_item(nullptr);
     }
 
     // Attached items (a note, or picture-to-picture)
@@ -1123,9 +1130,9 @@ protected:
 // ever stop it emitting).
 class GifItem : public PixmapItem
 {
-public:
     const std::string type = "gif"; // static constexpr
 
+public:
     explicit GifItem(const QByteArray& gifBytes,
                      const QString& filename = QString(),
                      QGraphicsPixmapItem* parent = nullptr)
@@ -1180,7 +1187,7 @@ public:
 
     IBaseItem* create_copy() override
     {
-        auto* item = new GifItem(gifBytes_, filename_);
+        auto* item = new GifItem(gifBytes_, filename());
         item->setPos(pos());
         item->setZValue(zValue());
         item->setScale(scale());
@@ -1189,11 +1196,11 @@ public:
         if (this->flip() == -1) {
             item->do_flip();
         }
-        item->set_crop(crop_);
+        item->set_crop(crop());
         item->set_speed_percent(speed_percent());
         // See PixmapItem::create_copy()'s own comment - remapped (or
         // cleared) later by CanvasScene::paste_from_internal_clipboard().
-        item->attachedToUid_ = attachedToUid_;
+        item->set_attached_to(attached_to_uid());
         return item;
     }
 
@@ -1337,10 +1344,11 @@ private:
 
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 {
-public:
     const std::string type = "text"; // static constexpr
     bool edit_mode = false;
     QString old_html;
+
+public:
 
     // Default note fill - the backdrop TextItem always painted, now
     // per-item and persisted.
@@ -1553,7 +1561,7 @@ public:
         if (!scene) {
             return;
         }
-        scene->undo_stack_->push(
+        scene->undo_stack()->push(
             new ResizeTextFieldCommand(this,
                                        document()->textWidth(),
                                        manualHeight_,
@@ -1579,7 +1587,7 @@ public:
         }
         resize_field(-1, -1, false, false);
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            scene->undo_stack_->push(new ResizeTextFieldCommand(
+            scene->undo_stack()->push(new ResizeTextFieldCommand(
                 this, -1, -1, oldWidth, oldHeight, false, false, true));
         }
     }
@@ -1682,7 +1690,7 @@ public:
         oldFillColor_ = fillColor_;
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->edit_item = this;
+        scene->set_edit_item(this);
         scene->notify_edit_item_changed(this);
     }
 
@@ -1696,17 +1704,17 @@ public:
         this->setTextCursor(QTextCursor(document()));
         this->setTextInteractionFlags(Qt::NoTextInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->edit_item = nullptr;
+        scene->set_edit_item(nullptr);
         scene->notify_edit_item_changed(nullptr);
         if (commit) {
-            scene->undo_stack_->push(new ChangeTextCommand(this,
+            scene->undo_stack()->push(new ChangeTextCommand(this,
                                                            this->toHtml(),
                                                            old_html,
                                                            fillColor_,
                                                            oldFillColor_));
             if (this->toPlainText().trimmed().isEmpty()) {
                 FLOG_DEBUG(familiar::log::Ch::Items, "Removing empty text item");
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new DeleteItemsCommand(scene, QList<QGraphicsItem*>{this}));
             }
         } else {
@@ -1816,8 +1824,9 @@ private:
 // anticipated.
 class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
 {
-public:
     const std::string type = "group"; // static constexpr
+
+public:
 
     static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
     // Visual breathing room kept between the members' own tight bounding
@@ -2085,7 +2094,7 @@ public:
                            uid().toString(QUuid::WithoutBraces).toStdString(),
                            this->zValue(),
                            minChildZ);
-                this->set_z_value(minChildZ - scene->Z_STEP);
+                this->set_z_value(minChildZ - scene->z_step());
             }
         }
     }
@@ -2607,7 +2616,7 @@ protected:
         // up with a member that already moved, not a body drag that
         // should carry members along.
         if (change == QGraphicsItem::ItemPositionChange && this->scene()
-            && active_mode_ == kNone && !autoExpanding_
+            && active_mode() == kNone && !autoExpanding_
             && !scalingOrRotating_) {
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
@@ -2696,13 +2705,16 @@ private:
 // stand-in gets deleted or the file is saved again.
 class ErrorItem : public ItemMixin<ErrorItem, QGraphicsTextItem>
 {
-public:
     const std::string type = "error"; // static constexpr
     // The uid of the manifest item this stand-in couldn't load (see
     // docs/fml_format_design.md §5.1/§6) - preserved so a re-save doesn't
     // mint a new identity for data that's otherwise round-tripped as-is.
     // Null if unknown (e.g. the manifest item itself was malformed).
     QUuid original_uid{};
+
+public:
+    const QUuid& original_uid_value() const { return original_uid; }
+    void set_original_uid(const QUuid& uid) { original_uid = uid; }
 
     ErrorItem(const QString& text = QString(),
               QGraphicsTextItem* parent = nullptr)

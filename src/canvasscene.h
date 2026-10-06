@@ -147,7 +147,7 @@ public:
     // recursively) to a fresh z band above everything else - same
     // sequential-band math as raise_selection_to_front(), just for an
     // explicit group rather than the current Qt selection. Not pushed
-    // onto undo_stack_ - z-raises are a plain side effect throughout
+    // onto undoStack_ - z-raises are a plain side effect throughout
     // this class, never their own undo step (see raise_selection_to_front()).
     void raise_group_cluster_to_front(GroupItem* group);
     void normalize_width_or_height(const QString& mode);
@@ -228,7 +228,7 @@ public:
     QList<IBaseItem*> add_queued_items();
 
 
-    // Getter for active_mode_ (Python code just reads self.active_mode
+    // Getter for activeMode_ (Python code just reads self.active_mode
     // directly; used e.g. by ItemMixin::on_selected_change()).
     ESceneMode active_mode() const;
     // Whether an item is a real user-facing one (pixmap/text/gif/group)
@@ -369,25 +369,22 @@ public slots:
 
 public:
 
-    int groupBatchDepth_ = 0;
-    // Whichever group is currently showing the live drop-target
-    // highlight (mouseMoveEvent()) - tracked so the highlight can be
-    // cleared off the PREVIOUS target when the cursor moves to a new
-    // one, or off entirely on release/mode-cancel.
-    GroupItem* highlightedGroup_ = nullptr;
-    
+    QUndoStack* undo_stack() const { return undoStack_; }
+    // Highest/lowest z handed out so far - items extend the range through
+    // set_max_z()/set_min_z() when they bring themselves to front/back.
+    qreal max_z() const { return maxZ_; }
+    void set_max_z(qreal value) { maxZ_ = value; }
+    qreal min_z() const { return minZ_; }
+    void set_min_z(qreal value) { minZ_ = value; }
+    qreal z_step() const { return zStep_; }
+    MultiSelectItem* multiselect_item() const { return multiselectItem_; }
+    RubberbandItem* rubberband_item() const { return rubberbandItem_; }
+    TextItem* edit_item() const { return editItem_; }
+    void set_edit_item(TextItem* item) { editItem_ = item; }
+    PixmapItem* crop_item() const { return cropItem_; }
+    void set_crop_item(PixmapItem* item) { cropItem_ = item; }
+    void set_active_mode(ESceneMode mode) { activeMode_ = mode; }
 
-    QUndoStack* undo_stack_ = nullptr;
-    qreal max_z = 0;
-    qreal min_z = 0;
-    qreal Z_STEP = 0.001;
-    MultiSelectItem* multiselect_item_ = nullptr;
-    RubberbandItem* rubberband_item_ = nullptr;
-    std::queue<QueuedItemData> items_to_add;
-    // Guards items_to_add: add_item_later() may be called from a
-    // background ThreadedIO worker while add_queued_items() drains it
-    // on the GUI thread.
-    QMutex itemsToAddMutex_;
     // Shared (not per-tab) so copy on one tab's scene can be pasted into
     // another's - the "familiar/items" marker CanvasView::on_action_copy()
     // sets is on the system clipboard already, which is inherently
@@ -395,11 +392,33 @@ public:
     // a copied item alive even if the scene it came from gets cleared/
     // closed before the paste happens.
     static inline QList<std::shared_ptr<IBaseItem>> internalClipboard;
-    TextItem* edit_item = nullptr;
-    PixmapItem* crop_item = nullptr;
-    QPointF event_start{};
-    ESceneMode active_mode_{kNone};
-    bool clear_ongoing = false;
+
+private:
+    int groupBatchDepth_ = 0;
+    // Whichever group is currently showing the live drop-target
+    // highlight (mouseMoveEvent()) - tracked so the highlight can be
+    // cleared off the PREVIOUS target when the cursor moves to a new
+    // one, or off entirely on release/mode-cancel.
+    GroupItem* highlightedGroup_ = nullptr;
+
+    QUndoStack* undoStack_ = nullptr;
+    qreal maxZ_ = 0;
+    qreal minZ_ = 0;
+    qreal zStep_ = 0.001;
+    MultiSelectItem* multiselectItem_ = nullptr;
+    RubberbandItem* rubberbandItem_ = nullptr;
+    std::queue<QueuedItemData> itemsToAdd_;
+    // Guards itemsToAdd_: add_item_later() may be called from a
+    // background ThreadedIO worker while add_queued_items() drains it
+    // on the GUI thread.
+    QMutex itemsToAddMutex_;
+    TextItem* editItem_ = nullptr;
+    PixmapItem* cropItem_ = nullptr;
+    QPointF eventStart_{};
+    ESceneMode activeMode_{kNone};
+    bool clearOngoing_ = false;
+
+public:
 
     // ────────────────────────────────────────────────────────────────────────
 

@@ -91,7 +91,7 @@ int raw_progress_callback(void* data,
     // (libraw.h's RUN_CALLBACK macro); unpack()/dcraw_process() catch it
     // themselves and hand back a plain error code, so the caller just
     // sees a failed decode - no exception escapes into this app.
-    if (ctx->worker->canceled) {
+    if (ctx->worker->is_canceled()) {
         return 1;
     }
     unsigned bit = static_cast<unsigned>(stage);
@@ -106,7 +106,7 @@ int raw_progress_callback(void* data,
     }
     return 0; // non-zero would throw LIBRAW_EXCEPTION_CANCELLED_BY_CALLBACK
               // internally (libraw.h's RUN_CALLBACK macro) - not wired up
-              // to worker->canceled here, out of scope for now.
+              // to worker->is_canceled() here, out of scope for now.
 }
 
 // Real demosaic through LibRaw's own processing pipeline for BOTH
@@ -322,7 +322,7 @@ constexpr int kcancelPollMs = 200;
 //
 // An unreachable/slow host would otherwise hang this loop (and the whole
 // ImageImportSession::run() run, and its progress dialog) forever - a timeout, plus
-// polling `worker->canceled` so the dialog's own Cancel button actually
+// polling `worker->is_canceled()` so the dialog's own Cancel button actually
 // works mid-download, both just quit the same local loop early.
 LoadedImage download_image(QNetworkAccessManager& manager,
                            const QUrl& url,
@@ -352,7 +352,7 @@ LoadedImage download_image(QNetworkAccessManager& manager,
                      &QTimer::timeout,
                      &loop,
                      [&loop, worker]() {
-                         if (worker->canceled) {
+                         if (worker->is_canceled()) {
                              loop.quit();
                          }
                      });
@@ -363,10 +363,10 @@ LoadedImage download_image(QNetworkAccessManager& manager,
     QImage img;
     QByteArray bytes;
     if (!reply->isFinished()) {
-        // Distinguishable via worker->canceled - a user-pressed Cancel is
+        // Distinguishable via worker->is_canceled() - a user-pressed Cancel is
         // routine, not a failure; a real timeout (nothing else quit the
         // loop) is worth a WARN.
-        if (worker->canceled) {
+        if (worker->is_canceled()) {
             FLOG_DEBUG(Ch::Net, "Download canceled by user: {}", url.toString());
         } else {
             FLOG_WARN(Ch::Net, "Download timed out: {}", url.toString());
@@ -416,7 +416,7 @@ void ThreadedIO::run()
 
 void ThreadedIO::on_canceled()
 {
-    canceled = true;
+    canceled_ = true;
 }
 
 bool is_raw_file(const QString& filename)
@@ -623,7 +623,7 @@ void ImageImportSession::run(ThreadedIO* worker)
         // import with a "this file may be corrupt" warning about a file
         // that's perfectly fine and was only skipped because the user
         // said stop.
-        if (worker->canceled) {
+        if (worker->is_canceled()) {
             FLOG_DEBUG(Ch::IO, "Import canceled at {}", label);
             break;
         }
@@ -717,7 +717,7 @@ void ImageImportSession::run(ThreadedIO* worker)
     // Cancel path - canvasview.cpp), but following that up with warning
     // popups about the part the user just chose to abandon is pure
     // noise: they already know they stopped it.
-    if (!worker->canceled) {
+    if (!worker->is_canceled()) {
         if (!largeImages.isEmpty()) {
             emit worker->large_images_found(largeImages);
         }

@@ -152,6 +152,15 @@ protected:
     // has to remove the stored override for key_ itself.
     void mouseDoubleClickEvent(QMouseEvent* event) override;
 
+    const QString& settings_key() const { return key_; }
+    const QString& base_label() const { return baseLabel_; }
+    // Concrete rows add their own input widget to this.
+    QHBoxLayout* hbox() const { return hbox_; }
+    // Concrete rows clear this at the end of their constructor, once the
+    // initial set_value() can no longer be mistaken for a user edit.
+    void set_ignore_value_changed(bool ignore) { ignoreValueChanged_ = ignore; }
+
+private:
     QString key_;
     QString baseLabel_;
     QHBoxLayout* hbox_ = nullptr;

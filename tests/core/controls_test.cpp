@@ -10,11 +10,11 @@
 TEST(BindingTest, SerializeDeserializeRoundTrips)
 {
     Binding b;
-    b.keySequence = QStringLiteral("Ctrl+S");
-    b.mouseButton = QStringLiteral("Left");
-    b.mouseModifiers = {QStringLiteral("Ctrl"), QStringLiteral("Alt")};
-    b.inverted = true;
-    b.systemGlobal = false;
+    b.set_key_sequence(QStringLiteral("Ctrl+S"));
+    b.set_mouse_button(QStringLiteral("Left"));
+    b.set_mouse_modifiers({QStringLiteral("Ctrl"), QStringLiteral("Alt")});
+    b.set_inverted(true);
+    b.set_system_global(false);
 
     EXPECT_EQ(Binding::deserialize(b.serialize()), b);
 }
@@ -34,20 +34,20 @@ TEST(BindingTest, ClassificationHelpers)
     EXPECT_FALSE(empty.is_mixed());
 
     Binding keyOnly;
-    keyOnly.keySequence = QStringLiteral("Ctrl+S");
+    keyOnly.set_key_sequence(QStringLiteral("Ctrl+S"));
     EXPECT_FALSE(keyOnly.is_empty());
     EXPECT_TRUE(keyOnly.is_keyboard_only());
     EXPECT_FALSE(keyOnly.is_mouse_only());
     EXPECT_FALSE(keyOnly.is_mixed());
 
     Binding mouseOnly;
-    mouseOnly.mouseButton = QStringLiteral("Left");
+    mouseOnly.set_mouse_button(QStringLiteral("Left"));
     EXPECT_FALSE(mouseOnly.is_keyboard_only());
     EXPECT_TRUE(mouseOnly.is_mouse_only());
 
     Binding mixed;
-    mixed.keySequence = QStringLiteral("F");
-    mixed.mouseButton = QStringLiteral("Middle");
+    mixed.set_key_sequence(QStringLiteral("F"));
+    mixed.set_mouse_button(QStringLiteral("Middle"));
     EXPECT_TRUE(mixed.is_mixed());
     EXPECT_FALSE(mixed.is_keyboard_only());
     EXPECT_FALSE(mixed.is_mouse_only());
@@ -56,13 +56,13 @@ TEST(BindingTest, ClassificationHelpers)
 TEST(BindingTest, DisplayTextCombinesPartsWithPlusSeparator)
 {
     Binding keyOnly;
-    keyOnly.keySequence = QStringLiteral("Ctrl+S");
+    keyOnly.set_key_sequence(QStringLiteral("Ctrl+S"));
     EXPECT_EQ(keyOnly.display_text(), QStringLiteral("Ctrl+S"));
 
     Binding mouseWithModifiers;
-    mouseWithModifiers.mouseButton = QStringLiteral("Left");
-    mouseWithModifiers.mouseModifiers = {QStringLiteral("Ctrl"),
-                                         QStringLiteral("Alt")};
+    mouseWithModifiers.set_mouse_button(QStringLiteral("Left"));
+    mouseWithModifiers.set_mouse_modifiers(
+        {QStringLiteral("Ctrl"), QStringLiteral("Alt")});
     EXPECT_EQ(mouseWithModifiers.display_text(),
               QStringLiteral("Left MB + Ctrl+Alt"));
 
@@ -70,14 +70,14 @@ TEST(BindingTest, DisplayTextCombinesPartsWithPlusSeparator)
     // modifier requirement - still needs some text so it doesn't read as
     // "not configured".
     Binding wheelWithModifierOnly;
-    wheelWithModifierOnly.mouseModifiers = {QStringLiteral("Ctrl")};
+    wheelWithModifierOnly.set_mouse_modifiers({QStringLiteral("Ctrl")});
     EXPECT_EQ(wheelWithModifierOnly.display_text(), QStringLiteral("Ctrl"));
 
     // "No Modifier" alone (scroll with nothing held) is spelled out
     // explicitly instead of coming out blank - see Binding::displayText()'s
     // own comment for why.
     Binding wheelNoModifier;
-    wheelNoModifier.mouseModifiers = {QStringLiteral("No Modifier")};
+    wheelNoModifier.set_mouse_modifiers({QStringLiteral("No Modifier")});
     EXPECT_EQ(wheelNoModifier.display_text(), QStringLiteral("No Modifier"));
 }
 

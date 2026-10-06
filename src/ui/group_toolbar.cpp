@@ -201,7 +201,7 @@ GroupToolbar::GroupToolbar(QWidget* parent)
                 // redo() (which runs immediately on push()) is the only
                 // thing that actually sets fill_color to `color`.
                 item_->set_fill_color(oldColor);
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new ChangeGroupFillColorCommand(item_, color, oldColor));
             } else {
                 item_->set_fill_color(color);

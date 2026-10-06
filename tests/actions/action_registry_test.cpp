@@ -18,7 +18,7 @@ TEST(ActionRegistryTest, AddFindContainsRemove)
 
     EXPECT_TRUE(registry.contains(QStringLiteral("a")));
     ASSERT_NE(registry.find(QStringLiteral("a")), nullptr);
-    EXPECT_EQ(registry.find(QStringLiteral("a"))->text,
+    EXPECT_EQ(registry.find(QStringLiteral("a"))->text(),
              QStringLiteral("Action A"));
     EXPECT_EQ(registry.find(QStringLiteral("nonexistent")), nullptr);
 
@@ -38,7 +38,7 @@ TEST(ActionRegistryTest, AddIsUpsertAndPreservesInsertionOrder)
 
     EXPECT_EQ(registry.keys(),
              (QStringList{QStringLiteral("a"), QStringLiteral("b")}));
-    EXPECT_EQ(registry.find(QStringLiteral("a"))->text,
+    EXPECT_EQ(registry.find(QStringLiteral("a"))->text(),
              QStringLiteral("First Updated"));
     EXPECT_EQ(registry.all().size(), 2);
 }
@@ -63,7 +63,7 @@ TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
     EXPECT_EQ(registry
                  .find_by_shortcut(QStringLiteral("reg_test_b"),
                                  QStringLiteral("Ctrl+K"))
-                 ->id,
+                 ->id(),
              QStringLiteral("reg_test_a"));
     // Excluding the owning action itself finds nothing, even though its
     // shortcut matches.
@@ -86,29 +86,29 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
     Action a
         = Action::make(QStringLiteral("reg_test_mouse_a"), QStringLiteral("A"));
     SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
+        QStringLiteral("Actions"), a.id() + QStringLiteral("_mouse"));
 
     Binding stored;
-    stored.mouseButton = QStringLiteral("Middle");
-    stored.mouseModifiers = {QStringLiteral("Ctrl")};
+    stored.set_mouse_button(QStringLiteral("Middle"));
+    stored.set_mouse_modifiers({QStringLiteral("Ctrl")});
     a.set_mouse_bindings({stored});
 
     ActionRegistry registry;
     registry.add(a);
 
     Binding candidate;
-    candidate.mouseButton = QStringLiteral("Middle");
-    candidate.mouseModifiers = {QStringLiteral("Ctrl")};
+    candidate.set_mouse_button(QStringLiteral("Middle"));
+    candidate.set_mouse_modifiers({QStringLiteral("Ctrl")});
 
     EXPECT_EQ(
-        registry.find_by_mouse_binding(QStringLiteral("other"), candidate)->id,
+        registry.find_by_mouse_binding(QStringLiteral("other"), candidate)->id(),
         QStringLiteral("reg_test_mouse_a"));
     EXPECT_EQ(registry.find_by_mouse_binding(QStringLiteral("reg_test_mouse_a"),
                                          candidate),
              nullptr);
 
     SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), a.id + QStringLiteral("_mouse"));
+        QStringLiteral("Actions"), a.id() + QStringLiteral("_mouse"));
 }
 
 // getActions() is the app-wide registry (a function-local static, built
@@ -129,14 +129,14 @@ TEST(GlobalActionRegistryTest, EveryRegisteredActionHasNonEmptyIdAndText)
     const QList<Action*> all = get_actions().all();
     EXPECT_FALSE(all.isEmpty());
     for (const Action* a : all) {
-        EXPECT_FALSE(a->id.isEmpty());
-        EXPECT_FALSE(a->text.isEmpty()) << "action id: " << a->id.toStdString();
+        EXPECT_FALSE(a->id().isEmpty());
+        EXPECT_FALSE(a->text().isEmpty()) << "action id: " << a->id().toStdString();
         // Every default shortcut string must parse as a real QKeySequence -
         // getKeySequence()/get_shortcuts() are how every keybinding path
         // (ActionMouseDispatcher, KeyboardShortcutsPage) reads these back.
-        for (int i = 0; i < a->shortcuts.size(); ++i) {
+        for (int i = 0; i < a->default_shortcuts().size(); ++i) {
             EXPECT_FALSE(a->get_key_sequence(i).isEmpty())
-                << "action id: " << a->id.toStdString();
+                << "action id: " << a->id().toStdString();
         }
     }
     EXPECT_EQ(get_actions().keys().size(), all.size());

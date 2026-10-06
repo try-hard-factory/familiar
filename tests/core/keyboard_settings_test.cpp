@@ -77,7 +77,7 @@ TEST(KeyboardSettingsShortcutsTest, GetShortcutsPersistsDefaultOnFirstRead)
     SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("TestActions"), QStringLiteral("test_action"));
     KeyboardSettings ks;
-    ks.saveUnknownShortcuts = true;
+    ks.set_save_unknown_shortcuts(true);
 
     const QStringList first = ks.get_shortcuts(
         QStringLiteral("TestActions"),
@@ -103,7 +103,7 @@ TEST(KeyboardSettingsShortcutsTest, SaveUnknownShortcutsFalseDoesNotPersist)
     SettingsHandler::get_instance()->remove_json_value(
         QStringLiteral("TestActions"), QStringLiteral("test_action2"));
     KeyboardSettings ks;
-    ks.saveUnknownShortcuts = false;
+    ks.set_save_unknown_shortcuts(false);
 
     ks.get_shortcuts(QStringLiteral("TestActions"),
                      QStringLiteral("test_action2"),
@@ -130,8 +130,8 @@ TEST(FindConflictingMouseGroupTest, DetectsButtonAndModifierMatch)
     // "zoom"'s own default binding (Middle + Ctrl, see
     // KeyboardSettings::mouseActions()).
     Binding candidate;
-    candidate.mouseButton = QStringLiteral("Middle");
-    candidate.mouseModifiers = {QStringLiteral("Ctrl")};
+    candidate.set_mouse_button(QStringLiteral("Middle"));
+    candidate.set_mouse_modifiers({QStringLiteral("Ctrl")});
 
     EXPECT_EQ(ks.find_conflicting_mouse_group(QStringLiteral("pan"), candidate),
              0); // index of "zoom"
@@ -154,7 +154,7 @@ TEST(FindConflictingWheelGroupTest, DetectsModifierMatch)
     // "pan_horizontal"'s own default binding (Shift alone, see
     // KeyboardSettings::mousewheelActions()).
     Binding candidate;
-    candidate.mouseModifiers = {QStringLiteral("Shift")};
+    candidate.set_mouse_modifiers({QStringLiteral("Shift")});
 
     EXPECT_EQ(ks.find_conflicting_wheel_group(QStringLiteral("pan_vertical"),
                                           candidate),
@@ -204,7 +204,7 @@ TEST(MouseWheelConfigMatchesEventTest, MatchesModifierAndReturnsInverted)
                         false);
     const auto match = panH.matches_event(&matching);
     ASSERT_TRUE(match.has_value());
-    EXPECT_TRUE(match->inverted);
+    EXPECT_TRUE(match->is_inverted());
 
     QWheelEvent wrongModifier(QPointF(0, 0),
                              QPointF(0, 0),

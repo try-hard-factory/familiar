@@ -36,7 +36,7 @@ TEST(ActionTest, GetShortcutsFallsBackToDefaultThenPersistsOverride)
                             QStringLiteral("Test"),
                             {},
                             {QStringLiteral("Ctrl+T")});
-    cleanupAction(a.id);
+    cleanupAction(a.id());
 
     EXPECT_EQ(a.get_shortcuts(), QStringList{QStringLiteral("Ctrl+T")});
     EXPECT_FALSE(a.shortcuts_changed());
@@ -46,7 +46,7 @@ TEST(ActionTest, GetShortcutsFallsBackToDefaultThenPersistsOverride)
              QStringList{QStringLiteral("Ctrl+Shift+T")});
     EXPECT_TRUE(a.shortcuts_changed());
 
-    cleanupAction(a.id);
+    cleanupAction(a.id());
 }
 
 TEST(ActionTest, GetKeySequenceAndDefaultShortcutAreIndexBased)
@@ -56,7 +56,7 @@ TEST(ActionTest, GetKeySequenceAndDefaultShortcutAreIndexBased)
                             {},
                             {QStringLiteral("Ctrl+A"),
                              QStringLiteral("Ctrl+B")});
-    cleanupAction(a.id);
+    cleanupAction(a.id());
 
     EXPECT_EQ(a.get_key_sequence(0), QKeySequence(QStringLiteral("Ctrl+A")));
     EXPECT_EQ(a.get_key_sequence(1), QKeySequence(QStringLiteral("Ctrl+B")));
@@ -65,25 +65,25 @@ TEST(ActionTest, GetKeySequenceAndDefaultShortcutAreIndexBased)
     EXPECT_EQ(a.get_default_shortcut(0), QStringLiteral("Ctrl+A"));
     EXPECT_EQ(a.get_default_shortcut(5), QString());
 
-    cleanupAction(a.id);
+    cleanupAction(a.id());
 }
 
 TEST(ActionTest, MouseBindingsRoundTrip)
 {
     Action a
         = Action::make(QStringLiteral("test_action_mouse"), QStringLiteral("Test"));
-    cleanupAction(a.id);
+    cleanupAction(a.id());
 
     EXPECT_TRUE(a.get_mouse_bindings().isEmpty());
 
     Binding b;
-    b.mouseButton = QStringLiteral("Middle");
-    b.mouseModifiers = {QStringLiteral("Ctrl")};
+    b.set_mouse_button(QStringLiteral("Middle"));
+    b.set_mouse_modifiers({QStringLiteral("Ctrl")});
     a.set_mouse_bindings({b});
 
     const QList<Binding> stored = a.get_mouse_bindings();
     ASSERT_EQ(stored.size(), 1);
-    EXPECT_EQ(stored.first().mouseButton, QStringLiteral("Middle"));
+    EXPECT_EQ(stored.first().mouse_button(), QStringLiteral("Middle"));
 
-    cleanupAction(a.id);
+    cleanupAction(a.id());
 }

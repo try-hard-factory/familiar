@@ -82,7 +82,7 @@ SceneExporterBase::SceneExporterBase(CanvasScene* scene)
 
 bool SceneToPixmapExporter::get_user_input(QWidget* parent)
 {
-    SceneToPixmapExporterDialog dialog(parent, defaultSize_);
+    SceneToPixmapExporterDialog dialog(parent, default_size());
     if (dialog.exec() != QDialog::Accepted) {
         return false;
     }
@@ -92,7 +92,7 @@ bool SceneToPixmapExporter::get_user_input(QWidget* parent)
 
 QImage SceneToPixmapExporter::render_to_image() const
 {
-    const qreal finalMargin = margin_ * size_.width() / defaultSize_.width();
+    const qreal finalMargin = margin() * size_.width() / default_size().width();
 
     auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
@@ -104,7 +104,7 @@ QImage SceneToPixmapExporter::render_to_image() const
                       finalMargin,
                       size_.width() - 2 * finalMargin,
                       size_.height() - 2 * finalMargin);
-    scene_->render(&painter, targetRect, scene_->itemsBoundingRect());
+    scene()->render(&painter, targetRect, scene()->itemsBoundingRect());
     painter.end();
     return image;
 }
@@ -114,7 +114,7 @@ void SceneToPixmapExporter::export_to(const QString& filename, ThreadedIO* worke
     emit_begin_processing(worker, 1);
     const QImage image = render_to_image();
 
-    if (worker && worker->canceled) {
+    if (worker && worker->is_canceled()) {
         emit_finished(worker, filename, {});
         return;
     }
@@ -134,7 +134,7 @@ void SceneToPixmapExporter::export_to(const QString& filename, ThreadedIO* worke
 
 bool SceneToSVGExporter::get_user_input(QWidget* /*parent*/)
 {
-    size_ = defaultSize_;
+    size_ = default_size();
     return true;
 }
 
@@ -177,10 +177,10 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
     xml.writeAttribute(QStringLiteral("xmlns:xlink"),
                        QStringLiteral("http://www.w3.org/1999/xlink"));
 
-    const QRectF rect = scene_->itemsBoundingRect();
-    const QPointF offset = rect.topLeft() - QPointF(margin_, margin_);
+    const QRectF rect = scene()->itemsBoundingRect();
+    const QPointF offset = rect.topLeft() - QPointF(margin(), margin());
 
-    QList<QGraphicsItem*> items = scene_->items_for_save();
+    QList<QGraphicsItem*> items = scene()->items_for_save();
 
     for (int i = 0; i < items.size(); ++i) {
         QGraphicsItem* gitem = items[i];
@@ -252,7 +252,7 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
         xml.writeEndElement(); // text | image
 
         emit_progress(worker, i);
-        if (worker && worker->canceled) {
+        if (worker && worker->is_canceled()) {
             return {};
         }
     }
@@ -265,10 +265,10 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
 void SceneToSVGExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
     emit_begin_processing(worker,
-                        static_cast<int>(scene_->items_for_save().size()));
+                        static_cast<int>(scene()->items_for_save().size()));
     const QString svg = render_to_svg(worker);
 
-    if (worker && worker->canceled) {
+    if (worker && worker->is_canceled()) {
         emit_finished(worker, filename, {});
         return;
     }
@@ -329,7 +329,7 @@ void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
     emit_progress(worker, startFrom_);
 
     for (int i = startFrom_; i < total; ++i) {
-        if (worker && worker->canceled) {
+        if (worker && worker->is_canceled()) {
             emit_finished(worker, dirname_, {});
             return;
         }

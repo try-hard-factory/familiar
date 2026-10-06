@@ -164,7 +164,7 @@ BindingEditorDialogBase::BindingEditorDialogBase(BindingTarget* target,
     keyRow->addWidget(keyClearBtn);
     layout->addLayout(keyRow);
 
-    if (target_->is_invertible()) {
+    if (binding_target()->is_invertible()) {
         invertCheck_ = new QCheckBox(tr("Invert direction"), this);
         layout->addWidget(invertCheck_);
     }
@@ -174,7 +174,7 @@ BindingEditorDialogBase::BindingEditorDialogBase(BindingTarget* target,
     // everyone else gets them folded into mouseButtonField_'s capture
     // gesture, or doesn't need them at all.
     for (QCheckBox* cb : std::as_const(modifierChecks_)) {
-        cb->setVisible(target_->kind() == BindingTargetKind::MouseWheelControl);
+        cb->setVisible(binding_target()->kind() == BindingTargetKind::MouseWheelControl);
     }
 
     // Both fields are always editable - Actions can fire from a mouse
@@ -183,7 +183,7 @@ BindingEditorDialogBase::BindingEditorDialogBase(BindingTarget* target,
     // a single discrete nudge (CanvasView::keyPressEvent). The only
     // genuine constraint left is MouseWheelControl having no button at
     // all - a wheel scroll isn't a click.
-    if (target_->kind() == BindingTargetKind::MouseWheelControl) {
+    if (binding_target()->kind() == BindingTargetKind::MouseWheelControl) {
         mouseButtonField_->setVisible(false);
         mouseLabel->setVisible(false);
     }
@@ -191,10 +191,10 @@ BindingEditorDialogBase::BindingEditorDialogBase(BindingTarget* target,
 
 void BindingEditorDialogBase::populate_from(const Binding& binding)
 {
-    mouseButtonField_->set_button(binding.mouseButton);
+    mouseButtonField_->set_button(binding.mouse_button());
 
     for (auto it = modifierChecks_.begin(); it != modifierChecks_.end(); ++it) {
-        it.value()->setChecked(binding.mouseModifiers.contains(it.key()));
+        it.value()->setChecked(binding.mouse_modifiers().contains(it.key()));
     }
 
     // Old-style MouseControl defaults (e.g. Zoom/Pan's hardcoded Binding
@@ -203,16 +203,16 @@ void BindingEditorDialogBase::populate_from(const Binding& binding)
     // Surface it in the keyboard field instead so it's visible/editable
     // and survives an Apply without changes - collectBinding() then
     // writes it back as a bare-modifier keySequence, migrating it.
-    if (target_->kind() != BindingTargetKind::MouseWheelControl
-        && binding.keySequence.isEmpty() && binding.mouseModifiers.size() == 1
-        && binding.mouseModifiers.first() != QLatin1String("No Modifier")) {
-        keySequenceField_->set_sequence(binding.mouseModifiers.first());
+    if (binding_target()->kind() != BindingTargetKind::MouseWheelControl
+        && binding.key_sequence().isEmpty() && binding.mouse_modifiers().size() == 1
+        && binding.mouse_modifiers().first() != QLatin1String("No Modifier")) {
+        keySequenceField_->set_sequence(binding.mouse_modifiers().first());
     } else {
-        keySequenceField_->set_sequence(binding.keySequence);
+        keySequenceField_->set_sequence(binding.key_sequence());
     }
 
     if (invertCheck_) {
-        invertCheck_->setChecked(binding.inverted);
+        invertCheck_->setChecked(binding.is_inverted());
     }
 }
 
@@ -224,25 +224,27 @@ Binding BindingEditorDialogBase::collect_binding() const
     // a required modifier is either a checkbox (MouseWheelControl, no
     // button to combine it with) or a bare modifier in the keyboard
     // field below (folded in by MouseConfig::matchesEvent).
-    if (target_->kind() == BindingTargetKind::MouseWheelControl) {
+    if (binding_target()->kind() == BindingTargetKind::MouseWheelControl) {
         for (auto it = modifierChecks_.begin(); it != modifierChecks_.end();
              ++it) {
             if (it.value()->isChecked()) {
-                b.mouseModifiers.append(it.key());
+                QStringList mods = b.mouse_modifiers();
+                mods.append(it.key());
+                b.set_mouse_modifiers(mods);
             }
         }
-        if (b.mouseModifiers.size() > 1
-            && b.mouseModifiers.contains(QStringLiteral("No Modifier"))) {
-            b.mouseModifiers = {QStringLiteral("No Modifier")};
+        if (b.mouse_modifiers().size() > 1
+            && b.mouse_modifiers().contains(QStringLiteral("No Modifier"))) {
+            b.set_mouse_modifiers({QStringLiteral("No Modifier")});
         }
     } else {
-        b.mouseButton = mouseButtonField_->button();
+        b.set_mouse_button(mouseButtonField_->button());
     }
 
-    b.keySequence = keySequenceField_->sequence();
+    b.set_key_sequence(keySequenceField_->sequence());
 
     if (invertCheck_) {
-        b.inverted = invertCheck_->isChecked();
+        b.set_inverted(invertCheck_->isChecked());
     }
 
     return b;
@@ -253,10 +255,10 @@ void BindingEditorDialogBase::try_accept()
     const Binding candidate = collect_binding();
 
     // Keyboard part vs. other Actions' shortcuts.
-    if (!candidate.keySequence.isEmpty()) {
+    if (!candidate.key_sequence().isEmpty()) {
         if (Action* conflicting
-            = get_actions().find_by_shortcut(target_->id(),
-                                          candidate.keySequence)) {
+            = get_actions().find_by_shortcut(binding_target()->id(),
+                                          candidate.key_sequence())) {
             QString txt = conflicting->display_text();
             if (txt.endsWith(QLatin1String("..."))) {
                 txt.chop(3);
@@ -273,14 +275,14 @@ void BindingEditorDialogBase::try_accept()
                 return;
             }
             QStringList remaining = conflicting->get_shortcuts();
-            remaining.removeAll(candidate.keySequence);
+            remaining.removeAll(candidate.key_sequence());
             conflicting->set_shortcuts(remaining);
         }
     }
 
     // Mouse part vs. other Actions' mouse-chord aliases.
-    if (!candidate.mouseButton.isEmpty()) {
-        if (Action* conflicting = get_actions().find_by_mouse_binding(target_->id(),
+    if (!candidate.mouse_button().isEmpty()) {
+        if (Action* conflicting = get_actions().find_by_mouse_binding(binding_target()->id(),
                                                                   candidate)) {
             QString txt = conflicting->display_text();
             if (txt.endsWith(QLatin1String("..."))) {
@@ -300,9 +302,9 @@ void BindingEditorDialogBase::try_accept()
             QList<Binding> remaining = conflicting->get_mouse_bindings();
             for (int i = static_cast<int>(remaining.size()) - 1; i >= 0;
                  --i) {
-                if (remaining[i].mouseButton == candidate.mouseButton
-                    && same_modifiers(remaining[i].mouseModifiers,
-                                     candidate.mouseModifiers)) {
+                if (remaining[i].mouse_button() == candidate.mouse_button()
+                    && same_modifiers(remaining[i].mouse_modifiers(),
+                                     candidate.mouse_modifiers())) {
                     remaining.removeAt(i);
                 }
             }
@@ -311,10 +313,10 @@ void BindingEditorDialogBase::try_accept()
     }
 
     // Mouse and/or keyboard part vs. Controls (mouse and wheel groups).
-    if (!candidate.mouseButton.isEmpty() || !candidate.keySequence.isEmpty()) {
+    if (!candidate.mouse_button().isEmpty() || !candidate.key_sequence().isEmpty()) {
         const KeyboardSettings ks;
 
-        const int mouseRow = ks.find_conflicting_mouse_group(target_->id(),
+        const int mouseRow = ks.find_conflicting_mouse_group(binding_target()->id(),
                                                           candidate);
         if (mouseRow >= 0) {
             const MouseConfig& other
@@ -333,13 +335,13 @@ void BindingEditorDialogBase::try_accept()
             QList<Binding> theirs = other.get_bindings();
             for (int i = static_cast<int>(theirs.size()) - 1; i >= 0; --i) {
                 const bool mouseMatch
-                    = !candidate.mouseButton.isEmpty()
-                      && theirs[i].mouseButton == candidate.mouseButton
-                      && same_modifiers(theirs[i].mouseModifiers,
-                                       candidate.mouseModifiers);
-                const bool keyMatch = !candidate.keySequence.isEmpty()
-                                      && theirs[i].keySequence
-                                             == candidate.keySequence;
+                    = !candidate.mouse_button().isEmpty()
+                      && theirs[i].mouse_button() == candidate.mouse_button()
+                      && same_modifiers(theirs[i].mouse_modifiers(),
+                                       candidate.mouse_modifiers());
+                const bool keyMatch = !candidate.key_sequence().isEmpty()
+                                      && theirs[i].key_sequence()
+                                             == candidate.key_sequence();
                 if (mouseMatch || keyMatch) {
                     theirs.removeAt(i);
                 }
@@ -347,7 +349,7 @@ void BindingEditorDialogBase::try_accept()
             other.set_bindings(theirs);
         }
 
-        const int wheelRow = ks.find_conflicting_wheel_group(target_->id(),
+        const int wheelRow = ks.find_conflicting_wheel_group(binding_target()->id(),
                                                           candidate);
         if (wheelRow >= 0) {
             const MouseWheelConfig& other
@@ -365,12 +367,12 @@ void BindingEditorDialogBase::try_accept()
             }
             QList<Binding> theirs = other.get_bindings();
             for (int i = static_cast<int>(theirs.size()) - 1; i >= 0; --i) {
-                const bool modMatch = !candidate.mouseModifiers.isEmpty()
-                                      && same_modifiers(theirs[i].mouseModifiers,
-                                                       candidate.mouseModifiers);
-                const bool keyMatch = !candidate.keySequence.isEmpty()
-                                      && theirs[i].keySequence
-                                             == candidate.keySequence;
+                const bool modMatch = !candidate.mouse_modifiers().isEmpty()
+                                      && same_modifiers(theirs[i].mouse_modifiers(),
+                                                       candidate.mouse_modifiers());
+                const bool keyMatch = !candidate.key_sequence().isEmpty()
+                                      && theirs[i].key_sequence()
+                                             == candidate.key_sequence();
                 if (modMatch || keyMatch) {
                     theirs.removeAt(i);
                 }
@@ -401,9 +403,9 @@ AddAliasDialog::AddAliasDialog(BindingTarget* target, QWidget* parent)
 
 void AddAliasDialog::on_accepted(const Binding& candidate)
 {
-    QList<Binding> all = target_->bindings();
+    QList<Binding> all = binding_target()->bindings();
     all.append(candidate);
-    target_->set_bindings(all);
+    binding_target()->set_bindings(all);
 }
 
 // ─── RebindDialog ─────────────────────────────────────────────────────────────
@@ -442,11 +444,11 @@ RebindDialog::RebindDialog(BindingTarget* target,
 
 void RebindDialog::on_accepted(const Binding& candidate)
 {
-    QList<Binding> all = target_->bindings();
+    QList<Binding> all = binding_target()->bindings();
     if (bindingIndex_ >= 0 && bindingIndex_ < all.size()) {
         all[bindingIndex_] = candidate;
     } else {
         all.append(candidate);
     }
-    target_->set_bindings(all);
+    binding_target()->set_bindings(all);
 }

@@ -21,7 +21,7 @@ TEST(ActionBindingTargetTest, WrapsActionIdTextAndBindings)
                                  QStringLiteral("Open Recent..."),
                                  {},
                                  {QStringLiteral("Ctrl+R")});
-    cleanupAction(action.id);
+    cleanupAction(action.id());
 
     ActionBindingTarget target(&action);
 
@@ -33,33 +33,33 @@ TEST(ActionBindingTargetTest, WrapsActionIdTextAndBindings)
     EXPECT_FALSE(target.is_invertible());
 
     ASSERT_EQ(target.bindings().size(), 1);
-    EXPECT_EQ(target.bindings().first().keySequence, QStringLiteral("Ctrl+R"));
+    EXPECT_EQ(target.bindings().first().key_sequence(), QStringLiteral("Ctrl+R"));
     EXPECT_FALSE(target.bindings_changed());
 
-    cleanupAction(action.id);
+    cleanupAction(action.id());
 }
 
 TEST(ActionBindingTargetTest, SetBindingsSplitsKeyboardAndMouseAliases)
 {
     Action action
         = Action::make(QStringLiteral("bt_test_action2"), QStringLiteral("Test"));
-    cleanupAction(action.id);
+    cleanupAction(action.id());
 
     ActionBindingTarget target(&action);
 
     Binding keyOnly;
-    keyOnly.keySequence = QStringLiteral("Ctrl+K");
+    keyOnly.set_key_sequence(QStringLiteral("Ctrl+K"));
     Binding mouseOnly;
-    mouseOnly.mouseButton = QStringLiteral("Middle");
+    mouseOnly.set_mouse_button(QStringLiteral("Middle"));
 
     target.set_bindings({keyOnly, mouseOnly});
 
     EXPECT_EQ(action.get_shortcuts(), QStringList{QStringLiteral("Ctrl+K")});
     ASSERT_EQ(action.get_mouse_bindings().size(), 1);
-    EXPECT_EQ(action.get_mouse_bindings().first().mouseButton,
+    EXPECT_EQ(action.get_mouse_bindings().first().mouse_button(),
              QStringLiteral("Middle"));
 
-    cleanupAction(action.id);
+    cleanupAction(action.id());
 }
 
 TEST(MouseConfigBindingTargetTest, DelegatesToWrappedMouseConfig)

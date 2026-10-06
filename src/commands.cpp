@@ -806,7 +806,7 @@ void GroupCommand::redo()
         minZ = qMin(minZ, item->zValue());
     }
     scene_->addItem(group_);
-    group_->set_z_value(minZ - scene_->Z_STEP);
+    group_->set_z_value(minZ - scene_->z_step());
     group_->setSelected(true);
 }
 
@@ -964,7 +964,7 @@ void AddToGroupCommand::redo()
         QGraphicsItem* item = members_[i];
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             if (item->zValue() <= group_->zValue()) {
-                baseItem->set_z_value(group_->zValue() + scene_->Z_STEP);
+                baseItem->set_z_value(group_->zValue() + scene_->z_step());
             }
         }
     }
@@ -1053,11 +1053,11 @@ RenamePictureCommand::RenamePictureCommand(PixmapItem* item,
 void RenamePictureCommand::redo()
 {
     FLOG_DEBUG(Ch::Undo, "RenamePictureCommand::redo()");
-    item_->filename_ = newName_;
+    item_->set_filename(newName_);
 }
 
 void RenamePictureCommand::undo()
 {
     FLOG_DEBUG(Ch::Undo, "RenamePictureCommand::undo()");
-    item_->filename_ = oldName_;
+    item_->set_filename(oldName_);
 }

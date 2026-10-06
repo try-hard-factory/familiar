@@ -54,7 +54,9 @@ public:
     // for correlation against a crash backtrace's `this=` pointer.
     ~ThreadedIO() override;
 
-    std::atomic<bool> canceled{false};
+    // Polled from the worker function (a free function, not a member),
+    // hence public - set only by on_canceled().
+    bool is_canceled() const { return canceled_.load(); }
 
     // QThread::msleep() is protected; expose it for worker functions
     // (which are not members of this class) the same way Python's
@@ -120,6 +122,7 @@ public slots:
     void on_canceled();
 
 private:
+    std::atomic<bool> canceled_{false};
     WorkerFunc func_;
 };
 
@@ -192,14 +195,15 @@ public:
     // rawImportChoiceRequired() fired, before the next run().
     const QString& pending_raw_file() const { return pendingRawFile_; }
 
+private:
     // Accumulated across every run() call in this session (a pause+
-    // resume does NOT reset these) - read once after finished() fires.
+    // resume does NOT reset these); reported out through ThreadedIO's
+    // image_load_failures()/large_images_found() signals, not read directly.
     QStringList unsupportedFormatErrors;
     QStringList tooLargeErrors;
     QStringList corruptErrors;
     QStringList largeImages;
 
-private:
     QList<QUrl> urls_;
     QPointF pos_;
     CanvasScene* scene_;

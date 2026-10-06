@@ -42,11 +42,11 @@ Qt::MouseButton button_flag_for(const QString& name)
 
 void invoke(QWidget* target, const Action* action)
 {
-    if (action->callback.isEmpty()) {
+    if (action->callback().isEmpty()) {
         return;
     }
     QMetaObject::invokeMethod(target,
-                              action->callback.toUtf8().constData(),
+                              action->callback().toUtf8().constData(),
                               Qt::DirectConnection);
 }
 
@@ -134,10 +134,10 @@ bool ActionMouseDispatcher::try_mouse_press(QMouseEvent* event)
 
     for (const Action* action : get_actions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
-            if (!b.is_mouse_only() || b.mouseButton != btn) {
+            if (!b.is_mouse_only() || b.mouse_button() != btn) {
                 continue;
             }
-            if (MouseConfigBase::modifiers_to_qt(b.mouseModifiers)
+            if (MouseConfigBase::modifiers_to_qt(b.mouse_modifiers())
                 == event->modifiers()) {
                 invoke(target_, action);
                 return true;
@@ -181,14 +181,14 @@ bool ActionMouseDispatcher::try_key_press(QKeyEvent* event)
 
     for (const Action* action : get_actions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
-            if (!b.is_mixed() || b.keySequence != pressed) {
+            if (!b.is_mixed() || b.key_sequence() != pressed) {
                 continue;
             }
-            const Qt::MouseButton flag = button_flag_for(b.mouseButton);
+            const Qt::MouseButton flag = button_flag_for(b.mouse_button());
             if (flag != Qt::NoButton && (held & flag)) {
                 FLOG_DEBUG(familiar::log::Ch::UI,
                            "tryKeyPress: matched mixed alias for action '{}'",
-                           action->id.toStdString());
+                           action->id().toStdString());
                 release_press_target_before_action(target_,
                                                flag,
                                                event->modifiers());

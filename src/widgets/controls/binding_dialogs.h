@@ -89,9 +89,11 @@ protected:
     void try_accept();
     virtual void on_accepted(const Binding& candidate) = 0;
 
-    BindingTarget* target_;
+    // Non-const: subclasses write through it (set_bindings()).
+    BindingTarget* binding_target() const { return target_; }
 
 private:
+    BindingTarget* target_;
     MouseButtonCaptureField* mouseButtonField_ = nullptr;
     QMap<QString, QCheckBox*> modifierChecks_; // MouseWheelControl only
     KeySequenceCaptureField* keySequenceField_ = nullptr;

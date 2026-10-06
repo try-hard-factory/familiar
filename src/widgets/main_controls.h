@@ -90,7 +90,10 @@ public:
     }
 
 protected:
-    QWidget* controlTarget_ = nullptr;
+    // Set once by the mixing-in widget (CanvasView, WelcomeOverlay) -
+    // which widget the notifications/move-window gestures act on.
+    void set_control_target(QWidget* target) { controlTarget_ = target; }
+    QWidget* control_target() const { return controlTarget_; }
 
     void enter_movewin_mode()
     {
@@ -118,7 +121,7 @@ protected:
         } else {
             const QString msg = "Attempted drop not an image or image too big";
             FLOG_DEBUG(familiar::log::Ch::UI, "{}", msg);
-            FamNotification(controlTarget_, msg);
+            FamNotification(control_target(), msg);
         }
     }
 
@@ -134,6 +137,7 @@ protected:
     }
 
 private:
+    QWidget* controlTarget_ = nullptr;
     bool isMoving_ = false;
     bool rightMoveFlag_ = false;
     QPointF movewinStart_;

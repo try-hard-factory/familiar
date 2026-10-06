@@ -32,7 +32,7 @@ namespace {
 QString item_filename(QGraphicsItem* item)
 {
     if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
-        return pixmapItem->filename_;
+        return pixmapItem->filename();
     }
     return QString();
 }
@@ -65,7 +65,7 @@ CanvasScene::CanvasScene(MainWindow& mw,
                          uint64_t& zc,
                          QUndoStack* undoStack,
                          QGraphicsScene* scene)
-    : undo_stack_(undoStack)
+    : undoStack_(undoStack)
     , mainwindow_(mw)
     , zCounter_(zc)
 {
@@ -76,7 +76,7 @@ CanvasScene::CanvasScene(MainWindow& mw,
     connect(this, &CanvasScene::changed, this, &CanvasScene::on_change);
     (void) scene;
     clear();
-    clear_ongoing = false;
+    clearOngoing_ = false;
 
     connect(SettingsHandler::get_instance(),
             &SettingsHandler::settings_changed,
@@ -101,19 +101,19 @@ CanvasScene::~CanvasScene()
     disconnect(SettingsHandler::get_instance(), nullptr, this, nullptr);
     disconnect(QApplication::clipboard(), nullptr, this, nullptr);
 
-    // Same reasoning as clear(): detach rubberband_item_/multiselect_item_
+    // Same reasoning as clear(): detach rubberbandItem_/multiselectItem_
     // and every remaining user item via our own removeItem() before
     // ~QGraphicsScene() runs, so attachedItems_ releases its shared_ptr
     // references properly instead of racing Qt's own direct-delete of
     // whatever's still attached.
-    if (rubberband_item_->scene()) {
-        removeItem(rubberband_item_);
+    if (rubberbandItem_->scene()) {
+        removeItem(rubberbandItem_);
     }
-    delete rubberband_item_;
-    if (multiselect_item_->scene()) {
-        removeItem(multiselect_item_);
+    delete rubberbandItem_;
+    if (multiselectItem_->scene()) {
+        removeItem(multiselectItem_);
     }
-    delete multiselect_item_;
+    delete multiselectItem_;
     detach_all_items();
 
     delete projectSettings_;
@@ -121,24 +121,24 @@ CanvasScene::~CanvasScene()
 
 void CanvasScene::clear()
 {
-    clear_ongoing = true;
+    clearOngoing_ = true;
 
-    // rubberband_item_/multiselect_item_ are our own long-lived helper
+    // rubberbandItem_/multiselectItem_ are our own long-lived helper
     // items (not user content); on repeat calls (e.g. "New Scene") the
     // previous instances would otherwise leak when overwritten below.
     // Detach first if still in the scene so QGraphicsScene::clear()
     // below doesn't also try to delete them (double free).
-    if (rubberband_item_) {
-        if (rubberband_item_->scene()) {
-            removeItem(rubberband_item_);
+    if (rubberbandItem_) {
+        if (rubberbandItem_->scene()) {
+            removeItem(rubberbandItem_);
         }
-        delete rubberband_item_;
+        delete rubberbandItem_;
     }
-    if (multiselect_item_) {
-        if (multiselect_item_->scene()) {
-            removeItem(multiselect_item_);
+    if (multiselectItem_) {
+        if (multiselectItem_->scene()) {
+            removeItem(multiselectItem_);
         }
-        delete multiselect_item_;
+        delete multiselectItem_;
     }
 
     detach_all_items();
@@ -148,16 +148,16 @@ void CanvasScene::clear()
     // keep copied items alive independently of this scene, so wiping it
     // just because this one scene is being reset would break paste on
     // other tabs.
-    rubberband_item_ = new RubberbandItem();
-    multiselect_item_ = new MultiSelectItem();
-    clear_ongoing = false;
+    rubberbandItem_ = new RubberbandItem();
+    multiselectItem_ = new MultiSelectItem();
+    clearOngoing_ = false;
 }
 
 void CanvasScene::addItem(QGraphicsItem* item)
 {
     FLOG_DEBUG(Ch::Scene, "Adding item {}", debug_string(item));
     QGraphicsScene::addItem(item);
-    // rubberband_item_/multiselect_item_ implement IBaseItem too (needed
+    // rubberbandItem_/multiselectItem_ implement IBaseItem too (needed
     // for corners_scene_coords()/get_type()/etc.) but aren't part of the
     // shared-ownership system at all - they're singletons with manual
     // new/delete lifetime in clear() and get repeatedly attached/detached
@@ -195,21 +195,21 @@ void CanvasScene::cancel_active_modes()
 
 void CanvasScene::end_rubberband_mode()
 {
-    Q_ASSERT_X(rubberband_item_,
+    Q_ASSERT_X(rubberbandItem_,
                "end_rubberband_mode",
-               "rubberband_item_ == null!");
-    if (rubberband_item_->scene()) {
+               "rubberbandItem_ == null!");
+    if (rubberbandItem_->scene()) {
         FLOG_DEBUG(Ch::Scene, "End rubberband mode");
-        removeItem(rubberband_item_);
+        removeItem(rubberbandItem_);
     }
-    active_mode_ = kNone;
+    activeMode_ = kNone;
 }
 
 void CanvasScene::cancel_crop_mode()
 {
-    if (crop_item) {
+    if (cropItem_) {
         FLOG_DEBUG(Ch::Scene, "End crop mode");
-        crop_item->exit_crop_mode(false);
+        cropItem_->exit_crop_mode(false);
     }
 }
 
@@ -332,7 +332,7 @@ QList<IBaseItem*> CanvasScene::clone_with_remap(
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
     const QList<IBaseItem*> copies = clone_with_remap(internalClipboard);
-    undo_stack_->push(new InsertItemsCommand(this, copies, position));
+    undoStack_->push(new InsertItemsCommand(this, copies, position));
 }
 
 void CanvasScene::duplicate_selection()
@@ -376,7 +376,7 @@ void CanvasScene::duplicate_selection()
                                     400.0);
     const QPointF position = bounds.center() + QPointF(offset, offset);
 
-    undo_stack_->push(new InsertItemsCommand(this, copies, position));
+    undoStack_->push(new InsertItemsCommand(this, copies, position));
 }
 
 void CanvasScene::raise_to_top()
@@ -390,7 +390,7 @@ void CanvasScene::raise_to_top()
                    std::back_inserter(zValues),
                    [](const auto& i) { return i->zValue(); });
     const double minZValue = *std::min_element(zValues.begin(), zValues.end());
-    const double delta = max_z + Z_STEP - minZValue;
+    const double delta = maxZ_ + zStep_ - minZValue;
     FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
     for (auto& item : items) {
         dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
@@ -448,11 +448,11 @@ void CanvasScene::raise_selection_to_front()
         return;
     }
 
-    qreal z = max_z + Z_STEP;
+    qreal z = maxZ_ + zStep_;
     for (QGraphicsItem* item : ordered) {
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             baseItem->set_z_value(z);
-            z += Z_STEP;
+            z += zStep_;
         }
     }
 }
@@ -477,7 +477,7 @@ void CanvasScene::lower_to_bottom()
                    std::back_inserter(zValues),
                    [](const auto& i) { return i->zValue(); });
     const double maxZValue = *std::max_element(zValues.begin(), zValues.end());
-    const double delta = min_z - Z_STEP - maxZValue;
+    const double delta = minZ_ - zStep_ - maxZValue;
     FLOG_DEBUG(Ch::Scene, "Lower to bottom, delta: {}", delta);
     for (auto& item : items) {
         dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
@@ -518,7 +518,7 @@ void CanvasScene::group_selection()
     }
 
     if (groupCount == 1 && !loose.isEmpty() && !looseAlreadyGrouped) {
-        undo_stack_->push(new AddToGroupCommand(this, existingGroup, loose));
+        undoStack_->push(new AddToGroupCommand(this, existingGroup, loose));
         return;
     }
 
@@ -580,7 +580,7 @@ void CanvasScene::group_selection()
     group->set_local_rect(QRectF(0, 0, padded.width(), padded.height()));
     group->set_child_ids(ids);
 
-    undo_stack_->push(new GroupCommand(this, group, members));
+    undoStack_->push(new GroupCommand(this, group, members));
 }
 
 void CanvasScene::ungroup_selection()
@@ -604,12 +604,12 @@ void CanvasScene::ungroup_selection()
     // member. Only a TOP-LEVEL group (no owner) actually dissolves via
     // UngroupCommand.
     if (GroupItem* owner = find_owning_group(baseItem->uid())) {
-        undo_stack_->push(new RemoveFromGroupCommand(owner, baseItem->uid()));
+        undoStack_->push(new RemoveFromGroupCommand(owner, baseItem->uid()));
         return;
     }
 
     if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
-        undo_stack_->push(new UngroupCommand(this, group));
+        undoStack_->push(new UngroupCommand(this, group));
     }
 }
 
@@ -717,8 +717,8 @@ void CanvasScene::maybe_add_dropped_items_to_group(
             continue;
         }
         if (currentOwner) {
-            undo_stack_->beginMacro(tr("Move to group"));
-            undo_stack_->push(
+            undoStack_->beginMacro(tr("Move to group"));
+            undoStack_->push(
                 new RemoveFromGroupCommand(currentOwner, baseItem->uid()));
             // reselectOnUndo=false: this whole call is itself already
             // nested inside the drag's own undo macro
@@ -727,16 +727,16 @@ void CanvasScene::maybe_add_dropped_items_to_group(
             // overwritten by whatever ran before it in that macro's
             // undo anyway, and is exactly the bug where everything lit up
             // like a rubber-band.
-            undo_stack_->push(
+            undoStack_->push(
                 new AddToGroupCommand(this, target, {item}, false));
-            undo_stack_->endMacro();
+            undoStack_->endMacro();
             changed = true;
         } else {
             toAdd.append(item);
         }
     }
     if (!toAdd.isEmpty()) {
-        undo_stack_->push(new AddToGroupCommand(this, target, toAdd, false));
+        undoStack_->push(new AddToGroupCommand(this, target, toAdd, false));
         changed = true;
     }
 
@@ -774,12 +774,12 @@ void CanvasScene::add_to_group(QGraphicsItem* item, GroupItem* target)
     }
 
     if (currentOwner) {
-        undo_stack_->beginMacro(tr("Move to group"));
-        undo_stack_->push(new RemoveFromGroupCommand(currentOwner, base->uid()));
-        undo_stack_->push(new AddToGroupCommand(this, target, {item}, false));
-        undo_stack_->endMacro();
+        undoStack_->beginMacro(tr("Move to group"));
+        undoStack_->push(new RemoveFromGroupCommand(currentOwner, base->uid()));
+        undoStack_->push(new AddToGroupCommand(this, target, {item}, false));
+        undoStack_->endMacro();
     } else {
-        undo_stack_->push(new AddToGroupCommand(this, target, {item}, false));
+        undoStack_->push(new AddToGroupCommand(this, target, {item}, false));
     }
     raise_group_cluster_to_front(target);
 }
@@ -800,11 +800,11 @@ void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return a->zValue() < b->zValue();
               });
-    qreal z = max_z + Z_STEP;
+    qreal z = maxZ_ + zStep_;
     for (QGraphicsItem* item : cluster) {
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
             baseItem->set_z_value(z);
-            z += Z_STEP;
+            z += zStep_;
         }
     }
 }
@@ -832,7 +832,7 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
                             / (mode == "width" ? rect.width() : rect.height()));
     }
 
-    undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
+    undoStack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
 void CanvasScene::normalize_height()
@@ -867,7 +867,7 @@ void CanvasScene::normalize_size()
         scaleFactors.append(std::sqrt(avg / (rect.width() * rect.height())));
     }
 
-    undo_stack_->push(new NormalizeItemsCommand(items, scaleFactors));
+    undoStack_->push(new NormalizeItemsCommand(items, scaleFactors));
 }
 
 QList<QGraphicsItem*> CanvasScene::arrange_targets()
@@ -1112,7 +1112,7 @@ void CanvasScene::arrange(bool vertical)
         sortedItems.append(r.item);
     }
 
-    undo_stack_->push(new ArrangeItemsCommand(this, sortedItems, positions));
+    undoStack_->push(new ArrangeItemsCommand(this, sortedItems, positions));
 }
 void CanvasScene::arrange_optimal()
 {
@@ -1165,7 +1165,7 @@ void CanvasScene::arrange_optimal()
         scenePositions.append(QPointF(pos.x + diff.x(), pos.y + diff.y()));
     }
 
-    undo_stack_->push(new ArrangeItemsCommand(this, items, scenePositions));
+    undoStack_->push(new ArrangeItemsCommand(this, items, scenePositions));
 }
 
 void CanvasScene::arrange_square()
@@ -1206,7 +1206,7 @@ void CanvasScene::arrange_square()
         }
     }
 
-    undo_stack_->push(new ArrangeItemsCommand(this, items, positions));
+    undoStack_->push(new ArrangeItemsCommand(this, items, positions));
 }
 
 void CanvasScene::flip_items(bool vertical)
@@ -1235,13 +1235,13 @@ void CanvasScene::flip_items(bool vertical)
             }
         }
     }
-    undo_stack_->push(
+    undoStack_->push(
         new FlipItemsCommand(items, get_selection_center(), vertical));
 }
 
 void CanvasScene::crop_items()
 {
-    if (crop_item) {
+    if (cropItem_) {
         return;
     }
     if (has_single_image_selection()) {
@@ -1428,19 +1428,19 @@ void CanvasScene::attach_item_to(QGraphicsItem* item, const QUuid& targetUid)
     // when there's no group-transfer half, so the undo stack always
     // shows one "Attach" entry rather than sometimes falling back to
     // SetAttachedToCommand's own text.
-    undo_stack_->beginMacro(tr("Attach"));
-    undo_stack_->push(
+    undoStack_->beginMacro(tr("Attach"));
+    undoStack_->push(
         new SetAttachedToCommand(base, base->attached_to_uid(), targetUid));
     if (oldGroup != newGroup) {
         if (oldGroup) {
-            undo_stack_->push(new RemoveFromGroupCommand(oldGroup, base->uid()));
+            undoStack_->push(new RemoveFromGroupCommand(oldGroup, base->uid()));
         }
         if (newGroup) {
-            undo_stack_->push(
+            undoStack_->push(
                 new AddToGroupCommand(this, newGroup, {item}, false));
         }
     }
-    undo_stack_->endMacro();
+    undoStack_->endMacro();
 }
 
 void CanvasScene::detach_item(QGraphicsItem* item)
@@ -1455,15 +1455,15 @@ void CanvasScene::detach_item(QGraphicsItem* item)
         return; // already fully top-level
     }
 
-    undo_stack_->beginMacro(tr("Detach"));
+    undoStack_->beginMacro(tr("Detach"));
     if (wasAttached) {
-        undo_stack_->push(
+        undoStack_->push(
             new SetAttachedToCommand(base, base->attached_to_uid(), QUuid()));
     }
     if (owner) {
-        undo_stack_->push(new RemoveFromGroupCommand(owner, base->uid()));
+        undoStack_->push(new RemoveFromGroupCommand(owner, base->uid()));
     }
-    undo_stack_->endMacro();
+    undoStack_->endMacro();
 }
 
 void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
@@ -1473,20 +1473,20 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     }
 
     if (event->button() == Qt::LeftButton) {
-        event_start = event->scenePos();
-        auto* itemAtPos = itemAt(event_start, views().first()->transform());
+        eventStart_ = event->scenePos();
+        auto* itemAtPos = itemAt(eventStart_, views().first()->transform());
 
-        if (edit_item) {
-            if (itemAtPos != edit_item) {
-                edit_item->exit_edit_mode();
+        if (editItem_) {
+            if (itemAtPos != editItem_) {
+                editItem_->exit_edit_mode();
             } else {
                 QGraphicsScene::mousePressEvent(event);
                 return;
             }
         }
 
-        if (crop_item) {
-            if (itemAtPos != crop_item) {
+        if (cropItem_) {
+            if (itemAtPos != cropItem_) {
                 cancel_crop_mode();
             } else {
                 QGraphicsScene::mousePressEvent(event);
@@ -1495,9 +1495,9 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
 
         if (itemAtPos) {
-            active_mode_ = kMoveMode;
+            activeMode_ = kMoveMode;
         } else if (!items().isEmpty()) {
-            active_mode_ = kRubberbandMode;
+            activeMode_ = kRubberbandMode;
         }
     }
 
@@ -1564,26 +1564,26 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (active_mode_ == kRubberbandMode) {
-        if (!rubberband_item_->scene()) {
+    if (activeMode_ == kRubberbandMode) {
+        if (!rubberbandItem_->scene()) {
             FLOG_DEBUG(Ch::Scene, "Activating rubberband selection");
-            addItem(rubberband_item_);
+            addItem(rubberbandItem_);
         }
-        rubberband_item_->fit(event_start, event->scenePos());
-        setSelectionArea(rubberband_item_->shape());
+        rubberbandItem_->fit(eventStart_, event->scenePos());
+        setSelectionArea(rubberbandItem_->shape());
         // Re-assert on top *after* setSelectionArea: selecting an item
         // here can itself trigger ItemMixin::on_selected_change(), which
         // brings that item to front too - without this, the first image
         // touched by the drag would end up with a higher z-value than
         // the rubberband and visually cover it.
-        rubberband_item_->bring_to_front();
+        rubberbandItem_->bring_to_front();
         CanvasView* view = static_cast<CanvasView*>(views().first());
         Q_ASSERT_X(view, "CanvasScene::mouseMoveEvent", "view == null");
         view->reset_previous_transform();
     }
 
-    if (active_mode_ == kMoveMode && has_selection()
-        && !multiselect_item_->is_action_active()
+    if (activeMode_ == kMoveMode && has_selection()
+        && !multiselectItem_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
         const QList<QGraphicsItem*> dragged = selectedItems(true);
@@ -1607,16 +1607,16 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     FLOG_DEBUG(Ch::Scene,
-               "CanvasScene::mouseReleaseEvent active_mode_={}",
-               int(active_mode_));
-    if (active_mode_ == kRubberbandMode) {
+               "CanvasScene::mouseReleaseEvent activeMode_={}",
+               int(activeMode_));
+    if (activeMode_ == kRubberbandMode) {
         end_rubberband_mode();
     }
-    if (active_mode_ == kMoveMode && has_selection()
-        && !multiselect_item_->is_action_active()
+    if (activeMode_ == kMoveMode && has_selection()
+        && !multiselectItem_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
-        auto delta = event->scenePos() - event_start;
+        auto delta = event->scenePos() - eventStart_;
         if (!delta.isNull()) {
             // One undo step for the whole drag, not two - a drag that
             // happens to end over a group both moves the item AND joins
@@ -1625,12 +1625,12 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             // on a transfer). Without the macro, Ctrl+Z only unwound the
             // group join and left the item wherever it was dropped
             // instead of back where the drag started.
-            undo_stack_->beginMacro(tr("Move"));
-            undo_stack_->push(
+            undoStack_->beginMacro(tr("Move"));
+            undoStack_->push(
                 new MoveItemsByCommand(selectedItems(), delta, true));
             maybe_add_dropped_items_to_group(selectedItems(true),
                                              event->scenePos());
-            undo_stack_->endMacro();
+            undoStack_->endMacro();
         }
     }
     // The drag (if any) is over either way - don't leave a stale
@@ -1642,7 +1642,7 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     // ItemMixin::on_selected_change() needs active_mode() to still read
     // kMoveMode when that fires.
     QGraphicsScene::mouseReleaseEvent(event);
-    active_mode_ = kNone;
+    activeMode_ = kNone;
 }
 
 QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
@@ -1755,38 +1755,38 @@ QPointF CanvasScene::get_selection_center()
 
 void CanvasScene::on_selection_change()
 {
-    if (clear_ongoing) {
+    if (clearOngoing_) {
         return;
     }
 
     // Same mode guard ItemMixin::on_selected_change() (moveitem.h) uses
     // for its own (single-item, first-of-a-fresh-selection-only)
     // bring-to-front - keeps this from firing during a file load
-    // restoring a saved selection (active_mode_ is kNone then, no mouse
+    // restoring a saved selection (activeMode_ is kNone then, no mouse
     // interaction in progress) or any other non-click-driven selection
     // change, only for an actual user click (kMoveMode) or rubber-band
     // sweep (kRubberbandMode, so a multi-select-by-dragging ends up on
     // top too, not just ctrl+click accumulation).
     FLOG_DEBUG(Ch::Scene,
-               "CanvasScene::on_selection_change() active_mode_={} "
+               "CanvasScene::on_selection_change() activeMode_={} "
                "selectedCount={}",
-               int(active_mode_),
+               int(activeMode_),
                selectedItems(true).size());
-    if (active_mode_ == kMoveMode || active_mode_ == kRubberbandMode) {
+    if (activeMode_ == kMoveMode || activeMode_ == kRubberbandMode) {
         raise_selection_to_front();
     }
 
     if (has_multi_selection()) {
-        multiselect_item_->fit_selection_area(itemsBoundingRect(true));
+        multiselectItem_->fit_selection_area(itemsBoundingRect(true));
     }
 
-    if (has_multi_selection() && !multiselect_item_->scene()) {
-        addItem(multiselect_item_);
-        multiselect_item_->bring_to_front();
+    if (has_multi_selection() && !multiselectItem_->scene()) {
+        addItem(multiselectItem_);
+        multiselectItem_->bring_to_front();
     }
 
-    if (!has_multi_selection() && multiselect_item_->scene()) {
-        removeItem(multiselect_item_);
+    if (!has_multi_selection() && multiselectItem_->scene()) {
+        removeItem(multiselectItem_);
     }
 
     restore_drilled_in_members();
@@ -1814,12 +1814,12 @@ void CanvasScene::on_change()
 {
     // Ignore events while clearing the scene since the
     // multiselect item will get cleared, too
-    if (clear_ongoing) {
+    if (clearOngoing_) {
         return;
     }
 
-    if (multiselect_item_->scene() && !multiselect_item_->is_action_active()) {
-        multiselect_item_->fit_selection_area(itemsBoundingRect(true));
+    if (multiselectItem_->scene() && !multiselectItem_->is_action_active()) {
+        multiselectItem_->fit_selection_area(itemsBoundingRect(true));
     }
 
     // Auto-fit: grows OR shrinks every group's fill to
@@ -1839,7 +1839,7 @@ void CanvasScene::on_change()
 void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
 {
     const QMutexLocker locker(&itemsToAddMutex_);
-    items_to_add.push({itemdata, selected});
+    itemsToAdd_.push({itemdata, selected});
 }
 
 QList<IBaseItem*> CanvasScene::add_queued_items()
@@ -1850,11 +1850,11 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
         QueuedItemData queuedData;
         {
             const QMutexLocker locker(&itemsToAddMutex_);
-            if (items_to_add.empty()) {
+            if (itemsToAdd_.empty()) {
                 break;
             }
-            queuedData = items_to_add.front();
-            items_to_add.pop();
+            queuedData = itemsToAdd_.front();
+            itemsToAdd_.pop();
         }
 
         QVariantMap data = queuedData.data;
@@ -1967,7 +1967,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 // Force recalculation of min/max z values - must go
                 // through set_z_value() (not the raw setZValue() call
                 // above), since that's the only one wired to update
-                // scene->max_z/min_z (QGraphicsItem::setZValue() isn't
+                // scene->max_z/minZ_ (QGraphicsItem::setZValue() isn't
                 // virtual, so it can't be overridden directly).
                 baseItem->set_z_value(item->zValue());
 
@@ -2011,7 +2011,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
 
 CanvasScene::ESceneMode CanvasScene::active_mode() const
 {
-    return active_mode_;
+    return activeMode_;
 }
 
 bool CanvasScene::item_add_by_user(QGraphicsItem* item) const
