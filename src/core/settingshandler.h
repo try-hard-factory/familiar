@@ -55,7 +55,7 @@ class QSharedPointer;
 #define SETTINGS_SETTER(FUNC, KEY, TYPE) \
     void FUNC(const TYPE& val) \
     { \
-        QString key = QStringLiteral(#KEY); \
+        const QString key = QStringLiteral(#KEY); \
         if (QVariant::fromValue(val) != value(key)) { \
             set_value(key, QVariant::fromValue(val)); \
         } \
