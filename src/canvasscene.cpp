@@ -331,7 +331,7 @@ QList<IBaseItem*> CanvasScene::clone_with_remap(
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
-    QList<IBaseItem*> copies = clone_with_remap(internalClipboard);
+    const QList<IBaseItem*> copies = clone_with_remap(internalClipboard);
     undo_stack_->push(new InsertItemsCommand(this, copies, position));
 }
 
@@ -351,7 +351,7 @@ void CanvasScene::duplicate_selection()
         return;
     }
 
-    QList<IBaseItem*> copies = clone_with_remap(sources);
+    const QList<IBaseItem*> copies = clone_with_remap(sources);
 
     // A copy still sits at its original's exact position (create_copy()
     // doesn't offset it) - InsertItemsCommand::redo() only recenters
@@ -389,8 +389,8 @@ void CanvasScene::raise_to_top()
                    items.end(),
                    std::back_inserter(zValues),
                    [](const auto& i) { return i->zValue(); });
-    double minZValue = *std::min_element(zValues.begin(), zValues.end());
-    double delta = max_z + Z_STEP - minZValue;
+    const double minZValue = *std::min_element(zValues.begin(), zValues.end());
+    const double delta = max_z + Z_STEP - minZValue;
     FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
     for (auto& item : items) {
         dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
@@ -476,8 +476,8 @@ void CanvasScene::lower_to_bottom()
                    items.end(),
                    std::back_inserter(zValues),
                    [](const auto& i) { return i->zValue(); });
-    double maxZValue = *std::max_element(zValues.begin(), zValues.end());
-    double delta = min_z - Z_STEP - maxZValue;
+    const double maxZValue = *std::max_element(zValues.begin(), zValues.end());
+    const double delta = min_z - Z_STEP - maxZValue;
     FLOG_DEBUG(Ch::Scene, "Lower to bottom, delta: {}", delta);
     for (auto& item : items) {
         dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
@@ -486,7 +486,7 @@ void CanvasScene::lower_to_bottom()
 
 void CanvasScene::group_selection()
 {
-    QList<QGraphicsItem*> selected = selectedItems(true);
+    const QList<QGraphicsItem*> selected = selectedItems(true);
     if (selected.size() < 2) {
         return;
     }
@@ -681,7 +681,7 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     // other group (see the transfer branch below), or a GroupItem
     // itself - dragging a whole subgroup onto another group nests it
     // the same way "select both + Ctrl+G" would
-    QList<QGraphicsItem*> candidates = movedItems;
+    const QList<QGraphicsItem*> candidates = movedItems;
     if (candidates.isEmpty()) {
         return;
     }
@@ -813,21 +813,21 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
 {
     cancel_active_modes();
     QList<qreal> values;
-    QList<QGraphicsItem*> items = selectedItems(true);
+    const QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
-        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         values.append(mode == "width" ? rect.width() : rect.height());
     }
     if (values.size() < 2) {
         return;
     }
-    qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
+    const qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
                 / static_cast<qreal>(values.size());
     FLOG_DEBUG(Ch::Scene, "Calculated average {} {}", mode, avg);
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
-        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         scaleFactors.append(avg
                             / (mode == "width" ? rect.width() : rect.height()));
     }
@@ -849,21 +849,21 @@ void CanvasScene::normalize_size()
 {
     cancel_crop_mode();
     QList<qreal> sizes;
-    QList<QGraphicsItem*> items = selectedItems(true);
+    const QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
-        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         sizes.append(rect.width() * rect.height());
     }
     if (sizes.size() < 2) {
         return;
     }
-    qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
+    const qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
                 / static_cast<qreal>(sizes.size());
     FLOG_DEBUG(Ch::Scene, "Calculated average size {}", avg);
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
-        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         scaleFactors.append(std::sqrt(avg / (rect.width() * rect.height())));
     }
 
@@ -879,7 +879,7 @@ QList<QGraphicsItem*> CanvasScene::arrange_targets()
     // top level. Set to a group when exactly that group is selected, so
     // "arrange" then means "lay out what's inside it" - the one case
     // where reaching INTO a group is what the user asked for.
-    GroupItem* expectedOwner = nullptr;
+    const GroupItem* expectedOwner = nullptr;
 
     if (candidates.size() == 1) {
         if (auto* group = dynamic_cast<GroupItem*>(candidates.first())) {
@@ -1004,7 +1004,7 @@ private:
         for (int i = 0; i < freeRects.size(); ++i) {
             const auto& fr = freeRects[i];
             if (fr.width >= width && fr.height >= height) {
-                int area = fr.width * fr.height;
+                const int area = fr.width * fr.height;
                 if (area < bestArea) {
                     bestArea = area;
                     bestIndex = i;
@@ -1016,7 +1016,7 @@ private:
             return false;
         }
 
-        FreeRect fr = freeRects[bestIndex];
+        const FreeRect fr = freeRects[bestIndex];
         pos.x = fr.x;
         pos.y = fr.y;
 
@@ -1039,12 +1039,12 @@ void CanvasScene::arrange(bool vertical)
 {
     cancel_active_modes();
 
-    QList<QGraphicsItem*> items = arrange_targets();
+    const QList<QGraphicsItem*> items = arrange_targets();
     if (items.size() < 2) {
         return;
     }
 
-    qreal gap = SettingsHandler::get_instance()->arrange_gap();
+    const qreal gap = SettingsHandler::get_instance()->arrange_gap();
     // Centre of what's actually being arranged, NOT get_selection_center()
     // - that one measures the selection, which is both empty in the
     // arrange-the-whole-scene case and wrong whenever arrange_targets()
@@ -1118,17 +1118,17 @@ void CanvasScene::arrange_optimal()
 {
     cancel_active_modes();
 
-    QList<QGraphicsItem*> items = arrange_targets();
+    const QList<QGraphicsItem*> items = arrange_targets();
     if (items.size() < 2) {
         return;
     }
 
-    qreal gap = SettingsHandler::get_instance()->arrange_gap();
+    const qreal gap = SettingsHandler::get_instance()->arrange_gap();
 
     // Получаем размеры элементов
     QList<RectPacker::Size> sizes;
     for (QGraphicsItem* item : items) {
-        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         sizes.append({static_cast<int>(std::round(rect.width() + gap)),
                       static_cast<int>(std::round(rect.height() + gap))});
     }
@@ -1157,7 +1157,7 @@ void CanvasScene::arrange_optimal()
     }
 
     // Центрируем элементы вокруг центра выделения
-    QPointF diff(center.x() - boundsWidth / 2.0,
+    const QPointF diff(center.x() - boundsWidth / 2.0,
                  center.y() - boundsHeight / 2.0);
 
     QList<QPointF> scenePositions;
@@ -1173,25 +1173,25 @@ void CanvasScene::arrange_square()
     cancel_active_modes();
     qreal maxWidth = 0;
     qreal maxHeight = 0;
-    qreal gap = SettingsHandler::get_instance()->arrange_gap();
-    QList<QGraphicsItem*> items = sort_by_filename(arrange_targets());
+    const qreal gap = SettingsHandler::get_instance()->arrange_gap();
+    const QList<QGraphicsItem*> items = sort_by_filename(arrange_targets());
 
     if (items.size() < 2) {
         return;
     }
 
     for (QGraphicsItem* item : items) {
-        QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
         maxWidth = std::max(maxWidth, rect.width() + gap);
         maxHeight = std::max(maxHeight, rect.height() + gap);
     }
 
     // We want the items to center around the selection's center,
     // not (0, 0)
-    int numRows = static_cast<int>(std::ceil(std::sqrt(items.size())));
+    const int numRows = static_cast<int>(std::ceil(std::sqrt(items.size())));
     // See arrange()'s own comment for why not get_selection_center().
     const QPointF center = itemsBoundingRect(false, items).center();
-    QPointF diff = center - (numRows / 2.0) * QPointF(maxWidth, maxHeight);
+    const QPointF diff = center - (numRows / 2.0) * QPointF(maxWidth, maxHeight);
 
     QList<QPointF> positions;
     auto it = items.constBegin();
@@ -1199,8 +1199,8 @@ void CanvasScene::arrange_square()
         for (int i = 0; i < numRows && it != items.constEnd(); ++i) {
             QGraphicsItem* item = *it;
             ++it;
-            QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
-            QPointF point(i * maxWidth + (maxWidth - rect.width()) / 2.0,
+            const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+            const QPointF point(i * maxWidth + (maxWidth - rect.width()) / 2.0,
                           j * maxHeight + (maxHeight - rect.height()) / 2.0);
             positions.append(point + diff);
         }
@@ -1586,7 +1586,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         && !multiselect_item_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
-        QList<QGraphicsItem*> dragged = selectedItems(true);
+        const QList<QGraphicsItem*> dragged = selectedItems(true);
         GroupItem* target = find_drop_target_group(event->scenePos(),
                                                    forbidden_drop_targets(
                                                        dragged));
@@ -1728,21 +1728,21 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
     QList<qreal> y;
 
     for (QGraphicsItem* item : base) {
-        IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
+        const IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
         Q_ASSERT_X(baseItem,
                    "CanvasScene::itemsBoundingRect",
                    "item is not an IBaseItem");
-        QVector<QPointF> corners = baseItem->corners_scene_coords();
+        const QVector<QPointF> corners = baseItem->corners_scene_coords();
         for (const QPointF& corner : corners) {
             x.append(corner.x());
             y.append(corner.y());
         }
     }
 
-    qreal minX = *std::min_element(x.constBegin(), x.constEnd());
-    qreal maxX = *std::max_element(x.constBegin(), x.constEnd());
-    qreal minY = *std::min_element(y.constBegin(), y.constEnd());
-    qreal maxY = *std::max_element(y.constBegin(), y.constEnd());
+    const qreal minX = *std::min_element(x.constBegin(), x.constEnd());
+    const qreal maxX = *std::max_element(x.constBegin(), x.constEnd());
+    const qreal minY = *std::min_element(y.constBegin(), y.constEnd());
+    const qreal maxY = *std::max_element(y.constBegin(), y.constEnd());
 
     return QRectF(QPointF(minX, minY), QPointF(maxX, maxY));
 }
@@ -1800,7 +1800,7 @@ void CanvasScene::restore_drilled_in_members()
             continue;
         }
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        GroupItem* owner = baseItem ? find_owning_group(baseItem->uid())
+        const GroupItem* owner = baseItem ? find_owning_group(baseItem->uid())
                                     : nullptr;
         if (owner && owner->locked()) {
             item->setFlag(QGraphicsItem::ItemIsSelectable, false);
@@ -1838,7 +1838,7 @@ void CanvasScene::on_change()
 
 void CanvasScene::add_item_later(const QVariantMap& itemdata, bool selected)
 {
-    QMutexLocker locker(&itemsToAddMutex_);
+    const QMutexLocker locker(&itemsToAddMutex_);
     items_to_add.push({itemdata, selected});
 }
 
@@ -1849,7 +1849,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
     while (true) {
         QueuedItemData queuedData;
         {
-            QMutexLocker locker(&itemsToAddMutex_);
+            const QMutexLocker locker(&itemsToAddMutex_);
             if (items_to_add.empty()) {
                 break;
             }
@@ -1858,42 +1858,42 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
         }
 
         QVariantMap data = queuedData.data;
-        bool selected = queuedData.selected;
+        const bool selected = queuedData.selected;
 
         // Get item type from data
-        QString typ = data.value("type").toString();
+        const QString typ = data.value("type").toString();
         data.remove("type");
 
         // Create item based on type
         QGraphicsItem* item = nullptr;
         if (typ == "pixmap") {
             // For pixmap items, we need an image - this should be provided in data
-            QVariant imageVariant = data.value("image");
+            const QVariant imageVariant = data.value("image");
             if (imageVariant.isValid()) {
-                QImage image = imageVariant.value<QImage>();
-                QString filename = data.value("filename").toString();
+                const QImage image = imageVariant.value<QImage>();
+                const QString filename = data.value("filename").toString();
                 PixmapItem* pixmapItem = new PixmapItem(image, filename);
 
                 // "crop" and "attached_to" -
                 // see PixmapItem::apply_extra_save_data() (moveitem.h).
-                QVariant extraData = data.value("data");
+                const QVariant extraData = data.value("data");
                 if (extraData.isValid()) {
                     pixmapItem->apply_extra_save_data(extraData.toMap());
                 }
                 item = pixmapItem;
             }
         } else if (typ == "gif") {
-            QVariant gifVariant = data.value("gifBytes");
+            const QVariant gifVariant = data.value("gifBytes");
             if (gifVariant.isValid()) {
-                QByteArray gifBytes = gifVariant.toByteArray();
-                QString filename = data.value("filename").toString();
+                const QByteArray gifBytes = gifVariant.toByteArray();
+                const QString filename = data.value("filename").toString();
                 GifItem* gifItem = new GifItem(gifBytes, filename);
 
                 // "crop"/"attached_to" (via the PixmapItem base call
                 // inside GifItem::apply_extra_save_data()) plus
                 // GIF-specific "speed" - all live under the same "data"
                 // extra-map.
-                QVariant extraData = data.value("data");
+                const QVariant extraData = data.value("data");
                 if (extraData.isValid()) {
                     gifItem->apply_extra_save_data(extraData.toMap());
                 }
@@ -1934,30 +1934,30 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 // docs/fml_format_design.md §5.1/§9). Absent for a
                 // freshly-constructed item (e.g. paste, legacy .fml) -
                 // it already has the uid its constructor generated.
-                QUuid uid = data.value("id").toUuid();
+                const QUuid uid = data.value("id").toUuid();
                 if (!uid.isNull()) {
                     baseItem->set_uid(uid);
                 }
 
                 // Set position
-                qreal x = data.value("x", 0.0).toReal();
-                qreal y = data.value("y", 0.0).toReal();
+                const qreal x = data.value("x", 0.0).toReal();
+                const qreal y = data.value("y", 0.0).toReal();
                 item->setPos(x, y);
 
                 // Set z-value
-                qreal z = data.value("z", 0.0).toReal();
+                const qreal z = data.value("z", 0.0).toReal();
                 item->setZValue(z);
 
                 // Set scale
-                qreal scale = data.value("scale", 1.0).toReal();
+                const qreal scale = data.value("scale", 1.0).toReal();
                 item->setScale(scale);
 
                 // Set rotation
-                qreal rotation = data.value("rotation", 0.0).toReal();
+                const qreal rotation = data.value("rotation", 0.0).toReal();
                 item->setRotation(rotation);
 
                 // Handle flip
-                int flip = data.value("flip", 1).toInt();
+                const int flip = data.value("flip", 1).toInt();
                 if (flip == -1) {
                     baseItem->do_flip();
                 }

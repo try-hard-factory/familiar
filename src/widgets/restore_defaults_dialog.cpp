@@ -84,7 +84,7 @@ bool category_has_changes(SettingsCategory category)
     switch (category) {
     case SettingsCategory::Performance:
     case SettingsCategory::ImagesAndItems: {
-        FamSettings settings;
+        const FamSettings settings;
         for (const QString& key :
              RestoreDefaultsDialog::fam_settings_keys_for(category)) {
             if (settings.value_changed(key)) {
@@ -267,7 +267,7 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
 #endif
     listLayout->addWidget(allCheckbox_);
 
-    for (SettingsCategory category : all_categories()) {
+    for (const SettingsCategory category : all_categories()) {
         auto* checkbox = new FlatCheckBox(category_label(category),
                                           textColor,
                                           border,
@@ -373,7 +373,7 @@ void RestoreDefaultsDialog::on_category_toggled()
     }
     syncing_ = true;
     bool allChecked = true;
-    for (QCheckBox* checkbox : std::as_const(categoryCheckboxes_)) {
+    for (const QCheckBox* checkbox : std::as_const(categoryCheckboxes_)) {
         if (!checkbox->isChecked()) {
             allChecked = false;
             break;

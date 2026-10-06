@@ -153,7 +153,7 @@ void FileActions::process_open_file(const QString& file)
     // second copy. Was previously only checked in openFile()'s dialog
     // loop, so on_action_open_recent_file() (which calls this directly)
     // skipped it entirely.
-    int count = mainwindow_.tab_pane().count();
+    const int count = mainwindow_.tab_pane().count();
     for (int j = 0; j < count; ++j) {
         if (mainwindow_.tab_pane().widget_at(j)->path() == file) {
             mainwindow_.tab_pane().set_current_index(j);
@@ -179,7 +179,7 @@ void FileActions::process_open_file(const QString& file)
 
 int FileActions::save_file(CanvasView* canvasView, const QString& path)
 {
-    QFile file(path);
+    const QFile file(path);
     if (!file.exists()) {
         return save_file_as();
     }
@@ -189,7 +189,7 @@ int FileActions::save_file(CanvasView* canvasView, const QString& path)
     // close the tab or quit the app right after this returns, assuming the
     // save has already completed - threading it would need those flows
     // reworked to wait on ThreadedIO::finished first.
-    FmlResult result = FmlArchive::save(canvasView->scene(),
+    const FmlResult result = FmlArchive::save(canvasView->scene(),
                                         canvasView->canvas_rect(),
                                         path);
 

@@ -72,7 +72,7 @@ void RingSink::write_log(
     const Level level = from_quill_level(logLevel);
 
     {
-        QMutexLocker locker(&mutex_);
+        const QMutexLocker locker(&mutex_);
         ring_.append({level, line});
         while (size_t(ring_.size()) > capacity_) {
             ring_.removeFirst();
@@ -86,7 +86,7 @@ void RingSink::flush_sink() noexcept {}
 
 QList<RingSink::Entry> RingSink::entries() const
 {
-    QMutexLocker locker(&mutex_);
+    const QMutexLocker locker(&mutex_);
     return ring_;
 }
 

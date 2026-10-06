@@ -159,7 +159,7 @@ QByteArray write_manifest(const Manifest& manifest)
 std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
 {
     QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
+    const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
     if (parseError.error != QJsonParseError::NoError) {
         error = QStringLiteral("Invalid manifest.json: %1")
                     .arg(parseError.errorString());
@@ -182,7 +182,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
         return std::nullopt;
     }
 
-    int formatVersion = root.value(QStringLiteral("formatVersion")).toInt(-1);
+    const int formatVersion = root.value(QStringLiteral("formatVersion")).toInt(-1);
     if (formatVersion <= 0 || formatVersion > kformatVersion) {
         error = QStringLiteral("This file was created by a newer version of "
                                "familiar (formatVersion %1)")
@@ -215,7 +215,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     QSet<QUuid> seenIds;
     const QJsonArray items = root.value(QStringLiteral("items")).toArray();
     for (const QJsonValue& v : items) {
-        QJsonObject obj = v.toObject();
+        const QJsonObject obj = v.toObject();
         ManifestItem item;
 
         QUuid id = QUuid::fromString(obj.value(QStringLiteral("id")).toString());
@@ -287,7 +287,7 @@ private:
 
 bool looks_like_zip(QFile& file)
 {
-    QByteArray header = file.peek(4);
+    const QByteArray header = file.peek(4);
     return header.size() == 4
            && std::memcmp(header.constData(), kzipMagic, 4) == 0;
 }
@@ -342,8 +342,8 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
             break;
         }
 
-        QByteArray compressed = file.read(static_cast<qint64>(size));
-        QByteArray raw = qUncompress(compressed);
+        const QByteArray compressed = file.read(static_cast<qint64>(size));
+        const QByteArray raw = qUncompress(compressed);
         if (raw.isEmpty() && size > 0) {
             result.itemErrors.append(
                 QStringLiteral("Item %1: could not decompress image data")
@@ -469,10 +469,10 @@ FmlResult FmlArchive::save(CanvasScene* scene,
         // exactly what GifItem's own constructor expects back on load.
         if (auto* gifItem = dynamic_cast<GifItem*>(items[i])) {
             const QByteArray& bytes = gifItem->gif_bytes();
-            QString idStr = mi.id.toString(QUuid::WithoutBraces);
+            const QString idStr = mi.id.toString(QUuid::WithoutBraces);
             mi.image = QStringLiteral("images/%1.gif").arg(idStr);
 
-            QByteArray archiveName = mi.image.toUtf8();
+            const QByteArray archiveName = mi.image.toUtf8();
             if (!mz_zip_writer_add_mem(zip.get(),
                                        archiveName.constData(),
                                        bytes.constData(),
@@ -488,10 +488,10 @@ FmlResult FmlArchive::save(CanvasScene* scene,
             }
         } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
             auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
-            QString idStr = mi.id.toString(QUuid::WithoutBraces);
+            const QString idStr = mi.id.toString(QUuid::WithoutBraces);
             mi.image = QStringLiteral("images/%1.%2").arg(idStr, imgformat);
 
-            QByteArray archiveName = mi.image.toUtf8();
+            const QByteArray archiveName = mi.image.toUtf8();
             if (!mz_zip_writer_add_mem(zip.get(),
                                        archiveName.constData(),
                                        bytes.constData(),
@@ -521,7 +521,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
         return result;
     }
 
-    QByteArray manifestJson = write_manifest(manifest);
+    const QByteArray manifestJson = write_manifest(manifest);
     if (!mz_zip_writer_add_mem(zip.get(),
                                "manifest.json",
                                manifestJson.constData(),
@@ -579,7 +579,7 @@ FmlResult FmlArchive::load(const QString& filename,
         return load_legacy(file, scene, worker);
     }
 
-    QByteArray bytes = file.readAll();
+    const QByteArray bytes = file.readAll();
     file.close();
 
     ZipReader zip;
@@ -590,7 +590,7 @@ FmlResult FmlArchive::load(const QString& filename,
         return result;
     }
 
-    int manifestIndex
+    const int manifestIndex
         = mz_zip_reader_locate_file(zip.get(), "manifest.json", nullptr, 0);
     if (manifestIndex < 0) {
         result.error = QStringLiteral("%1 has no manifest.json").arg(filename);
@@ -610,7 +610,7 @@ FmlResult FmlArchive::load(const QString& filename,
         FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
         return result;
     }
-    QByteArray manifestJson(static_cast<const char*>(manifestBuf),
+    const QByteArray manifestJson(static_cast<const char*>(manifestBuf),
                             static_cast<int>(manifestSize));
     mz_free(manifestBuf);
 
@@ -654,8 +654,8 @@ FmlResult FmlArchive::load(const QString& filename,
 
         if (mi.type == QStringLiteral("pixmap")
             || mi.type == QStringLiteral("gif")) {
-            QByteArray imagePath = mi.image.toUtf8();
-            int imageIndex = mz_zip_reader_locate_file(zip.get(),
+            const QByteArray imagePath = mi.image.toUtf8();
+            const int imageIndex = mz_zip_reader_locate_file(zip.get(),
                                                        imagePath.constData(),
                                                        nullptr,
                                                        0);

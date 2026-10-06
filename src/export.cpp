@@ -68,10 +68,10 @@ SceneExporterBase::SceneExporterBase(CanvasScene* scene)
     // into the export.
     scene_->deselect_all_items();
 
-    QRectF rect = scene_->itemsBoundingRect();
-    QSize contentSize(qRound(rect.width()), qRound(rect.height()));
+    const QRectF rect = scene_->itemsBoundingRect();
+    const QSize contentSize(qRound(rect.width()), qRound(rect.height()));
     margin_ = std::max(contentSize.width(), contentSize.height()) * 0.03;
-    int marginInt = qRound(margin_);
+    const int marginInt = qRound(margin_);
     defaultSize_ = contentSize.grownBy(
         QMargins(marginInt, marginInt, marginInt, marginInt));
 }
@@ -92,15 +92,15 @@ bool SceneToPixmapExporter::get_user_input(QWidget* parent)
 
 QImage SceneToPixmapExporter::render_to_image() const
 {
-    qreal finalMargin = margin_ * size_.width() / defaultSize_.width();
+    const qreal finalMargin = margin_ * size_.width() / defaultSize_.width();
 
     auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
-    QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
+    const QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
 
     QImage image(size_, QImage::Format_RGB32);
     image.fill(canvasColor);
     QPainter painter(&image);
-    QRectF targetRect(finalMargin,
+    const QRectF targetRect(finalMargin,
                       finalMargin,
                       size_.width() - 2 * finalMargin,
                       size_.height() - 2 * finalMargin);
@@ -112,7 +112,7 @@ QImage SceneToPixmapExporter::render_to_image() const
 void SceneToPixmapExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
     emit_begin_processing(worker, 1);
-    QImage image = render_to_image();
+    const QImage image = render_to_image();
 
     if (worker && worker->canceled) {
         emit_finished(worker, filename, {});
@@ -146,9 +146,9 @@ QString SceneToSVGExporter::text_styles(TextItem* item) const
         {QFont::StyleOblique, QStringLiteral("oblique")},
     };
 
-    QFont font = item->font();
-    qreal fontsize = font.pointSize() * item->scale();
-    QString families = font.families().join(QStringLiteral(", "));
+    const QFont font = item->font();
+    const qreal fontsize = font.pointSize() * item->scale();
+    const QString families = font.families().join(QStringLiteral(", "));
 
     QStringList styles;
     styles << QStringLiteral("white-space:pre")
@@ -177,18 +177,18 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
     xml.writeAttribute(QStringLiteral("xmlns:xlink"),
                        QStringLiteral("http://www.w3.org/1999/xlink"));
 
-    QRectF rect = scene_->itemsBoundingRect();
-    QPointF offset = rect.topLeft() - QPointF(margin_, margin_);
+    const QRectF rect = scene_->itemsBoundingRect();
+    const QPointF offset = rect.topLeft() - QPointF(margin_, margin_);
 
     QList<QGraphicsItem*> items = scene_->items_for_save();
 
     for (int i = 0; i < items.size(); ++i) {
         QGraphicsItem* gitem = items[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(gitem);
-        std::string type = baseItem->get_type();
+        const std::string type = baseItem->get_type();
 
         QPointF pos = gitem->pos() - offset;
-        QPointF anchor = pos;
+        const QPointF anchor = pos;
 
         if (type == "text") {
             auto* textItem = static_cast<TextItem*>(gitem);
@@ -198,12 +198,12 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
                                QStringLiteral("hanging"));
         } else if (type == "pixmap") {
             auto* pixmapItem = static_cast<PixmapItem*>(gitem);
-            qreal width = pixmapItem->width() * pixmapItem->scale();
-            qreal height = pixmapItem->height() * pixmapItem->scale();
+            const qreal width = pixmapItem->width() * pixmapItem->scale();
+            const qreal height = pixmapItem->height() * pixmapItem->scale();
             auto [bytes, imgformat]
                 = pixmapItem->pixmap_to_bytes(/*apply_grayscale=*/true,
                                               /*apply_crop=*/true);
-            QString b64 = QString::fromLatin1(bytes.toBase64());
+            const QString b64 = QString::fromLatin1(bytes.toBase64());
 
             xml.writeStartElement(QStringLiteral("image"));
             xml.writeAttribute(QStringLiteral("xlink:href"),
@@ -266,7 +266,7 @@ void SceneToSVGExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
     emit_begin_processing(worker,
                         static_cast<int>(scene_->items_for_save().size()));
-    QString svg = render_to_svg(worker);
+    const QString svg = render_to_svg(worker);
 
     if (worker && worker->canceled) {
         emit_finished(worker, filename, {});
@@ -324,7 +324,7 @@ ImagesToDirectoryExporter::ImagesToDirectoryExporter(
 
 void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
 {
-    int total = static_cast<int>(items_.size());
+    const int total = static_cast<int>(items_.size());
     emit_begin_processing(worker, total);
     emit_progress(worker, startFrom_);
 
@@ -351,7 +351,7 @@ void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
             bytes = pixBytes;
             filename = item->get_filename_for_export(imgformat);
         }
-        QString path = QDir(dirname_).filePath(filename);
+        const QString path = QDir(dirname_).filePath(filename);
 
         if (QFile::exists(path)) {
             if (handleExisting_.isEmpty()) {

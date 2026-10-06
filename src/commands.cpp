@@ -43,12 +43,12 @@ void InsertItemsCommand::redo()
         for (auto* item : items_) {
             graphicsItems.append(dynamic_cast<QGraphicsItem*>(item));
         }
-        QRectF rect = scene_->itemsBoundingRect(false, graphicsItems);
+        const QRectF rect = scene_->itemsBoundingRect(false, graphicsItems);
 
         for (int i = 0; i < items_.size(); ++i) {
             auto* item = dynamic_cast<QGraphicsItem*>(items_[i]);
             oldPositions_.append(item->pos());
-            QPointF newPos = item->pos() + *position_ - rect.center();
+            const QPointF newPos = item->pos() + *position_ - rect.center();
             item->setPos(newPos);
         }
     }
@@ -591,9 +591,9 @@ void ArrangeItemsCommand::redo()
         auto* item = items_[i];
         oldPositions_.append(item->pos());
 
-        QPointF origTopLeft = item->mapToScene(QPointF(0, 0));
-        QRectF itemRect = scene_->itemsBoundingRect(false, {item});
-        QPointF rectTopLeft = itemRect.topLeft();
+        const QPointF origTopLeft = item->mapToScene(QPointF(0, 0));
+        const QRectF itemRect = scene_->itemsBoundingRect(false, {item});
+        const QPointF rectTopLeft = itemRect.topLeft();
 
         item->setPos(positions_[i] + origTopLeft - rectTopLeft);
     }

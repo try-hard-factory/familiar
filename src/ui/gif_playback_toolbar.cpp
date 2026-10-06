@@ -276,7 +276,7 @@ void GifPlaybackToolbar::update_speed_label()
         return;
     }
     const qreal speed = item_->speed_percent() / 100.0;
-    QString text = QString::number(speed, 'g', 3);
+    const QString text = QString::number(speed, 'g', 3);
     speedBtn_->setText(QStringLiteral("x%1").arg(text));
 }
 

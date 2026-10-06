@@ -154,7 +154,7 @@ bool HoverInfoLabel::event(QEvent* event)
             // as any other popup that can open near a screen edge - a
             // 320px-wide panel opened from a row near the right edge of
             // a narrow Settings window would otherwise run off-screen.
-            if (QScreen* screen = this->screen()) {
+            if (const QScreen* screen = this->screen()) {
                 const QRect avail = screen->availableGeometry();
                 popup_->adjustSize();
                 pos.setX(qBound(avail.left(),
@@ -209,7 +209,7 @@ SettingRowBase::SettingRowBase(const QString& label,
 
 void SettingRowBase::update_label()
 {
-    FamSettings settings;
+    const FamSettings settings;
     QString text = baseLabel_;
     if (settings.value_changed(key_)) {
         text += QStringLiteral(" ") + QString::fromUtf8(kchangedSymbol);
@@ -233,7 +233,7 @@ void SettingRowBase::on_value_changed(const QVariant& value)
 
 void SettingRowBase::on_restore_defaults()
 {
-    FamSettings settings;
+    const FamSettings settings;
     ignoreValueChanged_ = true;
     set_value(settings.value_or_default(key_));
     ignoreValueChanged_ = false;
@@ -293,7 +293,7 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     }())
     , options_(options)
 {
-    FamSettings settings;
+    const FamSettings settings;
     for (const ComboOption& opt : options_) {
         input_->addItem(opt.label);
     }
@@ -369,7 +369,7 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     // real filename). Pin an explicit size instead of trusting it.
     input_->setFixedSize(22, 22);
 
-    FamSettings settings;
+    const FamSettings settings;
     set_value(settings.value_or_default(key_));
     hbox_->addWidget(input_);
     ignoreValueChanged_ = false;
@@ -438,7 +438,7 @@ IntegerSettingRow::IntegerSettingRow(
                                this);
     }())
 {
-    FamSettings settings;
+    const FamSettings settings;
     input_->setRange(min, max);
     input_->setFixedWidth(kcontrolWidth);
     set_value(settings.value_or_default(key_));

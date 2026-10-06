@@ -282,7 +282,7 @@ void log_session_header(const QString& filePath)
 
     const QList<QScreen*> screens = QGuiApplication::screens();
     for (int i = 0; i < screens.size(); ++i) {
-        QScreen* screen = screens[i];
+        const QScreen* screen = screens[i];
         const QRect geo = screen->geometry();
         LOG_INFO(core,
                  "screen {}: {}x{}+{}+{} @ {:.1f} dpi",

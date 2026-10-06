@@ -130,7 +130,7 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
         QMessageBox::Cancel,
     };
     QList<QMessageBox::StandardButton> order;
-    for (QMessageBox::StandardButton b : kPriority) {
+    for (const QMessageBox::StandardButton b : kPriority) {
         if (buttons & b) {
             order.append(b);
         }
@@ -159,7 +159,7 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
         }
     };
 
-    for (QMessageBox::StandardButton id : order) {
+    for (const QMessageBox::StandardButton id : order) {
         addButton(id, false);
     }
     if (primary != QMessageBox::NoButton) {

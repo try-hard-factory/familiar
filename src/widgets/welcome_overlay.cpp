@@ -38,7 +38,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
 
 void WelcomeOverlay::show()
 {
-    QStringList files = SettingsHandler::get_instance()->get_recent_files(true);
+    const QStringList files = SettingsHandler::get_instance()->get_recent_files(true);
     filesView_->update_files(files);
     if (!files.isEmpty()) {
         if (layout_->indexOf(filesWidget_) < 0) {
@@ -112,7 +112,7 @@ void WelcomeOverlay::dropEvent(QDropEvent* event)
 {
     FLOG_DEBUG(Ch::UI, "WelcomeOverlay::Handling file drop:");
     if (auto* canvas = qobject_cast<CanvasView*>(parent())) {
-        QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
+        const QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
         canvas->handle_drop(event->mimeData(), pos);
     }
     event->acceptProposedAction();

@@ -50,7 +50,7 @@ TabPane::~TabPane()
 
 void TabPane::add_new_tab(const QString& path)
 {
-    int count = tabs_->count();
+    const int count = tabs_->count();
 
     // CanvasView(MainWindow&, QWidget* parent = nullptr) - canvasView has
     // NO parent yet at this point, so calling show() here (like this
@@ -81,7 +81,7 @@ void TabPane::close_tab_by_index(int idx)
 
 void TabPane::add_new_untitled_tab()
 {
-    int count = tabs_->count();
+    const int count = tabs_->count();
 
     // No premature show() here either - see addNewTab()'s own comment.
     CanvasView* canvasWidget = new CanvasView(mainwindow_);
@@ -125,7 +125,7 @@ void TabPane::on_tab_closed(int index)
     // later crash in the same run (see recovery.h).
     familiar::recovery::remove(canvasview->recovery_id());
     if (canvasview->is_modified()) {
-        QMessageBox::StandardButton resBtn = show_message_box(
+        const QMessageBox::StandardButton resBtn = show_message_box(
             QMessageBox::Warning,
             this,
             tr("Warning!"),

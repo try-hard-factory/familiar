@@ -132,9 +132,9 @@ public:
 
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting scale to {}", value);
         this->prepareGeometryChange();
-        QPointF prev = this->mapToScene(anchor);
+        const QPointF prev = this->mapToScene(anchor);
         QGraphicsItem::setScale(value);
-        QPointF diff = this->mapToScene(anchor) - prev;
+        const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
 
@@ -169,9 +169,9 @@ public:
                       const QPointF& anchor = QPointF(0, 0)) override
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
-        QPointF prev = this->mapToScene(anchor);
+        const QPointF prev = this->mapToScene(anchor);
         QGraphicsItem::setRotation(std::fmod(value, 360.0));
-        QPointF diff = this->mapToScene(anchor) - prev;
+        const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
 
@@ -185,12 +185,12 @@ public:
     void do_flip(bool vertical = false,
                  const QPointF& anchor = QPointF(0, 0)) override
     {
-        QPointF prev = this->mapToScene(anchor);
+        const QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
         if (vertical) {
             this->set_rotation(this->rotation() + 180, anchor);
         }
-        QPointF diff = this->mapToScene(anchor) - prev;
+        const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
 

@@ -567,7 +567,7 @@ void HierarchyPanel::connect_gif_animation(QTreeWidgetItem* node, GifItem* gif)
     // rebuild every frame.
     auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor glyphColor = colorPreset[EPresetsColorIdx::kTextColor];
-    QMetaObject::Connection conn
+    const QMetaObject::Connection conn
         = QObject::connect(gif->movie(),
                            &QMovie::frameChanged,
                            this,
@@ -717,11 +717,11 @@ void HierarchyPanel::show_context_menu(const QPoint& pos)
         renameAction = menu.addAction(tr("Rename"));
         renameAction->setShortcut(QKeySequence(Qt::Key_F2));
     }
-    QAction* editAction = nullptr;
+    const QAction* editAction = nullptr;
     if (text) {
         editAction = menu.addAction(tr("Edit"));
     }
-    QAction* exportAction = nullptr;
+    const QAction* exportAction = nullptr;
     if (picture || group) {
         exportAction = menu.addAction(tr("Export..."));
     }
@@ -760,7 +760,7 @@ void HierarchyPanel::show_context_menu(const QPoint& pos)
     // Acted on AFTER exec() returns, not from the actions' own
     // triggered() handlers - QMenu is still mid-close/ungrab at the
     // moment a handler fires from inside its own nested event loop.
-    QAction* chosen = menu.exec(tree_->viewport()->mapToGlobal(pos));
+    const QAction* chosen = menu.exec(tree_->viewport()->mapToGlobal(pos));
     // Dismissing the menu without picking anything (Escape, click
     // elsewhere) returns nullptr from exec() - without this guard that
     // matched whichever of renameAction/editAction/exportAction wasn't

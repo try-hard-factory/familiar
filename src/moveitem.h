@@ -141,7 +141,7 @@ public:
             }
             if (!others.isEmpty()) {
                 qreal minZ = others.first()->zValue();
-                for (QGraphicsItem* other : others) {
+                for (const QGraphicsItem* other : others) {
                     minZ = qMin(minZ, other->zValue());
                 }
                 this->set_z_value(minZ - scene->Z_STEP);
@@ -215,7 +215,7 @@ public:
 
     QString to_string() const
     {
-        QSize size = pixmap().size();
+        const QSize size = pixmap().size();
         return QString("Image \"%1\" %2 x %3")
             .arg(filename_)
             .arg(size.width())
@@ -264,9 +264,9 @@ public:
 
     QColor sample_color_at(const QPointF& pos)
     {
-        QPointF ipos = this->mapFromScene(pos);
-        QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
-        QImage img = pm.toImage();
+        const QPointF ipos = this->mapFromScene(pos);
+        const QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
+        const QImage img = pm.toImage();
 
         QColor color = img.pixelColor(static_cast<int>(ipos.x()), static_cast<int>(ipos.y()));
         if (color.alpha()) {
@@ -332,10 +332,10 @@ public:
     // TODOLATER: not wired up to a caller yet (batch export).
     QString get_filename_for_export(const QString& imgformat) const
     {
-        QString id = uid().toString(QUuid::WithoutBraces);
+        const QString id = uid().toString(QUuid::WithoutBraces);
 
         if (!filename_.isEmpty()) {
-            QString basename = QFileInfo(filename_).completeBaseName();
+            const QString basename = QFileInfo(filename_).completeBaseName();
             return QString("%1-%2.%3").arg(id, basename, imgformat);
         }
         return QString("%1.%2").arg(id, imgformat);
@@ -375,8 +375,8 @@ public:
             pm = pm.copy(crop_.toRect());
         }
 
-        QImage img = pm.toImage();
-        QString imgformat = get_imgformat(img);
+        const QImage img = pm.toImage();
+        const QString imgformat = get_imgformat(img);
         img.save(&buffer, imgformat.toUpper().toUtf8().constData(), 90);
         return {barray, imgformat};
     }
@@ -427,17 +427,17 @@ public:
                        "Calculating color gamut for {}",
                        to_string());
             ColorGamut gamut;
-            QImage img = pixmap().toImage();
+            const QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
-            int step = std::max(1, std::max(img.width(), img.height()) / 1000);
+            const int step = std::max(1, std::max(img.width(), img.height()) / 1000);
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Considering every {}. row/column",
                        step);
 
             for (int i = 0; i < img.width(); i += step) {
                 for (int j = 0; j < img.height(); j += step) {
-                    QColor rgb = img.pixelColor(i, j);
-                    int r = rgb.red(), g = rgb.blue(), b = rgb.green();
+                    const QColor rgb = img.pixelColor(i, j);
+                    const int r = rgb.red(), g = rgb.blue(), b = rgb.green();
                     if (rgb.alpha() > 5 && std::min({r, g, b}) < 250
                         && std::max({r, g, b}) > 5) {
                         // Only consider pixels that aren't close to
@@ -475,7 +475,7 @@ public:
 
     QRectF crop_handle_topleft() const
     {
-        QPointF topLeft = crop_temp->topLeft();
+        const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x(),
                       topLeft.y(),
                       crop_handle_size(),
@@ -484,7 +484,7 @@ public:
 
     QRectF crop_handle_bottomleft() const
     {
-        QPointF bottomLeft = crop_temp->bottomLeft();
+        const QPointF bottomLeft = crop_temp->bottomLeft();
         return QRectF(bottomLeft.x(),
                       bottomLeft.y() - crop_handle_size(),
                       crop_handle_size(),
@@ -493,7 +493,7 @@ public:
 
     QRectF crop_handle_bottomright() const
     {
-        QPointF bottomRight = crop_temp->bottomRight();
+        const QPointF bottomRight = crop_temp->bottomRight();
         return QRectF(bottomRight.x() - crop_handle_size(),
                       bottomRight.y() - crop_handle_size(),
                       crop_handle_size(),
@@ -502,7 +502,7 @@ public:
 
     QRectF crop_handle_topright() const
     {
-        QPointF topRight = crop_temp->topRight();
+        const QPointF topRight = crop_temp->topRight();
         return QRectF(topRight.x() - crop_handle_size(),
                       topRight.y(),
                       crop_handle_size(),
@@ -519,7 +519,7 @@ public:
 
     QRectF crop_edge_top() const
     {
-        QPointF topLeft = crop_temp->topLeft();
+        const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x() + crop_handle_size(),
                       topLeft.y(),
                       crop_temp->width() - 2 * crop_handle_size(),
@@ -528,7 +528,7 @@ public:
 
     QRectF crop_edge_left() const
     {
-        QPointF topLeft = crop_temp->topLeft();
+        const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x(),
                       topLeft.y() + crop_handle_size(),
                       crop_handle_size(),
@@ -537,7 +537,7 @@ public:
 
     QRectF crop_edge_bottom() const
     {
-        QPointF bottomLeft = crop_temp->bottomLeft();
+        const QPointF bottomLeft = crop_temp->bottomLeft();
         return QRectF(bottomLeft.x() + crop_handle_size(),
                       bottomLeft.y() - crop_handle_size(),
                       crop_temp->width() - 2 * crop_handle_size(),
@@ -546,7 +546,7 @@ public:
 
     QRectF crop_edge_right() const
     {
-        QPointF topRight = crop_temp->topRight();
+        const QPointF topRight = crop_temp->topRight();
         return QRectF(topRight.x() - crop_handle_size(),
                       topRight.y() + crop_handle_size(),
                       crop_handle_size(),
@@ -564,7 +564,7 @@ public:
 
     Qt::CursorShape get_crop_handle_cursor(CropHandleFn handle)
     {
-        bool isTopleftOrBottomright
+        const bool isTopleftOrBottomright
             = (handle == &PixmapItem::crop_handle_topleft
                || handle == &PixmapItem::crop_handle_bottomright);
         return get_diag_cursor(isTopleftOrBottomright);
@@ -572,10 +572,10 @@ public:
 
     Qt::CursorShape get_crop_edge_cursor(CropHandleFn edge)
     {
-        bool topOrBottom = (edge == &PixmapItem::crop_edge_top
+        const bool topOrBottom = (edge == &PixmapItem::crop_edge_top
                               || edge == &PixmapItem::crop_edge_bottom);
 
-        bool sideways = (45 < rotation() && rotation() < 135)
+        const bool sideways = (45 < rotation() && rotation() < 135)
                         || (225 < rotation() && rotation() < 315);
 
         return (topOrBottom == sideways) ? Qt::SizeHorCursor
@@ -588,7 +588,7 @@ public:
     {
         QPointF topleft;
         QPointF bottomright;
-        QSize pixmapSize = pixmap().size();
+        const QSize pixmapSize = pixmap().size();
 
         if (handle == &PixmapItem::crop_handle_topleft) {
             topleft = QPointF(0, 0);
@@ -771,7 +771,7 @@ public:
             // it isn't part of the selection itself.
             if (!attachedToUid_.isNull()) {
                 if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                    if (QGraphicsItem* anchor = scene->find_by_uid(
+                    if (const QGraphicsItem* anchor = scene->find_by_uid(
                             attachedToUid_);
                         anchor && anchor->isSelected()) {
                         auto colorPreset = SettingsHandler::get_instance()
@@ -1037,53 +1037,53 @@ protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
         if (crop_mode && crop_mode_move && crop_mode_event_start) {
-            QPointF diff = event->pos() - *crop_mode_event_start;
-            CropHandleFn move = *crop_mode_move;
+            const QPointF diff = event->pos() - *crop_mode_event_start;
+            const CropHandleFn move = *crop_mode_move;
 
             if (move == &PixmapItem::crop_handle_topleft) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->topLeft()
                                                           + diff,
                                                       move);
                 crop_temp->setTopLeft(newPoint);
             } else if (move == &PixmapItem::crop_handle_bottomleft) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->bottomLeft()
                                                           + diff,
                                                       move);
                 crop_temp->setBottomLeft(newPoint);
             } else if (move == &PixmapItem::crop_handle_bottomright) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->bottomRight()
                                                           + diff,
                                                       move);
                 crop_temp->setBottomRight(newPoint);
             } else if (move == &PixmapItem::crop_handle_topright) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->topRight()
                                                           + diff,
                                                       move);
                 crop_temp->setTopRight(newPoint);
             } else if (move == &PixmapItem::crop_edge_top) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->topLeft()
                                                           + diff,
                                                       move);
                 crop_temp->setTop(newPoint.y());
             } else if (move == &PixmapItem::crop_edge_left) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->topLeft()
                                                           + diff,
                                                       move);
                 crop_temp->setLeft(newPoint.x());
             } else if (move == &PixmapItem::crop_edge_bottom) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->bottomLeft()
                                                           + diff,
                                                       move);
                 crop_temp->setBottom(newPoint.y());
             } else if (move == &PixmapItem::crop_edge_right) {
-                QPointF newPoint
+                const QPointF newPoint
                     = ensure_point_within_crop_bounds(crop_temp->topRight()
                                                           + diff,
                                                       move);
@@ -1292,7 +1292,7 @@ private:
         buf.open(QIODevice::ReadOnly);
         QImageReader reader(&buf);
         while (reader.canRead()) {
-            QImage frame = reader.read();
+            const QImage frame = reader.read();
             if (frame.isNull()) {
                 break;
             }
@@ -1416,7 +1416,7 @@ public:
         }
         const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
-            QColor c(fill);
+            const QColor c(fill);
             if (c.isValid()) {
                 fillColor_ = c;
             }
@@ -1625,7 +1625,7 @@ public:
         // both source from RubberbandItem's own selection-color fill.
         if (!attachedToUid_.isNull()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                if (QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
+                if (const QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
                     picture && picture->isSelected()) {
                     auto colorPreset = SettingsHandler::get_instance()
                                            ->get_current_color_preset();
@@ -1991,7 +1991,7 @@ public:
 
         const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
-            QColor c(fill);
+            const QColor c(fill);
             if (c.isValid()) {
                 fillColor_ = c;
             }
@@ -2072,7 +2072,7 @@ public:
             return;
         }
         qreal minChildZ = children.first()->zValue();
-        for (QGraphicsItem* child : children) {
+        for (const QGraphicsItem* child : children) {
             minChildZ = qMin(minChildZ, child->zValue());
         }
         if (this->zValue() >= minChildZ) {
@@ -2108,7 +2108,7 @@ public:
         // self-check - dragging an OUTER group cascades down to an INNER
         // one too, and the inner one isn't itself the grabber.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (GroupItem* ancestor = this; ancestor;
+            for (const GroupItem* ancestor = this; ancestor;
                  ancestor = scene->find_owning_group(ancestor->uid())) {
                 if (scene->mouseGrabberItem() == ancestor) {
                     return;
@@ -2313,7 +2313,7 @@ public:
     {
         bool ancestorLocked = false;
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (GroupItem* owner = scene->find_owning_group(this->uid());
+            for (const GroupItem* owner = scene->find_owning_group(this->uid());
                  owner;
                  owner = scene->find_owning_group(owner->uid())) {
                 if (owner->locked()) {
@@ -2520,7 +2520,7 @@ public:
         // subgroup's boundary at all.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             bool ancestorSelected = false;
-            for (GroupItem* owner = scene->find_owning_group(this->uid());
+            for (const GroupItem* owner = scene->find_owning_group(this->uid());
                  owner;
                  owner = scene->find_owning_group(owner->uid())) {
                 if (owner->isSelected()) {

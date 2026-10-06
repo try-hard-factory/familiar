@@ -54,7 +54,7 @@ void save(CanvasView* canvasView)
     const QUuid id = canvasView->recovery_id();
     const QString fmlPath = fml_path_for(dir, id);
 
-    FmlResult result = FmlArchive::save(canvasView->scene(),
+    const FmlResult result = FmlArchive::save(canvasView->scene(),
                                         canvasView->canvas_rect(),
                                         fmlPath);
     if (!result.error.isEmpty()) {

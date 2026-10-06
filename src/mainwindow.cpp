@@ -335,7 +335,7 @@ void MainWindow::on_autosave_timeout()
 void MainWindow::restart_autosave_timer()
 {
     autosaveTimer_->stop();
-    FamSettings settings;
+    const FamSettings settings;
     const bool enabled
         = settings.value_or_default(QStringLiteral("Save/autosave_enabled"))
               .toBool();
@@ -500,7 +500,7 @@ bool MainWindow::check_save()
 {
     bool found = false;
     std::map<int, QString> items;
-    int count = tabpane_->count();
+    const int count = tabpane_->count();
     for (int i = 0; i < count; i++) {
         if (tabpane_->widget_at(i)->is_modified()) {
             found = true;
@@ -754,14 +754,14 @@ void MainWindow::ensure_menubar()
     };
 
     QToolButton* onTopBtn = makeButton("▲", "Always on top");
-    QToolButton* minBtn = makeButton("–", "Minimize");
-    QToolButton* maxBtn = makeButton("□", "Maximize / Restore");
-    QToolButton* closeBtn = makeButton("✕", "Close");
+    const QToolButton* minBtn = makeButton("–", "Minimize");
+    const QToolButton* maxBtn = makeButton("□", "Maximize / Restore");
+    const QToolButton* closeBtn = makeButton("✕", "Close");
 
     // Mirror the existing checkable always_on_top action instead of
     // duplicating its destroy()/create() logic - toggling either side
     // keeps the other in sync through the QAction.
-    if (Action* a = get_actions().find("always_on_top"); a && a->qaction) {
+    if (const Action* a = get_actions().find("always_on_top"); a && a->qaction) {
         onTopBtn->setCheckable(true);
         onTopBtn->setChecked(a->qaction->isChecked());
         connect(onTopBtn,
@@ -924,7 +924,7 @@ void MainWindow::apply_menubar_state()
 {
     ensure_menubar();
 
-    Action* show = get_actions().find("show_menubar");
+    const Action* show = get_actions().find("show_menubar");
     Action* autoHide = get_actions().find("auto_hide_ui");
     const bool shown = show && show->qaction && show->qaction->isChecked();
     const bool wantAutoHide = autoHide && autoHide->qaction
@@ -969,7 +969,7 @@ void MainWindow::update_menubar_geometry()
     // call in the constructor, which would stack it above us.
     menubar_->raise();
 
-    Action* show = get_actions().find("show_menubar");
+    const Action* show = get_actions().find("show_menubar");
     const bool shown = show && show->qaction && show->qaction->isChecked();
     // The strip is reserved whenever the menu bar is enabled, auto-hide
     // included: the tab bar sits at the very top of the central widget,
@@ -1049,7 +1049,7 @@ bool MainWindow::try_start_window_drag(const QPoint& pos)
     // switches/closes it, anywhere else in the row - including the empty
     // space right of the last tab, which belongs to the QTabWidget, not
     // the QTabBar - drags the window.
-    if (QTabBar* tb = tabpane_ ? tabpane_->tab_bar() : nullptr;
+    if (const QTabBar* tb = tabpane_ ? tabpane_->tab_bar() : nullptr;
         tb && tb->isVisible()) {
         const QRect row(0,
                         tb->mapTo(this, QPoint(0, 0)).y(),
@@ -1082,7 +1082,7 @@ int MainWindow::ui_strip_height() const
     // the "don't hide yet" zone and the background region that fades
     // along with the widgets (paintEvent).
     int h = menubar_->sizeHint().height();
-    if (QTabBar* tb = tabpane_ ? tabpane_->tab_bar() : nullptr) {
+    if (const QTabBar* tb = tabpane_ ? tabpane_->tab_bar() : nullptr) {
         h += tb->height();
     }
     return h;
@@ -1096,7 +1096,7 @@ void MainWindow::on_action_settings()
 
 void MainWindow::on_action_open_settings_dir()
 {
-    QString dir = QFileInfo(SettingsHandler::get_instance()->settings_file_name())
+    const QString dir = QFileInfo(SettingsHandler::get_instance()->settings_file_name())
                       .absolutePath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
@@ -1581,7 +1581,7 @@ void MainWindow::resizeEvent(QResizeEvent* event)
 void MainWindow::paintEvent(QPaintEvent* event)
 {
     QPainter painter(this);
-    qreal opacity = static_cast<qreal>(currentOpacity_) / 255;
+    const qreal opacity = static_cast<qreal>(currentOpacity_) / 255;
 
     // In auto-hide-UI mode the window's own background fill in the top
     // strip (menu bar + tab bar) fades together with the widgets sitting

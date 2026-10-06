@@ -312,7 +312,7 @@ void BindingEditorDialogBase::try_accept()
 
     // Mouse and/or keyboard part vs. Controls (mouse and wheel groups).
     if (!candidate.mouseButton.isEmpty() || !candidate.keySequence.isEmpty()) {
-        KeyboardSettings ks;
+        const KeyboardSettings ks;
 
         const int mouseRow = ks.find_conflicting_mouse_group(target_->id(),
                                                           candidate);

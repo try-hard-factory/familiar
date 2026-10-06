@@ -394,10 +394,10 @@ void FileBrowserDialog::build_sidebar(const QColor& accent)
 
 void FileBrowserDialog::set_directory(const QString& path)
 {
-    QFileInfo info(path);
+    const QFileInfo info(path);
     const QString dirPath = info.isDir() ? info.absoluteFilePath()
                                          : info.absolutePath();
-    QDir dir(dirPath);
+    const QDir dir(dirPath);
     if (!dir.exists()) {
         return;
     }
@@ -418,7 +418,7 @@ void FileBrowserDialog::navigate_up()
 
 void FileBrowserDialog::create_folder()
 {
-    QDir dir(currentDir_);
+    const QDir dir(currentDir_);
     QString name = tr("New Folder");
     for (int suffix = 2; dir.exists(name); ++suffix) {
         name = tr("New Folder (%1)").arg(suffix);

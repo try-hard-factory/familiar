@@ -100,10 +100,10 @@ private:
     {
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-        QColor text = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor text = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
-        QColor selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+        const QColor selection = colorPreset[EPresetsColorIdx::kSelectionColor];
 
         auto rgba = [](const QColor& c, int alpha) {
             return QStringLiteral("rgba(%1, %2, %3, %4)")

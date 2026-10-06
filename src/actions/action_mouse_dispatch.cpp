@@ -66,7 +66,7 @@ void release_press_target_before_action(QWidget* invokeTarget,
                                     Qt::KeyboardModifiers modifiers)
 {
     auto* mainWindow = qobject_cast<MainWindow*>(invokeTarget);
-    CanvasView* canvasView = mainWindow ? mainWindow->tab_pane().current_widget()
+    const CanvasView* canvasView = mainWindow ? mainWindow->tab_pane().current_widget()
                                         : nullptr;
     QWidget* releaseTarget = canvasView ? canvasView->viewport() : nullptr;
     if (!releaseTarget) {
@@ -132,7 +132,7 @@ bool ActionMouseDispatcher::try_mouse_press(QMouseEvent* event)
         return false;
     }
 
-    for (Action* action : get_actions().all()) {
+    for (const Action* action : get_actions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
             if (!b.is_mouse_only() || b.mouseButton != btn) {
                 continue;
@@ -179,7 +179,7 @@ bool ActionMouseDispatcher::try_key_press(QKeyEvent* event)
                int(held),
                pressed.toStdString());
 
-    for (Action* action : get_actions().all()) {
+    for (const Action* action : get_actions().all()) {
         for (const Binding& b : action->get_mouse_bindings()) {
             if (!b.is_mixed() || b.keySequence != pressed) {
                 continue;
@@ -215,7 +215,7 @@ bool ActionMouseDispatcher::try_bare_modifier_action(QKeyEvent* event)
     // this has nothing to do with the mouse. Native QAction dispatch
     // already handles every other entry in that list; this only ever
     // fires for the bare-modifier ones it can't.
-    for (Action* action : get_actions().all()) {
+    for (const Action* action : get_actions().all()) {
         if (action->get_shortcuts().contains(pressed)) {
             invoke(target_, action);
             return true;

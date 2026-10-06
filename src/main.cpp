@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
     qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
 
-    QApplication a(argc, argv);
+    const QApplication a(argc, argv);
 
     // Checked here, before anything below sets up real app state
     // (single-instance lock, SettingsHandler, MainWindow) - "familiar

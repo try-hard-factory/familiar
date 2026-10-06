@@ -282,7 +282,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     sizeBox_ = new QComboBox(this);
     sizeBox_->setEditable(true);
     sizeBox_->setInsertPolicy(QComboBox::NoInsert);
-    for (int s :
+    for (const int s :
          {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72}) {
         sizeBox_->addItem(QString::number(s));
     }
@@ -697,7 +697,7 @@ void TextEditToolbar::toggle_list_style(int style)
     // separator, which the *last* block in the document doesn't
     // necessarily have one of), so a selection running to the end of the
     // text silently dropped its last line.
-    QTextDocument* doc = item_->document();
+    const QTextDocument* doc = item_->document();
     const QTextBlock endBlock = doc->findBlock(cursor.selectionEnd());
     QList<QTextBlock> blocks;
     for (QTextBlock block = doc->findBlock(cursor.selectionStart());
@@ -721,7 +721,7 @@ void TextEditToolbar::toggle_list_style(int style)
           && std::all_of(blocks.begin(),
                          blocks.end(),
                          [wanted](const QTextBlock& b) {
-                             QTextList* l = QTextCursor(b).currentList();
+                             const QTextList* l = QTextCursor(b).currentList();
                              return l && l->format().style() == wanted;
                          });
 
@@ -763,14 +763,14 @@ void TextEditToolbar::sync_from_cursor()
     const QTextCharFormat format = item_->textCursor().charFormat();
 
     {
-        QSignalBlocker b1(boldBtn_), b2(italicBtn_), b3(underlineBtn_);
+        const QSignalBlocker b1(boldBtn_), b2(italicBtn_), b3(underlineBtn_);
         boldBtn_->setChecked(format.fontWeight() >= QFont::Bold);
         italicBtn_->setChecked(format.fontItalic());
         underlineBtn_->setChecked(format.fontUnderline());
     }
     {
-        QSignalBlocker b1(bulletListBtn_), b2(numberedListBtn_);
-        QTextList* list = item_->textCursor().currentList();
+        const QSignalBlocker b1(bulletListBtn_), b2(numberedListBtn_);
+        const QTextList* list = item_->textCursor().currentList();
         const QTextListFormat::Style style
             = list ? list->format().style()
                    : QTextListFormat::ListStyleUndefined;
@@ -778,7 +778,7 @@ void TextEditToolbar::sync_from_cursor()
         numberedListBtn_->setChecked(style == QTextListFormat::ListDecimal);
     }
     {
-        QSignalBlocker b(sizeBox_);
+        const QSignalBlocker b(sizeBox_);
         qreal size = format.fontPointSize();
         if (size <= 0) {
             size = item_->font().pointSizeF(); // unset -> item default
@@ -786,7 +786,7 @@ void TextEditToolbar::sync_from_cursor()
         sizeBox_->setCurrentText(QString::number(size));
     }
     {
-        QSignalBlocker b(fontBox_);
+        const QSignalBlocker b(fontBox_);
         fontBox_->setCurrentFont(format.font());
     }
 

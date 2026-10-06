@@ -46,9 +46,9 @@ public:
         if (event->buttons() & Qt::RightButton) {
             rightMoveFlag_ = true;
             if (isMoving_) {
-                QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(
+                const QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(
                     event->position());
-                QPointF delta = pos - movewinStart_;
+                const QPointF delta = pos - movewinStart_;
                 movewinStart_ = pos;
                 if (mainWindow_) {
                     mainWindow_->move(mainWindow_->x() + int(delta.x()),

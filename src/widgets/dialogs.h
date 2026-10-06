@@ -679,7 +679,7 @@ public:
         }
         filterRow->addStretch(1);
 
-        if (familiar::log::RingSink* ring = familiar::log::ring_sink()) {
+        if (const familiar::log::RingSink* ring = familiar::log::ring_sink()) {
             allEntries_ = ring->entries();
             refresh_display();
             connect(ring,

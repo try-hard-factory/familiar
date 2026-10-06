@@ -23,15 +23,15 @@ ExtendedSlider::ExtendedSlider(QWidget* parent)
 
 int ExtendedSlider::mapped_value(int min, int max)
 {
-    qreal progress = ((value() - minimum()))
+    const qreal progress = ((value() - minimum()))
                      / static_cast<qreal>(maximum() - minimum());
     return min + static_cast<int>((max - min) * progress);
 }
 
 void ExtendedSlider::set_maped_value(int min, int val, int max)
 {
-    qreal progress = ((val - min) + 1) / static_cast<qreal>(max - min);
-    int value
+    const qreal progress = ((val - min) + 1) / static_cast<qreal>(max - min);
+    const int value
         = minimum() + static_cast<int>((maximum() - minimum()) * progress);
     setValue(value);
 }
