@@ -1385,7 +1385,7 @@ public:
     // No selection-driven bring-to-front logic for the multi-select
     // rectangle itself (Python's MultiSelectItem has no on_selected_change,
     // so BeeItemMixin's hasattr() guard silently skips it there).
-    void on_selected_change(bool value) { Q_UNUSED(value) }
+    static void on_selected_change(bool value) { Q_UNUSED(value) }
 };
 
 class RubberbandItem : public BaseItemMixin<QGraphicsRectItem>

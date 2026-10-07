@@ -166,12 +166,11 @@ private:
         qaction->setChecked(defaultChecked);
 
         if (!settingsKey.isEmpty()) {
-            const bool val = SettingsHandler::get_instance()
-                                 ->action_state(settingsKey, defaultChecked)
+            const bool val = SettingsHandler::action_state(settingsKey, defaultChecked)
                                  .toBool();
             qaction->setChecked(val);
             QObject::connect(qaction, &QAction::toggled, [settingsKey](bool v) {
-                SettingsHandler::get_instance()->set_action_state(settingsKey, v);
+                SettingsHandler::set_action_state(settingsKey, v);
             });
         }
 
@@ -296,7 +295,7 @@ private:
             return;
         }
 
-        const QStringList files = SettingsHandler::get_instance()->get_recent_files(
+        const QStringList files = SettingsHandler::get_recent_files(
             /*existingOnly=*/true);
 
         for (int i = 0; i < 10; ++i) {

@@ -248,7 +248,7 @@ private:
     bool try_control_key_nudge(QKeyEvent* event);
     void zoom(double delta, QPointF anchor);
     void pan(QPointF delta);
-    QString get_supported_image_formats() const;
+    static QString get_supported_image_formats();
     // Keeps the floating text toolbar glued above the item being edited
     // through pans (scrollbar valueChanged), zooms (doScale) and view
     // resizes.

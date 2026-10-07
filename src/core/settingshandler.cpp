@@ -454,7 +454,7 @@ void SettingsHandler::set_current_opacity(int opacity)
 
 
 QSharedPointer<ValueHandler> SettingsHandler::value_handler(
-    const QString& key) const
+    const QString& key)
 {
     return ::recognizedGeneralOptions.value(key);
 }
@@ -464,82 +464,77 @@ QSharedPointer<ValueHandler> SettingsHandler::value_handler(
 
 void SettingsHandler::update_recent_files(const QString& filename)
 {
-    FamSettings().update_recent_files(filename);
+    FamSettings::update_recent_files(filename);
 }
 
-QStringList SettingsHandler::get_recent_files(bool existingOnly) const
+QStringList SettingsHandler::get_recent_files(bool existingOnly)
 {
-    return FamSettings().get_recent_files(existingOnly);
+    return FamSettings::get_recent_files(existingOnly);
 }
 
-QString SettingsHandler::settings_file_name() const
+QString SettingsHandler::settings_file_name()
 {
-    return FamSettings().file_name();
+    return FamSettings::file_name();
 }
 
 QVariant SettingsHandler::action_state(const QString& key,
-                                      const QVariant& defaultValue) const
+                                      const QVariant& defaultValue)
 {
-    return FamSettings().value(key, defaultValue);
+    return FamSettings::value(key, defaultValue);
 }
 
 void SettingsHandler::set_action_state(const QString& key, const QVariant& value)
 {
-    FamSettings().set_value(key, value);
+    FamSettings::set_value(key, value);
 }
 
-qreal SettingsHandler::arrange_gap() const
+qreal SettingsHandler::arrange_gap()
 {
-    return FamSettings()
-        .value_or_default(QStringLiteral("Items/arrange_gap"))
+    return FamSettings::value_or_default(QStringLiteral("Items/arrange_gap"))
         .toReal();
 }
 
-QString SettingsHandler::arrange_default() const
+QString SettingsHandler::arrange_default()
 {
-    return FamSettings()
-        .value_or_default(QStringLiteral("Items/arrange_default"))
+    return FamSettings::value_or_default(QStringLiteral("Items/arrange_default"))
         .toString();
 }
 
-QString SettingsHandler::image_storage_format() const
+QString SettingsHandler::image_storage_format()
 {
-    return FamSettings()
-        .value_or_default(QStringLiteral("Items/image_storage_format"))
+    return FamSettings::value_or_default(QStringLiteral("Items/image_storage_format"))
         .toString();
 }
 
-int SettingsHandler::undo_history_size() const
+int SettingsHandler::undo_history_size()
 {
-    return FamSettings()
-        .value_or_default(QStringLiteral("Items/undo_history_size"))
+    return FamSettings::value_or_default(QStringLiteral("Items/undo_history_size"))
         .toInt();
 }
 
-QString SettingsHandler::auto_optimize_imported_images() const
+QString SettingsHandler::auto_optimize_imported_images()
 {
-    return FamSettings()
-        .value_or_default(QStringLiteral("Items/auto_optimize_imported_images"))
+    return FamSettings::value_or_default(QStringLiteral("Items/auto_optimize_imported_images"))
         .toString();
 }
 
 // ─── Facade: KeyboardSettings-backed ───────────────────────────────────────────
 
 std::optional<ControlMatch> SettingsHandler::mousewheel_action_for_event(
-    const QWheelEvent* event) const
+    const QWheelEvent* event)
 {
-    return KeyboardSettings().mousewheel_action_for_event(event);
+    return KeyboardSettings::mousewheel_action_for_event(event);
 }
 
 std::optional<ControlMatch> SettingsHandler::mouse_action_for_event(
-    const QMouseEvent* event) const
+    const QMouseEvent* event)
 {
-    return KeyboardSettings().mouse_action_for_event(event);
+    return KeyboardSettings::mouse_action_for_event(event);
 }
 
 QStringList SettingsHandler::get_shortcuts(const QString& group,
                                           const QString& key,
-                                          const QStringList& defaults) const
+                                          const QStringList& defaults)
 {
     return KeyboardSettings().get_shortcuts(group, key, defaults);
 }
@@ -548,5 +543,5 @@ void SettingsHandler::set_shortcuts(const QString& group,
                                    const QString& key,
                                    const QStringList& values)
 {
-    KeyboardSettings().set_shortcuts(group, key, values);
+    KeyboardSettings::set_shortcuts(group, key, values);
 }

@@ -84,10 +84,9 @@ bool category_has_changes(SettingsCategory category)
     switch (category) {
     case SettingsCategory::Performance:
     case SettingsCategory::ImagesAndItems: {
-        const FamSettings settings;
         for (const QString& key :
              RestoreDefaultsDialog::fam_settings_keys_for(category)) {
-            if (settings.value_changed(key)) {
+            if (FamSettings::value_changed(key)) {
                 return true;
             }
         }

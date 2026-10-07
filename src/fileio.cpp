@@ -476,18 +476,16 @@ void ImageImportSession::run(ThreadedIO* worker)
     }
 
     const QString optimizeMode
-        = SettingsHandler::get_instance()->auto_optimize_imported_images();
+        = SettingsHandler::auto_optimize_imported_images();
     // 0 = no limitation (Items/image_allocation_limit's own convention -
     // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
     // both already treat <= 0 as "never TooLarge".
     const qint64 allocationLimitBytes
-        = qint64(FamSettings()
-                     .value_or_default(
+        = qint64(FamSettings::value_or_default(
                          QStringLiteral("Items/image_allocation_limit"))
                      .toInt())
           * 1024 * 1024;
-    const QString rawImportSetting = FamSettings()
-                                         .value_or_default(QStringLiteral(
+    const QString rawImportSetting = FamSettings::value_or_default(QStringLiteral(
                                              "Items/raw_import_choice"))
                                          .toString();
 
@@ -706,7 +704,7 @@ void ImageImportSession::run(ThreadedIO* worker)
         itemData[QStringLiteral("y")] = topLeft.y();
         scene_->add_item_later(itemData, true);
 
-        worker->sleep_ms(10);
+        ThreadedIO::sleep_ms(10);
     }
 
     delete netManager;

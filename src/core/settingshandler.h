@@ -138,30 +138,30 @@ public:
     // which stay the internal storage-shaped API - not reimplemented here.
 
     // FamSettings-backed
-    void update_recent_files(const QString& filename);
-    QStringList get_recent_files(bool existingOnly = false) const;
-    QString settings_file_name() const;
+    static void update_recent_files(const QString& filename);
+    static QStringList get_recent_files(bool existingOnly = false);
+    static QString settings_file_name();
     // Generic per-action persisted checkbox state (Action::settingsKey,
     // see actions/action_mixin.h) - not one of FamSettings::fields()'
     // named keys, so no dedicated accessor makes sense.
-    QVariant action_state(const QString& key, const QVariant& defaultValue) const;
-    void set_action_state(const QString& key, const QVariant& value);
-    qreal arrange_gap() const;
-    QString arrange_default() const;
-    QString image_storage_format() const;
-    int undo_history_size() const;
-    QString auto_optimize_imported_images() const;
+    static QVariant action_state(const QString& key, const QVariant& defaultValue);
+    static void set_action_state(const QString& key, const QVariant& value);
+    static qreal arrange_gap();
+    static QString arrange_default();
+    static QString image_storage_format();
+    static int undo_history_size();
+    static QString auto_optimize_imported_images();
 
     // KeyboardSettings-backed (also the underlying store for mouse/wheel
     // control matching, despite the class name)
-    std::optional<ControlMatch> mousewheel_action_for_event(
-        const QWheelEvent* event) const;
-    std::optional<ControlMatch> mouse_action_for_event(
-        const QMouseEvent* event) const;
-    QStringList get_shortcuts(const QString& group,
+    static std::optional<ControlMatch> mousewheel_action_for_event(
+        const QWheelEvent* event);
+    static std::optional<ControlMatch> mouse_action_for_event(
+        const QMouseEvent* event);
+    static QStringList get_shortcuts(const QString& group,
                              const QString& key,
-                             const QStringList& defaults = {}) const;
-    void set_shortcuts(const QString& group,
+                             const QStringList& defaults = {});
+    static void set_shortcuts(const QString& group,
                       const QString& key,
                       const QStringList& values);
 
@@ -171,7 +171,7 @@ signals:
     void presets_changed() const;
 
 private:
-    QSharedPointer<ValueHandler> value_handler(const QString& key) const;
+    static QSharedPointer<ValueHandler> value_handler(const QString& key);
     void load_document();
     bool save_document() const;
 

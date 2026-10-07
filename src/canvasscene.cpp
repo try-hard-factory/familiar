@@ -281,7 +281,7 @@ void CanvasScene::copy_selection_to_internal_clipboard()
 }
 
 QList<IBaseItem*> CanvasScene::clone_with_remap(
-    const QList<std::shared_ptr<IBaseItem>>& sources) const
+    const QList<std::shared_ptr<IBaseItem>>& sources)
 {
     // create_copy() is a shallow per-item field copy - the caller has
     // already expanded `sources` to include every group descendant and
@@ -646,7 +646,7 @@ GroupItem* CanvasScene::find_drop_target_group(
 }
 
 QSet<GroupItem*> CanvasScene::forbidden_drop_targets(
-    const QList<QGraphicsItem*>& draggedItems) const
+    const QList<QGraphicsItem*>& draggedItems)
 {
     QSet<GroupItem*> forbidden;
     for (QGraphicsItem* item : draggedItems) {
@@ -920,7 +920,7 @@ QList<QGraphicsItem*> CanvasScene::arrange_targets()
 
 void CanvasScene::arrange_default()
 {
-    const QString mode = SettingsHandler::get_instance()->arrange_default();
+    const QString mode = SettingsHandler::arrange_default();
     if (mode == QLatin1String("horizontal")) {
         arrange(false);
     } else if (mode == QLatin1String("vertical")) {
@@ -1044,7 +1044,7 @@ void CanvasScene::arrange(bool vertical)
         return;
     }
 
-    const qreal gap = SettingsHandler::get_instance()->arrange_gap();
+    const qreal gap = SettingsHandler::arrange_gap();
     // Centre of what's actually being arranged, NOT get_selection_center()
     // - that one measures the selection, which is both empty in the
     // arrange-the-whole-scene case and wrong whenever arrange_targets()
@@ -1123,7 +1123,7 @@ void CanvasScene::arrange_optimal()
         return;
     }
 
-    const qreal gap = SettingsHandler::get_instance()->arrange_gap();
+    const qreal gap = SettingsHandler::arrange_gap();
 
     // Получаем размеры элементов
     QList<RectPacker::Size> sizes;
@@ -1173,7 +1173,7 @@ void CanvasScene::arrange_square()
     cancel_active_modes();
     qreal maxWidth = 0;
     qreal maxHeight = 0;
-    const qreal gap = SettingsHandler::get_instance()->arrange_gap();
+    const qreal gap = SettingsHandler::arrange_gap();
     const QList<QGraphicsItem*> items = sort_by_filename(arrange_targets());
 
     if (items.size() < 2) {
@@ -1703,7 +1703,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
         [this](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : itemList) {
-            if (this->item_add_by_user(item)) {
+            if (CanvasScene::item_add_by_user(item)) {
                 userItems.append(item);
             }
         }
@@ -2014,7 +2014,7 @@ CanvasScene::ESceneMode CanvasScene::active_mode() const
     return activeMode_;
 }
 
-bool CanvasScene::item_add_by_user(QGraphicsItem* item) const
+bool CanvasScene::item_add_by_user(QGraphicsItem* item)
 {
     auto* baseItem = dynamic_cast<IBaseItem*>(item);
     if (!baseItem) {

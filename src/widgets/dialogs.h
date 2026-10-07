@@ -871,7 +871,7 @@ private slots:
         // Only if something was actually restored - otherwise this is
         // the only tab left open, and closing it would leave zero.
         if (restoredAny && blankTab) {
-            fileActions_.close_tab(blankTab);
+            FileActions::close_tab(blankTab);
         }
         close();
     }

@@ -344,17 +344,15 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         // place that list lives - keep IT in sync with the addWidget()
         // calls above if either page's contents change, not here too.
         if (checked.contains(familiar::SettingsCategory::Performance)) {
-            FamSettings settings;
             for (const QString& key : RestoreDefaultsDialog::fam_settings_keys_for(
                      familiar::SettingsCategory::Performance)) {
-                settings.set_value(key, FamSettings::fields()[key].defaultValue);
+                FamSettings::set_value(key, FamSettings::fields()[key].defaultValue);
             }
         }
         if (checked.contains(familiar::SettingsCategory::ImagesAndItems)) {
-            FamSettings settings;
             for (const QString& key : RestoreDefaultsDialog::fam_settings_keys_for(
                      familiar::SettingsCategory::ImagesAndItems)) {
-                settings.set_value(key, FamSettings::fields()[key].defaultValue);
+                FamSettings::set_value(key, FamSettings::fields()[key].defaultValue);
             }
         }
         if (checked.contains(familiar::SettingsCategory::Colors)) {
@@ -380,7 +378,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             emit SettingsHandler::get_instance()->presets_changed();
         }
         if (checked.contains(familiar::SettingsCategory::KeyboardShortcuts)) {
-            KeyboardSettings().restore_defaults();
+            KeyboardSettings::restore_defaults();
         }
         // Every bound row already listens for this to re-read its value
         // from storage (Import above relies on the same signal) - fired
@@ -495,8 +493,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     miscLayout->addWidget(autosaveInterval_);
     miscLayout->addStretch(1);
     autosaveInterval_->set_control_enabled(
-        FamSettings()
-            .value_or_default(QStringLiteral("Save/autosave_enabled"))
+        FamSettings::value_or_default(QStringLiteral("Save/autosave_enabled"))
             .toBool());
     connect(autosaveEnabled_,
             &AutosaveEnabledRow::toggled,

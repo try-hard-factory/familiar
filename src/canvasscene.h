@@ -141,8 +141,8 @@ public:
     // recursively) - the set of groups that must NOT be offered as a
     // drop target for this drag, since accepting one would nest a group
     // inside itself or one of its own children.
-    QSet<GroupItem*> forbidden_drop_targets(
-        const QList<QGraphicsItem*>& draggedItems) const;
+    static QSet<GroupItem*> forbidden_drop_targets(
+        const QList<QGraphicsItem*>& draggedItems);
     // Raises `group`'s whole cluster (itself + every descendant,
     // recursively) to a fresh z band above everything else - same
     // sequential-band math as raise_selection_to_front(), just for an
@@ -235,7 +235,7 @@ public:
     // rather than a helper item (MultiSelectItem, RubberbandItem,
     // ErrorItem), based on IBaseItem::get_type()'s string tag rather
     // than a numeric type().
-    bool item_add_by_user(QGraphicsItem* item) const;
+    static bool item_add_by_user(QGraphicsItem* item);
 
     // Linear scan over items() for the one whose IBaseItem::uid()
     // matches - GroupItem::resolve_children() is the main caller (group
@@ -454,8 +454,8 @@ private:
     // same call) got - dropped instead of left pointing at the original
     // if that original wasn't part of `sources`. See paste_from_
     // internal_clipboard()'s own comment for the full rationale.
-    QList<IBaseItem*> clone_with_remap(
-        const QList<std::shared_ptr<IBaseItem>>& sources) const;
+    static QList<IBaseItem*> clone_with_remap(
+        const QList<std::shared_ptr<IBaseItem>>& sources);
 
     void restore_drilled_in_members();
 

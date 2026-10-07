@@ -26,7 +26,7 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    void on_close_without_save();
+    static void on_close_without_save();
     void on_save();
 
     MainWindow* window_;

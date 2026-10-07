@@ -116,7 +116,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     auto* formatChip = new QLabel(this);
     const QString sourceExt = QFileInfo(filename).suffix().toUpper();
     const QString targetFormat = storage_format_label(
-        SettingsHandler::get_instance()->image_storage_format());
+        SettingsHandler::image_storage_format());
     formatChip->setText(tr("Format: %1 → %2").arg(sourceExt, targetFormat));
     formatChip->setStyleSheet(
         QStringLiteral("QLabel { background: %1; border-radius: 6px; "

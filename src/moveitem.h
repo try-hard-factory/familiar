@@ -351,7 +351,7 @@ public:
     // Determines the format for storing this image.
     QString get_imgformat(const QImage& img) const
     {
-        QString formt = SettingsHandler::get_instance()->image_storage_format();
+        QString formt = SettingsHandler::image_storage_format();
 
         if (formt == QLatin1String("best")) {
             if (img.hasAlphaChannel()
@@ -516,7 +516,7 @@ public:
                       crop_handle_size());
     }
 
-    QList<CropHandleFn> crop_handles() const
+    static QList<CropHandleFn> crop_handles()
     {
         return {&PixmapItem::crop_handle_topleft,
                 &PixmapItem::crop_handle_bottomleft,
@@ -561,7 +561,7 @@ public:
     }
 
     // Function to return all crop edge functions as a tuple
-    QList<CropHandleFn> crop_edges() const
+    static QList<CropHandleFn> crop_edges()
     {
         return {&PixmapItem::crop_edge_top,
                 &PixmapItem::crop_edge_left,
@@ -631,7 +631,7 @@ public:
         return result;
     }
 
-    void draw_crop_rect(QPainter& painter, const QRectF& rect)
+    static void draw_crop_rect(QPainter& painter, const QRectF& rect)
     {
         QPen pen(Qt::white);
         pen.setWidth(2);

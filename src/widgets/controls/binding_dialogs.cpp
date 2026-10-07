@@ -316,7 +316,7 @@ void BindingEditorDialogBase::try_accept()
     if (!candidate.mouse_button().isEmpty() || !candidate.key_sequence().isEmpty()) {
         const KeyboardSettings ks;
 
-        const int mouseRow = ks.find_conflicting_mouse_group(binding_target()->id(),
+        const int mouseRow = KeyboardSettings::find_conflicting_mouse_group(binding_target()->id(),
                                                           candidate);
         if (mouseRow >= 0) {
             const MouseConfig& other
@@ -349,7 +349,7 @@ void BindingEditorDialogBase::try_accept()
             other.set_bindings(theirs);
         }
 
-        const int wheelRow = ks.find_conflicting_wheel_group(binding_target()->id(),
+        const int wheelRow = KeyboardSettings::find_conflicting_wheel_group(binding_target()->id(),
                                                           candidate);
         if (wheelRow >= 0) {
             const MouseWheelConfig& other

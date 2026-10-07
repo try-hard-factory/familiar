@@ -243,7 +243,7 @@ public:
 
     // ── Shortcut API (used by Action) ─────────────────────────────────────────
     // Saves even if equal to default (saveUnknownShortcuts flag controls this).
-    void set_shortcuts(const QString& group,
+    static void set_shortcuts(const QString& group,
                       const QString& key,
                       const QStringList& values);
     QStringList get_shortcuts(const QString& group,
@@ -252,39 +252,38 @@ public:
 
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────
     // Removes key when values == defaultValues (stores only non-default data).
-    void set_list(const QString& group,
+    static void set_list(const QString& group,
                  const QString& key,
                  const QStringList& values,
                  const QStringList& defaultValues = {});
-    QStringList get_list(const QString& group,
+    static QStringList get_list(const QString& group,
                         const QString& key,
-                        const QStringList& defaultValues = {}) const;
+                        const QStringList& defaultValues = {});
 
     // ── Generic scalar API (used by mouse/wheel configs) ──────────────────────
-    void set_scalar(const QString& group,
+    static void set_scalar(const QString& group,
                    const QString& key,
                    const QVariant& value,
                    const QVariant& defaultValue = {});
-    QVariant get_scalar(const QString& group,
+    static QVariant get_scalar(const QString& group,
                        const QString& key,
-                       const QVariant& defaultValue = {}) const;
+                       const QVariant& defaultValue = {});
 
     // Removes all stored controls and emits SettingsEvents::restoreKeyboardDefaults.
-    void restore_defaults();
-
-    std::optional<ControlMatch> mousewheel_action_for_event(
-        const QWheelEvent* event) const;
-    std::optional<ControlMatch> mouse_action_for_event(
-        const QMouseEvent* event) const;
+    static void restore_defaults();
+    static std::optional<ControlMatch> mousewheel_action_for_event(
+        const QWheelEvent* event);
+    static std::optional<ControlMatch> mouse_action_for_event(
+        const QMouseEvent* event);
 
     // Index into mouseActions()/mousewheelActions() of a group (other than
     // excludeId) whose bindings already use the same button+modifiers as
     // `candidate`, or -1 if none. Used by both the old single-binding
     // Mouse/Mouse Wheel dialogs and the new alias dialogs.
-    int find_conflicting_mouse_group(const QString& excludeId,
-                                  const Binding& candidate) const;
-    int find_conflicting_wheel_group(const QString& excludeId,
-                                  const Binding& candidate) const;
+    static int find_conflicting_mouse_group(const QString& excludeId,
+                                  const Binding& candidate);
+    static int find_conflicting_wheel_group(const QString& excludeId,
+                                  const Binding& candidate);
 
     bool save_unknown_shortcuts() const { return saveUnknownShortcuts_; }
     void set_save_unknown_shortcuts(bool value)

@@ -150,7 +150,7 @@ QList<Binding> MouseConfigBase::get_bindings() const
     }
 
     const QStringList serialized
-        = KeyboardSettings().get_list(settings_group(),
+        = KeyboardSettings::get_list(settings_group(),
                                      id_ + QStringLiteral("_bindings"),
                                      defaultSerialized);
     QList<Binding> out;
@@ -171,7 +171,7 @@ void MouseConfigBase::set_bindings(const QList<Binding>& bindings) const
         defaultSerialized.append(b.serialize());
     }
 
-    KeyboardSettings().set_list(settings_group(),
+    KeyboardSettings::set_list(settings_group(),
                                id_ + QStringLiteral("_bindings"),
                                serialized,
                                defaultSerialized);
@@ -488,7 +488,7 @@ void KeyboardSettings::set_list(const QString& group,
 
 QStringList KeyboardSettings::get_list(const QString& group,
                                       const QString& key,
-                                      const QStringList& defaultValues) const
+                                      const QStringList& defaultValues)
 {
     const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     return v.isUndefined() ? defaultValues : from_json_array(v);
@@ -509,7 +509,7 @@ void KeyboardSettings::set_scalar(const QString& group,
 
 QVariant KeyboardSettings::get_scalar(const QString& group,
                                      const QString& key,
-                                     const QVariant& defaultValue) const
+                                     const QVariant& defaultValue)
 {
     const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     return v.isUndefined() ? defaultValue : v.toVariant();
@@ -547,7 +547,7 @@ void KeyboardSettings::restore_defaults()
 }
 
 std::optional<ControlMatch> KeyboardSettings::mousewheel_action_for_event(
-    const QWheelEvent* event) const
+    const QWheelEvent* event)
 {
     for (const MouseWheelConfig& action : mousewheel_actions()) {
         if (auto binding = action.matches_event(event)) {
@@ -558,7 +558,7 @@ std::optional<ControlMatch> KeyboardSettings::mousewheel_action_for_event(
 }
 
 std::optional<ControlMatch> KeyboardSettings::mouse_action_for_event(
-    const QMouseEvent* event) const
+    const QMouseEvent* event)
 {
     for (const MouseConfig& action : mouse_actions()) {
         if (auto binding = action.matches_event(event)) {
@@ -569,7 +569,7 @@ std::optional<ControlMatch> KeyboardSettings::mouse_action_for_event(
 }
 
 int KeyboardSettings::find_conflicting_mouse_group(const QString& excludeId,
-                                                const Binding& candidate) const
+                                                const Binding& candidate)
 {
     if (candidate.mouse_button().isEmpty() && candidate.key_sequence().isEmpty()) {
         return -1;
@@ -598,7 +598,7 @@ int KeyboardSettings::find_conflicting_mouse_group(const QString& excludeId,
 }
 
 int KeyboardSettings::find_conflicting_wheel_group(const QString& excludeId,
-                                                const Binding& candidate) const
+                                                const Binding& candidate)
 {
     if (candidate.mouse_modifiers().isEmpty() && candidate.key_sequence().isEmpty()) {
         return -1;

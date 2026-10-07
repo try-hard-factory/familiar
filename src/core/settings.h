@@ -93,33 +93,32 @@ public:
     static const QMap<QString, FieldConfig>& fields();
 
     // Returns stored value with cast + validation applied; falls back to default.
-    QVariant value_or_default(const QString& key) const;
+    static QVariant value_or_default(const QString& key);
 
     // Returns true if stored value differs from FIELDS default.
-    bool value_changed(const QString& key) const;
+    static bool value_changed(const QString& key);
 
     // Remove all FIELDS keys from storage and emit SettingsEvents::restoreDefaults.
-    void restore_defaults();
+    static void restore_defaults();
 
     // Apply startup-time settings (e.g. image allocation limit).
-    void on_startup();
+    static void on_startup();
 
     // Fires postSaveCallback when defined for `key`.
-    void set_value(const QString& key, const QVariant& value);
+    static void set_value(const QString& key, const QVariant& value);
 
     // Raw read for keys that aren't in fields() (e.g. Action::settingsKey's
     // ad-hoc checkbox state, written via setValue() above) - same
     // "Group/subkey" splitting as valueOrDefault(), just without the
     // fields()-driven cast/validate/default.
-    QVariant value(const QString& key, const QVariant& defaultValue) const;
+    static QVariant value(const QString& key, const QVariant& defaultValue);
 
     // Fires postSaveCallback when defined for `key`.
-    void remove(const QString& key);
+    static void remove(const QString& key);
 
-    void update_recent_files(const QString& filename);
-    QStringList get_recent_files(bool existingOnly = false) const;
-
-    QString file_name() const;
+    static void update_recent_files(const QString& filename);
+    static QStringList get_recent_files(bool existingOnly = false);
+    static QString file_name();
 };
 
 #endif // SETTINGS_H

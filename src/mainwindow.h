@@ -54,7 +54,7 @@ public:
     void quit_project();
     void save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&& m);
     void cleanup_workplace();
-    void exit_project();
+    static void exit_project();
     TabPane& tab_pane();
     FileActions& file_actions();
 

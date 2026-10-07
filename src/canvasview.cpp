@@ -59,7 +59,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     // UndoHistorySizeRow) is a plain spinbox with range [0, 10000] -
     // 0 already matches Qt's own "0 means no limit" for this property,
     // no translation needed.
-    undoStack_->setUndoLimit(SettingsHandler::get_instance()->undo_history_size());
+    undoStack_->setUndoLimit(SettingsHandler::undo_history_size());
     connect(undoStack_.get(),
             &QUndoStack::cleanChanged,
             this,
@@ -589,7 +589,7 @@ void CanvasView::wheelEvent(QWheelEvent* event)
         return;
     }
 
-    auto match = SettingsHandler::get_instance()->mousewheel_action_for_event(event);
+    auto match = SettingsHandler::mousewheel_action_for_event(event);
     if (!match) {
         return;
     }
@@ -620,7 +620,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
             if (color.isValid()) {
                 const QString name = color.name();
                 QApplication::clipboard()->setText(name);
-                scene_->internalClipboard.clear();
+                CanvasScene::internalClipboard.clear();
                 FLOG_DEBUG(Ch::View, "Copied color to clipboard: {}", name);
                 new FamNotification(this,
                                     QString("Copied color to clipboard: %1")
@@ -634,7 +634,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    auto match = SettingsHandler::get_instance()->mouse_action_for_event(event);
+    auto match = SettingsHandler::mouse_action_for_event(event);
     if (match) {
         if (match->group == QLatin1String("zoom")) {
             activeMode_ = kModeZoom;
@@ -1339,13 +1339,13 @@ void CanvasView::on_action_paste()
     cancel_active_modes();
     FLOG_DEBUG(Ch::View, "Pasting from clipboard...");
     const QClipboard* clipboard = QApplication::clipboard();
-    QPoint pos = mapFromGlobal(cursor().pos());
+    QPoint pos = mapFromGlobal(QCursor::pos());
 
     // See if we need to look up the internal clipboard:
     const QByteArray marker = clipboard->mimeData()->data(
         QStringLiteral("familiar/items"));
     FLOG_DEBUG(Ch::View, "Custom data in clipboard: {}", debug_string(marker));
-    if (!marker.isEmpty() && !scene_->internalClipboard.isEmpty()) {
+    if (!marker.isEmpty() && !CanvasScene::internalClipboard.isEmpty()) {
         // Checking that the internal clipboard exists since the user
         // may have opened a new scene since copying.
         const bool wasEmpty = scene_->items().isEmpty();
@@ -1471,7 +1471,7 @@ void CanvasView::on_action_zoom_out()
 
 // ─── Insert actions ───────────────────────────────────────────────────────────
 
-QString CanvasView::get_supported_image_formats() const
+QString CanvasView::get_supported_image_formats()
 {
     QStringList formats;
     for (const QByteArray& f : QImageReader::supportedImageFormats()) {
@@ -1506,7 +1506,7 @@ void CanvasView::on_action_insert_text()
 {
     cancel_active_modes();
     auto* item = new TextItem();
-    QPointF pos = mapToScene(mapFromGlobal(cursor().pos()));
+    QPointF pos = mapToScene(mapFromGlobal(QCursor::pos()));
     item->setScale(1.0 / get_scale());
     // Auto-attach - if exactly one picture/gif is
     // currently selected, the new note pins to it. GifItem IS-A
@@ -1721,7 +1721,7 @@ void CanvasView::on_action_sample_color()
         scene_->multiselect_item()->lower_behind_selection();
     }
 
-    const QPoint pos = mapFromGlobal(cursor().pos());
+    const QPoint pos = mapFromGlobal(QCursor::pos());
     sampleColorWidget_ = new SampleColorWidget(this,
                                                pos,
                                                scene_->sample_color_at(
@@ -1948,8 +1948,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // wasn't checked) still pauses normally mid-load via
     // on_raw_import_choice_required() - only the very first decision
     // point moves up front.
-    const QString rawImportSetting = FamSettings()
-                                         .value_or_default(QStringLiteral(
+    const QString rawImportSetting = FamSettings::value_or_default(QStringLiteral(
                                              "Items/raw_import_choice"))
                                          .toString();
     if (rawImportSetting == QLatin1String("ask")) {
@@ -2099,8 +2098,7 @@ bool CanvasView::resolve_raw_import_choice(const QString& filename)
         imageImportSession_->set_one_shot_choice(dialog.choice());
     }
     if (dialog.remember_choice()) {
-        FamSettings settings;
-        settings.set_value(QStringLiteral("Items/raw_import_choice"),
+        FamSettings::set_value(QStringLiteral("Items/raw_import_choice"),
                           dialog.choice() == RawImportChoice::Optimize
                               ? QStringLiteral("always_optimize")
                               : QStringLiteral("always_keep_original"));

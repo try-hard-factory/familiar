@@ -105,7 +105,7 @@ private:
     void add_item_node(QTreeWidgetItem* parent,
                       QGraphicsItem* item,
                       QSet<QUuid>& added);
-    QTreeWidgetItem* make_node(QGraphicsItem* item);
+    static QTreeWidgetItem* make_node(QGraphicsItem* item);
     // Live-updates node's icon on every GIF frame instead of waiting for
     // the next full rebuild_() - see its own comment for why this is
     // safe now (it wasn't, back when a rebuild trigger was tied to the

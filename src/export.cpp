@@ -25,14 +25,14 @@ using namespace familiar::log;
 // ExporterBase
 // ============================================================================
 
-void ExporterBase::emit_begin_processing(ThreadedIO* worker, int total) const
+void ExporterBase::emit_begin_processing(ThreadedIO* worker, int total)
 {
     if (worker) {
         emit worker->begin_processing(total);
     }
 }
 
-void ExporterBase::emit_progress(ThreadedIO* worker, int value) const
+void ExporterBase::emit_progress(ThreadedIO* worker, int value)
 {
     if (worker) {
         emit worker->progress(value);
@@ -41,7 +41,7 @@ void ExporterBase::emit_progress(ThreadedIO* worker, int value) const
 
 void ExporterBase::emit_finished(ThreadedIO* worker,
                                 const QString& target,
-                                const QStringList& errors) const
+                                const QStringList& errors)
 {
     if (worker) {
         emit worker->finished(target, errors);
@@ -49,7 +49,7 @@ void ExporterBase::emit_finished(ThreadedIO* worker,
 }
 
 void ExporterBase::emit_user_input_required(ThreadedIO* worker,
-                                         const QString& message) const
+                                         const QString& message)
 {
     if (worker) {
         emit worker->user_input_required(message);
@@ -138,7 +138,7 @@ bool SceneToSVGExporter::get_user_input(QWidget* /*parent*/)
     return true;
 }
 
-QString SceneToSVGExporter::text_styles(TextItem* item) const
+QString SceneToSVGExporter::text_styles(TextItem* item)
 {
     static const QMap<QFont::Style, QString> styleNames{
         {QFont::StyleNormal, QStringLiteral("normal")},

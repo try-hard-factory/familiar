@@ -182,7 +182,7 @@ void SaveAllDialog::mousePressEvent(QMouseEvent* event)
 void SaveAllDialog::on_close_without_save()
 {
     FLOG_DEBUG(Ch::UI, "SaveAllDialog: close without save");
-    window_->exit_project();
+    MainWindow::exit_project();
 }
 
 void SaveAllDialog::on_save()

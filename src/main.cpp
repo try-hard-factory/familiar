@@ -85,14 +85,14 @@ int main(int argc, char* argv[])
     // Organization name deliberately left unset - Qt nests
     // AppConfigLocation under BOTH organizationName and applicationName
     // when both are set, which produced ".config/familiar/familiar/".
-    a.setApplicationName(QStringLiteral("familiar"));
+    QApplication::setApplicationName(QStringLiteral("familiar"));
     // FAMILIAR_VERSION_STRING - CMakeLists.txt's own -D define (platform-
     // independent, unlike the WIN32-only FAMILIAR_VERSION_MAJOR/MINOR/...
     // block). Without this, QCommandLineParser::addVersionOption()'s
     // --version prints an empty string - it reads
     // QCoreApplication::applicationVersion(), which nothing else here
     // ever sets (real bug this fixes).
-    a.setApplicationVersion(QStringLiteral(FAMILIAR_VERSION_STRING));
+    QApplication::setApplicationVersion(QStringLiteral(FAMILIAR_VERSION_STRING));
 
     // Declared here (not in a narrower scope) so it stays alive - and
     // the lock held - for the whole process lifetime, releasing only
@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
     QIcon appIcon;
     appIcon.addFile(QStringLiteral(":/img/app/familiar_256.png"));
     appIcon.addFile(QStringLiteral(":/img/app/familiar_512.png"));
-    a.setWindowIcon(appIcon);
+    QApplication::setWindowIcon(appIcon);
 
     Options logOptions;
     logOptions.consoleLevel = level_from_name(
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
     // the logger is initialized is a real null-logger crash (confirmed
     // via a real backtrace: quill::LoggerBase::get_log_level() on a null
     // `this`).
-    FamSettings().on_startup();
+    FamSettings::on_startup();
 
 
 #ifdef NDEBUG
@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
     // ordering matters.
     w.show_or_offer_recovery(CommandlineArgs::instance().filename());
 
-    const int result = a.exec();
+    const int result = QApplication::exec();
 
     familiar::log::shutdown();
     return result;

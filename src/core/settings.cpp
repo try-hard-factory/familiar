@@ -102,6 +102,10 @@ void CommandlineArgs::process(const QCoreApplication& app)
     // right under the specific error message. Long options already
     // accept `--option=value` as well as `--option value` - that's
     // QCommandLineParser's own native behavior, nothing to add for it.
+    // Through `app`, not QCoreApplication::arguments(): the parameter is
+    // what makes "a QCoreApplication must already exist" part of this
+    // function's signature instead of an unwritten precondition.
+    // NOLINTNEXTLINE(readability-static-accessed-through-instance)
     if (!parser.parse(app.arguments())) {
         std::fputs(qPrintable(parser.errorText()), stderr);
         std::fputs("\n\n", stderr);
@@ -344,7 +348,7 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
     return map;
 }
 
-QVariant FamSettings::value_or_default(const QString& key) const
+QVariant FamSettings::value_or_default(const QString& key)
 {
     const auto& f = fields();
     Q_ASSERT(f.contains(key));
@@ -382,7 +386,7 @@ QVariant FamSettings::value_or_default(const QString& key) const
     return val;
 }
 
-bool FamSettings::value_changed(const QString& key) const
+bool FamSettings::value_changed(const QString& key)
 {
     return value_or_default(key) != fields().value(key).defaultValue;
 }
@@ -425,7 +429,7 @@ void FamSettings::set_value(const QString& key, const QVariant& value)
 }
 
 QVariant FamSettings::value(const QString& key,
-                            const QVariant& defaultValue) const
+                            const QVariant& defaultValue)
 {
     const QJsonValue raw
         = SettingsHandler::get_instance()->json_value(key_group(key),
@@ -457,7 +461,7 @@ void FamSettings::update_recent_files(const QString& filename)
     SettingsHandler::get_instance()->set_recent_files_raw(values);
 }
 
-QStringList FamSettings::get_recent_files(bool existingOnly) const
+QStringList FamSettings::get_recent_files(bool existingOnly)
 {
     QStringList values = SettingsHandler::get_instance()->recent_files_raw();
 
@@ -472,7 +476,7 @@ QStringList FamSettings::get_recent_files(bool existingOnly) const
     return values;
 }
 
-QString FamSettings::file_name() const
+QString FamSettings::file_name()
 {
     return SettingsHandler::get_instance()->settings_file_path();
 }

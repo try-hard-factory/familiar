@@ -24,12 +24,12 @@ public:
     virtual ~ExporterBase() = default;
 
 protected:
-    void emit_begin_processing(ThreadedIO* worker, int total) const;
-    void emit_progress(ThreadedIO* worker, int value) const;
-    void emit_finished(ThreadedIO* worker,
+    static void emit_begin_processing(ThreadedIO* worker, int total);
+    static void emit_progress(ThreadedIO* worker, int value);
+    static void emit_finished(ThreadedIO* worker,
                       const QString& target,
-                      const QStringList& errors) const;
-    void emit_user_input_required(ThreadedIO* worker, const QString& message) const;
+                      const QStringList& errors);
+    static void emit_user_input_required(ThreadedIO* worker, const QString& message);
 };
 
 // For exporting the whole scene to a single image file. Cancels active
@@ -88,7 +88,7 @@ public:
 
 private:
     QString render_to_svg(ThreadedIO* worker) const;
-    QString text_styles(TextItem* item) const;
+    static QString text_styles(TextItem* item);
 
     QSize size_;
 };

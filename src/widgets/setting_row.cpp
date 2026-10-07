@@ -209,9 +209,8 @@ SettingRowBase::SettingRowBase(const QString& label,
 
 void SettingRowBase::update_label()
 {
-    const FamSettings settings;
     QString text = baseLabel_;
-    if (settings.value_changed(key_)) {
+    if (FamSettings::value_changed(key_)) {
         text += QStringLiteral(" ") + QString::fromUtf8(kchangedSymbol);
     }
     label_->setText(text);
@@ -223,26 +222,24 @@ void SettingRowBase::on_value_changed(const QVariant& value)
         return;
     }
 
-    FamSettings settings;
     const QVariant converted = convert_value_from_qt(value);
-    if (converted != settings.value_or_default(key_)) {
-        settings.set_value(key_, converted);
+    if (converted != FamSettings::value_or_default(key_)) {
+        FamSettings::set_value(key_, converted);
         update_label();
     }
 }
 
 void SettingRowBase::on_restore_defaults()
 {
-    const FamSettings settings;
     ignoreValueChanged_ = true;
-    set_value(settings.value_or_default(key_));
+    set_value(FamSettings::value_or_default(key_));
     ignoreValueChanged_ = false;
     update_label();
 }
 
 QString SettingRowBase::default_value_display_text() const
 {
-    return FamSettings().value_or_default(key_).toString();
+    return FamSettings::value_or_default(key_).toString();
 }
 
 void SettingRowBase::refresh_info_popup()
@@ -254,7 +251,6 @@ void SettingRowBase::refresh_info_popup()
 void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
 {
     if (event->modifiers().testFlag(Qt::ControlModifier)) {
-        FamSettings settings;
         // Unlike onRestoreDefaults() above (the page-wide button already
         // cleared the whole JSON group before emitting
         // SettingsEvents::restoreDefaults(), so that path only needs to
@@ -264,9 +260,9 @@ void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
         // resulting default, so real runtime effects (e.g.
         // QImageReader::setAllocationLimit() for Maximum Image Size)
         // re-apply immediately too, not just the display.
-        settings.remove(key_);
+        FamSettings::remove(key_);
         ignoreValueChanged_ = true;
-        set_value(settings.value_or_default(key_));
+        set_value(FamSettings::value_or_default(key_));
         ignoreValueChanged_ = false;
         update_label();
         event->accept();
@@ -293,7 +289,6 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     }())
     , options_(options)
 {
-    const FamSettings settings;
     for (const ComboOption& opt : options_) {
         input_->addItem(opt.label);
     }
@@ -301,7 +296,7 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     // setValue() (via setCurrentIndex) happens before this connect(), so
     // it can't fire onValueChanged() with nothing listening yet - no
     // ignoreValueChanged_ guard needed.
-    set_value(settings.value_or_default(settings_key()));
+    set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
     set_ignore_value_changed(false);
 
@@ -333,7 +328,7 @@ void ComboSettingRow::set_value(const QVariant& value)
 
 QString ComboSettingRow::default_value_display_text() const
 {
-    const QString def = FamSettings().value_or_default(settings_key()).toString();
+    const QString def = FamSettings::value_or_default(settings_key()).toString();
     for (const ComboOption& opt : options_) {
         if (opt.value == def) {
             return opt.label;
@@ -369,8 +364,7 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     // real filename). Pin an explicit size instead of trusting it.
     input_->setFixedSize(22, 22);
 
-    const FamSettings settings;
-    set_value(settings.value_or_default(settings_key()));
+    set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
     set_ignore_value_changed(false);
 
@@ -416,7 +410,7 @@ QVariant CheckboxSettingRow::convert_value_from_qt(const QVariant& value)
 
 QString CheckboxSettingRow::default_value_display_text() const
 {
-    return FamSettings().value_or_default(settings_key()).toBool() ? tr("Checked")
+    return FamSettings::value_or_default(settings_key()).toBool() ? tr("Checked")
                                                        : tr("Unchecked");
 }
 
@@ -438,10 +432,9 @@ IntegerSettingRow::IntegerSettingRow(
                                this);
     }())
 {
-    const FamSettings settings;
     input_->setRange(min, max);
     input_->setFixedWidth(kcontrolWidth);
-    set_value(settings.value_or_default(settings_key()));
+    set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
     set_ignore_value_changed(false);
 

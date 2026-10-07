@@ -61,7 +61,7 @@ public:
     // QThread::msleep() is protected; expose it for worker functions
     // (which are not members of this class) the same way Python's
     // worker.msleep(10) is just called on the thread object directly.
-    void sleep_ms(unsigned long ms) { QThread::msleep(ms); }
+    static void sleep_ms(unsigned long ms) { QThread::msleep(ms); }
 
 protected:
     void run() override;

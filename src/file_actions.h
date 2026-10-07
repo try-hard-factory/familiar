@@ -65,7 +65,7 @@ public:
     // CanvasScene an in-flight ThreadedIO worker still held a pointer
     // to, crashing inside QGraphicsScene::addItem once that load
     // finished.
-    void close_tab(CanvasView* cv);
+    static void close_tab(CanvasView* cv);
 
 private:
     // Loads `path` into whatever tab is currently active, in the

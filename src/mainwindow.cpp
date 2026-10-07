@@ -335,12 +335,10 @@ void MainWindow::on_autosave_timeout()
 void MainWindow::restart_autosave_timer()
 {
     autosaveTimer_->stop();
-    const FamSettings settings;
     const bool enabled
-        = settings.value_or_default(QStringLiteral("Save/autosave_enabled"))
+        = FamSettings::value_or_default(QStringLiteral("Save/autosave_enabled"))
               .toBool();
-    const int seconds = settings
-                            .value_or_default(QStringLiteral(
+    const int seconds = FamSettings::value_or_default(QStringLiteral(
                                 "Save/autosave_interval_seconds"))
                             .toInt();
     if (enabled) {
@@ -1094,9 +1092,14 @@ void MainWindow::on_action_settings()
     settings_window();
 }
 
+// A public slot, dispatched BY NAME through QMetaObject::invokeMethod (its
+// name is a callback string in actions/actions.cpp). moc doesn't register
+// static members as slots, so making this static would compile fine and
+// then fail to find the method at runtime.
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void MainWindow::on_action_open_settings_dir()
 {
-    const QString dir = QFileInfo(SettingsHandler::get_instance()->settings_file_name())
+    const QString dir = QFileInfo(SettingsHandler::settings_file_name())
                       .absolutePath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
