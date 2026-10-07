@@ -19,8 +19,16 @@
 // alongside NOMINMAX and harmless here.
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include <DbgHelp.h>
+// clang-format off
+// Order matters and must NOT be sorted: DbgHelp.h uses CALLBACK, _In_ and
+// friends without declaring them, so <Windows.h> has to come first.
+// Alphabetical sorting puts DbgHelp.h on top ('D' < 'W') and Windows CI
+// then dies inside DbgHelp.h itself with C3646/C2065 ("unknown override
+// specifier", "CALLBACK: undeclared identifier") - that is exactly what
+// commit 5b9df26 did.
 #include <Windows.h>
+#include <DbgHelp.h>
+// clang-format on
 #include <io.h>
 #else
 #include <unistd.h>
