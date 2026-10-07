@@ -54,8 +54,8 @@ QIcon make_group_icon(const QColor& glyphColor)
     const qreal gap = kiconSize * 0.14;
     for (int row = 0; row < 2; ++row) {
         for (int col = 0; col < 2; ++col) {
-            const qreal x = kiconSize * 0.08 + col * (cell + gap);
-            const qreal y = kiconSize * 0.08 + row * (cell + gap);
+            const qreal x = (kiconSize * 0.08) + (col * (cell + gap));
+            const qreal y = (kiconSize * 0.08) + (row * (cell + gap));
             p.drawRoundedRect(QRectF(x, y, cell, cell), 2, 2);
         }
     }
@@ -254,8 +254,8 @@ public:
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
         familiar::dialog_style::style_secondary_button(cancelBtn,
-                                                     textColor,
-                                                     border);
+                                                       textColor,
+                                                       border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("Rename"), this);
@@ -275,10 +275,10 @@ public:
         // with nothing underneath to actually paint (rendered solid
         // black, stale content visibly not clearing while typing).
         setStyleSheet(familiar::dialog_style::panel_style_sheet("QDialog",
-                                                              background,
-                                                              border,
-                                                              textColor,
-                                                              /*radiusPx=*/0)
+                                                                background,
+                                                                border,
+                                                                textColor,
+                                                                /*radiusPx=*/0)
                       + QStringLiteral("QLineEdit {"
                                        "  background-color: rgba(0, 0, 0, 20);"
                                        "  color: %1;"
@@ -398,7 +398,8 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
 
 void HierarchyPanel::apply_color_style()
 {
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
@@ -532,8 +533,8 @@ void HierarchyPanel::rebuild()
 }
 
 void HierarchyPanel::add_item_node(QTreeWidgetItem* parent,
-                                  QGraphicsItem* item,
-                                  QSet<QUuid>& added)
+                                   QGraphicsItem* item,
+                                   QSet<QUuid>& added)
 {
     auto* base = dynamic_cast<IBaseItem*>(item);
     if (!base || added.contains(base->uid())) {
@@ -571,7 +572,8 @@ void HierarchyPanel::connect_gif_animation(QTreeWidgetItem* node, GifItem* gif)
     // changed(), a per-node icon update on frameChanged is a targeted,
     // cheap operation (setIcon() on one row) instead of a full tree
     // rebuild every frame.
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor glyphColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QMetaObject::Connection conn
         = QObject::connect(gif->movie(),
@@ -580,14 +582,15 @@ void HierarchyPanel::connect_gif_animation(QTreeWidgetItem* node, GifItem* gif)
                            [node, gif, glyphColor](int) {
                                node->setIcon(0,
                                              make_picture_icon(gif->pixmap(),
-                                                             glyphColor));
+                                                               glyphColor));
                            });
     gifIconConnections_.append(conn);
 }
 
 QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
 {
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
 
     QString label;
@@ -650,12 +653,13 @@ void HierarchyPanel::on_item_double_clicked(QTreeWidgetItem* node)
         text->setFocus();
         return;
     }
-    view_->fit_rect(scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
-                   item);
+    view_->fit_rect(scene_->itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item}),
+                    item);
 }
 
 void HierarchyPanel::handle_tree_drop(QTreeWidgetItem* dragged,
-                                     QTreeWidgetItem* target)
+                                      QTreeWidgetItem* target)
 {
     if (!scene_ || dragged == target) {
         return;
@@ -738,7 +742,8 @@ void HierarchyPanel::show_context_menu(const QPoint& pos)
     // it falls back to the app-wide "background: transparent" (MainWindow's
     // own setStyleSheet()) with nothing underneath to actually paint,
     // rendering solid black.
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];

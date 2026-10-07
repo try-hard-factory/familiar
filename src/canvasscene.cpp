@@ -1091,10 +1091,10 @@ void CanvasScene::arrange(bool vertical)
             sumHeight += r.rect.height();
         }
 
-        qreal y = std::round(center.y() - sumHeight / 2);
+        qreal y = std::round(center.y() - (sumHeight / 2));
         for (const auto& rect : rects) {
             positions.append(
-                QPointF(std::round(center.x() - rect.rect.width() / 2), y));
+                QPointF(std::round(center.x() - (rect.rect.width() / 2)), y));
             y += rect.rect.height() + gap;
         }
     } else {
@@ -1110,10 +1110,10 @@ void CanvasScene::arrange(bool vertical)
             sumWidth += r.rect.width();
         }
 
-        qreal x = std::round(center.x() - sumWidth / 2);
+        qreal x = std::round(center.x() - (sumWidth / 2));
         for (const auto& rect : rects) {
             positions.append(
-                QPointF(x, std::round(center.y() - rect.rect.height() / 2)));
+                QPointF(x, std::round(center.y() - (rect.rect.height() / 2))));
             x += rect.rect.width() + gap;
         }
     }
@@ -1171,8 +1171,8 @@ void CanvasScene::arrange_optimal()
     }
 
     // Центрируем элементы вокруг центра выделения
-    const QPointF diff(center.x() - boundsWidth / 2.0,
-                       center.y() - boundsHeight / 2.0);
+    const QPointF diff(center.x() - (boundsWidth / 2.0),
+                       center.y() - (boundsHeight / 2.0));
 
     QList<QPointF> scenePositions;
     for (const auto& pos : positions) {
@@ -1217,9 +1217,10 @@ void CanvasScene::arrange_square()
             ++it;
             const QRectF rect = itemsBoundingRect(false,
                                                   QList<QGraphicsItem*>{item});
-            const QPointF point(i * maxWidth + (maxWidth - rect.width()) / 2.0,
-                                j * maxHeight
-                                    + (maxHeight - rect.height()) / 2.0);
+            const QPointF point((i * maxWidth)
+                                    + ((maxWidth - rect.width()) / 2.0),
+                                (j * maxHeight)
+                                    + ((maxHeight - rect.height()) / 2.0));
             positions.append(point + diff);
         }
     }

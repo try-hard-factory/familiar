@@ -59,9 +59,9 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
         checkPen.setJoinStyle(Qt::RoundJoin);
         p.setPen(checkPen);
         QPainterPath check;
-        check.moveTo(box.left() + size * 0.22, box.top() + size * 0.52);
-        check.lineTo(box.left() + size * 0.42, box.top() + size * 0.74);
-        check.lineTo(box.left() + size * 0.80, box.top() + size * 0.26);
+        check.moveTo(box.left() + (size * 0.22), box.top() + (size * 0.52));
+        check.lineTo(box.left() + (size * 0.42), box.top() + (size * 0.74));
+        check.lineTo(box.left() + (size * 0.80), box.top() + (size * 0.26));
         p.drawPath(check);
     }
 

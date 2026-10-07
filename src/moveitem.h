@@ -167,7 +167,7 @@ public:
 
 private:
     const std::string type = "pixmap"; // static constexpr
-    const qreal cropHandleSize = 15; // static constexpr
+    const qreal cropHandleSize = 15;   // static constexpr
     QString filename_;
     bool is_image_{true};
     bool crop_mode = false;
@@ -275,7 +275,8 @@ public:
         const QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
         const QImage img = pm.toImage();
 
-        QColor color = img.pixelColor(static_cast<int>(ipos.x()), static_cast<int>(ipos.y()));
+        QColor color = img.pixelColor(static_cast<int>(ipos.x()),
+                                      static_cast<int>(ipos.y()));
         if (color.alpha()) {
             return color;
         }
@@ -377,7 +378,7 @@ public:
         buffer.open(QIODevice::WriteOnly);
 
         QPixmap pm = (applyGrayscale && grayscale_) ? grayscalePixmap_
-                                                     : pixmap();
+                                                    : pixmap();
         if (applyCrop) {
             pm = pm.copy(crop_.toRect());
         }
@@ -436,7 +437,8 @@ public:
             ColorGamut gamut;
             const QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
-            const int step = std::max(1, std::max(img.width(), img.height()) / 1000);
+            const int step
+                = std::max(1, std::max(img.width(), img.height()) / 1000);
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Considering every {}. row/column",
                        step);
@@ -529,7 +531,7 @@ public:
         const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x() + crop_handle_size(),
                       topLeft.y(),
-                      crop_temp->width() - 2 * crop_handle_size(),
+                      crop_temp->width() - (2 * crop_handle_size()),
                       crop_handle_size());
     }
 
@@ -539,7 +541,7 @@ public:
         return QRectF(topLeft.x(),
                       topLeft.y() + crop_handle_size(),
                       crop_handle_size(),
-                      crop_temp->height() - 2 * crop_handle_size());
+                      crop_temp->height() - (2 * crop_handle_size()));
     }
 
     QRectF crop_edge_bottom() const
@@ -547,7 +549,7 @@ public:
         const QPointF bottomLeft = crop_temp->bottomLeft();
         return QRectF(bottomLeft.x() + crop_handle_size(),
                       bottomLeft.y() - crop_handle_size(),
-                      crop_temp->width() - 2 * crop_handle_size(),
+                      crop_temp->width() - (2 * crop_handle_size()),
                       crop_handle_size());
     }
 
@@ -557,7 +559,7 @@ public:
         return QRectF(topRight.x() - crop_handle_size(),
                       topRight.y() + crop_handle_size(),
                       crop_handle_size(),
-                      crop_temp->height() - 2 * crop_handle_size());
+                      crop_temp->height() - (2 * crop_handle_size()));
     }
 
     // Function to return all crop edge functions as a tuple
@@ -580,13 +582,13 @@ public:
     Qt::CursorShape get_crop_edge_cursor(CropHandleFn edge)
     {
         const bool topOrBottom = (edge == &PixmapItem::crop_edge_top
-                              || edge == &PixmapItem::crop_edge_bottom);
+                                  || edge == &PixmapItem::crop_edge_bottom);
 
         const bool sideways = (45 < rotation() && rotation() < 135)
-                        || (225 < rotation() && rotation() < 315);
+                              || (225 < rotation() && rotation() < 315);
 
         return (topOrBottom == sideways) ? Qt::SizeHorCursor
-                                           : Qt::SizeVerCursor;
+                                         : Qt::SizeVerCursor;
     }
 
     // Returns the point, or the nearest point within the pixmap.
@@ -1349,7 +1351,6 @@ class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
     QString old_html;
 
 public:
-
     // Default note fill - the backdrop TextItem always painted, now
     // per-item and persisted.
     static QColor default_fill_color() { return QColor(0, 0, 0, 40); }
@@ -1633,7 +1634,8 @@ public:
         // both source from RubberbandItem's own selection-color fill.
         if (!attachedToUid_.isNull()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                if (const QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
+                if (const QGraphicsItem* picture = scene->find_by_uid(
+                        attachedToUid_);
                     picture && picture->isSelected()) {
                     auto colorPreset = SettingsHandler::get_instance()
                                            ->get_current_color_preset();
@@ -1708,10 +1710,10 @@ public:
         scene->notify_edit_item_changed(nullptr);
         if (commit) {
             scene->undo_stack()->push(new ChangeTextCommand(this,
-                                                           this->toHtml(),
-                                                           old_html,
-                                                           fillColor_,
-                                                           oldFillColor_));
+                                                            this->toHtml(),
+                                                            old_html,
+                                                            fillColor_,
+                                                            oldFillColor_));
             if (this->toPlainText().trimmed().isEmpty()) {
                 FLOG_DEBUG(familiar::log::Ch::Items, "Removing empty text item");
                 scene->undo_stack()->push(
@@ -1827,7 +1829,6 @@ class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
     const std::string type = "group"; // static constexpr
 
 public:
-
     static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
     // Visual breathing room kept between the members' own tight bounding
     // box and the group's fill rect - single source of truth for both

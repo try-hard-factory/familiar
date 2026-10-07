@@ -96,7 +96,7 @@ QIcon make_list_icon(bool numbered, const QColor& glyphColor, qreal dpr)
 
     for (int i = 0; i < krows; ++i) {
         const qreal top = rowH * i;
-        const qreal cy = top + rowH / 2.0;
+        const qreal cy = top + (rowH / 2.0);
 
         p.setPen(Qt::NoPen);
         p.setBrush(glyphColor);

@@ -39,8 +39,7 @@ using namespace familiar::log;
 
 
 CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
-    : 
-    //MainControlsMixin<CanvasView, QGraphicsView>()
+    : //MainControlsMixin<CanvasView, QGraphicsView>()
     mainwindow_(mw)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
@@ -469,7 +468,7 @@ void CanvasView::update_gif_toolbar_pos()
     const int leftView = mapFromScene(itemRect.bottomLeft()).x();
     const int rightView = mapFromScene(itemRect.bottomRight()).x();
     const int itemCenterView = (leftView + rightView) / 2;
-    int x = itemCenterView - gifToolbar_->width() / 2;
+    int x = itemCenterView - (gifToolbar_->width() / 2);
     int y = mapFromScene(itemRect.bottomLeft()).y() + 8;
     x = qBound(0, x, qMax(0, viewport()->width() - gifToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - gifToolbar_->height()));
@@ -498,7 +497,7 @@ void CanvasView::update_group_toolbar_pos()
     const int leftView = mapFromScene(itemRect.bottomLeft()).x();
     const int rightView = mapFromScene(itemRect.bottomRight()).x();
     const int itemCenterView = (leftView + rightView) / 2;
-    int x = itemCenterView - groupToolbar_->width() / 2;
+    int x = itemCenterView - (groupToolbar_->width() / 2);
     int y = mapFromScene(itemRect.bottomLeft()).y() + 8;
     x = qBound(0, x, qMax(0, viewport()->width() - groupToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - groupToolbar_->height()));
@@ -616,7 +615,8 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
     if (activeMode_ == kModeSampleColor) {
         if (event->button() == Qt::LeftButton) {
-            const QColor color = scene_->sample_color_at(mapToScene(event->pos()));
+            const QColor color = scene_->sample_color_at(
+                mapToScene(event->pos()));
             if (color.isValid()) {
                 const QString name = color.name();
                 QApplication::clipboard()->setText(name);
@@ -926,7 +926,8 @@ QString extract_first_img_src(const QString& html)
 
 void CanvasView::dropEvent(QDropEvent* event)
 {
-    const QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
+    const QPoint pos(qRound(event->position().x()),
+                     qRound(event->position().y()));
     handle_drop(event->mimeData(), pos);
     event->acceptProposedAction();
 }
@@ -1049,9 +1050,9 @@ void CanvasView::on_action_export_scene()
 
     if (scene_->itemsBoundingRect().isEmpty()) {
         show_message_box(QMessageBox::Information,
-                       &mainwindow_,
-                       tr("Export Scene"),
-                       tr("The scene is empty - nothing to export."));
+                         &mainwindow_,
+                         tr("Export Scene"),
+                         tr("The scene is empty - nothing to export."));
         return;
     }
 
@@ -1061,14 +1062,14 @@ void CanvasView::on_action_export_scene()
     // separately.
     const QString filename
         = show_save_file_dialog(this,
-                             tr("Export Scene to Image"),
-                             path().isEmpty()
-                                 ? QDir::homePath()
-                                 : QFileInfo(path()).absolutePath(),
-                             tr("Image Files (*.png *.jpg *.jpeg *.svg)"
-                                ";;PNG (*.png)"
-                                ";;JPEG (*.jpg *.jpeg)"
-                                ";;SVG (*.svg)"));
+                                tr("Export Scene to Image"),
+                                path().isEmpty()
+                                    ? QDir::homePath()
+                                    : QFileInfo(path()).absolutePath(),
+                                tr("Image Files (*.png *.jpg *.jpeg *.svg)"
+                                   ";;PNG (*.png)"
+                                   ";;JPEG (*.jpg *.jpeg)"
+                                   ";;SVG (*.svg)"));
     if (filename.isEmpty()) {
         return;
     }
@@ -1098,10 +1099,11 @@ void CanvasView::on_export_scene_finished(const QString& filename,
     sceneExporter_.reset();
     if (!errors.isEmpty()) {
         show_message_box(QMessageBox::Warning,
-                       &mainwindow_,
-                       tr("Problem writing file"),
-                       tr("<p>Problem writing file %1</p><p>%2</p>")
-                           .arg(filename, errors.join(QStringLiteral("<br/>"))));
+                         &mainwindow_,
+                         tr("Problem writing file"),
+                         tr("<p>Problem writing file %1</p><p>%2</p>")
+                             .arg(filename,
+                                  errors.join(QStringLiteral("<br/>"))));
     }
 }
 
@@ -1122,18 +1124,18 @@ void CanvasView::export_pictures(const QList<PixmapItem*>& pictures)
 
     if (pictures.isEmpty()) {
         show_message_box(QMessageBox::Information,
-                       &mainwindow_,
-                       tr("Export Images"),
-                       tr("There are no images to export."));
+                         &mainwindow_,
+                         tr("Export Images"),
+                         tr("There are no images to export."));
         return;
     }
 
     const QString directory
         = show_select_folder_dialog(this,
-                                 tr("Export Images"),
-                                 path().isEmpty()
-                                     ? QDir::homePath()
-                                     : QFileInfo(path()).absolutePath());
+                                    tr("Export Images"),
+                                    path().isEmpty()
+                                        ? QDir::homePath()
+                                        : QFileInfo(path()).absolutePath());
     if (directory.isEmpty()) {
         return;
     }
@@ -1187,10 +1189,10 @@ void CanvasView::on_export_images_finished(const QString& dirname,
     Q_UNUSED(dirname)
     if (!errors.isEmpty()) {
         show_message_box(QMessageBox::Warning,
-                       &mainwindow_,
-                       tr("Problem writing file"),
-                       tr("<p>Problem writing files</p><p>%1</p>")
-                           .arg(errors.join(QStringLiteral("<br/>"))));
+                         &mainwindow_,
+                         tr("Problem writing file"),
+                         tr("<p>Problem writing files</p><p>%1</p>")
+                             .arg(errors.join(QStringLiteral("<br/>"))));
     }
     if (imageExportWorker_) {
         imageExportWorker_->deleteLater();
@@ -1488,9 +1490,9 @@ void CanvasView::on_action_insert_images()
 
     const QStringList filenames
         = show_open_files_dialog(&mainwindow_,
-                              tr("Select one or more images to open"),
-                              QString(),
-                              tr("Images (%1)").arg(formats));
+                                 tr("Select one or more images to open"),
+                                 QString(),
+                                 tr("Images (%1)").arg(formats));
     if (filenames.isEmpty()) {
         return;
     }
@@ -1531,8 +1533,8 @@ void CanvasView::on_action_insert_text()
             const QRectF noteRect
                 = scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item});
             pos = QPointF(pictureRect.center().x(),
-                          pictureRect.top() - knoteGap / get_scale()
-                              - noteRect.height() / 2.0);
+                          pictureRect.top() - (knoteGap / get_scale())
+                              - (noteRect.height() / 2.0));
         } else if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
             targetGroup = group;
         }
@@ -1948,7 +1950,8 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     // wasn't checked) still pauses normally mid-load via
     // on_raw_import_choice_required() - only the very first decision
     // point moves up front.
-    const QString rawImportSetting = FamSettings::value_or_default(QStringLiteral(
+    const QString rawImportSetting = FamSettings::value_or_default(
+                                         QStringLiteral(
                                              "Items/raw_import_choice"))
                                          .toString();
     if (rawImportSetting == QLatin1String("ask")) {
@@ -2099,9 +2102,9 @@ bool CanvasView::resolve_raw_import_choice(const QString& filename)
     }
     if (dialog.remember_choice()) {
         FamSettings::set_value(QStringLiteral("Items/raw_import_choice"),
-                          dialog.choice() == RawImportChoice::Optimize
-                              ? QStringLiteral("always_optimize")
-                              : QStringLiteral("always_keep_original"));
+                               dialog.choice() == RawImportChoice::Optimize
+                                   ? QStringLiteral("always_optimize")
+                                   : QStringLiteral("always_keep_original"));
     }
     return true;
 }

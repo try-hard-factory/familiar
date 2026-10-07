@@ -147,7 +147,7 @@ void HueSlider::paintEvent(QPaintEvent* event)
     p.fillPath(track, grad);
 
     const qreal hx = hue_ / 359.0 * width();
-    const qreal r = height() / 2.0 - 1;
+    const qreal r = (height() / 2.0) - 1;
     p.setPen(QPen(Qt::white, 2));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(QPointF(hx, height() / 2.0), r, r);
@@ -217,7 +217,7 @@ void AlphaSlider::paintEvent(QPaintEvent* event)
     p.setClipping(false);
 
     const qreal hx = alpha_ / 255.0 * width();
-    const qreal r = height() / 2.0 - 1;
+    const qreal r = (height() / 2.0) - 1;
     p.setPen(QPen(Qt::white, 2));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(QPointF(hx, height() / 2.0), r, r);
@@ -293,7 +293,7 @@ QRectF SwatchRow::cell_rect(int index) const
     }
     const qreal cellW = width() / qreal(count);
     const qreal size = qMin(cellW - kswatchSpacing, qreal(height()));
-    const qreal x = index * cellW + (cellW - size) / 2.0;
+    const qreal x = (index * cellW) + ((cellW - size) / 2.0);
     const qreal y = (height() - size) / 2.0;
     return QRectF(x, y, size, size);
 }
@@ -385,7 +385,8 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -475,9 +476,9 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
 
     connect(svPicker_, &SvPicker::sv_changed, this, [this](qreal s, qreal v) {
         const QColor c = QColor::fromHsv(hueSlider_->hue(),
-                                   int(s * 255),
-                                   int(v * 255),
-                                   current_.alpha());
+                                         int(s * 255),
+                                         int(v * 255),
+                                         current_.alpha());
         set_color(c, svPicker_);
     });
     connect(hueSlider_, &HueSlider::hue_changed, this, [this](int hue) {
@@ -524,22 +525,23 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
 
     set_color(current_, nullptr);
 
-    setStyleSheet(familiar::dialog_style::panel_style_sheet("ColorPickerDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::close_button_style_sheet("cpdCloseBtn",
-                                                                  textColor,
-                                                                  accent)
-                  + QStringLiteral("QLineEdit {"
-                                   "  background-color: rgba(0,0,0,20);"
-                                   "  color: %1;"
-                                   "  border: 1px solid %2;"
-                                   "  border-radius: 4px;"
-                                   "  padding: 4px 6px;"
-                                   "}")
-                        .arg(textColor.name(), border.name()));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("ColorPickerDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("cpdCloseBtn",
+                                                           textColor,
+                                                           accent)
+        + QStringLiteral("QLineEdit {"
+                         "  background-color: rgba(0,0,0,20);"
+                         "  color: %1;"
+                         "  border: 1px solid %2;"
+                         "  border-radius: 4px;"
+                         "  padding: 4px 6px;"
+                         "}")
+              .arg(textColor.name(), border.name()));
 
     centered_widget(parent ? parent : this, this);
 }
@@ -612,9 +614,9 @@ void ColorPickerDialog::mousePressEvent(QMouseEvent* event)
 }
 
 QColor show_color_picker_dialog(QWidget* parent,
-                             const QColor& initial,
-                             const QString& title,
-                             bool withAlpha)
+                                const QColor& initial,
+                                const QString& title,
+                                bool withAlpha)
 {
     ColorPickerDialog dlg(parent, initial, title, withAlpha);
     if (dlg.exec() != QDialog::Accepted) {

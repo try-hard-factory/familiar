@@ -480,7 +480,8 @@ public:
             && this->scene()) {
             const QList<QGraphicsView*> views = this->scene()->views();
             if (!views.isEmpty()) {
-                if (const CanvasView* view = dynamic_cast<CanvasView*>(views.at(0))) {
+                if (const CanvasView* view = dynamic_cast<CanvasView*>(
+                        views.at(0))) {
                     outlineOpacity = view->selection_outline_opacity();
                 }
             }
@@ -608,9 +609,9 @@ public:
     {
         QPainterPath path;
         const qreal size = select_resize_size();
-        const qreal x = corner.x() - size / 2 - margin;
-        const qreal y = corner.y() - size / 2 - margin;
-        path.addRect(x, y, size + 2 * margin, size + 2 * margin);
+        const qreal x = corner.x() - (size / 2) - margin;
+        const qreal y = corner.y() - (size / 2) - margin;
+        path.addRect(x, y, size + (2 * margin), size + (2 * margin));
 
         return path;
     }
@@ -1089,7 +1090,7 @@ protected:
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* baseItem = dynamic_cast<IBaseItem*>(item);
                 baseItem->set_rotation(baseItem->rotate_orig_degrees()
-                                           + delta * baseItem->flip(),
+                                           + (delta * baseItem->flip()),
                                        item->mapFromScene(eventAnchor_));
             }
             if (scene) {

@@ -121,7 +121,7 @@ QIcon make_filmstrip_icon(const QColor& glyphColor, qreal dpr)
 
     const qreal w = (kiconSize - 6) / 3.0;
     for (int i = 0; i < 3; ++i) {
-        p.drawRect(QRectF(3 + i * w, 4, w - 2, kiconSize - 8));
+        p.drawRect(QRectF(3 + (i * w), 4, w - 2, kiconSize - 8));
     }
 
     p.end();
@@ -265,9 +265,9 @@ void GifPlaybackToolbar::update_play_pause_icon()
         return;
     }
     const qreal dpr = devicePixelRatioF();
-    playPauseBtn_->setIcon(item_->is_playing()
-                               ? make_pause_icon(iconGlyphColor_, dpr)
-                               : make_triangle_icon(iconGlyphColor_, dpr, false));
+    playPauseBtn_->setIcon(
+        item_->is_playing() ? make_pause_icon(iconGlyphColor_, dpr)
+                            : make_triangle_icon(iconGlyphColor_, dpr, false));
 }
 
 void GifPlaybackToolbar::update_speed_label()
@@ -309,7 +309,8 @@ void GifPlaybackToolbar::show_speed_popup()
         this->speedPopup_ = nullptr;
     });
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -423,14 +424,15 @@ void GifPlaybackToolbar::resizeEvent(QResizeEvent* event)
 
 void GifPlaybackToolbar::position_controls_row(int desiredCenterX)
 {
-    int x = desiredCenterX - controlsRow_->width() / 2;
+    int x = desiredCenterX - (controlsRow_->width() / 2);
     x = qBound(0, x, qMax(0, width() - controlsRow_->width()));
     controlsRow_->move(x, controlsRow_->y());
 }
 
 void GifPlaybackToolbar::restyle_from_preset()
 {
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];

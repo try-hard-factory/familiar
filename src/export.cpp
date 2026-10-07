@@ -40,8 +40,8 @@ void ExporterBase::emit_progress(ThreadedIO* worker, int value)
 }
 
 void ExporterBase::emit_finished(ThreadedIO* worker,
-                                const QString& target,
-                                const QStringList& errors)
+                                 const QString& target,
+                                 const QStringList& errors)
 {
     if (worker) {
         emit worker->finished(target, errors);
@@ -49,7 +49,7 @@ void ExporterBase::emit_finished(ThreadedIO* worker,
 }
 
 void ExporterBase::emit_user_input_required(ThreadedIO* worker,
-                                         const QString& message)
+                                            const QString& message)
 {
     if (worker) {
         emit worker->user_input_required(message);
@@ -94,22 +94,24 @@ QImage SceneToPixmapExporter::render_to_image() const
 {
     const qreal finalMargin = margin() * size_.width() / default_size().width();
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
 
     QImage image(size_, QImage::Format_RGB32);
     image.fill(canvasColor);
     QPainter painter(&image);
     const QRectF targetRect(finalMargin,
-                      finalMargin,
-                      size_.width() - 2 * finalMargin,
-                      size_.height() - 2 * finalMargin);
+                            finalMargin,
+                            size_.width() - (2 * finalMargin),
+                            size_.height() - (2 * finalMargin));
     scene()->render(&painter, targetRect, scene()->itemsBoundingRect());
     painter.end();
     return image;
 }
 
-void SceneToPixmapExporter::export_to(const QString& filename, ThreadedIO* worker)
+void SceneToPixmapExporter::export_to(const QString& filename,
+                                      ThreadedIO* worker)
 {
     emit_begin_processing(worker, 1);
     const QImage image = render_to_image();
@@ -265,7 +267,7 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
 void SceneToSVGExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
     emit_begin_processing(worker,
-                        static_cast<int>(scene()->items_for_save().size()));
+                          static_cast<int>(scene()->items_for_save().size()));
     const QString svg = render_to_svg(worker);
 
     if (worker && worker->is_canceled()) {
@@ -292,8 +294,8 @@ void SceneToSVGExporter::export_to(const QString& filename, ThreadedIO* worker)
 // createSceneExporter
 // ============================================================================
 
-std::unique_ptr<SceneExporterBase> create_scene_exporter(const QString& extension,
-                                                       CanvasScene* scene)
+std::unique_ptr<SceneExporterBase> create_scene_exporter(
+    const QString& extension, CanvasScene* scene)
 {
     if (extension.compare(QStringLiteral("svg"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<SceneToSVGExporter>(scene);
@@ -377,8 +379,8 @@ void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
         if (!file.open(QIODevice::WriteOnly)
             || file.write(bytes) != bytes.size()) {
             emit_finished(worker,
-                         dirname_,
-                         {QStringLiteral("Could not write %1").arg(path)});
+                          dirname_,
+                          {QStringLiteral("Could not write %1").arg(path)});
             return;
         }
         file.close();
