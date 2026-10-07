@@ -57,7 +57,8 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -74,8 +75,8 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
         familiar::dialog_style::severity_icon(QMessageBox::Information,
-                                             accent,
-                                             devicePixelRatioF()));
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -152,7 +153,9 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     buttonRow->addStretch();
 
     auto* keepOriginalBtn = new QPushButton(tr("Keep original"), this);
-    familiar::dialog_style::style_secondary_button(keepOriginalBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(keepOriginalBtn,
+                                                   textColor,
+                                                   border);
     connect(keepOriginalBtn, &QPushButton::clicked, this, [this]() {
         choice_ = RawImportChoice::KeepOriginal;
         accept();
@@ -171,13 +174,13 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
 
     setStyleSheet(
         familiar::dialog_style::panel_style_sheet("RawImportDialog",
-                                                background,
-                                                border,
-                                                textColor,
-                                                /*radiusPx=*/0)
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
         + familiar::dialog_style::close_button_style_sheet("ridCloseBtn",
-                                                        textColor,
-                                                        accent));
+                                                           textColor,
+                                                           accent));
 }
 
 bool RawImportDialog::apply_to_queue() const

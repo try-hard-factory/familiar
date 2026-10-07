@@ -31,10 +31,10 @@ constexpr int kiconSize = 40;
 } // namespace
 
 QString panel_style_sheet(const char* className,
-                        const QColor& background,
-                        const QColor& border,
-                        const QColor& text,
-                        int radiusPx)
+                          const QColor& background,
+                          const QColor& border,
+                          const QColor& text,
+                          int radiusPx)
 {
     // The QToolTip rule is here for the same reason every other
     // tooltip-capable control in this app needs one explicitly
@@ -82,8 +82,8 @@ void style_primary_button(QPushButton* button, const QColor& accent)
 }
 
 void style_secondary_button(QPushButton* button,
-                          const QColor& text,
-                          const QColor& border)
+                            const QColor& text,
+                            const QColor& border)
 {
     button->setCursor(Qt::PointingHandCursor);
     button->setMinimumWidth(76);
@@ -103,8 +103,8 @@ void style_secondary_button(QPushButton* button,
 }
 
 QString close_button_style_sheet(const char* objectName,
-                              const QColor& text,
-                              const QColor& accent)
+                                 const QColor& text,
+                                 const QColor& accent)
 {
     QColor hover = accent;
     hover.setAlpha(90);

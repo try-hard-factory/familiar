@@ -26,10 +26,10 @@ namespace familiar::dialog_style {
 // its own call site, or the window's actual clipped shape stays rounded
 // regardless of what this QSS paints).
 QString panel_style_sheet(const char* className,
-                        const QColor& background,
-                        const QColor& border,
-                        const QColor& text,
-                        int radiusPx = 10);
+                          const QColor& background,
+                          const QColor& border,
+                          const QColor& text,
+                          int radiusPx = 10);
 
 // Accent-filled pill button - the single "primary" action in a dialog
 // (rightmost/most prominent by this app's convention).
@@ -37,8 +37,8 @@ void style_primary_button(QPushButton* button, const QColor& accent);
 
 // Outline pill button - every other action.
 void style_secondary_button(QPushButton* button,
-                          const QColor& text,
-                          const QColor& border);
+                            const QColor& text,
+                            const QColor& border);
 
 // QSS for the small round "×" close glyph every custom dialog puts in
 // its own top-right corner (there's no native title bar/X to provide
@@ -48,8 +48,8 @@ void style_secondary_button(QPushButton* button,
 // states already use (MainWindow::updateWindowControlsStyle_()) - was
 // a flat white tint before, changed to match the accent instead.
 QString close_button_style_sheet(const char* objectName,
-                              const QColor& text,
-                              const QColor& accent);
+                                 const QColor& text,
+                                 const QColor& accent);
 
 // The fixed amber/red/blue severity colors severityIcon() below paints
 // with - exposed on its own (not just baked into severityIcon()) so

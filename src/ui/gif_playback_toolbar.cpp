@@ -134,6 +134,10 @@ QIcon make_filmstrip_icon(const QColor& glyphColor, qreal dpr)
 
 GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     : QWidget(parent)
+    , filmstrip_(new QWidget(this))
+    , filmstripLay_(new QHBoxLayout(filmstrip_))
+    , outerLay_(new QVBoxLayout(this))
+    , controlsRow_(new QWidget(this))
 {
     setAttribute(Qt::WA_StyledBackground);
 
@@ -143,11 +147,11 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 140));
     setGraphicsEffect(shadow);
 
-    outerLay_ = new QVBoxLayout(this);
+
     outerLay_->setContentsMargins(0, 0, 0, 0);
     outerLay_->setSpacing(6);
 
-    controlsRow_ = new QWidget(this);
+
     auto* row = controlsRow_;
     auto* lay = new QHBoxLayout(row);
     lay->setContentsMargins(8, 5, 8, 5);
@@ -195,8 +199,7 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     row->setFixedWidth(row->sizeHint().width());
     outerLay_->addWidget(row, 0, Qt::AlignLeft);
 
-    filmstrip_ = new QWidget(this);
-    filmstripLay_ = new QHBoxLayout(filmstrip_);
+
     filmstripLay_->setContentsMargins(6, 4, 6, 6);
     filmstripLay_->setSpacing(4);
     filmstrip_->hide();

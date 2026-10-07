@@ -209,6 +209,9 @@ QIcon make_autosize_icon(const QColor& glyphColor, qreal dpr)
 
 TextEditToolbar::TextEditToolbar(QWidget* parent)
     : QWidget(parent)
+    , sizeBox_(new QComboBox(this))
+    , fontBox_(new QFontComboBox(this))
+    , syncTimer_(new QTimer(this))
 {
     // A plain QWidget with a stylesheet background needs this to
     // actually paint it (otherwise it stays transparent over the canvas).
@@ -285,7 +288,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
 
     lay->addWidget(make_separator(this));
 
-    sizeBox_ = new QComboBox(this);
+
     sizeBox_->setEditable(true);
     sizeBox_->setInsertPolicy(QComboBox::NoInsert);
     for (const int s :
@@ -298,7 +301,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     sizeBox_->setFixedHeight(kbuttonSize);
     lay->addWidget(sizeBox_);
 
-    fontBox_ = new QFontComboBox(this);
+
     fontBox_->setToolTip(tr("Font"));
     fontBox_->setFixedHeight(kbuttonSize);
     lay->addWidget(fontBox_);
@@ -472,7 +475,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     // QGraphicsTextItem exposes no cursorPositionChanged - poll while
     // visible so B/I/U/size/font track the cursor through mixed
     // formatting. Cheap: a handful of format reads 4x a second.
-    syncTimer_ = new QTimer(this);
+
     syncTimer_->setInterval(250);
     connect(syncTimer_,
             &QTimer::timeout,
@@ -716,21 +719,21 @@ void TextEditToolbar::toggle_list_style(int style)
         }
     }
 
-    const bool anyListed
-        = std::ranges::any_of(blocks, [](const QTextBlock& b) {
-              return QTextCursor(b).currentList() != nullptr;
-          });
+    const bool anyListed = std::ranges::any_of(blocks, [](const QTextBlock& b) {
+        return QTextCursor(b).currentList() != nullptr;
+    });
     // Only a uniform "every line already has this exact style" selection
     // toggles off; anything else (nothing listed, or a mixed selection)
     // is treated as "make it this style".
     const bool turningOff
         = anyListed
           && std::ranges::all_of(blocks,
-                        
-                         [wanted](const QTextBlock& b) {
-                             const QTextList* l = QTextCursor(b).currentList();
-                             return l && l->format().style() == wanted;
-                         });
+
+                                 [wanted](const QTextBlock& b) {
+                                     const QTextList* l
+                                         = QTextCursor(b).currentList();
+                                     return l && l->format().style() == wanted;
+                                 });
 
     cursor.beginEditBlock();
     if (!anyListed) {

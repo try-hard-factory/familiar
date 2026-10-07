@@ -45,7 +45,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -62,8 +63,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
         familiar::dialog_style::severity_icon(QMessageBox::Warning,
-                                             accent,
-                                             devicePixelRatioF()));
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -129,8 +130,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     auto* closeWithoutSaveBtn = new QPushButton(tr("Close without saving"),
                                                 this);
     familiar::dialog_style::style_secondary_button(closeWithoutSaveBtn,
-                                                 textColor,
-                                                 border);
+                                                   textColor,
+                                                   border);
     connect(closeWithoutSaveBtn,
             &QPushButton::clicked,
             this,
@@ -153,14 +154,15 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     outer->addLayout(buttonRow);
     saveBtn->setFocus();
 
-    setStyleSheet(familiar::dialog_style::panel_style_sheet("SaveAllDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::close_button_style_sheet("sadCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("SaveAllDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("sadCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(window_, this);
     show();

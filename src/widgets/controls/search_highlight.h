@@ -14,8 +14,8 @@ inline QString highlight_search_match(const QString& text, const QString& query)
     if (query.isEmpty()) {
         return text.toHtmlEscaped();
     }
-    const int idx
-        = static_cast<int>(text.indexOf(query, 0, Qt::CaseInsensitive));
+    const int idx = static_cast<int>(
+        text.indexOf(query, 0, Qt::CaseInsensitive));
     if (idx < 0) {
         return text.toHtmlEscaped();
     }

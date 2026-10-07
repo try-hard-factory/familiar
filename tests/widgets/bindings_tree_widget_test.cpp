@@ -19,9 +19,10 @@
 
 TEST(BindingsTreeWidgetTest, EmptyFilterShowsEveryRow)
 {
-    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
     const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0]; // "Zoom"
-    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1]; // "Pan"
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];  // "Pan"
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
     MouseConfigBindingTarget pan(&panCfg, BindingTargetKind::MouseControl);
 
@@ -35,9 +36,10 @@ TEST(BindingsTreeWidgetTest, EmptyFilterShowsEveryRow)
 
 TEST(BindingsTreeWidgetTest, FilterHidesNonMatchingRows)
 {
-    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
     const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0]; // "Zoom"
-    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1]; // "Pan"
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];  // "Pan"
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
     MouseConfigBindingTarget pan(&panCfg, BindingTargetKind::MouseControl);
 
@@ -45,12 +47,13 @@ TEST(BindingsTreeWidgetTest, FilterHidesNonMatchingRows)
 
     EXPECT_TRUE(tree.apply_search_filter(QStringLiteral("zoom")));
     EXPECT_FALSE(tree.layout()->itemAt(0)->widget()->isHidden()); // Zoom matches
-    EXPECT_TRUE(tree.layout()->itemAt(1)->widget()->isHidden()); // Pan doesn't
+    EXPECT_TRUE(tree.layout()->itemAt(1)->widget()->isHidden());  // Pan doesn't
 }
 
 TEST(BindingsTreeWidgetTest, NoMatchReturnsFalseAndHidesEverything)
 {
-    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
     const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0];
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
 

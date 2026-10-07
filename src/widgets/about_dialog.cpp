@@ -37,7 +37,8 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -117,14 +118,15 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
         QStringLiteral("color: %1;").arg(dimText.name(QColor::HexArgb)));
     outer->addWidget(copyrightLabel);
 
-    setStyleSheet(familiar::dialog_style::panel_style_sheet("AboutDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::close_button_style_sheet("adCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("AboutDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("adCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(wm, this);
     show();

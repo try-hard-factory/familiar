@@ -112,9 +112,10 @@ bool category_has_changes(SettingsCategory category)
         // value against its true default (opacityListDef's 255, same
         // for every preset) is the only check that works here.
         return !SettingsHandler::get_instance()
-                    ->json_value(QStringLiteral("Colors"), current_preset_json_key())
+                    ->json_value(QStringLiteral("Colors"),
+                                 current_preset_json_key())
                     .isUndefined()
-            || SettingsHandler::get_instance()->get_current_opacity() != 255;
+               || SettingsHandler::get_instance()->get_current_opacity() != 255;
     case SettingsCategory::KeyboardShortcuts:
         // Can't use "is the Actions/Controls JSON group empty" the same
         // way Colors uses preset-key presence - KeyboardSettings::
@@ -137,7 +138,8 @@ bool category_has_changes(SettingsCategory category)
 
 } // namespace
 
-QStringList RestoreDefaultsDialog::fam_settings_keys_for(SettingsCategory category)
+QStringList RestoreDefaultsDialog::fam_settings_keys_for(
+    SettingsCategory category)
 {
     switch (category) {
     case SettingsCategory::Performance:
@@ -194,7 +196,8 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -215,8 +218,8 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
         familiar::dialog_style::severity_icon(QMessageBox::Warning,
-                                             accent,
-                                             devicePixelRatioF()));
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -241,7 +244,10 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     closeBtn->setCursor(Qt::PointingHandCursor);
     closeBtn->setFocusPolicy(Qt::NoFocus);
     closeBtn->setObjectName(QStringLiteral("rddCloseBtn"));
-    connect(closeBtn, &QPushButton::clicked, this, &RestoreDefaultsDialog::reject);
+    connect(closeBtn,
+            &QPushButton::clicked,
+            this,
+            &RestoreDefaultsDialog::reject);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 
     outer->addLayout(topRow);
@@ -256,13 +262,16 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     // own comment on the identical split for why this is an #ifdef and
     // not just one or the other.
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-    connect(allCheckbox_, &QCheckBox::checkStateChanged, this,
+    connect(allCheckbox_,
+            &QCheckBox::checkStateChanged,
+            this,
             [this](Qt::CheckState state) {
                 on_all_toggled(static_cast<int>(state));
             });
 #else
-    connect(allCheckbox_, &QCheckBox::stateChanged, this,
-            [this](int state) { onAllToggled_(state); });
+    connect(allCheckbox_, &QCheckBox::stateChanged, this, [this](int state) {
+        onAllToggled_(state);
+    });
 #endif
     listLayout->addWidget(allCheckbox_);
 
@@ -280,11 +289,14 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
         // allCheckbox_ above - the value itself isn't needed here
         // either way, just that *something* changed.
 #if QT_VERSION >= QT_VERSION_CHECK(6, 9, 0)
-        connect(checkbox, &QCheckBox::checkStateChanged, this,
+        connect(checkbox,
+                &QCheckBox::checkStateChanged,
+                this,
                 [this](Qt::CheckState) { on_category_toggled(); });
 #else
-        connect(checkbox, &QCheckBox::stateChanged, this,
-                [this](int) { onCategoryToggled_(); });
+        connect(checkbox, &QCheckBox::stateChanged, this, [this](int) {
+            onCategoryToggled_();
+        });
 #endif
         categoryCheckboxes_.insert(category, checkbox);
 
@@ -306,25 +318,31 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
 
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
     familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
-    connect(cancelBtn, &QPushButton::clicked, this, &RestoreDefaultsDialog::reject);
+    connect(cancelBtn,
+            &QPushButton::clicked,
+            this,
+            &RestoreDefaultsDialog::reject);
     buttonRow->addWidget(cancelBtn);
 
     auto* restoreBtn = new QPushButton(tr("Restore to Default"), this);
     familiar::dialog_style::style_primary_button(restoreBtn, destructive);
-    connect(restoreBtn, &QPushButton::clicked, this, &RestoreDefaultsDialog::accept);
+    connect(restoreBtn,
+            &QPushButton::clicked,
+            this,
+            &RestoreDefaultsDialog::accept);
     buttonRow->addWidget(restoreBtn);
 
     outer->addLayout(buttonRow);
 
     setStyleSheet(
         familiar::dialog_style::panel_style_sheet("RestoreDefaultsDialog",
-                                                background,
-                                                border,
-                                                textColor,
-                                                /*radiusPx=*/0)
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
         + familiar::dialog_style::close_button_style_sheet("rddCloseBtn",
-                                                        textColor,
-                                                        accent));
+                                                           textColor,
+                                                           accent));
 }
 
 QList<SettingsCategory> RestoreDefaultsDialog::checked_categories() const

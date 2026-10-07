@@ -299,7 +299,7 @@ public:
     // of their own - they rely on the graph being acyclic by
     // construction, which this is the one gate that guarantees.
     bool would_create_attach_cycle(const QUuid& itemUid,
-                                const QUuid& targetUid) const;
+                                   const QUuid& targetUid) const;
     // Hierarchy panel drag-and-drop (current, interactive
     // tree): re-anchors item to targetUid (a PixmapItem/GifItem uid) as
     // one undo step, syncing item's group membership to match the
@@ -361,14 +361,12 @@ protected:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
 
-
 public slots:
     void clear();
     void on_selection_change();
     void on_change();
 
 public:
-
     QUndoStack* undo_stack() const { return undoStack_; }
     // Highest/lowest z handed out so far - items extend the range through
     // set_max_z()/set_min_z() when they bring themselves to front/back.
@@ -419,7 +417,6 @@ private:
     bool clearOngoing_ = false;
 
 public:
-
     // ────────────────────────────────────────────────────────────────────────
 
     void paste_from_clipboard();

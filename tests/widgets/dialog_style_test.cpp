@@ -19,8 +19,7 @@ TEST(DialogStyleTest, PanelStyleSheetIncludesClassNameAndColors)
     const QColor border(0x44, 0x55, 0x66);
     const QColor text(0x77, 0x88, 0x99);
 
-    const QString qss
-        = panel_style_sheet("MyDialog", background, border, text);
+    const QString qss = panel_style_sheet("MyDialog", background, border, text);
 
     EXPECT_TRUE(qss.contains(QStringLiteral("MyDialog")));
     EXPECT_TRUE(qss.contains(background.name()));
@@ -34,10 +33,10 @@ TEST(DialogStyleTest, PanelStyleSheetIncludesClassNameAndColors)
 TEST(DialogStyleTest, PanelStyleSheetRadiusPxOverridesTheDefault)
 {
     const QString qss = panel_style_sheet("MyDialog",
-                                        QColor(Qt::black),
-                                        QColor(Qt::black),
-                                        QColor(Qt::black),
-                                        /*radiusPx=*/0);
+                                          QColor(Qt::black),
+                                          QColor(Qt::black),
+                                          QColor(Qt::black),
+                                          /*radiusPx=*/0);
 
     EXPECT_TRUE(qss.contains(QStringLiteral("border-radius: 0px")));
     EXPECT_FALSE(qss.contains(QStringLiteral("border-radius: 10px")));
@@ -74,10 +73,12 @@ TEST(DialogStyleTest, StyleSecondaryButtonAppliesTextAndBorderColors)
 
 TEST(DialogStyleTest, SeverityIconScalesWithDevicePixelRatio)
 {
-    const QPixmap icon1x
-        = severity_icon(QMessageBox::Warning, QColor(Qt::blue), 1.0);
-    const QPixmap icon2x
-        = severity_icon(QMessageBox::Warning, QColor(Qt::blue), 2.0);
+    const QPixmap icon1x = severity_icon(QMessageBox::Warning,
+                                         QColor(Qt::blue),
+                                         1.0);
+    const QPixmap icon2x = severity_icon(QMessageBox::Warning,
+                                         QColor(Qt::blue),
+                                         2.0);
 
     ASSERT_FALSE(icon1x.isNull());
     ASSERT_FALSE(icon2x.isNull());

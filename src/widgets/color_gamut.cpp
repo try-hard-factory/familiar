@@ -103,6 +103,8 @@ void GamutWidget::paintEvent(QPaintEvent*)
 
 GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     : QDialog(parent)
+    , mGamutWidget_(new GamutWidget(this, item))
+    , mThresholdInput_(new QSlider(this))
 {
     // See ChangeOpacityDialog: shown non-modally via show() below and
     // never explicitly deleted by whoever calls "new GamutDialog(...)".
@@ -118,7 +120,7 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     auto* controlsLayout = new QVBoxLayout();
     controlsLayout->addWidget(new QLabel("Threshold:", this));
 
-    mThresholdInput_ = new QSlider(this);
+
     mThresholdInput_->setRange(0, 500);
     mThresholdInput_->setValue(20);
     mThresholdInput_->setTracking(false);
@@ -135,7 +137,7 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     auto* layout = new QHBoxLayout();
     setLayout(layout);
 
-    mGamutWidget_ = new GamutWidget(this, item);
+
     layout->addWidget(mGamutWidget_, 1);
     layout->addLayout(controlsLayout, 0);
 

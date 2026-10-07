@@ -69,8 +69,8 @@ QIcon make_lock_icon(const QColor& glyphColor, qreal dpr)
 // buttons, this is the ONLY color control on this bar, nothing to
 // disambiguate).
 QIcon make_fill_color_icon(const QColor& fillColor,
-                        const QColor& borderColor,
-                        qreal dpr)
+                           const QColor& borderColor,
+                           qreal dpr)
 {
     QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
@@ -242,8 +242,8 @@ void GroupToolbar::update_fill_color_icon()
         return;
     }
     fillColorBtn_->setIcon(make_fill_color_icon(item_->fill_color(),
-                                             iconGlyphColor_,
-                                             devicePixelRatioF()));
+                                                iconGlyphColor_,
+                                                devicePixelRatioF()));
 }
 
 void GroupToolbar::show_settings_popup()
@@ -280,7 +280,8 @@ void GroupToolbar::show_settings_popup()
         this->settingsPopup_ = nullptr;
     });
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -324,7 +325,8 @@ void GroupToolbar::resizeEvent(QResizeEvent* event)
 
 void GroupToolbar::restyle_from_preset()
 {
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -365,6 +367,7 @@ void GroupToolbar::restyle_from_preset()
                            background.name()));
 
     lockBtn_->setIcon(make_lock_icon(iconGlyphColor_, devicePixelRatioF()));
-    chevronBtn_->setIcon(make_chevron_icon(iconGlyphColor_, devicePixelRatioF()));
+    chevronBtn_->setIcon(
+        make_chevron_icon(iconGlyphColor_, devicePixelRatioF()));
     update_fill_color_icon();
 }

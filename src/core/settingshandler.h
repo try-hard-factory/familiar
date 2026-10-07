@@ -112,8 +112,8 @@ public:
     QString settings_file_path() const;
     QJsonValue json_value(const QString& group, const QString& key) const;
     void set_json_value(const QString& group,
-                      const QString& key,
-                      const QJsonValue& value);
+                        const QString& key,
+                        const QJsonValue& value);
     void remove_json_value(const QString& group, const QString& key);
     void remove_json_group(const QString& group);
     // True if `group` has no stored keys at all (missing entirely, or
@@ -144,7 +144,8 @@ public:
     // Generic per-action persisted checkbox state (Action::settingsKey,
     // see actions/action_mixin.h) - not one of FamSettings::fields()'
     // named keys, so no dedicated accessor makes sense.
-    static QVariant action_state(const QString& key, const QVariant& defaultValue);
+    static QVariant action_state(const QString& key,
+                                 const QVariant& defaultValue);
     static void set_action_state(const QString& key, const QVariant& value);
     static qreal arrange_gap();
     static QString arrange_default();
@@ -159,11 +160,11 @@ public:
     static std::optional<ControlMatch> mouse_action_for_event(
         const QMouseEvent* event);
     static QStringList get_shortcuts(const QString& group,
-                             const QString& key,
-                             const QStringList& defaults = {});
+                                     const QString& key,
+                                     const QStringList& defaults = {});
     static void set_shortcuts(const QString& group,
-                      const QString& key,
-                      const QStringList& values);
+                              const QString& key,
+                              const QStringList& values);
 
 
 signals:

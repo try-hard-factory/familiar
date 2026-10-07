@@ -83,8 +83,8 @@ signals:
     // keeps carrying the flat list too (log/back-compat), this is
     // additive for the UI to build a clearer message from.
     void image_load_failures(const QStringList& unsupportedFormat,
-                          const QStringList& tooLarge,
-                          const QStringList& corrupt);
+                             const QStringList& tooLarge,
+                             const QStringList& corrupt);
     // Emitted (instead of finished()) by ImageImportSession::run() the
     // first time it reaches a RAW file whose handling isn't decided yet
     // (see ImageImportSession::setQueueChoice()) - the worker thread has
@@ -190,7 +190,10 @@ public:
     // queue") - consumed (cleared) the moment run() uses it, so the NEXT
     // RAW file in the queue, if any, pauses fresh again instead of
     // silently reusing this answer.
-    void set_one_shot_choice(RawImportChoice choice) { oneShotChoice_ = choice; }
+    void set_one_shot_choice(RawImportChoice choice)
+    {
+        oneShotChoice_ = choice;
+    }
     // Filename run() paused on - only meaningful right after
     // rawImportChoiceRequired() fired, before the next run().
     const QString& pending_raw_file() const { return pendingRawFile_; }

@@ -25,6 +25,9 @@ constexpr int kinfoPopupWidth = 320;
 
 SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     : QWidget(parent)
+    , titleLabel_(new QLabel(this))
+    , bodyLabel_(new QLabel(this))
+    , defaultLabel_(new QLabel(this))
 {
     setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_ShowWithoutActivating);
@@ -69,18 +72,18 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     layout->setContentsMargins(16, 12, 16, 10);
     layout->setSpacing(8);
 
-    titleLabel_ = new QLabel(this);
+
     QFont titleFont = titleLabel_->font();
     titleFont.setBold(true);
     titleLabel_->setFont(titleFont);
     layout->addWidget(titleLabel_);
 
-    bodyLabel_ = new QLabel(this);
+
     bodyLabel_->setWordWrap(true);
     bodyLabel_->setTextFormat(Qt::RichText);
     layout->addWidget(bodyLabel_);
 
-    defaultLabel_ = new QLabel(this);
+
     defaultLabel_->setStyleSheet(
         QStringLiteral("color: %1;").arg(sp.mutedText.name()));
     layout->addWidget(defaultLabel_);

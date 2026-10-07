@@ -43,8 +43,8 @@ public:
     // caller must NOT delete the recovery file itself right after
     // calling this, since the load hasn't necessarily read it yet.
     void restore_from_recovery(const QString& recoveryFmlPath,
-                             const QString& originalPath,
-                             const QUuid& recoveryId);
+                               const QString& originalPath,
+                               const QUuid& recoveryId);
 
     // Returns the first still-blank ("untitled", unmodified) tab, or
     // nullptr - meant to be called BEFORE restoring anything (see
@@ -83,8 +83,8 @@ private:
     // background read and intermittently produced a "No such file or
     // directory" error).
     void load_fml_into_current_tab(const QString& path,
-                               bool markModifiedAfterLoad = false,
-                               const QUuid& recoveryIdToClear = QUuid());
+                                   bool markModifiedAfterLoad = false,
+                                   const QUuid& recoveryIdToClear = QUuid());
 
     MainWindow& mainwindow_;
 };

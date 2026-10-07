@@ -19,7 +19,7 @@ TEST(ActionRegistryTest, AddFindContainsRemove)
     EXPECT_TRUE(registry.contains(QStringLiteral("a")));
     ASSERT_NE(registry.find(QStringLiteral("a")), nullptr);
     EXPECT_EQ(registry.find(QStringLiteral("a"))->text(),
-             QStringLiteral("Action A"));
+              QStringLiteral("Action A"));
     EXPECT_EQ(registry.find(QStringLiteral("nonexistent")), nullptr);
 
     registry.remove(QStringLiteral("a"));
@@ -37,18 +37,20 @@ TEST(ActionRegistryTest, AddIsUpsertAndPreservesInsertionOrder)
         Action::make(QStringLiteral("a"), QStringLiteral("First Updated")));
 
     EXPECT_EQ(registry.keys(),
-             (QStringList{QStringLiteral("a"), QStringLiteral("b")}));
+              (QStringList{QStringLiteral("a"), QStringLiteral("b")}));
     EXPECT_EQ(registry.find(QStringLiteral("a"))->text(),
-             QStringLiteral("First Updated"));
+              QStringLiteral("First Updated"));
     EXPECT_EQ(registry.all().size(), 2);
 }
 
 TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
 {
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), QStringLiteral("reg_test_a"));
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), QStringLiteral("reg_test_b"));
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            QStringLiteral("reg_test_a"));
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            QStringLiteral("reg_test_b"));
 
     ActionRegistry registry;
     registry.add(Action::make(QStringLiteral("reg_test_a"),
@@ -61,32 +63,35 @@ TEST(ActionRegistryTest, FindByShortcutExcludesGivenIdAndEmptyShortcut)
                               {QStringLiteral("Ctrl+L")}));
 
     EXPECT_EQ(registry
-                 .find_by_shortcut(QStringLiteral("reg_test_b"),
-                                 QStringLiteral("Ctrl+K"))
-                 ->id(),
-             QStringLiteral("reg_test_a"));
+                  .find_by_shortcut(QStringLiteral("reg_test_b"),
+                                    QStringLiteral("Ctrl+K"))
+                  ->id(),
+              QStringLiteral("reg_test_a"));
     // Excluding the owning action itself finds nothing, even though its
     // shortcut matches.
     EXPECT_EQ(registry.find_by_shortcut(QStringLiteral("reg_test_a"),
-                                     QStringLiteral("Ctrl+K")),
-             nullptr);
+                                        QStringLiteral("Ctrl+K")),
+              nullptr);
     // Empty shortcut short-circuits to nullptr (findByShortcut()'s own
     // guard) rather than matching an action with no shortcuts at all.
     EXPECT_EQ(registry.find_by_shortcut(QStringLiteral("reg_test_b"), QString()),
-             nullptr);
+              nullptr);
 
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), QStringLiteral("reg_test_a"));
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), QStringLiteral("reg_test_b"));
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            QStringLiteral("reg_test_a"));
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            QStringLiteral("reg_test_b"));
 }
 
 TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
 {
-    Action a
-        = Action::make(QStringLiteral("reg_test_mouse_a"), QStringLiteral("A"));
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), a.id() + QStringLiteral("_mouse"));
+    Action a = Action::make(QStringLiteral("reg_test_mouse_a"),
+                            QStringLiteral("A"));
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            a.id() + QStringLiteral("_mouse"));
 
     Binding stored;
     stored.set_mouse_button(QStringLiteral("Middle"));
@@ -100,15 +105,17 @@ TEST(ActionRegistryTest, FindByMouseBindingMatchesButtonAndModifierSet)
     candidate.set_mouse_button(QStringLiteral("Middle"));
     candidate.set_mouse_modifiers({QStringLiteral("Ctrl")});
 
-    EXPECT_EQ(
-        registry.find_by_mouse_binding(QStringLiteral("other"), candidate)->id(),
-        QStringLiteral("reg_test_mouse_a"));
+    EXPECT_EQ(registry
+                  .find_by_mouse_binding(QStringLiteral("other"), candidate)
+                  ->id(),
+              QStringLiteral("reg_test_mouse_a"));
     EXPECT_EQ(registry.find_by_mouse_binding(QStringLiteral("reg_test_mouse_a"),
-                                         candidate),
-             nullptr);
+                                             candidate),
+              nullptr);
 
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), a.id() + QStringLiteral("_mouse"));
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            a.id() + QStringLiteral("_mouse"));
 }
 
 // getActions() is the app-wide registry (a function-local static, built
@@ -130,7 +137,8 @@ TEST(GlobalActionRegistryTest, EveryRegisteredActionHasNonEmptyIdAndText)
     EXPECT_FALSE(all.isEmpty());
     for (const Action* a : all) {
         EXPECT_FALSE(a->id().isEmpty());
-        EXPECT_FALSE(a->text().isEmpty()) << "action id: " << a->id().toStdString();
+        EXPECT_FALSE(a->text().isEmpty())
+            << "action id: " << a->id().toStdString();
         // Every default shortcut string must parse as a real QKeySequence -
         // getKeySequence()/get_shortcuts() are how every keybinding path
         // (ActionMouseDispatcher, KeyboardShortcutsPage) reads these back.

@@ -27,9 +27,10 @@ protected:
     static void emit_begin_processing(ThreadedIO* worker, int total);
     static void emit_progress(ThreadedIO* worker, int value);
     static void emit_finished(ThreadedIO* worker,
-                      const QString& target,
-                      const QStringList& errors);
-    static void emit_user_input_required(ThreadedIO* worker, const QString& message);
+                              const QString& target,
+                              const QStringList& errors);
+    static void emit_user_input_required(ThreadedIO* worker,
+                                         const QString& message);
 };
 
 // For exporting the whole scene to a single image file. Cancels active
@@ -68,7 +69,7 @@ public:
 
     bool get_user_input(QWidget* parent) override;
     void export_to(const QString& filename,
-                  ThreadedIO* worker = nullptr) override;
+                   ThreadedIO* worker = nullptr) override;
 
 private:
     QImage render_to_image() const;
@@ -84,7 +85,7 @@ public:
     // No dialog - always exports at defaultSize_.
     bool get_user_input(QWidget* parent) override;
     void export_to(const QString& filename,
-                  ThreadedIO* worker = nullptr) override;
+                   ThreadedIO* worker = nullptr) override;
 
 private:
     QString render_to_svg(ThreadedIO* worker) const;
@@ -96,8 +97,8 @@ private:
 // Picks an exporter by file extension
 // exporter_registry[ext] dict lookup: "svg" (case-insensitive) gets
 // SceneToSVGExporter, anything else (including no/unknown extension)
-std::unique_ptr<SceneExporterBase> create_scene_exporter(const QString& extension,
-                                                       CanvasScene* scene);
+std::unique_ptr<SceneExporterBase> create_scene_exporter(
+    const QString& extension, CanvasScene* scene);
 
 // Exports every pixmap item in the scene to its own file in a
 // directory. Resumable: exportTo() returns early via
@@ -117,7 +118,10 @@ public:
     const QString& dirname() const { return dirname_; }
     // One of "skip"/"skip_all"/"overwrite"/"overwrite_all" (see
     // ExportImagesFileExistsDialog::getAnswer()).
-    void set_handle_existing(const QString& policy) { handleExisting_ = policy; }
+    void set_handle_existing(const QString& policy)
+    {
+        handleExisting_ = policy;
+    }
 
     void export_to(ThreadedIO* worker = nullptr);
 

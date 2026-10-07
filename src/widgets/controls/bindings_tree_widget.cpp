@@ -76,12 +76,13 @@ CollapsibleSection::CollapsibleSection(const QString& title,
                                        QWidget* content,
                                        QWidget* parent)
     : QWidget(parent)
+    , headerBtn_(new QToolButton(this))
     , content_(content)
 {
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    headerBtn_ = new QToolButton(this);
+
     headerBtn_->setText(title);
     headerBtn_->setCheckable(true);
     headerBtn_->setChecked(true);
@@ -183,43 +184,43 @@ void BindingsTreeWidget::refresh_target(BindingTarget* target)
         extraLayout->setSpacing(0);
         for (int i = 1; i < bindings.size(); ++i) {
             extraLayout->addWidget(build_row(target,
-                                            QString(),
-                                            i,
-                                            /*showAdd=*/false,
-                                            /*indent=*/true));
+                                             QString(),
+                                             i,
+                                             /*showAdd=*/false,
+                                             /*indent=*/true));
         }
     }
 
     rowLayout->addWidget(build_row(target,
-                                  target->text(),
-                                  bindings.isEmpty() ? -1 : 0,
-                                  /*showAdd=*/true,
-                                  /*indent=*/false,
-                                  extraContainer));
+                                   target->text(),
+                                   bindings.isEmpty() ? -1 : 0,
+                                   /*showAdd=*/true,
+                                   /*indent=*/false,
+                                   extraContainer));
     if (extraContainer) {
         rowLayout->addWidget(extraContainer);
     }
 }
 
 QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
-                                      const QString& label,
-                                      int bindingIndex,
-                                      bool showAdd,
-                                      bool indent,
-                                      QWidget* toggleTarget)
+                                       const QString& label,
+                                       int bindingIndex,
+                                       bool showAdd,
+                                       bool indent,
+                                       QWidget* toggleTarget)
 {
     // showAdd is only true for a target's primary row (see refreshTarget()'s
     // two buildRow() call sites) - BindingRowWidget's Ctrl+double-click
     // reset gesture only makes sense there (see its own comment above).
-    QWidget* row = showAdd
-                       ? new BindingRowWidget(
-                             [this, target]() {
-                                 target->set_bindings(target->default_bindings());
-                                 refresh_target(target);
-                                 emit bindings_changed();
-                             },
-                             this)
-                       : new QWidget(this);
+    QWidget* row = showAdd ? new BindingRowWidget(
+                                 [this, target]() {
+                                     target->set_bindings(
+                                         target->default_bindings());
+                                     refresh_target(target);
+                                     emit bindings_changed();
+                                 },
+                                 this)
+                           : new QWidget(this);
     auto* layout = new QHBoxLayout(row);
     layout->setContentsMargins(indent ? 24 : 4, 2, 4, 2);
 
@@ -285,11 +286,12 @@ QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
     if (bindingIndex >= 0) {
         const Binding b = target->bindings().value(bindingIndex);
         const QString chipLabel = b.display_text().isEmpty() ? tr("(none)")
-                                                            : b.display_text();
+                                                             : b.display_text();
         auto* chip = new QPushButton(chipLabel, row);
         chip->setCursor(Qt::PointingHandCursor);
         chip->setMinimumWidth(kchipMinWidth);
-        chip->setStyleSheet(familiar::settings_style::shortcut_chip_style_sheet());
+        chip->setStyleSheet(
+            familiar::settings_style::shortcut_chip_style_sheet());
         connect(chip,
                 &QPushButton::clicked,
                 this,
@@ -336,7 +338,8 @@ QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
         auto* addBtn = new QToolButton(row);
         addBtn->setText(QStringLiteral("+"));
         addBtn->setCursor(Qt::PointingHandCursor);
-        addBtn->setStyleSheet(familiar::settings_style::mini_button_style_sheet());
+        addBtn->setStyleSheet(
+            familiar::settings_style::mini_button_style_sheet());
         connect(addBtn, &QToolButton::clicked, this, [this, target]() {
             auto* dlg = new AddAliasDialog(target, this);
             connect(dlg, &QDialog::accepted, this, [this, target]() {

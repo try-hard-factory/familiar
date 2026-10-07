@@ -63,8 +63,8 @@ std::string short_function_name(std::string_view prettyName)
 }
 
 void qt_message_handler(QtMsgType type,
-                      const QMessageLogContext& context,
-                      const QString& msg)
+                        const QMessageLogContext& context,
+                        const QString& msg)
 {
     quill::Logger* logger = channel_logger(Ch::Qt);
     const quill::LogLevel level = to_quill_level(level_from_qt(type));

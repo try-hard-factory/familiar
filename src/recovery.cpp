@@ -55,8 +55,8 @@ void save(CanvasView* canvasView)
     const QString fmlPath = fml_path_for(dir, id);
 
     const FmlResult result = FmlArchive::save(canvasView->scene(),
-                                        canvasView->canvas_rect(),
-                                        fmlPath);
+                                              canvasView->canvas_rect(),
+                                              fmlPath);
     if (!result.error.isEmpty()) {
         FLOG_WARN(Ch::IO,
                   "Could not write recovery snapshot for {}: {}",

@@ -44,12 +44,16 @@ Action Action::make(const QString& id,
 
 QStringList Action::get_shortcuts() const
 {
-    return SettingsHandler::get_shortcuts(QString::fromLatin1(ksettingsGroup), id_, shortcuts_);
+    return SettingsHandler::get_shortcuts(QString::fromLatin1(ksettingsGroup),
+                                          id_,
+                                          shortcuts_);
 }
 
 void Action::set_shortcuts(const QStringList& values)
 {
-    SettingsHandler::set_shortcuts(QString::fromLatin1(ksettingsGroup), id_, values);
+    SettingsHandler::set_shortcuts(QString::fromLatin1(ksettingsGroup),
+                                   id_,
+                                   values);
     if (qaction_) {
         QList<QKeySequence> seqs;
         for (const QString& s : values) {
@@ -159,7 +163,7 @@ QList<Action*> ActionRegistry::all()
 }
 
 Action* ActionRegistry::find_by_shortcut(const QString& excludeId,
-                                       const QString& shortcut)
+                                         const QString& shortcut)
 {
     if (shortcut.isEmpty()) {
         return nullptr;
@@ -176,7 +180,7 @@ Action* ActionRegistry::find_by_shortcut(const QString& excludeId,
 }
 
 Action* ActionRegistry::find_by_mouse_binding(const QString& excludeId,
-                                           const Binding& candidate)
+                                              const Binding& candidate)
 {
     if (candidate.mouse_button().isEmpty()) {
         return nullptr;
@@ -187,7 +191,8 @@ Action* ActionRegistry::find_by_mouse_binding(const QString& excludeId,
         }
         for (const Binding& b : a->get_mouse_bindings()) {
             if (b.mouse_button() == candidate.mouse_button()
-                && same_modifiers(b.mouse_modifiers(), candidate.mouse_modifiers())) {
+                && same_modifiers(b.mouse_modifiers(),
+                                  candidate.mouse_modifiers())) {
                 return a;
             }
         }

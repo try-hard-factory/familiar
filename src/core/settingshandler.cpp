@@ -46,45 +46,40 @@ QMap<int, QColor> lightColorPresetDef
        {kBorderColor, QColor({200, 200, 200})},
        {kTextColor, QColor({111, 111, 111})},
        {kSelectionColor, QColor({255, 0, 0})}};
-QMap<int, QColor> customPreset1Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
-QMap<int, QColor> customPreset2Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
-QMap<int, QColor> customPreset3Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
-QMap<int, QColor> customPreset4Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset1Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset2Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset3Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset4Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
 
-QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions
-    = {
-        //         KEY                            TYPE                 DEFAULT_VALUE
-        OPTION("option0", Bool(true)),
-        OPTION("option1", Bool(true)),
-        OPTION("current_preset",
-               BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
-        OPTION("master_opacity", OpacityList(opacityListDef)),
-        OPTION("dark_color_preset", ColorList(darkColorPresetDef)),
-        OPTION("light_color_preset", ColorList(lightColorPresetDef)),
-        OPTION("custom_preset1", ColorList(customPreset1Def)),
-        OPTION("custom_preset2", ColorList(customPreset2Def)),
-        OPTION("custom_preset3", ColorList(customPreset3Def)),
-        OPTION("custom_preset4", ColorList(customPreset4Def)),
+QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions = {
+    //         KEY                            TYPE                 DEFAULT_VALUE
+    OPTION("option0", Bool(true)),
+    OPTION("option1", Bool(true)),
+    OPTION("current_preset",
+           BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
+    OPTION("master_opacity", OpacityList(opacityListDef)),
+    OPTION("dark_color_preset", ColorList(darkColorPresetDef)),
+    OPTION("light_color_preset", ColorList(lightColorPresetDef)),
+    OPTION("custom_preset1", ColorList(customPreset1Def)),
+    OPTION("custom_preset2", ColorList(customPreset2Def)),
+    OPTION("custom_preset3", ColorList(customPreset3Def)),
+    OPTION("custom_preset4", ColorList(customPreset4Def)),
 
 };
 
@@ -230,14 +225,14 @@ QString SettingsHandler::settings_file_path() const
 }
 
 QJsonValue SettingsHandler::json_value(const QString& group,
-                                      const QString& key) const
+                                       const QString& key) const
 {
     return document_.value(group).toObject().value(key);
 }
 
 void SettingsHandler::set_json_value(const QString& group,
-                                   const QString& key,
-                                   const QJsonValue& value)
+                                     const QString& key,
+                                     const QJsonValue& value)
 {
     QJsonObject groupObj = document_.value(group).toObject();
     groupObj.insert(key, value);
@@ -327,27 +322,27 @@ void SettingsHandler::set_default_current_preset()
     switch (currentPreset) {
     case EPresets::kDarkPreset:
         remove_json_value(QStringLiteral("Colors"),
-                        QStringLiteral("dark_color_preset"));
+                          QStringLiteral("dark_color_preset"));
         break;
     case EPresets::kLightPreset:
         remove_json_value(QStringLiteral("Colors"),
-                        QStringLiteral("light_color_preset"));
+                          QStringLiteral("light_color_preset"));
         break;
     case EPresets::kCustom1:
         remove_json_value(QStringLiteral("Colors"),
-                        QStringLiteral("custom_preset1"));
+                          QStringLiteral("custom_preset1"));
         break;
     case EPresets::kCustom2:
         remove_json_value(QStringLiteral("Colors"),
-                        QStringLiteral("custom_preset2"));
+                          QStringLiteral("custom_preset2"));
         break;
     case EPresets::kCustom3:
         remove_json_value(QStringLiteral("Colors"),
-                        QStringLiteral("custom_preset3"));
+                          QStringLiteral("custom_preset3"));
         break;
     case EPresets::kCustom4:
         remove_json_value(QStringLiteral("Colors"),
-                        QStringLiteral("custom_preset4"));
+                          QStringLiteral("custom_preset4"));
         break;
     default:
         break;
@@ -382,8 +377,8 @@ void SettingsHandler::remove(const QString& key)
 void SettingsHandler::reset_value(const QString& key)
 {
     set_json_value(QStringLiteral("Colors"),
-                 key,
-                 QJsonValue::fromVariant(value_handler(key)->fallback()));
+                   key,
+                   QJsonValue::fromVariant(value_handler(key)->fallback()));
 }
 
 SettingsHandler::CL SettingsHandler::get_current_color_preset()
@@ -453,8 +448,7 @@ void SettingsHandler::set_current_opacity(int opacity)
 }
 
 
-QSharedPointer<ValueHandler> SettingsHandler::value_handler(
-    const QString& key)
+QSharedPointer<ValueHandler> SettingsHandler::value_handler(const QString& key)
 {
     return ::recognizedGeneralOptions.value(key);
 }
@@ -478,7 +472,7 @@ QString SettingsHandler::settings_file_name()
 }
 
 QVariant SettingsHandler::action_state(const QString& key,
-                                      const QVariant& defaultValue)
+                                       const QVariant& defaultValue)
 {
     return FamSettings::value(key, defaultValue);
 }
@@ -496,25 +490,29 @@ qreal SettingsHandler::arrange_gap()
 
 QString SettingsHandler::arrange_default()
 {
-    return FamSettings::value_or_default(QStringLiteral("Items/arrange_default"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/arrange_default"))
         .toString();
 }
 
 QString SettingsHandler::image_storage_format()
 {
-    return FamSettings::value_or_default(QStringLiteral("Items/image_storage_format"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/image_storage_format"))
         .toString();
 }
 
 int SettingsHandler::undo_history_size()
 {
-    return FamSettings::value_or_default(QStringLiteral("Items/undo_history_size"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/undo_history_size"))
         .toInt();
 }
 
 QString SettingsHandler::auto_optimize_imported_images()
 {
-    return FamSettings::value_or_default(QStringLiteral("Items/auto_optimize_imported_images"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/auto_optimize_imported_images"))
         .toString();
 }
 
@@ -533,15 +531,15 @@ std::optional<ControlMatch> SettingsHandler::mouse_action_for_event(
 }
 
 QStringList SettingsHandler::get_shortcuts(const QString& group,
-                                          const QString& key,
-                                          const QStringList& defaults)
+                                           const QString& key,
+                                           const QStringList& defaults)
 {
     return KeyboardSettings().get_shortcuts(group, key, defaults);
 }
 
 void SettingsHandler::set_shortcuts(const QString& group,
-                                   const QString& key,
-                                   const QStringList& values)
+                                    const QString& key,
+                                    const QStringList& values)
 {
     KeyboardSettings::set_shortcuts(group, key, values);
 }

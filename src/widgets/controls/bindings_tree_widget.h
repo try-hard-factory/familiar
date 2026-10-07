@@ -69,11 +69,11 @@ signals:
 private:
     void refresh_target(BindingTarget* target);
     QWidget* build_row(BindingTarget* target,
-                      const QString& label,
-                      int bindingIndex,
-                      bool showAdd,
-                      bool indent,
-                      QWidget* toggleTarget = nullptr);
+                       const QString& label,
+                       int bindingIndex,
+                       bool showAdd,
+                       bool indent,
+                       QWidget* toggleTarget = nullptr);
 
     QList<BindingTarget*> targets_;
     QMap<BindingTarget*, QWidget*> rowContainers_;

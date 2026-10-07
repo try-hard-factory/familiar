@@ -182,7 +182,8 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
         return std::nullopt;
     }
 
-    const int formatVersion = root.value(QStringLiteral("formatVersion")).toInt(-1);
+    const int formatVersion
+        = root.value(QStringLiteral("formatVersion")).toInt(-1);
     if (formatVersion <= 0 || formatVersion > kformatVersion) {
         error = QStringLiteral("This file was created by a newer version of "
                                "familiar (formatVersion %1)")
@@ -611,7 +612,7 @@ FmlResult FmlArchive::load(const QString& filename,
         return result;
     }
     const QByteArray manifestJson(static_cast<const char*>(manifestBuf),
-                            static_cast<int>(manifestSize));
+                                  static_cast<int>(manifestSize));
     mz_free(manifestBuf);
 
     QString parseError;
@@ -630,8 +631,7 @@ FmlResult FmlArchive::load(const QString& filename,
     scene->set_remembered_bounding_rect(manifest->sceneBoundingRect);
 
     if (worker) {
-        emit worker->begin_processing(
-            static_cast<int>(manifest->items.size()));
+        emit worker->begin_processing(static_cast<int>(manifest->items.size()));
     }
 
     for (int i = 0; i < manifest->items.size(); ++i) {
@@ -655,10 +655,11 @@ FmlResult FmlArchive::load(const QString& filename,
         if (mi.type == QStringLiteral("pixmap")
             || mi.type == QStringLiteral("gif")) {
             const QByteArray imagePath = mi.image.toUtf8();
-            const int imageIndex = mz_zip_reader_locate_file(zip.get(),
-                                                       imagePath.constData(),
-                                                       nullptr,
-                                                       0);
+            const int imageIndex
+                = mz_zip_reader_locate_file(zip.get(),
+                                            imagePath.constData(),
+                                            nullptr,
+                                            0);
 
             bool ok = false;
             if (imageIndex >= 0) {

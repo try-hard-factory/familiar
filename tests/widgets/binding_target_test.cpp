@@ -8,10 +8,12 @@
 namespace {
 void cleanupAction(const QString& id)
 {
-    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                    id);
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), id + QStringLiteral("_mouse"));
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral(
+                                                           "Actions"),
+                                                       id);
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            id + QStringLiteral("_mouse"));
 }
 } // namespace
 
@@ -33,7 +35,8 @@ TEST(ActionBindingTargetTest, WrapsActionIdTextAndBindings)
     EXPECT_FALSE(target.is_invertible());
 
     ASSERT_EQ(target.bindings().size(), 1);
-    EXPECT_EQ(target.bindings().first().key_sequence(), QStringLiteral("Ctrl+R"));
+    EXPECT_EQ(target.bindings().first().key_sequence(),
+              QStringLiteral("Ctrl+R"));
     EXPECT_FALSE(target.bindings_changed());
 
     cleanupAction(action.id());
@@ -41,8 +44,8 @@ TEST(ActionBindingTargetTest, WrapsActionIdTextAndBindings)
 
 TEST(ActionBindingTargetTest, SetBindingsSplitsKeyboardAndMouseAliases)
 {
-    Action action
-        = Action::make(QStringLiteral("bt_test_action2"), QStringLiteral("Test"));
+    Action action = Action::make(QStringLiteral("bt_test_action2"),
+                                 QStringLiteral("Test"));
     cleanupAction(action.id());
 
     ActionBindingTarget target(&action);
@@ -57,7 +60,7 @@ TEST(ActionBindingTargetTest, SetBindingsSplitsKeyboardAndMouseAliases)
     EXPECT_EQ(action.get_shortcuts(), QStringList{QStringLiteral("Ctrl+K")});
     ASSERT_EQ(action.get_mouse_bindings().size(), 1);
     EXPECT_EQ(action.get_mouse_bindings().first().mouse_button(),
-             QStringLiteral("Middle"));
+              QStringLiteral("Middle"));
 
     cleanupAction(action.id());
 }

@@ -12,10 +12,12 @@ namespace {
 // earlier one using the same id left behind.
 void cleanupAction(const QString& id)
 {
-    SettingsHandler::get_instance()->remove_json_value(QStringLiteral("Actions"),
-                                                    id);
-    SettingsHandler::get_instance()->remove_json_value(
-        QStringLiteral("Actions"), id + QStringLiteral("_mouse"));
+    SettingsHandler::get_instance()->remove_json_value(QStringLiteral(
+                                                           "Actions"),
+                                                       id);
+    SettingsHandler::get_instance()
+        ->remove_json_value(QStringLiteral("Actions"),
+                            id + QStringLiteral("_mouse"));
 }
 } // namespace
 
@@ -42,8 +44,7 @@ TEST(ActionTest, GetShortcutsFallsBackToDefaultThenPersistsOverride)
     EXPECT_FALSE(a.shortcuts_changed());
 
     a.set_shortcuts({QStringLiteral("Ctrl+Shift+T")});
-    EXPECT_EQ(a.get_shortcuts(),
-             QStringList{QStringLiteral("Ctrl+Shift+T")});
+    EXPECT_EQ(a.get_shortcuts(), QStringList{QStringLiteral("Ctrl+Shift+T")});
     EXPECT_TRUE(a.shortcuts_changed());
 
     cleanupAction(a.id());
@@ -70,8 +71,8 @@ TEST(ActionTest, GetKeySequenceAndDefaultShortcutAreIndexBased)
 
 TEST(ActionTest, MouseBindingsRoundTrip)
 {
-    Action a
-        = Action::make(QStringLiteral("test_action_mouse"), QStringLiteral("Test"));
+    Action a = Action::make(QStringLiteral("test_action_mouse"),
+                            QStringLiteral("Test"));
     cleanupAction(a.id());
 
     EXPECT_TRUE(a.get_mouse_bindings().isEmpty());

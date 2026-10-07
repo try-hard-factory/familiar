@@ -62,12 +62,13 @@ void invoke(QWidget* target, const Action* action)
 // MainWindow itself, not the canvas (confirmed via logging: the release
 // was delivered but never reached CanvasView/CanvasScene at all).
 void release_press_target_before_action(QWidget* invokeTarget,
-                                    Qt::MouseButton flag,
-                                    Qt::KeyboardModifiers modifiers)
+                                        Qt::MouseButton flag,
+                                        Qt::KeyboardModifiers modifiers)
 {
     auto* mainWindow = qobject_cast<MainWindow*>(invokeTarget);
-    const CanvasView* canvasView = mainWindow ? mainWindow->tab_pane().current_widget()
-                                        : nullptr;
+    const CanvasView* canvasView = mainWindow
+                                       ? mainWindow->tab_pane().current_widget()
+                                       : nullptr;
     QWidget* releaseTarget = canvasView ? canvasView->viewport() : nullptr;
     if (!releaseTarget) {
         return;
@@ -190,8 +191,8 @@ bool ActionMouseDispatcher::try_key_press(QKeyEvent* event)
                            "tryKeyPress: matched mixed alias for action '{}'",
                            action->id().toStdString());
                 release_press_target_before_action(target_,
-                                               flag,
-                                               event->modifiers());
+                                                   flag,
+                                                   event->modifiers());
                 invoke(target_, action);
                 return true;
             }

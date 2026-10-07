@@ -55,7 +55,8 @@ public:
     }
 };
 
-QList<FileBrowserDialog::FilterEntry> parse_name_filter(const QString& filterString)
+QList<FileBrowserDialog::FilterEntry> parse_name_filter(
+    const QString& filterString)
 {
     QList<FileBrowserDialog::FilterEntry> entries;
     const QStringList parts = filterString.isEmpty()
@@ -66,10 +67,10 @@ QList<FileBrowserDialog::FilterEntry> parse_name_filter(const QString& filterStr
     for (const QString& part : parts) {
         FileBrowserDialog::FilterEntry entry;
         const QString trimmed = part.trimmed();
-        const int openParen
-            = static_cast<int>(trimmed.indexOf(QLatin1Char('(')));
-        const int closeParen
-            = static_cast<int>(trimmed.lastIndexOf(QLatin1Char(')')));
+        const int openParen = static_cast<int>(
+            trimmed.indexOf(QLatin1Char('(')));
+        const int closeParen = static_cast<int>(
+            trimmed.lastIndexOf(QLatin1Char(')')));
         if (openParen >= 0 && closeParen > openParen) {
             entry.label = trimmed;
             const QString patternsStr = trimmed.mid(openParen + 1,
@@ -101,6 +102,8 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
                                      const QString& defaultFileName)
     : QDialog(parent)
     , mode_(mode)
+    , model_(new QFileSystemModel(this))
+    , pathEdit_(new QLineEdit(this))
 {
     filters_ = parse_name_filter(nameFilter);
 
@@ -117,7 +120,8 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -156,7 +160,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
             &FileBrowserDialog::navigate_up);
     navRow->addWidget(upBtn_);
 
-    pathEdit_ = new QLineEdit(this);
+
     connect(pathEdit_, &QLineEdit::editingFinished, this, [this] {
         set_directory(pathEdit_->text());
     });
@@ -178,7 +182,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     build_sidebar(accent);
     contentRow->addWidget(sidebar_);
 
-    model_ = new QFileSystemModel(this);
+
     model_->setRootPath(QDir::rootPath());
     static FmlIconProvider iconProvider;
     model_->setIconProvider(&iconProvider);
@@ -296,67 +300,66 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     buttonRow->addWidget(actionBtn_);
     outer->addLayout(buttonRow);
 
-    setStyleSheet(familiar::dialog_style::panel_style_sheet("FileBrowserDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::close_button_style_sheet("fbdCloseBtn",
-                                                                  textColor,
-                                                                  accent)
-                  + QStringLiteral(
-                        "QLineEdit, QComboBox {"
-                        "  background-color: rgba(0,0,0,20);"
-                        "  color: %1;"
-                        "  border: 1px solid %2;"
-                        "  border-radius: 4px;"
-                        "  padding: 4px 6px;"
-                        "}"
-                        "QTreeView, QListWidget {"
-                        "  background-color: rgba(0,0,0,12);"
-                        "  color: %1;"
-                        "  border: 1px solid %2;"
-                        "  border-radius: 4px;"
-                        "}"
-                        "QTreeView::item:selected, QListWidget::item:selected {"
-                        "  background-color: %3;"
-                        "  color: white;"
-                        "}"
-                        "QHeaderView::section {"
-                        "  background-color: transparent;"
-                        "  color: %1;"
-                        "  border: none;"
-                        "  border-bottom: 1px solid %2;"
-                        "  padding: 4px;"
-                        "}"
-                        // createFolder_()'s inline-rename editor is a
-                        // QLineEdit sitting directly on top of the
-                        // still-selected (red-highlighted) row - the
-                        // generic QLineEdit rule above is deliberately
-                        // near-transparent (rgba alpha 20) to read as a
-                        // recessed field over the dialog's own plain
-                        // background, but layered over an already-
-                        // painted row it barely masked the OLD text
-                        // underneath, showing both at once. This more
-                        // specific selector (QTreeView descendant) wins
-                        // over the generic one and forces a fully opaque
-                        // backing just for this editor.
-                        "QTreeView QLineEdit {"
-                        "  background-color: %4;"
-                        "  color: %1;"
-                        "  border: 1px solid %3;"
-                        "  border-radius: 2px;"
-                        "  padding: 0px 2px;"
-                        "  selection-background-color: %3;"
-                        "  selection-color: white;"
-                        "}")
-                        .arg(textColor.name(),
-                             border.name(),
-                             accent.name(),
-                             QColor(background.red(),
-                                    background.green(),
-                                    background.blue())
-                                 .name()));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("FileBrowserDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("fbdCloseBtn",
+                                                           textColor,
+                                                           accent)
+        + QStringLiteral(
+              "QLineEdit, QComboBox {"
+              "  background-color: rgba(0,0,0,20);"
+              "  color: %1;"
+              "  border: 1px solid %2;"
+              "  border-radius: 4px;"
+              "  padding: 4px 6px;"
+              "}"
+              "QTreeView, QListWidget {"
+              "  background-color: rgba(0,0,0,12);"
+              "  color: %1;"
+              "  border: 1px solid %2;"
+              "  border-radius: 4px;"
+              "}"
+              "QTreeView::item:selected, QListWidget::item:selected {"
+              "  background-color: %3;"
+              "  color: white;"
+              "}"
+              "QHeaderView::section {"
+              "  background-color: transparent;"
+              "  color: %1;"
+              "  border: none;"
+              "  border-bottom: 1px solid %2;"
+              "  padding: 4px;"
+              "}"
+              // createFolder_()'s inline-rename editor is a
+              // QLineEdit sitting directly on top of the
+              // still-selected (red-highlighted) row - the
+              // generic QLineEdit rule above is deliberately
+              // near-transparent (rgba alpha 20) to read as a
+              // recessed field over the dialog's own plain
+              // background, but layered over an already-
+              // painted row it barely masked the OLD text
+              // underneath, showing both at once. This more
+              // specific selector (QTreeView descendant) wins
+              // over the generic one and forces a fully opaque
+              // backing just for this editor.
+              "QTreeView QLineEdit {"
+              "  background-color: %4;"
+              "  color: %1;"
+              "  border: 1px solid %3;"
+              "  border-radius: 2px;"
+              "  padding: 0px 2px;"
+              "  selection-background-color: %3;"
+              "  selection-color: white;"
+              "}")
+              .arg(textColor.name(),
+                   border.name(),
+                   accent.name(),
+                   QColor(background.red(), background.green(), background.blue())
+                       .name()));
 
     set_directory(startDir.isEmpty() ? QDir::homePath() : startDir);
 }
@@ -477,11 +480,11 @@ void FileBrowserDialog::delete_selected()
                     .arg(QFileInfo(paths.first()).fileName())
               : tr("Permanently delete %1 items?").arg(paths.size());
     const auto reply = show_message_box(QMessageBox::Warning,
-                                      this,
-                                      tr("Delete?"),
-                                      message,
-                                      QMessageBox::Yes | QMessageBox::No,
-                                      QMessageBox::No);
+                                        this,
+                                        tr("Delete?"),
+                                        message,
+                                        QMessageBox::Yes | QMessageBox::No,
+                                        QMessageBox::No);
     if (reply != QMessageBox::Yes) {
         return;
     }
@@ -650,12 +653,12 @@ void FileBrowserDialog::try_accept()
         if (QFileInfo::exists(fullPath)) {
             const auto reply
                 = show_message_box(QMessageBox::Question,
-                                 this,
-                                 tr("Overwrite file?"),
-                                 tr("%1 already exists. Overwrite it?")
-                                     .arg(QFileInfo(fullPath).fileName()),
-                                 QMessageBox::Yes | QMessageBox::No,
-                                 QMessageBox::No);
+                                   this,
+                                   tr("Overwrite file?"),
+                                   tr("%1 already exists. Overwrite it?")
+                                       .arg(QFileInfo(fullPath).fileName()),
+                                   QMessageBox::Yes | QMessageBox::No,
+                                   QMessageBox::No);
             if (reply != QMessageBox::Yes) {
                 return;
             }
@@ -695,9 +698,9 @@ void FileBrowserDialog::mousePressEvent(QMouseEvent* event)
 // Free-function convenience wrappers
 // ============================================================================
 QString show_open_file_dialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir,
-                           const QString& nameFilter)
+                              const QString& title,
+                              const QString& startDir,
+                              const QString& nameFilter)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::OpenFile,
@@ -711,9 +714,9 @@ QString show_open_file_dialog(QWidget* parent,
 }
 
 QStringList show_open_files_dialog(QWidget* parent,
-                                const QString& title,
-                                const QString& startDir,
-                                const QString& nameFilter)
+                                   const QString& title,
+                                   const QString& startDir,
+                                   const QString& nameFilter)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::OpenFiles,
@@ -727,10 +730,10 @@ QStringList show_open_files_dialog(QWidget* parent,
 }
 
 QString show_save_file_dialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir,
-                           const QString& nameFilter,
-                           const QString& defaultFileName)
+                              const QString& title,
+                              const QString& startDir,
+                              const QString& nameFilter,
+                              const QString& defaultFileName)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::Save,
@@ -745,8 +748,8 @@ QString show_save_file_dialog(QWidget* parent,
 }
 
 QString show_select_folder_dialog(QWidget* parent,
-                               const QString& title,
-                               const QString& startDir)
+                                  const QString& title,
+                                  const QString& startDir)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::SelectFolder,

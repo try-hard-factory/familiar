@@ -40,7 +40,11 @@ using namespace familiar::log;
 
 CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     : //MainControlsMixin<CanvasView, QGraphicsView>()
-    mainwindow_(mw)
+    selectionFadeAnim_(new QVariantAnimation(this))
+    , textToolbar_(new TextEditToolbar(viewport()))
+    , gifToolbar_(new GifPlaybackToolbar(viewport()))
+    , groupToolbar_(new GroupToolbar(viewport()))
+    , mainwindow_(mw)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
 {
@@ -94,13 +98,13 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     // TextItem enters edit mode. Pans move the view via the (hidden)
     // scrollbars, so their valueChanged covers repositioning; zoom is
     // handled in doScale(), resizes in resizeEvent().
-    textToolbar_ = new TextEditToolbar(viewport());
+
     textToolbar_->hide();
 
     // Floating GIF-playback toolbar; hidden until a
     // GifItem is selected (see on_selection_changed()) - unlike the text
     // toolbar, this doesn't need a dedicated "entered edit mode" signal.
-    gifToolbar_ = new GifPlaybackToolbar(viewport());
+
     gifToolbar_->hide();
     // Toggling the frames filmstrip (or anything else) resizes the
     // toolbar without CanvasView calling move() again - reposition
@@ -114,7 +118,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     // Floating group toolbar; hidden until a
     // GroupItem is selected - same "applies as soon as simply selected,
     // no dedicated mode-entered signal" reasoning as the GIF toolbar.
-    groupToolbar_ = new GroupToolbar(viewport());
+
     groupToolbar_->hide();
     connect(groupToolbar_,
             &GroupToolbar::geometry_changed,
@@ -146,7 +150,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     // this window loses activation and the cursor isn't hovering it
     // either. Values chosen to feel like a quick "peek" fade, not a
     // proper design pass - revisit if it feels off.
-    selectionFadeAnim_ = new QVariantAnimation(this);
+
     selectionFadeAnim_->setStartValue(1.0);
     selectionFadeAnim_->setEndValue(0.0);
     selectionFadeAnim_->setDuration(600);

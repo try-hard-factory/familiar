@@ -24,10 +24,11 @@ FlatProgressBar::FlatProgressBar(const QColor& track,
     : QProgressBar(parent)
     , track_(track)
     , accent_(accent)
+    , marqueeTimer_(new QTimer(this))
 {
     setTextVisible(false);
     setFixedHeight(kbarHeight);
-    marqueeTimer_ = new QTimer(this);
+
     marqueeTimer_->setInterval(kmarqueeIntervalMs);
     connect(marqueeTimer_, &QTimer::timeout, this, [this] {
         // Only actually repaints in the indeterminate state - a

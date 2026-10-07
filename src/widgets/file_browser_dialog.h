@@ -96,26 +96,26 @@ private:
 
 // One existing file, or empty if cancelled.
 QString show_open_file_dialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir = QString(),
-                           const QString& nameFilter = QString());
+                              const QString& title,
+                              const QString& startDir = QString(),
+                              const QString& nameFilter = QString());
 
 // One or more existing files, empty list if cancelled.
 QStringList show_open_files_dialog(QWidget* parent,
-                                const QString& title,
-                                const QString& startDir = QString(),
-                                const QString& nameFilter = QString());
+                                   const QString& title,
+                                   const QString& startDir = QString(),
+                                   const QString& nameFilter = QString());
 
 // A path to save to (extension auto-appended per the selected filter
 // if the typed name didn't already have one; overwrite is confirmed
 // internally before returning), or empty if cancelled.
 QString show_save_file_dialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir = QString(),
-                           const QString& nameFilter = QString(),
-                           const QString& defaultFileName = QString());
+                              const QString& title,
+                              const QString& startDir = QString(),
+                              const QString& nameFilter = QString(),
+                              const QString& defaultFileName = QString());
 
 // A directory path, or empty if cancelled.
 QString show_select_folder_dialog(QWidget* parent,
-                               const QString& title,
-                               const QString& startDir = QString());
+                                  const QString& title,
+                                  const QString& startDir = QString());

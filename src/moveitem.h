@@ -489,9 +489,9 @@ public:
         }
         const QPointF topLeft = crop_temp->topLeft();
         return {topLeft.x(),
-                      topLeft.y(),
-                      crop_handle_size(),
-                      crop_handle_size()};
+                topLeft.y(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     QRectF crop_handle_bottomleft() const
@@ -501,9 +501,9 @@ public:
         }
         const QPointF bottomLeft = crop_temp->bottomLeft();
         return {bottomLeft.x(),
-                      bottomLeft.y() - crop_handle_size(),
-                      crop_handle_size(),
-                      crop_handle_size()};
+                bottomLeft.y() - crop_handle_size(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     QRectF crop_handle_bottomright() const
@@ -513,9 +513,9 @@ public:
         }
         const QPointF bottomRight = crop_temp->bottomRight();
         return {bottomRight.x() - crop_handle_size(),
-                      bottomRight.y() - crop_handle_size(),
-                      crop_handle_size(),
-                      crop_handle_size()};
+                bottomRight.y() - crop_handle_size(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     QRectF crop_handle_topright() const
@@ -525,9 +525,9 @@ public:
         }
         const QPointF topRight = crop_temp->topRight();
         return {topRight.x() - crop_handle_size(),
-                      topRight.y(),
-                      crop_handle_size(),
-                      crop_handle_size()};
+                topRight.y(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     static QList<CropHandleFn> crop_handles()
@@ -545,9 +545,9 @@ public:
         }
         const QPointF topLeft = crop_temp->topLeft();
         return {topLeft.x() + crop_handle_size(),
-                      topLeft.y(),
-                      crop_temp->width() - (2 * crop_handle_size()),
-                      crop_handle_size()};
+                topLeft.y(),
+                crop_temp->width() - (2 * crop_handle_size()),
+                crop_handle_size()};
     }
 
     QRectF crop_edge_left() const
@@ -557,9 +557,9 @@ public:
         }
         const QPointF topLeft = crop_temp->topLeft();
         return {topLeft.x(),
-                      topLeft.y() + crop_handle_size(),
-                      crop_handle_size(),
-                      crop_temp->height() - (2 * crop_handle_size())};
+                topLeft.y() + crop_handle_size(),
+                crop_handle_size(),
+                crop_temp->height() - (2 * crop_handle_size())};
     }
 
     QRectF crop_edge_bottom() const
@@ -569,9 +569,9 @@ public:
         }
         const QPointF bottomLeft = crop_temp->bottomLeft();
         return {bottomLeft.x() + crop_handle_size(),
-                      bottomLeft.y() - crop_handle_size(),
-                      crop_temp->width() - (2 * crop_handle_size()),
-                      crop_handle_size()};
+                bottomLeft.y() - crop_handle_size(),
+                crop_temp->width() - (2 * crop_handle_size()),
+                crop_handle_size()};
     }
 
     QRectF crop_edge_right() const
@@ -581,9 +581,9 @@ public:
         }
         const QPointF topRight = crop_temp->topRight();
         return {topRight.x() - crop_handle_size(),
-                      topRight.y() + crop_handle_size(),
-                      crop_handle_size(),
-                      crop_temp->height() - (2 * crop_handle_size())};
+                topRight.y() + crop_handle_size(),
+                crop_handle_size(),
+                crop_temp->height() - (2 * crop_handle_size())};
     }
 
     // Function to return all crop edge functions as a tuple
@@ -1078,8 +1078,7 @@ protected:
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (crop_mode && crop_temp && crop_mode_move
-            && crop_mode_event_start) {
+        if (crop_mode && crop_temp && crop_mode_move && crop_mode_event_start) {
             const QPointF diff = event->pos() - *crop_mode_event_start;
             const CropHandleFn move = *crop_mode_move;
 
@@ -1392,12 +1391,13 @@ public:
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
+        , edit_mode(false)
         , fillColor_(default_fill_color())
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
 
         init_selectable();
-        edit_mode = false;
+
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);

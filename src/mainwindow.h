@@ -240,7 +240,8 @@ protected:
             // Resize wins over drag: the top kResizeBorder pixels overlap
             // the menu bar, and the thin border is harder to hit.
             if (mouseEvent->button() == Qt::LeftButton
-                && (try_start_system_resize(pos) || try_start_window_drag(pos))) {
+                && (try_start_system_resize(pos)
+                    || try_start_window_drag(pos))) {
                 return true;
             }
         }

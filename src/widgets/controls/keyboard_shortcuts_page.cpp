@@ -36,7 +36,8 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
         controlTargets_.append(
             new MouseConfigBindingTarget(&cfg, BindingTargetKind::MouseControl));
         if (cfg.id() == QLatin1String("zoom")) {
-            if (Action* zoomIn = get_actions().find(QStringLiteral("zoom_in"))) {
+            if (Action* zoomIn = get_actions().find(
+                    QStringLiteral("zoom_in"))) {
                 controlTargets_.append(new ActionBindingTarget(zoomIn));
             }
             if (Action* zoomOut = get_actions().find(
@@ -51,8 +52,14 @@ KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
                                          BindingTargetKind::MouseWheelControl));
     }
 
+    // NOT member initializers: both trees take actionTargets_/controlTargets_,
+    // which the loops above fill in. Hoisting these into the init list hands
+    // them empty lists - the search filter then matches nothing
+    // (KeyboardShortcutsPageTest.SearchFilterMatchesAgainstControlsSection).
+    // NOLINTBEGIN(cppcoreguidelines-prefer-member-initializer)
     actionsTree_ = new BindingsTreeWidget(actionTargets_, this);
     controlsTree_ = new BindingsTreeWidget(controlTargets_, this);
+    // NOLINTEND(cppcoreguidelines-prefer-member-initializer)
 
     // Restore Defaults wipes storage out from under these targets without
     // going through any of the tree's own Add/Remove/Rebind dialogs (which

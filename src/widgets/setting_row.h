@@ -32,9 +32,9 @@ public:
     // e.g. Keyboard Shortcuts' rows, which have no backing settings key
     // for either concept.
     void set_content(const QString& title,
-                    const QString& bodyHtml,
-                    const QString& defaultText,
-                    bool showResetHint);
+                     const QString& bodyHtml,
+                     const QString& defaultText,
+                     bool showResetHint);
 
 private:
     QLabel* titleLabel_ = nullptr;
@@ -118,7 +118,10 @@ public:
 
 protected:
     virtual void set_value(const QVariant& value) = 0;
-    virtual QVariant convert_value_from_qt(const QVariant& value) { return value; }
+    virtual QVariant convert_value_from_qt(const QVariant& value)
+    {
+        return value;
+    }
 
     // Human-readable default value for the info popup's "Default: X"
     // line. Base impl is fine for a plain scalar (IntegerSettingRow);

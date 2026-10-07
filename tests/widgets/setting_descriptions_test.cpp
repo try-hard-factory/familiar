@@ -34,5 +34,5 @@ TEST(SettingDescriptionsTest, KnownBindingTargetIdReturnsItsOwnText)
 TEST(SettingDescriptionsTest, UnknownBindingTargetIdFallsBackToPlaceholder)
 {
     EXPECT_EQ(for_binding_target_id(QStringLiteral("nonexistent_id")),
-             kPlaceholder);
+              kPlaceholder);
 }

@@ -214,6 +214,7 @@ class RenameDialog : public QDialog
 public:
     RenameDialog(const QString& currentName, QWidget* parent)
         : QDialog(parent)
+        , edit_(new QLineEdit(currentName, this))
     {
         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
@@ -245,7 +246,7 @@ public:
         titleLabel->setFont(titleFont);
         outer->addWidget(titleLabel);
 
-        edit_ = new QLineEdit(currentName, this);
+
         edit_->selectAll();
         connect(edit_, &QLineEdit::returnPressed, this, &QDialog::accept);
         outer->addWidget(edit_);
@@ -310,6 +311,8 @@ private:
 
 HierarchyPanel::HierarchyPanel(QWidget* parent)
     : QDockWidget(QObject::tr("Hierarchy"), parent)
+    , titleBar_(new QWidget(this))
+    , rebuildTimer_(new QTimer(this))
 {
     setObjectName(QStringLiteral("hierarchyPanel"));
     // No DockWidgetClosable/Floatable - those draw Qt's native, unstyled
@@ -326,7 +329,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     // QWidget/QLabel does, and still gets QDockWidget's own drag-to-move
     // handling for free (that's generic to whatever titleBarWidget() is,
     // native or not) - DockWidgetMovable above still works.
-    titleBar_ = new QWidget(this);
+
     titleBar_->setAttribute(Qt::WA_StyledBackground);
     auto* titleLayout = new QHBoxLayout(titleBar_);
     titleLayout->setContentsMargins(8, 5, 8, 5);
@@ -381,7 +384,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
             &HierarchyPanel::show_context_menu);
     setWidget(tree_);
 
-    rebuildTimer_ = new QTimer(this);
+
     rebuildTimer_->setSingleShot(true);
     rebuildTimer_->setInterval(150);
     connect(rebuildTimer_, &QTimer::timeout, this, &HierarchyPanel::refresh);

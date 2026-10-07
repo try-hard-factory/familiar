@@ -69,13 +69,14 @@ TEST(AutosaveEnabledRowTest, TogglingCheckboxPersistsToSettingsAndEmitsToggled)
 TEST(AutosaveEnabledRowTest, CtrlDoubleClickOnRowResetsToDefault)
 {
     FamSettings settings;
-    settings.set_value(QStringLiteral("Save/autosave_enabled"), true); // non-default
+    settings.set_value(QStringLiteral("Save/autosave_enabled"),
+                       true); // non-default
 
     AutosaveEnabledRow row;
     row.resize(300, 30); // label + stretch + checkbox - center lands on the
-                        // stretch, not the checkbox, per SettingRowBase::
-                        // mouseDoubleClickEvent()'s own "not already
-                        // consumed by a child widget" comment
+                         // stretch, not the checkbox, per SettingRowBase::
+                         // mouseDoubleClickEvent()'s own "not already
+                         // consumed by a child widget" comment
     row.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&row));
 
@@ -108,10 +109,10 @@ TEST(UndoHistorySizeRowTest, ConstructedFromStoredValueAndPersistsChanges)
     QTest::keyClick(spin, Qt::Key_Up);
 
     EXPECT_EQ(spin->value(), 251);
-    EXPECT_EQ(
-        settings.value_or_default(QStringLiteral("Items/undo_history_size"))
-            .toInt(),
-        251);
+    EXPECT_EQ(settings
+                  .value_or_default(QStringLiteral("Items/undo_history_size"))
+                  .toInt(),
+              251);
 
     settings.remove(QStringLiteral("Items/undo_history_size"));
 }
@@ -136,8 +137,8 @@ TEST(IntegerSettingRowTest, SetControlEnabledDisablesOnlyTheInputNotTheRow)
 TEST(AutoOptimizeImportedImagesRowTest, SelectingOptionPersistsItsValueString)
 {
     FamSettings settings;
-    settings.remove(
-        QStringLiteral("Items/auto_optimize_imported_images")); // default: "warn"
+    settings.remove(QStringLiteral(
+        "Items/auto_optimize_imported_images")); // default: "warn"
 
     AutoOptimizeImportedImagesRow row;
     QComboBox* combo = row.findChild<QComboBox*>();
@@ -147,10 +148,10 @@ TEST(AutoOptimizeImportedImagesRowTest, SelectingOptionPersistsItsValueString)
     combo->setCurrentIndex(2);
 
     EXPECT_EQ(settings
-                 .value_or_default(
-                     QStringLiteral("Items/auto_optimize_imported_images"))
-                 .toString(),
-             QStringLiteral("optimize_large"));
+                  .value_or_default(
+                      QStringLiteral("Items/auto_optimize_imported_images"))
+                  .toString(),
+              QStringLiteral("optimize_large"));
 
     settings.remove(QStringLiteral("Items/auto_optimize_imported_images"));
 }

@@ -52,30 +52,32 @@ public:
             return {0, 0};
         }
 
-        const int height
-            = std::accumulate(files_.begin(),
-                              files_.end(),
-                              0,
-                              [this](int sum, const QString& file) {
-                                  return sum
-                                         + sizeHintForRow(
-                                             this->model()
-                                                 ->index(static_cast<int>(
-                                                             this->files_
-                                                                 .indexOf(file)),
-                                                         0)
-                                                 .row())
-                                         + 2;
-                              });
+        const int height = std::accumulate(
+            files_.begin(),
+            files_.end(),
+            0,
+            [this](int sum, const QString& file) {
+                return sum
+                       + sizeHintForRow(
+                           this->model()
+                               ->index(static_cast<int>(
+                                           this->files_.indexOf(file)),
+                                       0)
+                               .row())
+                       + 2;
+            });
 
         std::vector<int> columnWidths(static_cast<std::size_t>(files_.size()));
-        std::ranges::transform(
-            files_, columnWidths.begin(), [this](const QString& file) {
-                return sizeHintForColumn(
-                    model()
-                        ->index(static_cast<int>(files_.indexOf(file)), 0)
-                        .column());
-            });
+        std::ranges::transform(files_,
+                               columnWidths.begin(),
+                               [this](const QString& file) {
+                                   return sizeHintForColumn(
+                                       model()
+                                           ->index(static_cast<int>(
+                                                       files_.indexOf(file)),
+                                                   0)
+                                           .column());
+                               });
         const int width = 2 + *std::ranges::max_element(columnWidths);
         return {width, height};
     }

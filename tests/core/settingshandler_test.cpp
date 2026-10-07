@@ -26,10 +26,10 @@ namespace {
 CL makeColorList(int seed)
 {
     return CL{{kBackgroundColor, QColor(seed, 0, 0)},
-             {kCanvasColor, QColor(0, seed, 0)},
-             {kBorderColor, QColor(0, 0, seed)},
-             {kTextColor, QColor(seed, seed, 0)},
-             {kSelectionColor, QColor(seed, 0, seed)}};
+              {kCanvasColor, QColor(0, seed, 0)},
+              {kBorderColor, QColor(0, 0, seed)},
+              {kTextColor, QColor(seed, seed, 0)},
+              {kSelectionColor, QColor(seed, 0, seed)}};
 }
 } // namespace
 
@@ -137,21 +137,19 @@ TEST(SettingsHandlerTest, JsonValueSetRemoveRoundTrip)
     auto* h = SettingsHandler::get_instance();
     h->remove_json_group(QStringLiteral("TestGroup"));
 
-    EXPECT_TRUE(
-        h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
-            .isUndefined());
+    EXPECT_TRUE(h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
+                    .isUndefined());
 
     h->set_json_value(QStringLiteral("TestGroup"),
-                    QStringLiteral("key"),
-                    QJsonValue(QStringLiteral("value")));
+                      QStringLiteral("key"),
+                      QJsonValue(QStringLiteral("value")));
     EXPECT_EQ(h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
                   .toString(),
               QStringLiteral("value"));
 
     h->remove_json_value(QStringLiteral("TestGroup"), QStringLiteral("key"));
-    EXPECT_TRUE(
-        h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
-            .isUndefined());
+    EXPECT_TRUE(h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
+                    .isUndefined());
 
     h->remove_json_group(QStringLiteral("TestGroup"));
 }
@@ -169,8 +167,8 @@ TEST(SettingsHandlerTest, ExportThenImportRestoresJsonValue)
 {
     auto* h = SettingsHandler::get_instance();
     h->set_json_value(QStringLiteral("TestGroup"),
-                    QStringLiteral("key"),
-                    QJsonValue(123));
+                      QStringLiteral("key"),
+                      QJsonValue(123));
 
     QTemporaryDir dir;
     ASSERT_TRUE(dir.isValid());
@@ -180,13 +178,13 @@ TEST(SettingsHandlerTest, ExportThenImportRestoresJsonValue)
     // Mutate the live document after exporting - import should overwrite
     // it back to what was on disk, not merge with the current state.
     h->set_json_value(QStringLiteral("TestGroup"),
-                    QStringLiteral("key"),
-                    QJsonValue(456));
+                      QStringLiteral("key"),
+                      QJsonValue(456));
 
     ASSERT_TRUE(h->import_settings_from(exportPath));
-    EXPECT_EQ(
-        h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key")).toInt(),
-        123);
+    EXPECT_EQ(h->json_value(QStringLiteral("TestGroup"), QStringLiteral("key"))
+                  .toInt(),
+              123);
 
     h->remove_json_group(QStringLiteral("TestGroup"));
 }
@@ -201,8 +199,8 @@ TEST(SettingsHandlerTest, ImportFromMissingFileFails)
 TEST(SettingsHandlerTest, ExportToUnwritablePathFails)
 {
     auto* h = SettingsHandler::get_instance();
-    EXPECT_FALSE(h->export_settings_to(
-        QStringLiteral("/nonexistent-dir-xyz/out.json")));
+    EXPECT_FALSE(
+        h->export_settings_to(QStringLiteral("/nonexistent-dir-xyz/out.json")));
 }
 
 TEST(SettingsHandlerTest, ValueRemoveResetRoundTrip)

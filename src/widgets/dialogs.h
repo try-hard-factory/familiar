@@ -95,6 +95,9 @@ public:
                             int maximum = 0,
                             QWidget* parent = nullptr)
         : QDialog(parent)
+        , percentLabel_(new QLabel(this))
+        , currentItemLabel_(new QLabel(this))
+        , knownMaximum_(maximum)
     {
         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
@@ -142,7 +145,7 @@ public:
         // right now (ThreadedIO::currentItemChanged, fileio.h). Kept at a
         // fixed height even while empty so the dialog doesn't jump around
         // as names come and go.
-        currentItemLabel_ = new QLabel(this);
+
         // Muted via an objectName + its own QSS rule further down, NOT
         // via setPalette(): dialog_style::panelStyleSheet() below carries
         // a blanket "QLabel { color: ... }" rule, and QSS beats QPalette
@@ -156,7 +159,7 @@ public:
         barRow->setSpacing(10);
         bar_ = new FlatProgressBar(border, accent, this);
         barRow->addWidget(bar_, 1);
-        percentLabel_ = new QLabel(this);
+
         // Reserves the widest string this ever shows, so the bar beside
         // it doesn't resize by a few pixels every time the number's digit
         // count changes.
@@ -194,7 +197,7 @@ public:
                   .arg(textColor.green())
                   .arg(textColor.blue()));
 
-        knownMaximum_ = maximum;
+
         bar_->setRange(0, maximum);
         update_percent_text();
         bind_worker(worker);
@@ -588,6 +591,7 @@ class DebugLogDialog : public QDialog
 public:
     DebugLogDialog(QWidget* parent)
         : QDialog(parent)
+        , log_(new QPlainTextEdit())
     {
         // See ChangeOpacityDialog: shown non-modally via show() below and
         // never explicitly deleted by whoever calls "new DebugLogDialog(...)".
@@ -601,7 +605,7 @@ public:
         setWindowTitle(qApp->applicationName() + " Debug Log");
         const QString logPath = familiar::log::log_file_path();
 
-        log_ = new QPlainTextEdit();
+
         log_->setReadOnly(true);
         log_->setLineWrapMode(QPlainTextEdit::NoWrap);
 
@@ -707,8 +711,7 @@ public:
             followTail_ = scrollBar->value() == scrollBar->maximum();
         });
 
-        auto* buttons = new QDialogButtonBox(
-            QDialogButtonBox::Close);
+        auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         copyButton_ = new QPushButton("Co&py To Clipboard");
         buttons->addButton(copyButton_, QDialogButtonBox::ActionRole);
@@ -795,6 +798,7 @@ public:
         : QDialog(parent)
         , fileActions_(fileActions)
         , entries_(entries)
+        , list_(new QListWidget(this))
     {
         // See ChangeOpacityDialog: shown non-modally via show() below and
         // never explicitly deleted by whoever calls "new RecoveryDialog(...)".
@@ -815,7 +819,7 @@ public:
         label->setWordWrap(true);
         layout->addWidget(label);
 
-        list_ = new QListWidget(this);
+
         for (const familiar::recovery::Entry& e : entries_) {
             auto* item = new QListWidgetItem(e.label, list_);
             item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
@@ -954,8 +958,8 @@ public:
                 &SceneToPixmapExporterDialog::on_height_changed);
         layout->addWidget(heightInput_, 1, 1);
 
-        auto* buttons = new QDialogButtonBox(
-            QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok
+                                             | QDialogButtonBox::Cancel);
         connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         layout->addWidget(buttons, 3, 1);
@@ -1016,6 +1020,7 @@ public:
         , items_(items)
         , undoStack_(undoStack)
         , command_(new ChangeOpacityCommand(items, 1.0))
+        , input_(new QSlider(Qt::Horizontal, this))
     {
         const int value = !items.isEmpty() ? int(items[0]->opacity() * 100)
                                            : 100;
@@ -1077,7 +1082,7 @@ public:
         label_ = new QLabel(tr("Opacity: %1%").arg(value), this);
         outer->addWidget(label_);
 
-        input_ = new QSlider(Qt::Horizontal, this);
+
         input_->setObjectName(QStringLiteral("changeOpacitySlider"));
         input_->setRange(0, 100);
         connect(input_,

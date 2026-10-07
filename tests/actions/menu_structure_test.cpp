@@ -15,8 +15,9 @@ TEST(MenuNodeTest, FactoryMethodsPopulateExpectedFields)
     EXPECT_EQ(dynamic.type, MenuNode::Type::Dynamic);
     EXPECT_EQ(dynamic.id, QStringLiteral("recent_files"));
 
-    const MenuNode submenu = MenuNode::submenu(
-        QStringLiteral("File"), {MenuNode::action(QStringLiteral("open"))});
+    const MenuNode submenu = MenuNode::submenu(QStringLiteral("File"),
+                                               {MenuNode::action(
+                                                   QStringLiteral("open"))});
     EXPECT_EQ(submenu.type, MenuNode::Type::Submenu);
     EXPECT_EQ(submenu.label, QStringLiteral("File"));
     ASSERT_EQ(submenu.children.size(), 1);

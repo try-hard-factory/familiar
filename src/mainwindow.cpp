@@ -115,8 +115,8 @@ public:
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
         familiar::dialog_style::style_secondary_button(cancelBtn,
-                                                     textColor,
-                                                     border);
+                                                       textColor,
+                                                       border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("OK"), this);
@@ -127,10 +127,10 @@ public:
         outer->addLayout(buttonRow);
 
         setStyleSheet(familiar::dialog_style::panel_style_sheet("QDialog",
-                                                              background,
-                                                              border,
-                                                              textColor,
-                                                              /*radiusPx=*/0)
+                                                                background,
+                                                                border,
+                                                                textColor,
+                                                                /*radiusPx=*/0)
                       + familiar::dialog_style::close_button_style_sheet(
                           "transparentConfirmCloseBtn", textColor, accent));
     }
@@ -156,7 +156,11 @@ MainWindow::MainWindow(QWidget* parent)
     // setWindowFlags(Qt::Window | Qt::FramelessWindowHint) below, so
     // dropping them here is not a behavior change.
     : ActionsMixin<QMainWindow>(parent)
+    , hierarchyPanel_(new HierarchyPanel(this))
     , fileactions_(new FileActions(*this))
+    , tabpane_(new TabPane(this, *this))
+    , autosaveTimer_(new QTimer(this))
+    , recoveryTimer_(new QTimer(this))
 {
     // FIRST, before anything below can possibly create the native window
     // (e.g. fireInitialCheckableCallbacks_() inside
@@ -174,9 +178,8 @@ MainWindow::MainWindow(QWidget* parent)
     // silently discard the real menu bar right after it was set (now
     // moot since setupUi() is gone, but the ordering still matters for
     // build_menu_and_actions() below).
-    tabpane_ = new TabPane(this, *this);
 
-    hierarchyPanel_ = new HierarchyPanel(this);
+
     addDockWidget(Qt::LeftDockWidgetArea, hierarchyPanel_);
     // Actual initial visibility comes from the persisted "hierarchy"
     // action state via fireInitialCheckableCallbacks_() below (same
@@ -251,7 +254,7 @@ MainWindow::MainWindow(QWidget* parent)
 
     // Periodic autosave - see onAutosaveTimeout_()/
     // restartAutosaveTimer_() in mainwindow.h for the full picture.
-    autosaveTimer_ = new QTimer(this);
+
     connect(autosaveTimer_,
             &QTimer::timeout,
             this,
@@ -267,7 +270,7 @@ MainWindow::MainWindow(QWidget* parent)
     // Save/autosave_enabled): it writes into its own recovery/ folder,
     // never the tab's real file, so there's no user-facing reason to
     // ever disable it.
-    recoveryTimer_ = new QTimer(this);
+
     connect(recoveryTimer_,
             &QTimer::timeout,
             this,
@@ -335,11 +338,11 @@ void MainWindow::on_autosave_timeout()
 void MainWindow::restart_autosave_timer()
 {
     autosaveTimer_->stop();
-    const bool enabled
-        = FamSettings::value_or_default(QStringLiteral("Save/autosave_enabled"))
-              .toBool();
-    const int seconds = FamSettings::value_or_default(QStringLiteral(
-                                "Save/autosave_interval_seconds"))
+    const bool enabled = FamSettings::value_or_default(
+                             QStringLiteral("Save/autosave_enabled"))
+                             .toBool();
+    const int seconds = FamSettings::value_or_default(
+                            QStringLiteral("Save/autosave_interval_seconds"))
                             .toInt();
     if (enabled) {
         autosaveTimer_->start(seconds * 1000);
@@ -515,7 +518,8 @@ bool MainWindow::check_save()
     return true;
 }
 
-void MainWindow::save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&& m)
+void MainWindow::save_all_window_save_cb(SaveAllDialog* w,
+                                         std::map<int, bool>&& m)
 {
     w->close();
 
@@ -532,7 +536,10 @@ void MainWindow::save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&&
     }
 
     for (int i = tabpane_->count() - 1; i >= 0; --i) {
-        FLOG_DEBUG(Ch::UI, "save ID = {} {}", i, tabpane_->get_current_tab_path());
+        FLOG_DEBUG(Ch::UI,
+                   "save ID = {} {}",
+                   i,
+                   tabpane_->get_current_tab_path());
         tabpane_->set_current_index(i);
 
         auto ret = fileactions_->save_file();
@@ -684,7 +691,8 @@ void MainWindow::on_action_transparent_to_mouse(bool checked)
         sawDeactivationSinceTransparentEnabled_ = false;
     } else if (forcedAlwaysOnTopForTransparency_) {
         forcedAlwaysOnTopForTransparency_ = false;
-        if (const Action* a = get_actions().find("always_on_top"); a && a->qaction()) {
+        if (const Action* a = get_actions().find("always_on_top");
+            a && a->qaction()) {
             a->qaction()->setChecked(false);
         }
     }
@@ -759,7 +767,8 @@ void MainWindow::ensure_menubar()
     // Mirror the existing checkable always_on_top action instead of
     // duplicating its destroy()/create() logic - toggling either side
     // keeps the other in sync through the QAction.
-    if (const Action* a = get_actions().find("always_on_top"); a && a->qaction()) {
+    if (const Action* a = get_actions().find("always_on_top");
+        a && a->qaction()) {
         onTopBtn->setCheckable(true);
         onTopBtn->setChecked(a->qaction()->isChecked());
         connect(onTopBtn,
@@ -823,7 +832,10 @@ void MainWindow::ensure_menubar()
     uiHideTimer_ = new QTimer(this);
     uiHideTimer_->setSingleShot(true);
     uiHideTimer_->setInterval(400);
-    connect(uiHideTimer_, &QTimer::timeout, this, &MainWindow::on_ui_hide_timeout);
+    connect(uiHideTimer_,
+            &QTimer::timeout,
+            this,
+            &MainWindow::on_ui_hide_timeout);
 }
 
 void MainWindow::update_window_controls_style()
@@ -832,7 +844,8 @@ void MainWindow::update_window_controls_style()
         return;
     }
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -880,7 +893,8 @@ void MainWindow::update_menubar_style()
         return;
     }
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
@@ -1099,8 +1113,8 @@ void MainWindow::on_action_settings()
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void MainWindow::on_action_open_settings_dir()
 {
-    const QString dir = QFileInfo(SettingsHandler::settings_file_name())
-                      .absolutePath();
+    const QString dir
+        = QFileInfo(SettingsHandler::settings_file_name()).absolutePath();
     QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
 
@@ -1565,7 +1579,8 @@ void MainWindow::changeEvent(QEvent* event)
                 // Posting this for the next event loop iteration lets
                 // Qt's own notification finish first.
                 QTimer::singleShot(0, this, [] {
-                    if (const Action* a = get_actions().find("transparent_to_mouse");
+                    if (const Action* a = get_actions().find(
+                            "transparent_to_mouse");
                         a && a->qaction()) {
                         a->qaction()->setChecked(false);
                     }

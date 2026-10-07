@@ -36,7 +36,7 @@ TEST(LevelFromNameTest, TrimsWhitespaceAroundTheName)
 TEST(LevelFromNameTest, UnrecognizedNameFallsBackToGivenDefault)
 {
     EXPECT_EQ(level_from_name(QStringLiteral("nonsense"), Level::Critical),
-             Level::Critical);
+              Level::Critical);
     // Own default (Level::Info) when the caller doesn't specify one.
     EXPECT_EQ(level_from_name(QStringLiteral("nonsense")), Level::Info);
 }
@@ -49,7 +49,7 @@ TEST(ToQuillLevelTest, MapsEveryFamiliarLevelToItsQuillCounterpart)
     EXPECT_EQ(detail::to_quill_level(Level::Warning), quill::LogLevel::Warning);
     EXPECT_EQ(detail::to_quill_level(Level::Error), quill::LogLevel::Error);
     EXPECT_EQ(detail::to_quill_level(Level::Critical),
-             quill::LogLevel::Critical);
+              quill::LogLevel::Critical);
 }
 
 TEST(LogFacadeTest, LogFilePathIsResolvedAfterInit)
@@ -91,24 +91,26 @@ TEST(LogFacadeTest, FlogInfoIsCapturedByTheRingSinkAfterFlush)
     channel_logger(Ch::UI)->flush_log();
 
     const QList<RingSink::Entry> lines = ring_sink()->entries();
-    const bool found = std::any_of(
-        lines.begin(), lines.end(), [](const RingSink::Entry& e) {
-            return e.line.contains(QStringLiteral("RSMARKER8842"));
-        });
+    const bool found
+        = std::any_of(lines.begin(), lines.end(), [](const RingSink::Entry& e) {
+              return e.line.contains(QStringLiteral("RSMARKER8842"));
+          });
     EXPECT_TRUE(found);
 }
 
 TEST(LogFacadeTest, FlogTimerLogsElapsedTimeAtScopeExit)
 {
-    { FLOG_TIMER(Ch::UI, "flog_timer marker TMMARKER7331"); }
+    {
+        FLOG_TIMER(Ch::UI, "flog_timer marker TMMARKER7331");
+    }
     channel_logger(Ch::UI)->flush_log();
 
     const QList<RingSink::Entry> lines = ring_sink()->entries();
-    const bool found = std::any_of(
-        lines.begin(), lines.end(), [](const RingSink::Entry& e) {
-            return e.line.contains(QStringLiteral("TMMARKER7331"))
-                   && e.line.contains(QStringLiteral("took"));
-        });
+    const bool found
+        = std::any_of(lines.begin(), lines.end(), [](const RingSink::Entry& e) {
+              return e.line.contains(QStringLiteral("TMMARKER7331"))
+                     && e.line.contains(QStringLiteral("took"));
+          });
     EXPECT_TRUE(found);
 }
 

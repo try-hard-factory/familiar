@@ -10,6 +10,8 @@ using namespace familiar::log;
 WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     : MainControlsMixin<WelcomeOverlay, QWidget>(parent)
     , mainWindow_(mainWindow)
+    , filesWidget_(new QWidget(this))
+    , layout_(new QHBoxLayout(this))
 {
     setAutoFillBackground(true);
     set_control_target(parent);
@@ -17,7 +19,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     setContextMenuPolicy(Qt::DefaultContextMenu);
 
     // Recent files widget (hidden until there are recent files)
-    filesWidget_ = new QWidget(this);
+
     auto* filesLayout = new QVBoxLayout(filesWidget_);
     filesLayout->addStretch(50);
     filesLayout->addWidget(new QLabel(QStringLiteral("<h3>Recent Files</h3>")));
@@ -30,7 +32,7 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     label_ = new QLabel(ktxt, this);
     label_->setAlignment(Qt::AlignVCenter | Qt::AlignCenter);
     label_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
-    layout_ = new QHBoxLayout(this);
+
     layout_->addStretch(50);
     layout_->addWidget(label_);
     layout_->addStretch(50);
@@ -112,7 +114,8 @@ void WelcomeOverlay::dropEvent(QDropEvent* event)
 {
     FLOG_DEBUG(Ch::UI, "WelcomeOverlay::Handling file drop:");
     if (auto* canvas = qobject_cast<CanvasView*>(parent())) {
-        const QPoint pos(qRound(event->position().x()), qRound(event->position().y()));
+        const QPoint pos(qRound(event->position().x()),
+                         qRound(event->position().y()));
         canvas->handle_drop(event->mimeData(), pos);
     }
     event->acceptProposedAction();

@@ -170,6 +170,6 @@ private:
 // picked color, or an invalid QColor if cancelled - same semantics as
 // the QColorDialog-based versions it replaces.
 QColor show_color_picker_dialog(QWidget* parent,
-                             const QColor& initial,
-                             const QString& title,
-                             bool withAlpha = true);
+                                const QColor& initial,
+                                const QString& title,
+                                bool withAlpha = true);

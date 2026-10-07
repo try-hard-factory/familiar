@@ -31,18 +31,18 @@ void FileActions::open_file()
     // raw .svg/.psd file just fails to open as one, so those filters
     // were pure misdirection.
     const QStringList files = show_open_files_dialog(&mainwindow_,
-                                                  QObject::tr("Open"),
-                                                  QDir::homePath(),
-                                                  QStringLiteral(
-                                                      "Familiar (*.fml)"));
+                                                     QObject::tr("Open"),
+                                                     QDir::homePath(),
+                                                     QStringLiteral(
+                                                         "Familiar (*.fml)"));
     for (const QString& file : files) {
         process_open_file(file);
     }
 }
 
 void FileActions::load_fml_into_current_tab(const QString& path,
-                                        bool markModifiedAfterLoad,
-                                        const QUuid& recoveryIdToClear)
+                                            bool markModifiedAfterLoad,
+                                            const QUuid& recoveryIdToClear)
 {
     CanvasView* canvasView = mainwindow_.tab_pane().current_widget();
     CanvasScene* scene = canvasView->scene();
@@ -87,22 +87,22 @@ void FileActions::load_fml_into_current_tab(const QString& path,
 
             if (!error.isEmpty()) {
                 show_message_box(QMessageBox::Critical,
-                               &mainwindow_,
-                               QObject::tr("Could not open file"),
-                               error);
+                                 &mainwindow_,
+                                 QObject::tr("Could not open file"),
+                                 error);
             }
             if (!itemErrors.isEmpty()) {
                 QStringList lines;
                 for (const QString& e : itemErrors) {
                     lines.append(QStringLiteral("<li>%1</li>").arg(e));
                 }
-                show_message_box(QMessageBox::Warning,
-                               &mainwindow_,
-                               QObject::tr("Problem loading project"),
-                               QObject::tr(
-                                   "%1 item(s) could not be loaded.<ul>%2</ul>")
-                                   .arg(itemErrors.size())
-                                   .arg(lines.join(QString())));
+                show_message_box(
+                    QMessageBox::Warning,
+                    &mainwindow_,
+                    QObject::tr("Problem loading project"),
+                    QObject::tr("%1 item(s) could not be loaded.<ul>%2</ul>")
+                        .arg(itemErrors.size())
+                        .arg(lines.join(QString())));
             }
         });
 
@@ -113,8 +113,8 @@ void FileActions::load_fml_into_current_tab(const QString& path,
 }
 
 void FileActions::restore_from_recovery(const QString& recoveryFmlPath,
-                                      const QString& originalPath,
-                                      const QUuid& recoveryId)
+                                        const QString& originalPath,
+                                        const QUuid& recoveryId)
 {
     if (originalPath.isEmpty()) {
         mainwindow_.tab_pane().add_new_untitled_tab();
@@ -122,8 +122,8 @@ void FileActions::restore_from_recovery(const QString& recoveryFmlPath,
         mainwindow_.tab_pane().add_new_tab(originalPath);
     }
     load_fml_into_current_tab(recoveryFmlPath,
-                          /*markModifiedAfterLoad=*/true,
-                          recoveryId);
+                              /*markModifiedAfterLoad=*/true,
+                              recoveryId);
 }
 
 CanvasView* FileActions::find_blank_tab()
@@ -190,14 +190,14 @@ int FileActions::save_file(CanvasView* canvasView, const QString& path)
     // save has already completed - threading it would need those flows
     // reworked to wait on ThreadedIO::finished first.
     const FmlResult result = FmlArchive::save(canvasView->scene(),
-                                        canvasView->canvas_rect(),
-                                        path);
+                                              canvasView->canvas_rect(),
+                                              path);
 
     if (!result.error.isEmpty()) {
         show_message_box(QMessageBox::Critical,
-                       &mainwindow_,
-                       QObject::tr("Could not save file"),
-                       result.error);
+                         &mainwindow_,
+                         QObject::tr("Could not save file"),
+                         result.error);
         return QDialog::Rejected;
     }
 
@@ -207,11 +207,12 @@ int FileActions::save_file(CanvasView* canvasView, const QString& path)
             lines.append(QStringLiteral("<li>%1</li>").arg(e));
         }
         show_message_box(QMessageBox::Warning,
-                       &mainwindow_,
-                       QObject::tr("Problem saving project"),
-                       QObject::tr("%1 item(s) could not be saved.<ul>%2</ul>")
-                           .arg(result.itemErrors.size())
-                           .arg(lines.join(QString())));
+                         &mainwindow_,
+                         QObject::tr("Problem saving project"),
+                         QObject::tr(
+                             "%1 item(s) could not be saved.<ul>%2</ul>")
+                             .arg(result.itemErrors.size())
+                             .arg(lines.join(QString())));
     }
 
     // Marks the undo stack's current position as the new "saved"
@@ -251,10 +252,10 @@ int FileActions::save_file_as()
     // entries removed - saveFile()/FmlArchive only ever write the .fml
     // zip+manifest format, there's no actual SVG/PSD export path here.
     const QString selected = show_save_file_dialog(&mainwindow_,
-                                                QObject::tr("Save As"),
-                                                QDir::homePath(),
-                                                QStringLiteral(
-                                                    "Familiar (*.fml)"));
+                                                   QObject::tr("Save As"),
+                                                   QDir::homePath(),
+                                                   QStringLiteral(
+                                                       "Familiar (*.fml)"));
 
     if (!selected.isEmpty()) {
         if (!mainwindow_.tab_pane().current_widget()->is_untitled()
@@ -266,7 +267,8 @@ int FileActions::save_file_as()
         }
 
         mainwindow_.tab_pane().set_current_tab_path(selected);
-        mainwindow_.tab_pane().set_current_tab_title(QFileInfo(selected).fileName());
+        mainwindow_.tab_pane().set_current_tab_title(
+            QFileInfo(selected).fileName());
         mainwindow_.tab_pane().set_current_tab_project_name(
             QFileInfo(selected).fileName());
 

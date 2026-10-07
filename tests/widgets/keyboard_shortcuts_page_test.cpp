@@ -16,7 +16,8 @@
 
 TEST(KeyboardShortcutsPageTest, SearchFilterMatchesAgainstControlsSection)
 {
-    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Controls"));
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
     KeyboardShortcutsPage page;
 
     EXPECT_TRUE(page.apply_search_filter(QStringLiteral("zoom")));

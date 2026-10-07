@@ -103,8 +103,8 @@ private:
     void apply_color_style();
     void rebuild();
     void add_item_node(QTreeWidgetItem* parent,
-                      QGraphicsItem* item,
-                      QSet<QUuid>& added);
+                       QGraphicsItem* item,
+                       QSet<QUuid>& added);
     static QTreeWidgetItem* make_node(QGraphicsItem* item);
     // Live-updates node's icon on every GIF frame instead of waiting for
     // the next full rebuild_() - see its own comment for why this is

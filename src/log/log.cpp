@@ -19,9 +19,9 @@
 // alongside NOMINMAX and harmless here.
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
-#include <io.h>
-#include <Windows.h>
 #include <DbgHelp.h>
+#include <Windows.h>
+#include <io.h>
 #else
 #include <unistd.h>
 #endif
@@ -136,21 +136,20 @@ QString captureStackTrace(CONTEXT* context)
             break;
         }
 
-        QString line = QStringLiteral("#%1  0x%2")
-                          .arg(i)
-                          .arg(frame.AddrPC.Offset, 0, 16);
+        QString line
+            = QStringLiteral("#%1  0x%2").arg(i).arg(frame.AddrPC.Offset, 0, 16);
 
-        alignas(SYMBOL_INFO) char symbolBuffer[sizeof(SYMBOL_INFO)
-                                               + MAX_SYM_NAME];
+        alignas(
+            SYMBOL_INFO) char symbolBuffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME];
         auto* symbol = reinterpret_cast<SYMBOL_INFO*>(symbolBuffer);
         symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
         symbol->MaxNameLen = MAX_SYM_NAME;
         DWORD64 symDisplacement = 0;
         if (SymFromAddr(process, frame.AddrPC.Offset, &symDisplacement, symbol)) {
             line += QStringLiteral(" %1+0x%2")
-                       .arg(QString::fromLocal8Bit(symbol->Name,
+                        .arg(QString::fromLocal8Bit(symbol->Name,
                                                     int(symbol->NameLen)))
-                       .arg(symDisplacement, 0, 16);
+                        .arg(symDisplacement, 0, 16);
 
             IMAGEHLP_LINE64 srcLine = {};
             srcLine.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
@@ -160,8 +159,8 @@ QString captureStackTrace(CONTEXT* context)
                                      &lineDisplacement,
                                      &srcLine)) {
                 line += QStringLiteral(" (%1:%2)")
-                           .arg(QString::fromLocal8Bit(srcLine.FileName))
-                           .arg(srcLine.LineNumber);
+                            .arg(QString::fromLocal8Bit(srcLine.FileName))
+                            .arg(srcLine.LineNumber);
             }
         } else {
             line += QStringLiteral(" <no symbol - PDB not found/loaded?>");
@@ -182,20 +181,18 @@ LONG WINAPI writeMiniDumpAndChain(EXCEPTION_POINTERS* exceptionPointers)
     }
 
     const QString dumpDir = QFileInfo(gFilePath).absolutePath();
-    const QString dumpPath
-        = dumpDir + QStringLiteral("/crash_")
-          + QDateTime::currentDateTime().toString(
-              QStringLiteral("yyyyMMdd_HHmmss"))
-          + QStringLiteral(".dmp");
+    const QString dumpPath = dumpDir + QStringLiteral("/crash_")
+                             + QDateTime::currentDateTime().toString(
+                                 QStringLiteral("yyyyMMdd_HHmmss"))
+                             + QStringLiteral(".dmp");
 
-    const HANDLE file = CreateFileW(
-        reinterpret_cast<LPCWSTR>(dumpPath.utf16()),
-        GENERIC_WRITE,
-        0,
-        nullptr,
-        CREATE_ALWAYS,
-        FILE_ATTRIBUTE_NORMAL,
-        nullptr);
+    const HANDLE file = CreateFileW(reinterpret_cast<LPCWSTR>(dumpPath.utf16()),
+                                    GENERIC_WRITE,
+                                    0,
+                                    nullptr,
+                                    CREATE_ALWAYS,
+                                    FILE_ATTRIBUTE_NORMAL,
+                                    nullptr);
     if (file != INVALID_HANDLE_VALUE) {
         MINIDUMP_EXCEPTION_INFORMATION mdei;
         mdei.ThreadId = GetCurrentThreadId();
@@ -446,8 +443,8 @@ void init(const Options& options)
 
     for (size_t i = 0; i < kchannelNames.size(); ++i) {
         gLoggers[i] = quill::Frontend::create_or_get_logger(kchannelNames[i],
-                                                             sinks,
-                                                             pattern);
+                                                            sinks,
+                                                            pattern);
         gLoggers[i]->set_log_level(loggerLevel);
     }
 

@@ -8,9 +8,9 @@
 QRectF get_rect_from_points(const QPointF& point1, const QPointF& point2)
 {
     const QPointF topLeft(std::min(point1.x(), point2.x()),
-                    std::min(point1.y(), point2.y()));
+                          std::min(point1.y(), point2.y()));
     const QPointF bottomRight(std::max(point1.x(), point2.x()),
-                        std::max(point1.y(), point2.y()));
+                              std::max(point1.y(), point2.y()));
     return {topLeft, bottomRight};
 }
 

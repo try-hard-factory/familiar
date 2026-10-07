@@ -87,8 +87,8 @@ TEST(BoundedIntValueHandlerTest, ExpectedDescribesRange)
 TEST(ColorListValueHandlerTest, ProcessConvertsIndexedHexStringsToColorMap)
 {
     ColorList handler({});
-    const QVariantList raw
-        = {QStringLiteral("#ff0000"), QStringLiteral("#00ff00")};
+    const QVariantList raw = {QStringLiteral("#ff0000"),
+                              QStringLiteral("#00ff00")};
 
     const auto map = handler.process(raw).value<QMap<int, QColor>>();
     EXPECT_EQ(map.value(0), QColor(QStringLiteral("#ff0000")));
@@ -96,7 +96,7 @@ TEST(ColorListValueHandlerTest, ProcessConvertsIndexedHexStringsToColorMap)
 }
 
 TEST(ColorListValueHandlerTest,
-    RepresentationConvertsColorMapToIndexedHexArgbStrings)
+     RepresentationConvertsColorMapToIndexedHexArgbStrings)
 {
     QMap<int, QColor> map;
     map[0] = QColor(255, 0, 0);
@@ -107,8 +107,7 @@ TEST(ColorListValueHandlerTest,
         = handler.representation(QVariant::fromValue(map)).toList();
     ASSERT_EQ(list.size(), 2);
     EXPECT_EQ(list[0].toString(), QColor(255, 0, 0).name(QColor::HexArgb));
-    EXPECT_EQ(list[1].toString(),
-             QColor(0, 255, 0, 128).name(QColor::HexArgb));
+    EXPECT_EQ(list[1].toString(), QColor(0, 255, 0, 128).name(QColor::HexArgb));
 }
 
 TEST(ColorListValueHandlerTest, FallbackReturnsConstructorDefault)

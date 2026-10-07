@@ -100,7 +100,8 @@ private:
     {
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor background = colorPreset[EPresetsColorIdx::kBackgroundColor];
+        const QColor background
+            = colorPreset[EPresetsColorIdx::kBackgroundColor];
         const QColor text = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor border = colorPreset[EPresetsColorIdx::kBorderColor];
         const QColor selection = colorPreset[EPresetsColorIdx::kSelectionColor];
@@ -166,7 +167,8 @@ private:
         qaction->setChecked(defaultChecked);
 
         if (!settingsKey.isEmpty()) {
-            const bool val = SettingsHandler::action_state(settingsKey, defaultChecked)
+            const bool val = SettingsHandler::action_state(settingsKey,
+                                                           defaultChecked)
                                  .toBool();
             qaction->setChecked(val);
             QObject::connect(qaction, &QAction::toggled, [settingsKey](bool v) {
@@ -303,21 +305,22 @@ private:
             const int key = (i == 9) ? 0 : i + 1;
 
             const Action a = Action::make(aid,
-                                    QStringLiteral("File %1").arg(i + 1),
-                                    {},
-                                    {QStringLiteral("Ctrl+%1").arg(key)},
-                                    false,
-                                    false,
-                                    {},
-                                    {},
-                                    true,
-                                    QStringLiteral("_build_recent_files"));
+                                          QStringLiteral("File %1").arg(i + 1),
+                                          {},
+                                          {QStringLiteral("Ctrl+%1").arg(key)},
+                                          false,
+                                          false,
+                                          {},
+                                          {},
+                                          true,
+                                          QStringLiteral(
+                                              "_build_recent_files"));
             get_actions().add(a);
 
             if (i < files.size()) {
                 const QString filename = files[i];
                 auto* qa = new QAction(QFileInfo(filename).fileName(),
-                                          static_cast<T*>(this));
+                                       static_cast<T*>(this));
 
                 const QStringList sc = get_actions()[aid].get_shortcuts();
                 QList<QKeySequence> seqs;

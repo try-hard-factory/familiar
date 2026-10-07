@@ -218,30 +218,34 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
          }},
         {"Items/arrange_gap",
          {
-             /*default*/ .defaultValue=0,
-             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
-             /*validate*/
-             .validate=[](const QVariant& v) {
-                 const int n = v.toInt();
-                 return n >= 0 && n <= 200;
+             /*default*/ .defaultValue = 0,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
              },
+             /*validate*/
+             .validate =
+                 [](const QVariant& v) {
+                     const int n = v.toInt();
+                     return n >= 0 && n <= 200;
+                 },
              /*postSaveCallback*/
-             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/arrange_default",
          {
-             /*default*/ .defaultValue=QString("optimal"),
-             /*cast*/ .cast={},
+             /*default*/ .defaultValue = QString("optimal"),
+             /*cast*/ .cast = {},
              /*validate*/
-             .validate=[](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("optimal")
-                        || s == QLatin1String("horizontal")
-                        || s == QLatin1String("vertical")
-                        || s == QLatin1String("square");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("optimal")
+                            || s == QLatin1String("horizontal")
+                            || s == QLatin1String("vertical")
+                            || s == QLatin1String("square");
+                 },
              /*postSaveCallback*/
-             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/image_allocation_limit",
          {
@@ -261,41 +265,50 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // photo (20+ MP commonly decodes past 32MB at 32 bits/pixel,
              // e.g. a real 6240x3512 photo ≈ 83.6MB - a genuine bug
              // report this raised).
-             /*default*/ .defaultValue=256,
-             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue = 256,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
+             },
              /*validate*/
-             .validate=[](const QVariant& v) {
-                 const int n = v.toInt();
-                 return n >= 0 && n <= 1024;
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const int n = v.toInt();
+                     return n >= 0 && n <= 1024;
+                 },
              /*postSaveCallback*/
-             .postSaveCallback=[](const QVariant& v) {
-                 QImageReader::setAllocationLimit(v.toInt());
-             },
+             .postSaveCallback =
+                 [](const QVariant& v) {
+                     QImageReader::setAllocationLimit(v.toInt());
+                 },
          }},
         {"Items/undo_history_size",
          {
              // Matches the hardcoded undoStack_->setUndoLimit(100) this
              // is meant to replace (canvasview.cpp) - not wired up to it
              // yet, UI only for now.
-             /*default*/ .defaultValue=100,
-             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
-             /*validate*/ .validate=[](const QVariant& v) { return v.toInt() >= 0; },
+             /*default*/ .defaultValue = 100,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
+             },
+             /*validate*/ .validate =
+                 [](const QVariant& v) { return v.toInt() >= 0; },
              /*postSaveCallback*/
-             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/auto_optimize_imported_images",
          {
-             /*default*/ .defaultValue=QString("warn"),
-             /*cast*/ .cast={},
+             /*default*/ .defaultValue = QString("warn"),
+             /*cast*/ .cast = {},
              /*validate*/
-             .validate=[](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("off") || s == QLatin1String("warn")
-                        || s == QLatin1String("optimize_large");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("off")
+                            || s == QLatin1String("warn")
+                            || s == QLatin1String("optimize_large");
+                 },
              /*postSaveCallback*/
-             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/raw_import_choice",
          {
@@ -306,17 +319,18 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // then on - set by that dialog's own "Remember choice for
              // future files" checkbox (widgets/raw_import_dialog.cpp),
              // not exposed as its own row on the Performance page.
-             /*default*/ .defaultValue=QString("ask"),
-             /*cast*/ .cast={},
+             /*default*/ .defaultValue = QString("ask"),
+             /*cast*/ .cast = {},
              /*validate*/
-             .validate=[](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("ask")
-                        || s == QLatin1String("always_optimize")
-                        || s == QLatin1String("always_keep_original");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("ask")
+                            || s == QLatin1String("always_optimize")
+                            || s == QLatin1String("always_keep_original");
+                 },
              /*postSaveCallback*/
-             .postSaveCallback=[]([[maybe_unused]] const QVariant& v) {},
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Save/autosave_enabled",
          {
@@ -333,17 +347,21 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
          }},
         {"Save/autosave_interval_seconds",
          {
-             /*default*/ .defaultValue=5,
-             /*cast*/ .cast=[](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue = 5,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
+             },
              /*validate*/
-             .validate=[](const QVariant& v) {
-                 const int n = v.toInt();
-                 return n >= 1 && n <= 3600;
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const int n = v.toInt();
+                     return n >= 1 && n <= 3600;
+                 },
              /*postSaveCallback*/
-             .postSaveCallback=[](const QVariant&) {
-                 emit SettingsEvents::instance().autosave_settings_changed();
-             },
+             .postSaveCallback =
+                 [](const QVariant&) {
+                     emit SettingsEvents::instance().autosave_settings_changed();
+                 },
          }},
     };
     return map;
@@ -357,7 +375,7 @@ QVariant FamSettings::value_or_default(const QString& key)
 
     const QJsonValue raw
         = SettingsHandler::get_instance()->json_value(key_group(key),
-                                                    key_subkey(key));
+                                                      key_subkey(key));
     if (raw.isUndefined()) {
         return conf.defaultValue;
     }
@@ -421,27 +439,27 @@ void FamSettings::on_startup()
 void FamSettings::set_value(const QString& key, const QVariant& value)
 {
     SettingsHandler::get_instance()->set_json_value(key_group(key),
-                                                 key_subkey(key),
-                                                 QJsonValue::fromVariant(value));
+                                                    key_subkey(key),
+                                                    QJsonValue::fromVariant(
+                                                        value));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
         f[key].postSaveCallback(value);
     }
 }
 
-QVariant FamSettings::value(const QString& key,
-                            const QVariant& defaultValue)
+QVariant FamSettings::value(const QString& key, const QVariant& defaultValue)
 {
     const QJsonValue raw
         = SettingsHandler::get_instance()->json_value(key_group(key),
-                                                    key_subkey(key));
+                                                      key_subkey(key));
     return raw.isUndefined() ? defaultValue : raw.toVariant();
 }
 
 void FamSettings::remove(const QString& key)
 {
     SettingsHandler::get_instance()->remove_json_value(key_group(key),
-                                                    key_subkey(key));
+                                                       key_subkey(key));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
         f[key].postSaveCallback(value_or_default(key));

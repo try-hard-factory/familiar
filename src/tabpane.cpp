@@ -11,12 +11,14 @@
 TabPane::TabPane(QWidget* parent, MainWindow& mw)
     : QWidget(parent)
     , mainwindow_(mw)
+    , layout_(new QVBoxLayout)
+    , tabs_(new QTabWidget(this))
 {
-    layout_ = new QVBoxLayout; // try some other layout
+    // try some other layout
     layout_->setContentsMargins(0, 0, 0, 0);
     this->setLayout(layout_);
 
-    tabs_ = new QTabWidget(this);
+
     tabs_->setTabsClosable(true);
     tabs_->setWindowFlags(Qt::FramelessWindowHint);
     tabs_->setAttribute(Qt::WA_TranslucentBackground);

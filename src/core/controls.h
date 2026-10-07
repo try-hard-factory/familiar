@@ -54,7 +54,10 @@ public:
     const QString& mouse_button() const { return mouseButton_; }
     void set_mouse_button(const QString& value) { mouseButton_ = value; }
     const QStringList& mouse_modifiers() const { return mouseModifiers_; }
-    void set_mouse_modifiers(const QStringList& value) { mouseModifiers_ = value; }
+    void set_mouse_modifiers(const QStringList& value)
+    {
+        mouseModifiers_ = value;
+    }
     bool is_inverted() const { return inverted_; }
     void set_inverted(bool value) { inverted_ = value; }
     // Stored for forward compat; no dispatch effect yet.
@@ -116,7 +119,10 @@ public:
     virtual void remove_controls() const = 0;
 
     bool is_invertible() const { return invertible_; }
-    bool default_inverted() const { return default_bindings_ref().value(0).is_inverted(); }
+    bool default_inverted() const
+    {
+        return default_bindings_ref().value(0).is_inverted();
+    }
     QStringList default_modifiers() const
     {
         return default_bindings_ref().value(0).mouse_modifiers();
@@ -244,8 +250,8 @@ public:
     // ── Shortcut API (used by Action) ─────────────────────────────────────────
     // Saves even if equal to default (saveUnknownShortcuts flag controls this).
     static void set_shortcuts(const QString& group,
-                      const QString& key,
-                      const QStringList& values);
+                              const QString& key,
+                              const QStringList& values);
     QStringList get_shortcuts(const QString& group,
                               const QString& key,
                               const QStringList& defaultValues = {});
@@ -253,21 +259,21 @@ public:
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────
     // Removes key when values == defaultValues (stores only non-default data).
     static void set_list(const QString& group,
-                 const QString& key,
-                 const QStringList& values,
-                 const QStringList& defaultValues = {});
+                         const QString& key,
+                         const QStringList& values,
+                         const QStringList& defaultValues = {});
     static QStringList get_list(const QString& group,
-                        const QString& key,
-                        const QStringList& defaultValues = {});
+                                const QString& key,
+                                const QStringList& defaultValues = {});
 
     // ── Generic scalar API (used by mouse/wheel configs) ──────────────────────
     static void set_scalar(const QString& group,
-                   const QString& key,
-                   const QVariant& value,
-                   const QVariant& defaultValue = {});
+                           const QString& key,
+                           const QVariant& value,
+                           const QVariant& defaultValue = {});
     static QVariant get_scalar(const QString& group,
-                       const QString& key,
-                       const QVariant& defaultValue = {});
+                               const QString& key,
+                               const QVariant& defaultValue = {});
 
     // Removes all stored controls and emits SettingsEvents::restoreKeyboardDefaults.
     static void restore_defaults();
@@ -281,9 +287,9 @@ public:
     // `candidate`, or -1 if none. Used by both the old single-binding
     // Mouse/Mouse Wheel dialogs and the new alias dialogs.
     static int find_conflicting_mouse_group(const QString& excludeId,
-                                  const Binding& candidate);
+                                            const Binding& candidate);
     static int find_conflicting_wheel_group(const QString& excludeId,
-                                  const Binding& candidate);
+                                            const Binding& candidate);
 
     bool save_unknown_shortcuts() const { return saveUnknownShortcuts_; }
     void set_save_unknown_shortcuts(bool value)

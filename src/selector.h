@@ -1045,8 +1045,7 @@ protected:
         const QPointF pos = event->scenePos();
         if ((pos - eventStart_).manhattanLength() > 5) {
             // Reset previous transform when movement exceeds threshold
-            auto* view = dynamic_cast<CanvasView*>(
-                this->scene()->views().at(0));
+            auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
             view->reset_previous_transform(nullptr);
         }
 
