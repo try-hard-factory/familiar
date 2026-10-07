@@ -705,7 +705,7 @@ QString show_open_file_dialog(QWidget* parent,
                           startDir,
                           nameFilter);
     if (dlg.exec() != QDialog::Accepted || dlg.selected_files().isEmpty()) {
-        return QString();
+        return {};
     }
     return dlg.selected_files().first();
 }
@@ -739,7 +739,7 @@ QString show_save_file_dialog(QWidget* parent,
                           nameFilter,
                           defaultFileName);
     if (dlg.exec() != QDialog::Accepted || dlg.selected_files().isEmpty()) {
-        return QString();
+        return {};
     }
     return dlg.selected_files().first();
 }
@@ -753,7 +753,7 @@ QString show_select_folder_dialog(QWidget* parent,
                           title,
                           startDir);
     if (dlg.exec() != QDialog::Accepted || dlg.selected_files().isEmpty()) {
-        return QString();
+        return {};
     }
     return dlg.selected_files().first();
 }

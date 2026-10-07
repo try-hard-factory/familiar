@@ -63,7 +63,7 @@ QKeySequence Action::get_key_sequence(int index) const
 {
     const QStringList sc = get_shortcuts();
     if (index < sc.size()) {
-        return QKeySequence(sc[index]);
+        return {sc[index]};
     }
     return {};
 }

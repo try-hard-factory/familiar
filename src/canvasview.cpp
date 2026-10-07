@@ -352,6 +352,10 @@ void CanvasView::cancel_active_modes()
 
 QPointF CanvasView::get_view_center() const
 {
+    // Explicit QPointF(...), not a braced list: qRound() yields int, and
+    // int -> qreal inside a braced-init-list is a narrowing conversion,
+    // which is an error there (a constructor call allows it).
+    // NOLINTNEXTLINE(modernize-return-braced-init-list)
     return QPointF(qRound(size().width() / 2.0), qRound(size().height() / 2.0));
 }
 

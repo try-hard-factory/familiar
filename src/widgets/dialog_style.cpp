@@ -13,11 +13,11 @@ QColor severity_color(QMessageBox::Icon icon, const QColor& accent)
 {
     switch (icon) {
     case QMessageBox::Warning:
-        return QColor(0xf5, 0xa6, 0x23);
+        return {0xf5, 0xa6, 0x23};
     case QMessageBox::Critical:
-        return QColor(0xe5, 0x48, 0x4d);
+        return {0xe5, 0x48, 0x4d};
     case QMessageBox::Information:
-        return QColor(0x4a, 0x90, 0xd9);
+        return {0x4a, 0x90, 0xd9};
     case QMessageBox::Question:
     default:
         return accent;

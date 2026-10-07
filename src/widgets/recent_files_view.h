@@ -49,7 +49,7 @@ public:
         // (EXCEPTION_ACCESS_VIOLATION) triggered by Ctrl+N (insert_text)
         // while the welcome overlay with zero recent files was showing.
         if (files_.isEmpty()) {
-            return QSize(0, 0);
+            return {0, 0};
         }
 
         const int height
@@ -77,7 +77,7 @@ public:
                         .column());
             });
         const int width = 2 + *std::ranges::max_element(columnWidths);
-        return QSize(width, height);
+        return {width, height};
     }
 
 protected:

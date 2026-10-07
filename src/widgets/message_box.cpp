@@ -30,7 +30,7 @@ QString button_label(QMessageBox::StandardButton id)
     case QMessageBox::Discard:
         return CustomMessageBox::tr("Discard");
     default:
-        return QString();
+        return {};
     }
 }
 

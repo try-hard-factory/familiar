@@ -109,7 +109,7 @@ public:
     // TextItem/PixmapItem actually store anything; a type that can never
     // be attached (GroupItem, ErrorItem, MultiSelectItem) just keeps
     // returning a null uid.
-    virtual QUuid attached_to_uid() const { return QUuid(); }
+    virtual QUuid attached_to_uid() const { return {}; }
     virtual void set_attached_to(const QUuid& uid) { Q_UNUSED(uid); }
 };
 
@@ -414,7 +414,7 @@ public:
         const qreal size = fixed_length_for_viewport(selectFreeCenter_);
         const qreal x = this->center().x() - size / 2;
         const qreal y = this->center().y() - size / 2;
-        return QRectF(x, y, size, size);
+        return {x, y, size, size};
     }
 
     void draw_debug_shape(
@@ -1455,7 +1455,7 @@ public:
         Q_ASSERT_X(false,
                    "RubberbandItem::corners_scene_coords",
                    "Should not be called");
-        return QVector<QPointF>();
+        return {};
     }
 
 private:

@@ -36,7 +36,7 @@ QBrush checker_brush()
     p.fillRect(0, 0, 6, 6, QColor(150, 150, 150));
     p.fillRect(6, 6, 6, 6, QColor(150, 150, 150));
     p.end();
-    return QBrush(pm);
+    return {pm};
 }
 
 } // namespace
@@ -289,13 +289,13 @@ QRectF SwatchRow::cell_rect(int index) const
 {
     const int count = static_cast<int>(colors_.size());
     if (count == 0) {
-        return QRectF();
+        return {};
     }
     const qreal cellW = width() / qreal(count);
     const qreal size = qMin(cellW - kswatchSpacing, qreal(height()));
     const qreal x = (index * cellW) + ((cellW - size) / 2.0);
     const qreal y = (height() - size) / 2.0;
-    return QRectF(x, y, size, size);
+    return {x, y, size, size};
 }
 
 int SwatchRow::swatch_at(const QPoint& pos) const
@@ -620,7 +620,7 @@ QColor show_color_picker_dialog(QWidget* parent,
 {
     ColorPickerDialog dlg(parent, initial, title, withAlpha);
     if (dlg.exec() != QDialog::Accepted) {
-        return QColor();
+        return {};
     }
     return dlg.selected_color();
 }

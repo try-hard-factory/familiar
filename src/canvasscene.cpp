@@ -34,7 +34,7 @@ QString item_filename(QGraphicsItem* item)
     if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
         return pixmapItem->filename();
     }
-    return QString();
+    return {};
 }
 
 QList<QGraphicsItem*> sort_by_filename(const QList<QGraphicsItem*>& items)
@@ -981,7 +981,7 @@ public:
         for (const auto& size : sizes) {
             Position pos;
             if (!pack_rect(size.width, size.height, freeRects, pos)) {
-                return QList<Position>(); // Packing impossible
+                return {}; // Packing impossible
             }
             positions.append(pos);
         }
@@ -1280,7 +1280,7 @@ QColor CanvasScene::sample_color_at(const QPointF& position)
             return pixmapItem->sample_color_at(position);
         }
     }
-    return QColor();
+    return {};
 }
 
 void CanvasScene::select_all_items()
@@ -1740,7 +1740,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
     }
 
     if (base.isEmpty()) {
-        return QRectF(0, 0, 0, 0);
+        return {0, 0, 0, 0};
     }
 
     QList<qreal> x;
@@ -1763,7 +1763,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
     const qreal minY = *std::min_element(y.constBegin(), y.constEnd());
     const qreal maxY = *std::max_element(y.constBegin(), y.constEnd());
 
-    return QRectF(QPointF(minX, minY), QPointF(maxX, maxY));
+    return {QPointF(minX, minY), QPointF(maxX, maxY)};
 }
 
 QPointF CanvasScene::get_selection_center()

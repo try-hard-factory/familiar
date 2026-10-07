@@ -38,7 +38,7 @@ QUrl unwrap_known_redirect(const QUrl& url)
         const QString imgUrl = query.queryItemValue(QStringLiteral("imgurl"),
                                                     QUrl::FullyDecoded);
         if (!imgUrl.isEmpty()) {
-            return QUrl(imgUrl);
+            return {imgUrl};
         }
     }
     return url;

@@ -44,7 +44,7 @@ class GamutWidget : public QWidget
 public:
     GamutWidget(QWidget* parent, PixmapItem* item);
 
-    QSize minimumSizeHint() const override { return QSize(200, 200); }
+    QSize minimumSizeHint() const override { return {200, 200}; }
     void update_values();
     int threshold() const;
 

@@ -60,7 +60,7 @@ QIcon make_group_icon(const QColor& glyphColor)
         }
     }
     p.end();
-    return QIcon(pm);
+    return {pm};
 }
 
 QIcon make_text_icon(const QColor& glyphColor)
@@ -78,7 +78,7 @@ QIcon make_text_icon(const QColor& glyphColor)
                Qt::AlignCenter,
                QStringLiteral("T"));
     p.end();
-    return QIcon(pm);
+    return {pm};
 }
 
 QIcon make_picture_icon(const QPixmap& source, const QColor& glyphColor)
@@ -116,7 +116,7 @@ QIcon make_picture_icon(const QPixmap& source, const QColor& glyphColor)
     p.setBrush(Qt::NoBrush);
     p.drawPath(clip);
     p.end();
-    return QIcon(pm);
+    return {pm};
 }
 
 // "Export" on a group (context menu, showContextMenu_()) - every picture

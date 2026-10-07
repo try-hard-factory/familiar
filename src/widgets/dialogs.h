@@ -963,7 +963,7 @@ public:
 
     QSize value() const
     {
-        return QSize(widthInput_->value(), heightInput_->value());
+        return {widthInput_->value(), heightInput_->value()};
     }
 
 private slots:

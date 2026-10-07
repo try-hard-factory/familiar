@@ -280,7 +280,7 @@ public:
         if (color.alpha()) {
             return color;
         }
-        return QColor();
+        return {};
     }
 
     QRectF bounding_rect_unselected() const override
@@ -488,10 +488,10 @@ public:
             return {};
         }
         const QPointF topLeft = crop_temp->topLeft();
-        return QRectF(topLeft.x(),
+        return {topLeft.x(),
                       topLeft.y(),
                       crop_handle_size(),
-                      crop_handle_size());
+                      crop_handle_size()};
     }
 
     QRectF crop_handle_bottomleft() const
@@ -500,10 +500,10 @@ public:
             return {};
         }
         const QPointF bottomLeft = crop_temp->bottomLeft();
-        return QRectF(bottomLeft.x(),
+        return {bottomLeft.x(),
                       bottomLeft.y() - crop_handle_size(),
                       crop_handle_size(),
-                      crop_handle_size());
+                      crop_handle_size()};
     }
 
     QRectF crop_handle_bottomright() const
@@ -512,10 +512,10 @@ public:
             return {};
         }
         const QPointF bottomRight = crop_temp->bottomRight();
-        return QRectF(bottomRight.x() - crop_handle_size(),
+        return {bottomRight.x() - crop_handle_size(),
                       bottomRight.y() - crop_handle_size(),
                       crop_handle_size(),
-                      crop_handle_size());
+                      crop_handle_size()};
     }
 
     QRectF crop_handle_topright() const
@@ -524,10 +524,10 @@ public:
             return {};
         }
         const QPointF topRight = crop_temp->topRight();
-        return QRectF(topRight.x() - crop_handle_size(),
+        return {topRight.x() - crop_handle_size(),
                       topRight.y(),
                       crop_handle_size(),
-                      crop_handle_size());
+                      crop_handle_size()};
     }
 
     static QList<CropHandleFn> crop_handles()
@@ -544,10 +544,10 @@ public:
             return {};
         }
         const QPointF topLeft = crop_temp->topLeft();
-        return QRectF(topLeft.x() + crop_handle_size(),
+        return {topLeft.x() + crop_handle_size(),
                       topLeft.y(),
                       crop_temp->width() - (2 * crop_handle_size()),
-                      crop_handle_size());
+                      crop_handle_size()};
     }
 
     QRectF crop_edge_left() const
@@ -556,10 +556,10 @@ public:
             return {};
         }
         const QPointF topLeft = crop_temp->topLeft();
-        return QRectF(topLeft.x(),
+        return {topLeft.x(),
                       topLeft.y() + crop_handle_size(),
                       crop_handle_size(),
-                      crop_temp->height() - (2 * crop_handle_size()));
+                      crop_temp->height() - (2 * crop_handle_size())};
     }
 
     QRectF crop_edge_bottom() const
@@ -568,10 +568,10 @@ public:
             return {};
         }
         const QPointF bottomLeft = crop_temp->bottomLeft();
-        return QRectF(bottomLeft.x() + crop_handle_size(),
+        return {bottomLeft.x() + crop_handle_size(),
                       bottomLeft.y() - crop_handle_size(),
                       crop_temp->width() - (2 * crop_handle_size()),
-                      crop_handle_size());
+                      crop_handle_size()};
     }
 
     QRectF crop_edge_right() const
@@ -580,10 +580,10 @@ public:
             return {};
         }
         const QPointF topRight = crop_temp->topRight();
-        return QRectF(topRight.x() - crop_handle_size(),
+        return {topRight.x() - crop_handle_size(),
                       topRight.y() + crop_handle_size(),
                       crop_handle_size(),
-                      crop_temp->height() - (2 * crop_handle_size()));
+                      crop_temp->height() - (2 * crop_handle_size())};
     }
 
     // Function to return all crop edge functions as a tuple
@@ -1387,7 +1387,7 @@ class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 public:
     // Default note fill - the backdrop TextItem always painted, now
     // per-item and persisted.
-    static QColor default_fill_color() { return QColor(0, 0, 0, 40); }
+    static QColor default_fill_color() { return {0, 0, 0, 40}; }
 
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
@@ -1863,7 +1863,7 @@ class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
     const std::string type = "group"; // static constexpr
 
 public:
-    static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
+    static QColor default_fill_color() { return {20, 20, 20, 255}; }
     // Visual breathing room kept between the members' own tight bounding
     // box and the group's fill rect - single source of truth for both
     // CanvasScene::group_selection() (initial fit, on creation) and

@@ -22,11 +22,11 @@ public:
     QVariant data(const QModelIndex& index, int role) const override
     {
         if (!index.isValid()) {
-            return QVariant();
+            return {};
         }
 
         if (index.row() < 0 || index.row() >= files_.size()) {
-            return QVariant();
+            return {};
         }
 
         if (role == Qt::DisplayRole) {
@@ -45,7 +45,7 @@ public:
             return icon;
         }
 
-        return QVariant();
+        return {};
     }
 
     void set_files(const QStringList& files) { files_ = files; }
