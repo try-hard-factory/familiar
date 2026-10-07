@@ -171,20 +171,19 @@ public:
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
         familiar::dialog_style::style_secondary_button(cancelBtn,
-                                                     textColor,
-                                                     border);
+                                                       textColor,
+                                                       border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         outer->addLayout(buttonRow);
 
         setStyleSheet(
             familiar::dialog_style::panel_style_sheet("ProgressDialog",
-                                                    background,
-                                                    border,
-                                                    textColor)
-            + familiar::dialog_style::close_button_style_sheet("progressCloseBtn",
-                                                            textColor,
-                                                            accent)
+                                                      background,
+                                                      border,
+                                                      textColor)
+            + familiar::dialog_style::close_button_style_sheet(
+                "progressCloseBtn", textColor, accent)
             // Overrides panelStyleSheet()'s blanket QLabel colour for
             // this one label - the filename is secondary to the
             // operation title above it, so it reads as a subdued
@@ -522,7 +521,7 @@ private slots:
             worker_->disconnect(this);
         }
         set_range(0, knownMaximum_); // in case a RAW decode's indeterminate
-                                    // mode was somehow still active
+                                     // mode was somehow still active
         set_value(maximum());
         reset();
         currentItemLabel_->clear();
@@ -628,10 +627,10 @@ public:
         const QColor border = palette().color(QPalette::Mid);
         const QColor warnAccent
             = familiar::dialog_style::severity_color(QMessageBox::Warning,
-                                                    border);
+                                                     border);
         const QColor errorAccent
             = familiar::dialog_style::severity_color(QMessageBox::Critical,
-                                                    border);
+                                                     border);
         struct LevelEntry
         {
             familiar::log::Level level;
@@ -650,17 +649,26 @@ public:
         // Critical reuses Error's red, darkened - severityColor() itself
         // has no separate "more severe than Critical" case to draw on.
         const QList<LevelEntry> kLevels = {
-            {familiar::log::Level::Trace, tr("Trace"), text},
-            {familiar::log::Level::Debug, tr("Debug"), text},
-            {familiar::log::Level::Info,
-             tr("Info"),
-             familiar::dialog_style::severity_color(QMessageBox::Information,
-                                                   border)},
-            {familiar::log::Level::Warning, tr("Warning"), warnAccent},
-            {familiar::log::Level::Error, tr("Error"), errorAccent},
-            {familiar::log::Level::Critical,
-             tr("Critical"),
-             errorAccent.darker(130)},
+            {.level = familiar::log::Level::Trace,
+             .label = tr("Trace"),
+             .accent = text},
+            {.level = familiar::log::Level::Debug,
+             .label = tr("Debug"),
+             .accent = text},
+            {.level = familiar::log::Level::Info,
+             .label = tr("Info"),
+             .accent
+             = familiar::dialog_style::severity_color(QMessageBox::Information,
+                                                      border)},
+            {.level = familiar::log::Level::Warning,
+             .label = tr("Warning"),
+             .accent = warnAccent},
+            {.level = familiar::log::Level::Error,
+             .label = tr("Error"),
+             .accent = errorAccent},
+            {.level = familiar::log::Level::Critical,
+             .label = tr("Critical"),
+             .accent = errorAccent.darker(130)},
         };
         for (const LevelEntry& entry : kLevels) {
             const familiar::log::Level level = entry.level;
@@ -736,7 +744,7 @@ private slots:
     // settled, not mid-toggle).
     void append_entry(familiar::log::Level level, const QString& line)
     {
-        allEntries_.append({level, line});
+        allEntries_.append({.level = level, .line = line});
         if (visibleLevels_.value(level, true)) {
             log_->appendPlainText(line);
         }
@@ -859,8 +867,8 @@ private slots:
                 // time this call returns (see FileActions::
                 // loadFmlIntoCurrentTab()).
                 fileActions_.restore_from_recovery(e.fmlPath,
-                                                 e.originalPath,
-                                                 e.id);
+                                                   e.originalPath,
+                                                   e.id);
                 restoredAny = true;
             } else {
                 // Unchecked is a real "no" here, not "leave for later" -
@@ -964,8 +972,8 @@ private slots:
         if (!ignoreChange_) {
             ignoreChange_ = true;
             const QSize scaled = defaultSize_.scaled(width,
-                                               kmaxSize,
-                                               Qt::KeepAspectRatio);
+                                                     kmaxSize,
+                                                     Qt::KeepAspectRatio);
             heightInput_->setValue(scaled.height());
             ignoreChange_ = false;
         }
@@ -976,8 +984,8 @@ private slots:
         if (!ignoreChange_) {
             ignoreChange_ = true;
             const QSize scaled = defaultSize_.scaled(kmaxSize,
-                                               height,
-                                               Qt::KeepAspectRatio);
+                                                     height,
+                                                     Qt::KeepAspectRatio);
             widthInput_->setValue(scaled.width());
             ignoreChange_ = false;
         }
@@ -1009,7 +1017,8 @@ public:
         , undoStack_(undoStack)
         , command_(new ChangeOpacityCommand(items, 1.0))
     {
-        const int value = !items.isEmpty() ? int(items[0]->opacity() * 100) : 100;
+        const int value = !items.isEmpty() ? int(items[0]->opacity() * 100)
+                                           : 100;
 
         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
@@ -1082,8 +1091,8 @@ public:
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
         familiar::dialog_style::style_secondary_button(cancelBtn,
-                                                     textColor,
-                                                     border);
+                                                       textColor,
+                                                       border);
         connect(cancelBtn,
                 &QPushButton::clicked,
                 this,
@@ -1101,9 +1110,9 @@ public:
 
         setStyleSheet(
             familiar::dialog_style::panel_style_sheet("ChangeOpacityDialog",
-                                                    background,
-                                                    border,
-                                                    textColor)
+                                                      background,
+                                                      border,
+                                                      textColor)
             + familiar::dialog_style::close_button_style_sheet(
                 "changeOpacityCloseBtn", textColor, accent)
             // Explicit ::groove/::handle rules, not just a bare QSlider
@@ -1348,8 +1357,8 @@ public:
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
         familiar::dialog_style::style_secondary_button(cancelBtn,
-                                                     textColor,
-                                                     border);
+                                                       textColor,
+                                                       border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("Continue"), this);
@@ -1388,7 +1397,8 @@ public:
 
     QString get_answer() const
     {
-        for (auto it = radioButtons_.constBegin(); it != radioButtons_.constEnd();
+        for (auto it = radioButtons_.constBegin();
+             it != radioButtons_.constEnd();
              ++it) {
             if (it.value()->isChecked()) {
                 return it.key();

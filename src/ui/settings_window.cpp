@@ -230,8 +230,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         = familiar::settings_style::palette();
     closeBtn->setStyleSheet(
         familiar::dialog_style::close_button_style_sheet("settingsCloseBtn",
-                                                      sp.text,
-                                                      sp.accent));
+                                                         sp.text,
+                                                         sp.accent));
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     titleBarLayout->addWidget(closeBtn);
     outer->addWidget(titleBar);
@@ -280,7 +280,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             static_cast<CategoryNavButton*>(cat.button)
                 ->set_label_text(
                     highlight_search_match(cat.name,
-                                         nameMatches ? text : QString()));
+                                           nameMatches ? text : QString()));
 
             const bool visible = nameMatches || contentMatches;
             cat.button->setVisible(visible);
@@ -320,7 +320,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
     resetBtn->setCursor(Qt::PointingHandCursor);
-    resetBtn->setStyleSheet(familiar::settings_style::filled_button_style_sheet());
+    resetBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
     connect(resetBtn, &QPushButton::clicked, this, [this]() {
         // Stack-allocated, not `new` - RestoreDefaultsDialog deliberately
         // doesn't set WA_DeleteOnClose (see its own constructor comment:
@@ -331,8 +332,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         if (dialog.exec() != QDialog::Accepted) {
             return;
         }
-        const QList<familiar::SettingsCategory> checked =
-            dialog.checked_categories();
+        const QList<familiar::SettingsCategory> checked
+            = dialog.checked_categories();
 
         // "Performance"/"Images & Items" don't line up 1:1 with the
         // "Save"/"Items" JSON groups underneath (e.g. Items/
@@ -344,15 +345,19 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         // place that list lives - keep IT in sync with the addWidget()
         // calls above if either page's contents change, not here too.
         if (checked.contains(familiar::SettingsCategory::Performance)) {
-            for (const QString& key : RestoreDefaultsDialog::fam_settings_keys_for(
+            for (const QString& key :
+                 RestoreDefaultsDialog::fam_settings_keys_for(
                      familiar::SettingsCategory::Performance)) {
-                FamSettings::set_value(key, FamSettings::fields()[key].defaultValue);
+                FamSettings::set_value(key,
+                                       FamSettings::fields()[key].defaultValue);
             }
         }
         if (checked.contains(familiar::SettingsCategory::ImagesAndItems)) {
-            for (const QString& key : RestoreDefaultsDialog::fam_settings_keys_for(
+            for (const QString& key :
+                 RestoreDefaultsDialog::fam_settings_keys_for(
                      familiar::SettingsCategory::ImagesAndItems)) {
-                FamSettings::set_value(key, FamSettings::fields()[key].defaultValue);
+                FamSettings::set_value(key,
+                                       FamSettings::fields()[key].defaultValue);
             }
         }
         if (checked.contains(familiar::SettingsCategory::Colors)) {
@@ -375,7 +380,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             // matches how colors_widget.cpp's own preset-switch/Import
             // handlers already emit this same signal after changing
             // anything here.
-            emit SettingsHandler::get_instance()->presets_changed();
+            emit SettingsHandler::get_instance() -> presets_changed();
         }
         if (checked.contains(familiar::SettingsCategory::KeyboardShortcuts)) {
             KeyboardSettings::restore_defaults();
@@ -398,20 +403,21 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
 
     auto* importBtn = new QPushButton(tr("Import"), this);
     importBtn->setCursor(Qt::PointingHandCursor);
-    importBtn->setStyleSheet(familiar::settings_style::filled_button_style_sheet());
+    importBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
     connect(importBtn, &QPushButton::clicked, this, [this]() {
         const QString path = show_open_file_dialog(this,
-                                                tr("Import Settings"),
-                                                QString(),
-                                                tr("JSON files (*.json)"));
+                                                   tr("Import Settings"),
+                                                   QString(),
+                                                   tr("JSON files (*.json)"));
         if (path.isEmpty()) {
             return;
         }
         if (!SettingsHandler::get_instance()->import_settings_from(path)) {
             show_message_box(QMessageBox::Warning,
-                           this,
-                           tr("Import failed"),
-                           tr("Could not read settings from %1.").arg(path));
+                             this,
+                             tr("Import failed"),
+                             tr("Could not read settings from %1.").arg(path));
             return;
         }
         // Not restoreDefaults() - that would wipe out what was just
@@ -427,22 +433,23 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
 
     auto* exportBtn = new QPushButton(tr("Export"), this);
     exportBtn->setCursor(Qt::PointingHandCursor);
-    exportBtn->setStyleSheet(familiar::settings_style::filled_button_style_sheet());
+    exportBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
     connect(exportBtn, &QPushButton::clicked, this, [this]() {
-        const QString path = show_save_file_dialog(this,
-                                                tr("Export Settings"),
-                                                QString(),
-                                                tr("JSON files (*.json)"),
-                                                QStringLiteral(
-                                                    "familiar-settings.json"));
+        const QString path
+            = show_save_file_dialog(this,
+                                    tr("Export Settings"),
+                                    QString(),
+                                    tr("JSON files (*.json)"),
+                                    QStringLiteral("familiar-settings.json"));
         if (path.isEmpty()) {
             return;
         }
         if (!SettingsHandler::get_instance()->export_settings_to(path)) {
             show_message_box(QMessageBox::Warning,
-                           this,
-                           tr("Export failed"),
-                           tr("Could not write settings to %1.").arg(path));
+                             this,
+                             tr("Export failed"),
+                             tr("Could not write settings to %1.").arg(path));
         }
     });
     importExportRow->addWidget(importBtn);
@@ -467,7 +474,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         categoryLayout->addWidget(btn);
         categoryButtons_->addButton(btn, categoryIndex);
         stack_->addWidget(page);
-        categories_.append({btn, page, label});
+        categories_.append({.button = btn, .page = page, .name = label});
         ++categoryIndex;
     };
 

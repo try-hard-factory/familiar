@@ -5,18 +5,18 @@ namespace familiar::settings_style {
 const Palette& palette()
 {
     static const Palette p{
-        QColor(0xFF, 0xFF, 0xFF), // background
-        QColor(0x22, 0x22, 0x22), // text
-        QColor(0x8A, 0x8A, 0x8A), // mutedText
-        QColor(0xD8, 0xD8, 0xD8), // border
-        QColor(0xF1, 0xF1, 0xF1), // hoverBg
-        QColor(0xD2, 0x60, 0x1C), // accent
-        QColor(0xE3, 0xE3, 0xE3), // chipBackground
-        QColor(0xEC, 0xEC, 0xEC), // navIdleBg
-        QColor(0xDD, 0xDD, 0xDD), // navHoverBg
-        QColor(0xBD, 0xBD, 0xBD), // navSelectedBg
-        QColor(0xE3, 0xE3, 0xE3), // popupBackground
-        QColor(0xCB, 0xCB, 0xCB), // popupItemHover
+        .background = QColor(0xFF, 0xFF, 0xFF),      // background
+        .text = QColor(0x22, 0x22, 0x22),            // text
+        .mutedText = QColor(0x8A, 0x8A, 0x8A),       // mutedText
+        .border = QColor(0xD8, 0xD8, 0xD8),          // border
+        .hoverBg = QColor(0xF1, 0xF1, 0xF1),         // hoverBg
+        .accent = QColor(0xD2, 0x60, 0x1C),          // accent
+        .chipBackground = QColor(0xE3, 0xE3, 0xE3),  // chipBackground
+        .navIdleBg = QColor(0xEC, 0xEC, 0xEC),       // navIdleBg
+        .navHoverBg = QColor(0xDD, 0xDD, 0xDD),      // navHoverBg
+        .navSelectedBg = QColor(0xBD, 0xBD, 0xBD),   // navSelectedBg
+        .popupBackground = QColor(0xE3, 0xE3, 0xE3), // popupBackground
+        .popupItemHover = QColor(0xCB, 0xCB, 0xCB),  // popupItemHover
     };
     return p;
 }

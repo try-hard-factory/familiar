@@ -36,7 +36,7 @@ QUrl unwrap_known_redirect(const QUrl& url)
         && url.path().contains(QStringLiteral("imgres"))) {
         const QUrlQuery query(url);
         const QString imgUrl = query.queryItemValue(QStringLiteral("imgurl"),
-                                              QUrl::FullyDecoded);
+                                                    QUrl::FullyDecoded);
         if (!imgUrl.isEmpty()) {
             return QUrl(imgUrl);
         }
@@ -75,9 +75,9 @@ struct RawProgressContext
 constexpr int krawProgressKnownStages = 20;
 
 int raw_progress_callback(void* data,
-                        LibRaw_progress stage,
-                        int /*iteration*/,
-                        int /*expected*/)
+                          LibRaw_progress stage,
+                          int /*iteration*/,
+                          int /*expected*/)
 {
     auto* ctx = static_cast<RawProgressContext*>(data);
     if (!ctx || !ctx->worker) {
@@ -211,7 +211,7 @@ bool is_image_large(const QImage& img)
 // back to ImageLoadFailure::Corrupt itself in that case, since this
 // function never performs the real decode.
 std::optional<ImageLoadFailure> precheck_reader(QImageReader& reader,
-                                               qint64 allocationLimitBytes)
+                                                qint64 allocationLimitBytes)
 {
     if (!reader.canRead()) {
         return ImageLoadFailure::UnsupportedFormat;
@@ -238,7 +238,7 @@ std::optional<ImageLoadFailure> precheck_reader(QImageReader& reader,
 // the real reason is already in the network-layer FLOG_WARN from
 // download_image() above.
 ImageLoadFailure classify_failed_load(const QByteArray& bytes,
-                                    qint64 allocationLimitBytes)
+                                      qint64 allocationLimitBytes)
 {
     if (bytes.isEmpty()) {
         return ImageLoadFailure::Corrupt;
@@ -302,13 +302,13 @@ LoadedImage decode_data_url(const QUrl& url)
         payload.mid(commaIdx + 1).toLatin1());
 
     const QByteArray bytes = header.contains(QStringLiteral("base64"),
-                                       Qt::CaseInsensitive)
-                           ? QByteArray::fromBase64(decoded)
-                           : decoded;
+                                             Qt::CaseInsensitive)
+                                 ? QByteArray::fromBase64(decoded)
+                                 : decoded;
 
     QImage img;
     img.loadFromData(bytes);
-    return {img, bytes};
+    return {.image = img, .bytes = bytes};
 }
 
 constexpr int kdownloadTimeoutMs = 15000;
@@ -379,7 +379,7 @@ LoadedImage download_image(QNetworkAccessManager& manager,
         FLOG_WARN(Ch::Net, "Downloading image failed: {}", reply->errorString());
     }
     reply->deleteLater();
-    return {img, bytes};
+    return {.image = img, .bytes = bytes};
 }
 
 } // namespace
@@ -482,10 +482,11 @@ void ImageImportSession::run(ThreadedIO* worker)
     // both already treat <= 0 as "never TooLarge".
     const qint64 allocationLimitBytes
         = qint64(FamSettings::value_or_default(
-                         QStringLiteral("Items/image_allocation_limit"))
+                     QStringLiteral("Items/image_allocation_limit"))
                      .toInt())
           * 1024 * 1024;
-    const QString rawImportSetting = FamSettings::value_or_default(QStringLiteral(
+    const QString rawImportSetting = FamSettings::value_or_default(
+                                         QStringLiteral(
                                              "Items/raw_import_choice"))
                                          .toString();
 
@@ -591,7 +592,9 @@ void ImageImportSession::run(ThreadedIO* worker)
                 if (!netManager) {
                     netManager = new QNetworkAccessManager();
                 }
-                const LoadedImage loaded = download_image(*netManager, url, worker);
+                const LoadedImage loaded = download_image(*netManager,
+                                                          url,
+                                                          worker);
                 img = loaded.image;
                 bytes = loaded.bytes;
             } else {
@@ -688,7 +691,8 @@ void ImageImportSession::run(ThreadedIO* worker)
         // matching what PixmapItem::set_pos_center() would do for a
         // fresh item (scale 1, rotation 0). Computed after the possible
         // downscale above so the item is centered on its final size.
-        const QPointF topLeft = pos_ - QPointF(img.width() / 2.0, img.height() / 2.0);
+        const QPointF topLeft = pos_
+                                - QPointF(img.width() / 2.0, img.height() / 2.0);
 
         QVariantMap itemData;
         if (animated) {
@@ -722,8 +726,8 @@ void ImageImportSession::run(ThreadedIO* worker)
         if (!unsupportedFormatErrors.isEmpty() || !tooLargeErrors.isEmpty()
             || !corruptErrors.isEmpty()) {
             emit worker->image_load_failures(unsupportedFormatErrors,
-                                           tooLargeErrors,
-                                           corruptErrors);
+                                             tooLargeErrors,
+                                             corruptErrors);
         }
     }
     // Flat list for finished()'s own `errors` param - unchanged shape for
@@ -771,9 +775,9 @@ void save_fml(const QString& filename,
     // really meant as a one-shot value read right after a load, not an
     // ongoing substitute for the view's own canvasRect().
     const FmlResult result = FmlArchive::save(scene,
-                                        scene->remembered_bounding_rect(),
-                                        filename,
-                                        worker);
+                                              scene->remembered_bounding_rect(),
+                                              filename,
+                                              worker);
 
     if (worker) {
         emit worker->finished(result.error, result.itemErrors);

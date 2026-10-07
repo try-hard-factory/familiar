@@ -12,18 +12,27 @@ struct MenuNode
     QString id;               // for Action, Dynamic
     QList<MenuNode> children; // for Submenu
 
-    static MenuNode sep() { return {Type::Separator, {}, {}, {}}; }
+    static MenuNode sep()
+    {
+        return {.type = Type::Separator, .label = {}, .id = {}, .children = {}};
+    }
     static MenuNode action(const QString& id)
     {
-        return {Type::Action, {}, id, {}};
+        return {.type = Type::Action, .label = {}, .id = id, .children = {}};
     }
     static MenuNode submenu(const QString& label, QList<MenuNode> children)
     {
-        return {Type::Submenu, label, {}, std::move(children)};
+        return {.type = Type::Submenu,
+                .label = label,
+                .id = {},
+                .children = std::move(children)};
     }
     static MenuNode dynamic(const QString& builderId)
     {
-        return {Type::Dynamic, {}, builderId, {}};
+        return {.type = Type::Dynamic,
+                .label = {},
+                .id = builderId,
+                .children = {}};
     }
 };
 

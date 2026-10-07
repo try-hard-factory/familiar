@@ -38,7 +38,7 @@ Level from_quill_level(quill::LogLevel level)
         break;
     default:
         // TODOLATER: unreachable?
-        return Level::Info;    
+        return Level::Info;
     }
     return Level::Info;
 }
@@ -73,7 +73,7 @@ void RingSink::write_log(
 
     {
         const QMutexLocker locker(&mutex_);
-        ring_.append({level, line});
+        ring_.append({.level = level, .line = line});
         while (size_t(ring_.size()) > capacity_) {
             ring_.removeFirst();
         }

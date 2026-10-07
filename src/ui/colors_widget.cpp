@@ -116,12 +116,12 @@ void ColorsWidget::presets_init()
         EPresets preset;
     };
     const QList<PresetBtn> presets = {
-        {tr("Dark"), EPresets::kDarkPreset},
-        {tr("Light"), EPresets::kLightPreset},
-        {tr("Custom 1"), EPresets::kCustom1},
-        {tr("Custom 2"), EPresets::kCustom2},
-        {tr("Custom 3"), EPresets::kCustom3},
-        {tr("Custom 4"), EPresets::kCustom4},
+        {.label = tr("Dark"), .preset = EPresets::kDarkPreset},
+        {.label = tr("Light"), .preset = EPresets::kLightPreset},
+        {.label = tr("Custom 1"), .preset = EPresets::kCustom1},
+        {.label = tr("Custom 2"), .preset = EPresets::kCustom2},
+        {.label = tr("Custom 3"), .preset = EPresets::kCustom3},
+        {.label = tr("Custom 4"), .preset = EPresets::kCustom4},
     };
 
     for (const PresetBtn& preset : presets) {
@@ -199,11 +199,13 @@ void ColorsWidget::color_init()
         EPresetsColorIdx idx;
     };
     const QList<ColorRow> rows = {
-        {tr("Background color: "), EPresetsColorIdx::kBackgroundColor},
-        {tr("Canvas color: "), EPresetsColorIdx::kCanvasColor},
-        {tr("Border color: "), EPresetsColorIdx::kBorderColor},
-        {tr("UI Text Color: "), EPresetsColorIdx::kTextColor},
-        {tr("Selection color: "), EPresetsColorIdx::kSelectionColor},
+        {.label = tr("Background color: "),
+         .idx = EPresetsColorIdx::kBackgroundColor},
+        {.label = tr("Canvas color: "), .idx = EPresetsColorIdx::kCanvasColor},
+        {.label = tr("Border color: "), .idx = EPresetsColorIdx::kBorderColor},
+        {.label = tr("UI Text Color: "), .idx = EPresetsColorIdx::kTextColor},
+        {.label = tr("Selection color: "),
+         .idx = EPresetsColorIdx::kSelectionColor},
     };
 
     for (const ColorRow& row : rows) {
@@ -282,7 +284,8 @@ void ColorsWidget::refresh_swatch(EPresetsColorIdx idx)
     if (!swatch) {
         return;
     }
-    const auto preset = SettingsHandler::get_instance()->get_current_color_preset();
+    const auto preset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     swatch->setIcon(make_swatch_icon(preset[idx], devicePixelRatioF()));
 }
 
@@ -296,7 +299,8 @@ void ColorsWidget::slider_init()
     opacitySlider_->setOrientation(Qt::Horizontal);
     opacitySlider_->setRange(0, 100);
     opacitySlider_->setCursor(Qt::PointingHandCursor);
-    opacitySlider_->setStyleSheet(familiar::settings_style::slider_style_sheet());
+    opacitySlider_->setStyleSheet(
+        familiar::settings_style::slider_style_sheet());
     sliderLayout_->setAlignment(Qt::AlignBottom);
     sliderLayout_->addWidget(new QLabel(QStringLiteral("Master opacity:")));
     sliderLayout_->addWidget(opacitySlider_);
@@ -305,7 +309,8 @@ void ColorsWidget::slider_init()
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
         FLOG_DEBUG(Ch::UI,
                    "Master opacity from settings = {}",
-                   debug_string(SettingsHandler::get_instance()->master_opacity()));
+                   debug_string(
+                       SettingsHandler::get_instance()->master_opacity()));
         SettingsHandler::get_instance()->set_current_opacity(
             opacitySlider_->mapped_value(0, 255));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
@@ -320,8 +325,7 @@ void ColorsWidget::save_reset_btns_init()
     // (Restore Defaults/Import/Export, ui/settings_window.cpp) - not
     // dialog_style::styleSecondaryButton()'s outline look, which is for
     // separate modal dialogs, not buttons living inside this window.
-    QPushButton* saveToPresetBtn = new QPushButton(tr("Save to preset"),
-                                                      this);
+    QPushButton* saveToPresetBtn = new QPushButton(tr("Save to preset"), this);
     saveToPresetBtn->setStyleSheet(
         familiar::settings_style::filled_button_style_sheet());
     connect(saveToPresetBtn,

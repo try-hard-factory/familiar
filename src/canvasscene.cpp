@@ -727,8 +727,7 @@ void CanvasScene::maybe_add_dropped_items_to_group(
             // overwritten by whatever ran before it in that macro's
             // undo anyway, and is exactly the bug where everything lit up
             // like a rubber-band.
-            undoStack_->push(
-                new AddToGroupCommand(this, target, {item}, false));
+            undoStack_->push(new AddToGroupCommand(this, target, {item}, false));
             undoStack_->endMacro();
             changed = true;
         } else {
@@ -815,19 +814,23 @@ void CanvasScene::normalize_width_or_height(const QString& mode)
     QList<qreal> values;
     const QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
-        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item});
         values.append(mode == "width" ? rect.width() : rect.height());
     }
     if (values.size() < 2) {
         return;
     }
-    const qreal avg = std::accumulate(values.constBegin(), values.constEnd(), 0.0)
-                / static_cast<qreal>(values.size());
+    const qreal avg = std::accumulate(values.constBegin(),
+                                      values.constEnd(),
+                                      0.0)
+                      / static_cast<qreal>(values.size());
     FLOG_DEBUG(Ch::Scene, "Calculated average {} {}", mode, avg);
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
-        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item});
         scaleFactors.append(avg
                             / (mode == "width" ? rect.width() : rect.height()));
     }
@@ -851,19 +854,21 @@ void CanvasScene::normalize_size()
     QList<qreal> sizes;
     const QList<QGraphicsItem*> items = selectedItems(true);
     for (QGraphicsItem* item : items) {
-        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item});
         sizes.append(rect.width() * rect.height());
     }
     if (sizes.size() < 2) {
         return;
     }
     const qreal avg = std::accumulate(sizes.constBegin(), sizes.constEnd(), 0.0)
-                / static_cast<qreal>(sizes.size());
+                      / static_cast<qreal>(sizes.size());
     FLOG_DEBUG(Ch::Scene, "Calculated average size {}", avg);
 
     QList<qreal> scaleFactors;
     for (QGraphicsItem* item : items) {
-        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item});
         scaleFactors.append(std::sqrt(avg / (rect.width() * rect.height())));
     }
 
@@ -970,7 +975,8 @@ public:
     {
         QList<Position> positions;
         QList<FreeRect> freeRects;
-        freeRects.append({0, 0, maxWidth, maxHeight});
+        freeRects.append(
+            {.x = 0, .y = 0, .width = maxWidth, .height = maxHeight});
 
         for (const auto& size : sizes) {
             Position pos;
@@ -993,9 +999,9 @@ public:
 
 private:
     static bool pack_rect(int width,
-                         int height,
-                         QList<FreeRect>& freeRects,
-                         Position& pos)
+                          int height,
+                          QList<FreeRect>& freeRects,
+                          Position& pos)
     {
         // Find best free rectangle
         int bestIndex = -1;
@@ -1022,11 +1028,16 @@ private:
 
         // Split free rectangle
         if (width < fr.width) {
-            freeRects.append({fr.x + width, fr.y, fr.width - width, height});
+            freeRects.append({.x = fr.x + width,
+                              .y = fr.y,
+                              .width = fr.width - width,
+                              .height = height});
         }
         if (height < fr.height) {
-            freeRects.append(
-                {fr.x, fr.y + height, fr.width, fr.height - height});
+            freeRects.append({.x = fr.x,
+                              .y = fr.y + height,
+                              .width = fr.width,
+                              .height = fr.height - height});
         }
 
         // Remove used free rectangle
@@ -1063,7 +1074,8 @@ void CanvasScene::arrange(bool vertical)
     QList<ItemRect> rects;
     for (QGraphicsItem* item : items) {
         rects.append(
-            {itemsBoundingRect(false, QList<QGraphicsItem*>{item}), item});
+            {.rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
+             .item = item});
     }
 
     if (vertical) {
@@ -1128,9 +1140,11 @@ void CanvasScene::arrange_optimal()
     // Получаем размеры элементов
     QList<RectPacker::Size> sizes;
     for (QGraphicsItem* item : items) {
-        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
-        sizes.append({static_cast<int>(std::round(rect.width() + gap)),
-                      static_cast<int>(std::round(rect.height() + gap))});
+        const QRectF rect = itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item});
+        sizes.append(
+            {.width = static_cast<int>(std::round(rect.width() + gap)),
+             .height = static_cast<int>(std::round(rect.height() + gap))});
     }
 
     // See arrange()'s own comment for why not get_selection_center().
@@ -1158,7 +1172,7 @@ void CanvasScene::arrange_optimal()
 
     // Центрируем элементы вокруг центра выделения
     const QPointF diff(center.x() - boundsWidth / 2.0,
-                 center.y() - boundsHeight / 2.0);
+                       center.y() - boundsHeight / 2.0);
 
     QList<QPointF> scenePositions;
     for (const auto& pos : positions) {
@@ -1181,7 +1195,8 @@ void CanvasScene::arrange_square()
     }
 
     for (QGraphicsItem* item : items) {
-        const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+        const QRectF rect = itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item});
         maxWidth = std::max(maxWidth, rect.width() + gap);
         maxHeight = std::max(maxHeight, rect.height() + gap);
     }
@@ -1191,7 +1206,8 @@ void CanvasScene::arrange_square()
     const int numRows = static_cast<int>(std::ceil(std::sqrt(items.size())));
     // See arrange()'s own comment for why not get_selection_center().
     const QPointF center = itemsBoundingRect(false, items).center();
-    const QPointF diff = center - (numRows / 2.0) * QPointF(maxWidth, maxHeight);
+    const QPointF diff = center
+                         - (numRows / 2.0) * QPointF(maxWidth, maxHeight);
 
     QList<QPointF> positions;
     auto it = items.constBegin();
@@ -1199,9 +1215,11 @@ void CanvasScene::arrange_square()
         for (int i = 0; i < numRows && it != items.constEnd(); ++i) {
             QGraphicsItem* item = *it;
             ++it;
-            const QRectF rect = itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+            const QRectF rect = itemsBoundingRect(false,
+                                                  QList<QGraphicsItem*>{item});
             const QPointF point(i * maxWidth + (maxWidth - rect.width()) / 2.0,
-                          j * maxHeight + (maxHeight - rect.height()) / 2.0);
+                                j * maxHeight
+                                    + (maxHeight - rect.height()) / 2.0);
             positions.append(point + diff);
         }
     }
@@ -1381,7 +1399,7 @@ QList<QGraphicsItem*> CanvasScene::with_attached_items(
 }
 
 bool CanvasScene::would_create_attach_cycle(const QUuid& itemUid,
-                                         const QUuid& targetUid) const
+                                            const QUuid& targetUid) const
 {
     if (itemUid == targetUid) {
         return true;
@@ -1554,7 +1572,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
         } else {
             CanvasView* view = static_cast<CanvasView*>(views().first());
             view->fit_rect(itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
-                          item);
+                           item);
         }
         return;
     }
@@ -1801,7 +1819,7 @@ void CanvasScene::restore_drilled_in_members()
         }
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         const GroupItem* owner = baseItem ? find_owning_group(baseItem->uid())
-                                    : nullptr;
+                                          : nullptr;
         if (owner && owner->locked()) {
             item->setFlag(QGraphicsItem::ItemIsSelectable, false);
             item->setFlag(QGraphicsItem::ItemIsMovable, false);
@@ -2102,10 +2120,10 @@ qint16 CanvasScene::objects_count() const
 {
     // TODO: type.h header with all types (image, textline, multitextline)
     const int targetObjectType = 3;
-    return static_cast<qint16>(
-        std::count_if(items().begin(),
-                      items().end(),
-                      [](const QGraphicsItem* item) {
-                          return item->type() == targetObjectType;
-                      }));
+    return static_cast<qint16>(std::count_if(items().begin(),
+                                             items().end(),
+                                             [](const QGraphicsItem* item) {
+                                                 return item->type()
+                                                        == targetObjectType;
+                                             }));
 }

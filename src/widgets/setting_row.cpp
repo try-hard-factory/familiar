@@ -96,9 +96,9 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
 }
 
 void SettingInfoPopup::set_content(const QString& title,
-                                  const QString& bodyHtml,
-                                  const QString& defaultText,
-                                  bool showResetHint)
+                                   const QString& bodyHtml,
+                                   const QString& defaultText,
+                                   bool showResetHint)
 {
     titleLabel_->setText(title);
     bodyLabel_->setText(bodyHtml);
@@ -244,7 +244,8 @@ QString SettingRowBase::default_value_display_text() const
 
 void SettingRowBase::refresh_info_popup()
 {
-    label_->set_default_text(tr("Default: %1").arg(default_value_display_text()));
+    label_->set_default_text(
+        tr("Default: %1").arg(default_value_display_text()));
     label_->set_show_reset_hint(true);
 }
 
@@ -385,14 +386,11 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
                 emit toggled(state == Qt::Checked);
             });
 #else
-    connect(input_,
-            &QCheckBox::stateChanged,
-            this,
-            [this](int stateInt) {
-                const Qt::CheckState state = Qt::CheckState(stateInt);
-                onValueChanged(QVariant::fromValue(state));
-                emit toggled(state == Qt::Checked);
-            });
+    connect(input_, &QCheckBox::stateChanged, this, [this](int stateInt) {
+        const Qt::CheckState state = Qt::CheckState(stateInt);
+        onValueChanged(QVariant::fromValue(state));
+        emit toggled(state == Qt::Checked);
+    });
 #endif
 
     refresh_info_popup();
@@ -410,8 +408,9 @@ QVariant CheckboxSettingRow::convert_value_from_qt(const QVariant& value)
 
 QString CheckboxSettingRow::default_value_display_text() const
 {
-    return FamSettings::value_or_default(settings_key()).toBool() ? tr("Checked")
-                                                       : tr("Unchecked");
+    return FamSettings::value_or_default(settings_key()).toBool()
+               ? tr("Checked")
+               : tr("Unchecked");
 }
 
 void CheckboxSettingRow::set_control_enabled(bool enabled)
@@ -469,11 +468,12 @@ AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
     : ComboSettingRow(QStringLiteral("Auto Optimize Imported Images"),
                       QStringLiteral("Items/auto_optimize_imported_images"),
                       {
-                          {QStringLiteral("off"), QStringLiteral("Off")},
-                          {QStringLiteral("warn"),
-                           QStringLiteral("Large image warning")},
-                          {QStringLiteral("optimize_large"),
-                           QStringLiteral("Optimize large images")},
+                          {.value = QStringLiteral("off"),
+                           .label = QStringLiteral("Off")},
+                          {.value = QStringLiteral("warn"),
+                           .label = QStringLiteral("Large image warning")},
+                          {.value = QStringLiteral("optimize_large"),
+                           .label = QStringLiteral("Optimize large images")},
                       },
                       parent)
 {}
@@ -482,12 +482,12 @@ RawImportChoiceRow::RawImportChoiceRow(QWidget* parent)
     : ComboSettingRow(QStringLiteral("RAW Import"),
                       QStringLiteral("Items/raw_import_choice"),
                       {
-                          {QStringLiteral("ask"),
-                           QStringLiteral("Ask every time")},
-                          {QStringLiteral("always_optimize"),
-                           QStringLiteral("Always optimize")},
-                          {QStringLiteral("always_keep_original"),
-                           QStringLiteral("Always keep original")},
+                          {.value = QStringLiteral("ask"),
+                           .label = QStringLiteral("Ask every time")},
+                          {.value = QStringLiteral("always_optimize"),
+                           .label = QStringLiteral("Always optimize")},
+                          {.value = QStringLiteral("always_keep_original"),
+                           .label = QStringLiteral("Always keep original")},
                       },
                       parent)
 {}
@@ -528,13 +528,14 @@ ArrangeDefaultRow::ArrangeDefaultRow(QWidget* parent)
     : ComboSettingRow(QStringLiteral("Default Arrange Method"),
                       QStringLiteral("Items/arrange_default"),
                       {
-                          {QStringLiteral("optimal"), QStringLiteral("Optimal")},
-                          {QStringLiteral("horizontal"),
-                           QStringLiteral("Horizontal (by filename)")},
-                          {QStringLiteral("vertical"),
-                           QStringLiteral("Vertical (by filename)")},
-                          {QStringLiteral("square"),
-                           QStringLiteral("Square (by filename)")},
+                          {.value = QStringLiteral("optimal"),
+                           .label = QStringLiteral("Optimal")},
+                          {.value = QStringLiteral("horizontal"),
+                           .label = QStringLiteral("Horizontal (by filename)")},
+                          {.value = QStringLiteral("vertical"),
+                           .label = QStringLiteral("Vertical (by filename)")},
+                          {.value = QStringLiteral("square"),
+                           .label = QStringLiteral("Square (by filename)")},
                       },
                       parent)
 {}

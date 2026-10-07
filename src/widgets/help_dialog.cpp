@@ -38,11 +38,16 @@ struct ControlRow
 const QList<ControlRow>& default_control_rows()
 {
     static const QList<ControlRow> rows = {
-        {QObject::tr("Select images"), QObject::tr("Left click / drag")},
-        {QObject::tr("Focus image"), QObject::tr("Double left click")},
-        {QObject::tr("Zoom to pointer"), QObject::tr("Scroll wheel")},
-        {QObject::tr("Pan"), QObject::tr("Alt + Left drag, or Middle drag")},
-        {QObject::tr("Move window"), QObject::tr("Drag menu/tab bar")},
+        {.action = QObject::tr("Select images"),
+         .gesture = QObject::tr("Left click / drag")},
+        {.action = QObject::tr("Focus image"),
+         .gesture = QObject::tr("Double left click")},
+        {.action = QObject::tr("Zoom to pointer"),
+         .gesture = QObject::tr("Scroll wheel")},
+        {.action = QObject::tr("Pan"),
+         .gesture = QObject::tr("Alt + Left drag, or Middle drag")},
+        {.action = QObject::tr("Move window"),
+         .gesture = QObject::tr("Drag menu/tab bar")},
     };
     return rows;
 }
@@ -57,10 +62,10 @@ const QList<ControlRow>& default_control_rows()
 // flowing to a second line. A single wrapping label reflows the WHOLE
 // sentence together, link included, exactly like a real paragraph.
 QLabel* make_inline_link_paragraph(const QString& before,
-                                const QString& linkText,
-                                const QString& after,
-                                QWidget* parent,
-                                const QColor& accent)
+                                   const QString& linkText,
+                                   const QString& after,
+                                   QWidget* parent,
+                                   const QColor& accent)
 {
     const QString prefix = before.isEmpty() ? QString() : before + QChar(' ');
     auto* label = new QLabel(QStringLiteral("%1<a href=\"#\" style=\"color:%2; "
@@ -94,7 +99,8 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -155,12 +161,12 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     }
     outer->addWidget(box);
 
-    auto* shortcutsLabel
-        = make_inline_link_paragraph(tr("To see or change every shortcut, open"),
-                                  tr("Keyboard Shortcuts"),
-                                  QString(),
-                                  this,
-                                  accent);
+    auto* shortcutsLabel = make_inline_link_paragraph(
+        tr("To see or change every shortcut, open"),
+        tr("Keyboard Shortcuts"),
+        QString(),
+        this,
+        accent);
     // Opens the settings window already on that specific category
     // (SettingsWindow::selectCategory()), not just wherever
     // settingsWindow() would otherwise land by default.
@@ -188,10 +194,10 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     outer->addSpacing(8);
 
     auto* aboutLabel = make_inline_link_paragraph(QString(),
-                                               tr("About Familiar"),
-                                               QString(),
-                                               this,
-                                               accent);
+                                                  tr("About Familiar"),
+                                                  QString(),
+                                                  this,
+                                                  accent);
     aboutLabel->setAlignment(Qt::AlignHCenter);
     connect(aboutLabel,
             &QLabel::linkActivated,
@@ -199,14 +205,15 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
             &MainWindow::on_action_about);
     outer->addWidget(aboutLabel);
 
-    setStyleSheet(familiar::dialog_style::panel_style_sheet("HelpDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::close_button_style_sheet("hdCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("HelpDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("hdCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(window_, this);
     show();

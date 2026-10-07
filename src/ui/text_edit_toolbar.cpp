@@ -39,9 +39,9 @@ constexpr int kiconSize = 20;
 // the bottom, so the button shows what color it currently represents
 // instead of being a plain, identical-looking letter every time.
 QIcon make_color_glyph_icon(const QString& glyph,
-                         const QColor& swatch,
-                         const QColor& glyphColor,
-                         qreal dpr)
+                            const QColor& swatch,
+                            const QColor& glyphColor,
+                            qreal dpr)
 {
     QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
@@ -183,10 +183,16 @@ QIcon make_autosize_icon(const QColor& glyphColor, qreal dpr)
         QPointF vert;
     };
     const Corner corners[4]
-        = {{{inner, inner}, {armLen, 0}, {0, armLen}},
-           {{kiconSize - inner, inner}, {-armLen, 0}, {0, armLen}},
-           {{inner, kiconSize - inner}, {armLen, 0}, {0, -armLen}},
-           {{kiconSize - inner, kiconSize - inner}, {-armLen, 0}, {0, -armLen}}};
+        = {{.at = {inner, inner}, .horiz = {armLen, 0}, .vert = {0, armLen}},
+           {.at = {kiconSize - inner, inner},
+            .horiz = {-armLen, 0},
+            .vert = {0, armLen}},
+           {.at = {inner, kiconSize - inner},
+            .horiz = {armLen, 0},
+            .vert = {0, -armLen}},
+           {.at = {kiconSize - inner, kiconSize - inner},
+            .horiz = {-armLen, 0},
+            .vert = {0, -armLen}}};
     for (const Corner& c : corners) {
         p.drawLine(c.at, c.at + c.horiz);
         p.drawLine(c.at, c.at + c.vert);
@@ -559,7 +565,8 @@ void TextEditToolbar::show_link_popup()
     // paints solid black.
     popup->setAttribute(Qt::WA_TranslucentBackground, false);
 
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -612,8 +619,8 @@ void TextEditToolbar::show_link_popup()
     lay->addWidget(applyBtn);
 
     connect(browseBtn, &QToolButton::clicked, popup, [popup, edit] {
-        const QString file = show_open_file_dialog(popup,
-                                                tr("Select a file to link to"));
+        const QString file
+            = show_open_file_dialog(popup, tr("Select a file to link to"));
         if (!file.isEmpty()) {
             edit->setText(QUrl::fromLocalFile(file).toString());
         }
@@ -812,20 +819,22 @@ void TextEditToolbar::update_color_button_icons()
     // highlight is set - makeColorGlyphIcon() already renders that as a
     // neutral gray bar, so no substitution needed here (unlike the color
     // picker's "initial" value, which needs a real starting hue/alpha).
-    highlightColorBtn_->setIcon(make_color_glyph_icon(QStringLiteral("H"),
-                                                   format.background().color(),
-                                                   iconGlyphColor_,
-                                                   dpr));
+    highlightColorBtn_->setIcon(
+        make_color_glyph_icon(QStringLiteral("H"),
+                              format.background().color(),
+                              iconGlyphColor_,
+                              dpr));
 
     fillColorBtn_->setIcon(make_color_glyph_icon(QStringLiteral("BG"),
-                                              item_->fill_color(),
-                                              iconGlyphColor_,
-                                              dpr));
+                                                 item_->fill_color(),
+                                                 iconGlyphColor_,
+                                                 dpr));
 }
 
 void TextEditToolbar::restyle_from_preset()
 {
-    auto colorPreset = SettingsHandler::get_instance()->get_current_color_preset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
