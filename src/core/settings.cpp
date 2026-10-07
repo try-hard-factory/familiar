@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QImageReader>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -46,9 +47,7 @@ bool looks_like_a_placeholder_not_a_path(const QString& arg)
     return true;
 }
 
-} // namespace
-
-static void add_options(QCommandLineParser& parser)
+void add_options(QCommandLineParser& parser)
 {
     parser.addOption(
         {QStringList{QStringLiteral("f"), QStringLiteral("file")},
@@ -80,6 +79,8 @@ static void add_options(QCommandLineParser& parser)
                       QCoreApplication::tr(
                           "Draw item's transform handle areas for debugging")});
 }
+
+} // namespace
 
 void CommandlineArgs::process(const QCoreApplication& app)
 {
@@ -466,11 +467,14 @@ QStringList FamSettings::get_recent_files(bool existingOnly)
     QStringList values = SettingsHandler::get_instance()->recent_files_raw();
 
     if (existingOnly) {
-        values.erase(std::remove_if(values.begin(),
-                                    values.end(),
-                                    [](const QString& f) {
-                                        return !QFileInfo::exists(f);
-                                    }),
+        // .begin() on the result: the ranges overload returns a subrange,
+        // not an iterator, so it can't be handed to erase() directly the
+        // way std::remove_if's return value could.
+        values.erase(std::ranges::remove_if(values,
+                                            [](const QString& f) {
+                                                return !QFileInfo::exists(f);
+                                            })
+                         .begin(),
                      values.end());
     }
     return values;

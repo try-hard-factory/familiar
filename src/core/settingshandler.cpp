@@ -23,7 +23,9 @@ using namespace familiar::log;
 #define OPTION(KEY, TYPE) \
     {QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE)}
 
-static QMap<int, int> opacityListDef = {
+namespace {
+
+QMap<int, int> opacityListDef = {
     {kDarkPreset, 255},
     {kLightPreset, 255},
     {kCustom1, 255},
@@ -32,44 +34,44 @@ static QMap<int, int> opacityListDef = {
     {kCustom4, 255},
 };
 
-static QMap<int, QColor> darkColorPresetDef
+QMap<int, QColor> darkColorPresetDef
     = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
        {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
        {kBorderColor, QColor({13, 13, 13})},       // kBorderColor
        {kTextColor, QColor({255, 255, 255})},      // kTextColor - white
        {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
-static QMap<int, QColor> lightColorPresetDef
+QMap<int, QColor> lightColorPresetDef
     = {{kBackgroundColor, QColor({224, 224, 224})},
        {kCanvasColor, QColor({234, 234, 234})},
        {kBorderColor, QColor({200, 200, 200})},
        {kTextColor, QColor({111, 111, 111})},
        {kSelectionColor, QColor({255, 0, 0})}};
-static QMap<int, QColor> customPreset1Def
+QMap<int, QColor> customPreset1Def
     = {{kBackgroundColor, QColor({32, 32, 32})},
        {kCanvasColor, QColor({42, 42, 42})},
        {kBorderColor, QColor({13, 13, 13})},
        {kTextColor, QColor({122, 122, 122})},
        {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset2Def
+QMap<int, QColor> customPreset2Def
     = {{kBackgroundColor, QColor({32, 32, 32})},
        {kCanvasColor, QColor({42, 42, 42})},
        {kBorderColor, QColor({13, 13, 13})},
        {kTextColor, QColor({122, 122, 122})},
        {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset3Def
+QMap<int, QColor> customPreset3Def
     = {{kBackgroundColor, QColor({32, 32, 32})},
        {kCanvasColor, QColor({42, 42, 42})},
        {kBorderColor, QColor({13, 13, 13})},
        {kTextColor, QColor({122, 122, 122})},
        {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset4Def
+QMap<int, QColor> customPreset4Def
     = {{kBackgroundColor, QColor({32, 32, 32})},
        {kCanvasColor, QColor({42, 42, 42})},
        {kBorderColor, QColor({13, 13, 13})},
        {kTextColor, QColor({122, 122, 122})},
        {kSelectionColor, QColor({22, 142, 153})}};
 
-static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions
+QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions
     = {
         //         KEY                            TYPE                 DEFAULT_VALUE
         OPTION("option0", Bool(true)),
@@ -85,8 +87,6 @@ static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOption
         OPTION("custom_preset4", ColorList(customPreset4Def)),
 
 };
-
-namespace {
 
 // QJsonValue::toVariant() doesn't guarantee int over double for whole
 // numbers, but ValueHandler::check() implementations (e.g. BoundedInt)

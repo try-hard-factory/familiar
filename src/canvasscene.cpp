@@ -50,8 +50,8 @@ QList<QGraphicsItem*> sort_by_filename(const QList<QGraphicsItem*>& items)
         }
     }
 
-    std::sort(byFilename.begin(),
-              byFilename.end(),
+    std::ranges::sort(byFilename,
+             
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return item_filename(a) < item_filename(b);
               });
@@ -385,11 +385,11 @@ void CanvasScene::raise_to_top()
     QList<QGraphicsItem*> items = selectedItems(true);
     std::vector<double> zValues;
     zValues.reserve(static_cast<std::size_t>(items.size()));
-    std::transform(items.begin(),
-                   items.end(),
+    std::ranges::transform(items,
+                  
                    std::back_inserter(zValues),
                    [](const auto& i) { return i->zValue(); });
-    const double minZValue = *std::min_element(zValues.begin(), zValues.end());
+    const double minZValue = *std::ranges::min_element(zValues);
     const double delta = maxZ_ + zStep_ - minZValue;
     FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
     for (auto& item : items) {
@@ -410,8 +410,8 @@ void CanvasScene::raise_selection_to_front()
             ordered.append(item);
             if (auto* group = dynamic_cast<GroupItem*>(item)) {
                 QList<QGraphicsItem*> children = group->resolve_children();
-                std::sort(children.begin(),
-                          children.end(),
+                std::ranges::sort(children,
+                         
                           [](QGraphicsItem* a, QGraphicsItem* b) {
                               return a->zValue() < b->zValue();
                           });
@@ -435,8 +435,8 @@ void CanvasScene::raise_selection_to_front()
             roots.append(owner);
         }
     }
-    std::sort(roots.begin(),
-              roots.end(),
+    std::ranges::sort(roots,
+             
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return a->zValue() < b->zValue();
               });
@@ -472,11 +472,11 @@ void CanvasScene::lower_to_bottom()
         return;
     }
     std::vector<double> zValues;
-    std::transform(items.begin(),
-                   items.end(),
+    std::ranges::transform(items,
+                  
                    std::back_inserter(zValues),
                    [](const auto& i) { return i->zValue(); });
-    const double maxZValue = *std::max_element(zValues.begin(), zValues.end());
+    const double maxZValue = *std::ranges::max_element(zValues);
     const double delta = minZ_ - zStep_ - maxZValue;
     FLOG_DEBUG(Ch::Scene, "Lower to bottom, delta: {}", delta);
     for (auto& item : items) {
@@ -794,8 +794,8 @@ void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
     // under the picture it's supposed to be pinned to.
     QList<QGraphicsItem*> cluster = with_attached_items(
         group->selection_action_items());
-    std::sort(cluster.begin(),
-              cluster.end(),
+    std::ranges::sort(cluster,
+             
               [](QGraphicsItem* a, QGraphicsItem* b) {
                   return a->zValue() < b->zValue();
               });
@@ -1080,8 +1080,8 @@ void CanvasScene::arrange(bool vertical)
 
     if (vertical) {
         // Сортировка по вертикали (y)
-        std::sort(rects.begin(),
-                  rects.end(),
+        std::ranges::sort(rects,
+                 
                   [](const ItemRect& a, const ItemRect& b) {
                       return a.rect.topLeft().y() < b.rect.topLeft().y();
                   });
@@ -1099,8 +1099,8 @@ void CanvasScene::arrange(bool vertical)
         }
     } else {
         // Сортировка по горизонтали (x)
-        std::sort(rects.begin(),
-                  rects.end(),
+        std::ranges::sort(rects,
+                 
                   [](const ItemRect& a, const ItemRect& b) {
                       return a.rect.topLeft().x() < b.rect.topLeft().x();
                   });

@@ -202,7 +202,9 @@ QStringList ActionRegistry::keys() const
 
 // ─── Global actions registry ──────────────────────────────────────────────────
 
-static ActionRegistry build_registry()
+namespace {
+
+ActionRegistry build_registry()
 {
     using A = Action;
     ActionRegistry r;
@@ -546,6 +548,8 @@ static ActionRegistry build_registry()
 
     return r;
 }
+
+} // namespace
 
 ActionRegistry& get_actions()
 {

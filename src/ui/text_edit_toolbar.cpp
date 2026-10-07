@@ -717,7 +717,7 @@ void TextEditToolbar::toggle_list_style(int style)
     }
 
     const bool anyListed
-        = std::any_of(blocks.begin(), blocks.end(), [](const QTextBlock& b) {
+        = std::ranges::any_of(blocks, [](const QTextBlock& b) {
               return QTextCursor(b).currentList() != nullptr;
           });
     // Only a uniform "every line already has this exact style" selection
@@ -725,8 +725,8 @@ void TextEditToolbar::toggle_list_style(int style)
     // is treated as "make it this style".
     const bool turningOff
         = anyListed
-          && std::all_of(blocks.begin(),
-                         blocks.end(),
+          && std::ranges::all_of(blocks,
+                        
                          [wanted](const QTextBlock& b) {
                              const QTextList* l = QTextCursor(b).currentList();
                              return l && l->format().style() == wanted;
