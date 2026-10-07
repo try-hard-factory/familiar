@@ -50,6 +50,9 @@ protected:
 private slots:
     void on_tab_closed(int index);
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     // Qt's native close-button tooltip just says "Close Tab", which is
     // misleading here - a tab is a whole loaded .fml project, not a

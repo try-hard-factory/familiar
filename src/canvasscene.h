@@ -366,6 +366,9 @@ public slots:
     void on_selection_change();
     void on_change();
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public:
     QUndoStack* undo_stack() const { return undoStack_; }
     // Highest/lowest z handed out so far - items extend the range through
@@ -433,12 +436,18 @@ public:
     bool is_untitled();
     QUuid recovery_id();
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     void settings_changed_slot();
 
 private slots:
     void clipboard_changed();
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     qint16 objects_count() const;
 

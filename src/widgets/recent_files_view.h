@@ -101,6 +101,9 @@ private slots:
     // pulling that into every widget that includes this header).
     void on_clicked(const QModelIndex& index);
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QStringList files_;
     MainWindow* mainWindow_;

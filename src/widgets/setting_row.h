@@ -170,6 +170,9 @@ private:
     HoverInfoLabel* label_ = nullptr;
     bool ignoreValueChanged_ = false;
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     void on_restore_defaults();
 };

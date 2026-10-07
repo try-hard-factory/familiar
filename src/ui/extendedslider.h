@@ -22,6 +22,9 @@ private slots:
     void update_tooltip();
     void fire_timer();
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QTimer mTimer_;
 };

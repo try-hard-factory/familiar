@@ -98,6 +98,9 @@ public:
     }
     void clear_clipboard_items() { clipboardItems_.clear(); }
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     // Window-level actions: MainWindow owns the single, app-wide QAction
     // set (via ActionsMixin) since the menu bar/shortcuts are shared
@@ -196,7 +199,7 @@ protected:
     void changeEvent(QEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
 
-protected:
+
     void mouseMoveEvent(QMouseEvent* event) override
     {
         update_resize_cursor(event->pos());
@@ -313,10 +316,10 @@ private:
         }
     }
 
-private:
+
     QPoint pos_ = kinvalidPoint;
 
-private:
+
     bool check_save();
 
 public slots:
@@ -348,6 +351,9 @@ private slots:
     void open_file();
     void save_file_as();
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     // Resync the shared action enabled-state to whichever tab is now
     // active (connected to TabPane::currentTabChanged). Everything else
@@ -359,6 +365,9 @@ private slots:
     void on_active_can_undo_changed(bool canUndo);
     void on_active_can_redo_changed(bool canRedo);
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     // (Re)connects scene_/undoStack_ signals from `cv` to the slots
     // above, disconnecting the previously-hooked tab first, then

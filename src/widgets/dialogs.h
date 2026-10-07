@@ -402,6 +402,9 @@ private:
         percentLabel_->setText(QStringLiteral("%1%").arg(percent));
     }
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     void on_current_item_changed(const QString& name)
     {
@@ -534,6 +537,9 @@ private slots:
         }
     }
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     FlatProgressBar* bar_ = nullptr;
     QLabel* percentLabel_ = nullptr;
@@ -741,6 +747,9 @@ private:
     QList<familiar::log::RingSink::Entry> allEntries_;
     QMap<familiar::log::Level, bool> visibleLevels_;
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     // A single new line: cheap append instead of a full rebuild (the
     // common case - most log lines arrive with every filter already
@@ -852,6 +861,9 @@ private:
     QList<familiar::recovery::Entry> entries_;
     QListWidget* list_ = nullptr;
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     void restore_and_discard_unchecked()
     {
@@ -995,6 +1007,9 @@ private slots:
         }
     }
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QSize defaultSize_;
     bool ignoreChange_;
@@ -1150,6 +1165,9 @@ public:
 
     ~ChangeOpacityDialog() { delete command_; }
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     void accept() override
     {
@@ -1196,6 +1214,9 @@ private slots:
         command_->redo();
     }
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QList<QGraphicsItem*> items_;
     QUndoStack* undoStack_;

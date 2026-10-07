@@ -29,6 +29,9 @@ public:
                           std::optional<QPoint> = std::nullopt)
     {}
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     void on_context_menu(const QPoint& point);
 

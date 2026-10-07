@@ -54,6 +54,9 @@ private:
     void show_settings_popup();
     void update_fill_color_icon();
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     void on_lock_toggled(bool checked);
 };

@@ -128,6 +128,9 @@ public:
         on_scene_changed();
     }
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     void on_scene_changed();
     void on_selection_changed();
@@ -137,6 +140,9 @@ public slots:
     void on_undo_clean_changed(bool clean);
     void settings_changed_slot();
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public:
     // Per-tab action bodies. No longer QMetaObject::invokeMethod-driven
     // slots: MainWindow now owns the single QAction set (see

@@ -363,7 +363,7 @@ private:
         }
     }
 
-private:
+
     QMenu* contextMenu_ = nullptr;
     QList<QMenu*> toplevelMenus_;
     QMap<QString, QList<QAction*>> actionGroups_;

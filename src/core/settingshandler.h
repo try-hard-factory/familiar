@@ -176,7 +176,7 @@ private:
     void load_document();
     bool save_document() const;
 
-private:
+
     QString settingsFilePath_;
     QJsonObject document_;
 };
