@@ -94,7 +94,7 @@ int raw_progress_callback(void* data,
     if (ctx->worker->is_canceled()) {
         return 1;
     }
-    unsigned bit = static_cast<unsigned>(stage);
+    auto bit = static_cast<unsigned>(stage);
     int bitPos = 0;
     while (bit > 1u) {
         bit >>= 1;

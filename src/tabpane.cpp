@@ -62,8 +62,8 @@ void TabPane::add_new_tab(const QString& path)
     // handles showing/hiding its pages itself once they're actually
     // added - no need to show() a widget that isn't parented into
     // anything real yet.
-    CanvasView* canvasView = new CanvasView(mainwindow_);
-    ProjectSettings* ps = new ProjectSettings(this, canvasView);
+    auto* canvasView = new CanvasView(mainwindow_);
+    auto* ps = new ProjectSettings(this, canvasView);
 
     ps->path(path);
     ps->project_name(QFileInfo(path).fileName());
@@ -84,8 +84,8 @@ void TabPane::add_new_untitled_tab()
     const int count = tabs_->count();
 
     // No premature show() here either - see addNewTab()'s own comment.
-    CanvasView* canvasWidget = new CanvasView(mainwindow_);
-    ProjectSettings* ps = new ProjectSettings(this, canvasWidget);
+    auto* canvasWidget = new CanvasView(mainwindow_);
+    auto* ps = new ProjectSettings(this, canvasWidget);
     canvasWidget->set_project_settings(ps);
 
     tabs_->addTab(canvasWidget, "untitled");

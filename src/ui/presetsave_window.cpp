@@ -17,7 +17,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
 
     auto* layout = new QVBoxLayout(this);
     // layout_->setAlignment(Qt::AlignLeft);
-    QPushButton* custom1Btn = new QPushButton("Custom 1");
+    auto* custom1Btn = new QPushButton("Custom 1");
     connect(custom1Btn, &QPushButton::clicked, this, [this]() {
         auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -29,7 +29,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         SettingsHandler::get_instance()->set_custom_preset1(currentPreset);
         close();
     });
-    QPushButton* custom2Btn = new QPushButton("Custom 2");
+    auto* custom2Btn = new QPushButton("Custom 2");
     connect(custom2Btn, &QPushButton::clicked, this, [this]() {
         auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -41,7 +41,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         SettingsHandler::get_instance()->set_custom_preset2(currentPreset);
         close();
     });
-    QPushButton* custom3Btn = new QPushButton("Custom 3");
+    auto* custom3Btn = new QPushButton("Custom 3");
     connect(custom3Btn, &QPushButton::clicked, this, [this]() {
         auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -53,7 +53,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         SettingsHandler::get_instance()->set_custom_preset3(currentPreset);
         close();
     });
-    QPushButton* custom4Btn = new QPushButton("Custom 4");
+    auto* custom4Btn = new QPushButton("Custom 4");
     connect(custom4Btn, &QPushButton::clicked, this, [this]() {
         auto currentPreset
             = SettingsHandler::get_instance()->get_current_color_preset();

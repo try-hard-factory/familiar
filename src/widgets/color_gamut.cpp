@@ -115,7 +115,7 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
                   "palette(window-text); }");
     setWindowTitle("Color Gamut");
 
-    QVBoxLayout* controlsLayout = new QVBoxLayout();
+    auto* controlsLayout = new QVBoxLayout();
     controlsLayout->addWidget(new QLabel("Threshold:", this));
 
     mThresholdInput_ = new QSlider(this);
@@ -128,11 +128,11 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
             &GamutDialog::on_value_changed);
     controlsLayout->addWidget(mThresholdInput_, 0, Qt::AlignHCenter);
 
-    QDialogButtonBox* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     controlsLayout->addWidget(buttons);
 
-    QHBoxLayout* layout = new QHBoxLayout();
+    auto* layout = new QHBoxLayout();
     setLayout(layout);
 
     mGamutWidget_ = new GamutWidget(this, item);

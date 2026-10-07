@@ -61,7 +61,7 @@ public:
 
     QMenuBar* create_menubar()
     {
-        QMenuBar* bar = new QMenuBar();
+        auto* bar = new QMenuBar();
         for (QMenu* m : toplevelMenus_) {
             bar->addMenu(m);
         }
@@ -191,7 +191,7 @@ private:
     void create_actions()
     {
         for (Action* action : get_actions().all()) {
-            QAction* qaction = new QAction(action->text(), static_cast<T*>(this));
+            auto* qaction = new QAction(action->text(), static_cast<T*>(this));
             qaction->setAutoRepeat(false);
 
             const QStringList shortcuts = action->get_shortcuts();
@@ -316,7 +316,7 @@ private:
 
             if (i < files.size()) {
                 const QString filename = files[i];
-                QAction* qa = new QAction(QFileInfo(filename).fileName(),
+                auto* qa = new QAction(QFileInfo(filename).fileName(),
                                           static_cast<T*>(this));
 
                 const QStringList sc = get_actions()[aid].get_shortcuts();

@@ -1020,7 +1020,7 @@ void CanvasView::handle_drop(const QMimeData* mimedata, const QPoint& pos)
         }
         this->do_insert_images(urls, pos);
     } else if (mimedata->hasImage()) {
-        const QImage img = qvariant_cast<QImage>(mimedata->imageData());
+        const auto img = qvariant_cast<QImage>(mimedata->imageData());
         if (!img.isNull()) {
             // TODOLATER: create PixmapItem and insert via InsertItems command
             FLOG_DEBUG(Ch::View, "Image drop not yet implemented");

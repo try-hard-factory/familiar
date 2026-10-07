@@ -404,7 +404,7 @@ void MainWindow::new_file()
 
 void MainWindow::settings_window()
 {
-    SettingsWindow* widget = new SettingsWindow(this, this->parentWidget());
+    auto* widget = new SettingsWindow(this, this->parentWidget());
 
     widget->show();
     centered_widget(this, widget);
@@ -412,7 +412,7 @@ void MainWindow::settings_window()
 
 void MainWindow::open_keyboard_shortcuts_settings()
 {
-    SettingsWindow* widget = new SettingsWindow(this, this->parentWidget());
+    auto* widget = new SettingsWindow(this, this->parentWidget());
     widget->select_category(tr("Keyboard Shortcuts"));
     widget->show();
     centered_widget(this, widget);

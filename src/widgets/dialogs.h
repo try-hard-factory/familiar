@@ -707,7 +707,7 @@ public:
             followTail_ = scrollBar->value() == scrollBar->maximum();
         });
 
-        QDialogButtonBox* buttons = new QDialogButtonBox(
+        auto* buttons = new QDialogButtonBox(
             QDialogButtonBox::Close);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
         copyButton_ = new QPushButton("Co&py To Clipboard");
@@ -717,9 +717,9 @@ public:
                 this,
                 &DebugLogDialog::copy_to_clipboard);
 
-        QVBoxLayout* layout = new QVBoxLayout();
+        auto* layout = new QVBoxLayout();
         setLayout(layout);
-        QLabel* nameWidget = new QLabel(logPath);
+        auto* nameWidget = new QLabel(logPath);
         nameWidget->setTextInteractionFlags(Qt::TextSelectableByMouse);
         layout->addWidget(nameWidget);
         layout->addLayout(filterRow);
@@ -931,7 +931,7 @@ public:
                       "palette(window-text); }");
         setWindowTitle("Export Scene to Image");
         setWindowModality(Qt::WindowModal);
-        QGridLayout* layout = new QGridLayout();
+        auto* layout = new QGridLayout();
         setLayout(layout);
 
         layout->addWidget(new QLabel("Width:"), 0, 0);
@@ -954,7 +954,7 @@ public:
                 &SceneToPixmapExporterDialog::on_height_changed);
         layout->addWidget(heightInput_, 1, 1);
 
-        QDialogButtonBox* buttons = new QDialogButtonBox(
+        auto* buttons = new QDialogButtonBox(
             QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
         connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -1208,11 +1208,11 @@ public:
     FamNotification(QWidget* parent, const QString& text)
         : QWidget(parent)
     {
-        QLabel* label = new QLabel(text);
+        auto* label = new QLabel(text);
         setObjectName("FamNotification");
         setAttribute(Qt::WA_TransparentForMouseEvents);
         setAutoFillBackground(true);
-        QVBoxLayout* layout = new QVBoxLayout();
+        auto* layout = new QVBoxLayout();
         layout->addWidget(label);
         setLayout(layout);
 

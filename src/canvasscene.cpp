@@ -1889,9 +1889,9 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             // For pixmap items, we need an image - this should be provided in data
             const QVariant imageVariant = data.value("image");
             if (imageVariant.isValid()) {
-                const QImage image = imageVariant.value<QImage>();
+                const auto image = imageVariant.value<QImage>();
                 const QString filename = data.value("filename").toString();
-                PixmapItem* pixmapItem = new PixmapItem(image, filename);
+                auto* pixmapItem = new PixmapItem(image, filename);
 
                 // "crop" and "attached_to" -
                 // see PixmapItem::apply_extra_save_data() (moveitem.h).
@@ -1906,7 +1906,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             if (gifVariant.isValid()) {
                 const QByteArray gifBytes = gifVariant.toByteArray();
                 const QString filename = data.value("filename").toString();
-                GifItem* gifItem = new GifItem(gifBytes, filename);
+                auto* gifItem = new GifItem(gifBytes, filename);
 
                 // "crop"/"attached_to" (via the PixmapItem base call
                 // inside GifItem::apply_extra_save_data()) plus
@@ -1924,14 +1924,14 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             if (text.isEmpty()) {
                 text = "Text";
             }
-            TextItem* textItem = new TextItem();
+            auto* textItem = new TextItem();
             textItem->setPlainText(text);
             // Rich text ("html") and note fill ("fill_color") override
             // the plain-text fallback when present.
             textItem->apply_extra_save_data(extraMap);
             item = textItem;
         } else if (typ == "group") {
-            GroupItem* groupItem = new GroupItem();
+            auto* groupItem = new GroupItem();
             // child_ids/fill_color/rect size - see GroupItem::
             // apply_extra_save_data() (moveitem.h). Membership resolves
             // lazily against the scene on first actual use, not here -
@@ -1947,7 +1947,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
 
         if (item) {
             // Apply common item properties from data
-            IBaseItem* baseItem = dynamic_cast<IBaseItem*>(item);
+            auto* baseItem = dynamic_cast<IBaseItem*>(item);
             if (baseItem) {
                 // Restore identity when loading a saved file (see
                 // docs/fml_format_design.md §5.1/§9). Absent for a

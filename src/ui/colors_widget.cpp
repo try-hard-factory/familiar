@@ -325,7 +325,7 @@ void ColorsWidget::save_reset_btns_init()
     // (Restore Defaults/Import/Export, ui/settings_window.cpp) - not
     // dialog_style::styleSecondaryButton()'s outline look, which is for
     // separate modal dialogs, not buttons living inside this window.
-    QPushButton* saveToPresetBtn = new QPushButton(tr("Save to preset"), this);
+    auto* saveToPresetBtn = new QPushButton(tr("Save to preset"), this);
     saveToPresetBtn->setStyleSheet(
         familiar::settings_style::filled_button_style_sheet());
     connect(saveToPresetBtn,
@@ -342,7 +342,7 @@ void ColorsWidget::save_reset_btns_init()
 
 void ColorsWidget::show_preset_save_window()
 {
-    PresetSaveWindow* widget = new PresetSaveWindow(parentWidget());
+    auto* widget = new PresetSaveWindow(parentWidget());
     widget->show();
     centered_widget(this, widget);
 }

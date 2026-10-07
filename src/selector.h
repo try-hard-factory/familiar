@@ -1045,7 +1045,7 @@ protected:
         const QPointF pos = event->scenePos();
         if ((pos - eventStart_).manhattanLength() > 5) {
             // Reset previous transform when movement exceeds threshold
-            CanvasView* view = dynamic_cast<CanvasView*>(
+            auto* view = dynamic_cast<CanvasView*>(
                 this->scene()->views().at(0));
             view->reset_previous_transform(nullptr);
         }
@@ -1150,7 +1150,7 @@ protected:
             reset_actions();
             return;
         } else if (active_mode_ == kRotateMode) {
-            CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
+            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             scene->on_selection_change(); // or emit selectionChange()
             const qreal delta = get_rotate_delta(event->scenePos());
             if (delta != 0) {
