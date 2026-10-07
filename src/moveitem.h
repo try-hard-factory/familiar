@@ -484,6 +484,9 @@ public:
 
     QRectF crop_handle_topleft() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x(),
                       topLeft.y(),
@@ -493,6 +496,9 @@ public:
 
     QRectF crop_handle_bottomleft() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF bottomLeft = crop_temp->bottomLeft();
         return QRectF(bottomLeft.x(),
                       bottomLeft.y() - crop_handle_size(),
@@ -502,6 +508,9 @@ public:
 
     QRectF crop_handle_bottomright() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF bottomRight = crop_temp->bottomRight();
         return QRectF(bottomRight.x() - crop_handle_size(),
                       bottomRight.y() - crop_handle_size(),
@@ -511,6 +520,9 @@ public:
 
     QRectF crop_handle_topright() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF topRight = crop_temp->topRight();
         return QRectF(topRight.x() - crop_handle_size(),
                       topRight.y(),
@@ -528,6 +540,9 @@ public:
 
     QRectF crop_edge_top() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x() + crop_handle_size(),
                       topLeft.y(),
@@ -537,6 +552,9 @@ public:
 
     QRectF crop_edge_left() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF topLeft = crop_temp->topLeft();
         return QRectF(topLeft.x(),
                       topLeft.y() + crop_handle_size(),
@@ -546,6 +564,9 @@ public:
 
     QRectF crop_edge_bottom() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF bottomLeft = crop_temp->bottomLeft();
         return QRectF(bottomLeft.x() + crop_handle_size(),
                       bottomLeft.y() - crop_handle_size(),
@@ -555,6 +576,9 @@ public:
 
     QRectF crop_edge_right() const
     {
+        if (!crop_temp) {
+            return {};
+        }
         const QPointF topRight = crop_temp->topRight();
         return QRectF(topRight.x() - crop_handle_size(),
                       topRight.y() + crop_handle_size(),
@@ -595,6 +619,9 @@ public:
     QPointF ensure_point_within_crop_bounds(const QPointF& point,
                                             CropHandleFn handle) const
     {
+        if (!crop_temp) {
+            return point;
+        }
         QPointF topleft;
         QPointF bottomright;
         const QSize pixmapSize = pixmap().size();
@@ -709,7 +736,7 @@ public:
         if (std::abs(painter->combinedTransform().m11()) < 2) {
             painter->setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
         }
-        if (crop_mode) {
+        if (crop_mode && crop_temp) {
             // TODOLATER:
             // paint_debug(painter, option, widget);
 
@@ -824,11 +851,16 @@ public:
                    "Exiting crop mode with {} on {}",
                    confirm,
                    to_string());
-        if (confirm && crop() != *crop_temp) {
-            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-            // TODOLATER: interface
-            scene->undo_stack()->push(
-                new CropItemCommand(this, crop_temp.value()));
+        // Copied out right after the check instead of being read twice:
+        // the crop() call in between is opaque to the optional-access
+        // check, which then treats the second read as unchecked again.
+        if (confirm && crop_temp) {
+            const QRectF pending = *crop_temp;
+            if (crop() != pending) {
+                auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+                // TODOLATER: interface
+                scene->undo_stack()->push(new CropItemCommand(this, pending));
+            }
         }
 
         this->prepareGeometryChange();
@@ -1039,13 +1071,15 @@ protected:
             }
         }
 
-        // Click not in handle, end cropping mode:
-        exit_crop_mode(crop_temp->contains(event->pos()));
+        // Click not in handle, end cropping mode. No crop_temp means
+        // nothing was ever set up to confirm, so leave without applying.
+        exit_crop_mode(crop_temp && crop_temp->contains(event->pos()));
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (crop_mode && crop_mode_move && crop_mode_event_start) {
+        if (crop_mode && crop_temp && crop_mode_move
+            && crop_mode_event_start) {
             const QPointF diff = event->pos() - *crop_mode_event_start;
             const CropHandleFn move = *crop_mode_move;
 
