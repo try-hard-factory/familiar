@@ -1700,7 +1700,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
                                       QList<QGraphicsItem*> itemsIn) const
 {
     auto filterUserItems =
-        [this](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
+        [](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
         QList<QGraphicsItem*> userItems;
         for (QGraphicsItem* item : itemList) {
             if (CanvasScene::item_add_by_user(item)) {
