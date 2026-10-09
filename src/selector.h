@@ -363,12 +363,12 @@ public:
     };
 
 private:
-    EItemMode active_mode_{kNone};
+    EItemMode activeMode_{kNone};
 
 protected:
     // Subclasses (GroupItem::itemChange()) need the exact mode, not just
     // is_action_active()'s boolean.
-    EItemMode active_mode() const { return active_mode_; }
+    EItemMode active_mode() const { return activeMode_; }
 
 public:
     explicit SelectableMixin(T* parent = nullptr)
@@ -520,16 +520,16 @@ public:
         // Hide the handle dots (not the outline itself) while this item
         // is actively being scaled/rotated via one of its OWN handles,
         // or moved as a plain body drag - they read as distracting
-        // mid-operation. active_mode_ covers the scale/rotate case
+        // mid-operation. activeMode_ covers the scale/rotate case
         // directly; a plain body drag doesn't set THIS item's own
-        // active_mode_ (see GroupItem::itemChange()'s own comment on
+        // activeMode_ (see GroupItem::itemChange()'s own comment on
         // why - kNone is what lets the position cascade run), so that
         // case is instead read off the SCENE's active_mode() - true for
         // every currently-selected item during a drag, not just whichever
         // one Qt happens to be dragging directly.
-        bool suppressHandles = active_mode_ == kScaleMode
-                               || active_mode_ == kRotateMode
-                               || active_mode_ == kFieldResizeMode;
+        bool suppressHandles = activeMode_ == kScaleMode
+                               || activeMode_ == kRotateMode
+                               || activeMode_ == kFieldResizeMode;
         if (!suppressHandles && this->isSelected() && this->scene()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 suppressHandles = scene->active_mode()
@@ -592,7 +592,7 @@ public:
     }
 
     // Whether this item is currently mid scale/rotate/flip drag.
-    bool is_action_active() const override { return active_mode_ != kNone; }
+    bool is_action_active() const override { return activeMode_ != kNone; }
 
     qreal scale_orig_factor() const override { return scaleOrigFactor_; }
     void set_scale_orig_factor(qreal value) override
@@ -837,7 +837,7 @@ protected:
                     if (resizeOnly) {
                         // Edit mode: resize the field (both dimensions -
                         // it's a corner), not a uniform scale.
-                        active_mode_ = kFieldResizeMode;
+                        activeMode_ = kFieldResizeMode;
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(corner));
                         const QPointF c = this->center();
@@ -850,7 +850,7 @@ protected:
                         event->accept();
                         return;
                     }
-                    active_mode_ = kScaleMode;
+                    activeMode_ = kScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(get_scale_anchor(corner));
@@ -869,7 +869,7 @@ protected:
 
                 //Check if we are in one of the corner's rotate areas
                 if (!resizeOnly && is_in_rotate_handle(corner, event->pos())) {
-                    active_mode_ = kRotateMode;
+                    activeMode_ = kRotateMode;
                     eventAnchor_ = this->center_scene_coords();
                     rotateStartAngle_ = get_rotate_angle(event->scenePos());
                     for (auto& item :
@@ -892,7 +892,7 @@ protected:
                         // Edit mode: resize the field along whichever
                         // one axis this edge governs, leaving the other
                         // dimension untouched.
-                        active_mode_ = kFieldResizeMode;
+                        activeMode_ = kFieldResizeMode;
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(edge.rect.center()));
                         const QPointF c = this->center();
@@ -909,7 +909,7 @@ protected:
                         event->accept();
                         return;
                     }
-                    active_mode_ = kScaleMode;
+                    activeMode_ = kScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(
@@ -1049,7 +1049,7 @@ protected:
             view->reset_previous_transform(nullptr);
         }
 
-        if (active_mode_ == kScaleMode) {
+        if (activeMode_ == kScaleMode) {
             const qreal factor = get_scale_factor(event);
             // begin/end_group_batch(): a group's own scale drags every
             // one of selection_action_items()'s flat entries
@@ -1073,7 +1073,7 @@ protected:
             }
             event->accept();
             return;
-        } else if (active_mode_ == kRotateMode) {
+        } else if (activeMode_ == kRotateMode) {
             auto snap = (event->modifiers()
                              == Qt::KeyboardModifier::ShiftModifier
                          || event->modifiers()
@@ -1097,7 +1097,7 @@ protected:
             }
             event->accept();
             return;
-        } else if (active_mode_ == kFieldResizeMode) {
+        } else if (activeMode_ == kFieldResizeMode) {
             // Local coordinates throughout (not the diagonal-projection
             // math get_scale_factor() uses) - a field resize just needs
             // "how far past the anchor is the mouse now", one axis at a
@@ -1129,11 +1129,11 @@ protected:
         T::mouseMoveEvent(event); // see mousePressEvent() comment above
     }
 
-    void reset_actions() { active_mode_ = kNone; }
+    void reset_actions() { activeMode_ = kNone; }
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (active_mode_ == kScaleMode) {
+        if (activeMode_ == kScaleMode) {
             const qreal factor = get_scale_factor(event);
             if (factor != 1) {
                 // TODOLATER: static or dynamic? assert?
@@ -1148,7 +1148,7 @@ protected:
             event->accept();
             reset_actions();
             return;
-        } else if (active_mode_ == kRotateMode) {
+        } else if (activeMode_ == kRotateMode) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             scene->on_selection_change(); // or emit selectionChange()
             const qreal delta = get_rotate_delta(event->scenePos());
@@ -1163,7 +1163,7 @@ protected:
             event->accept();
             reset_actions();
             return;
-        } else if (active_mode_ == kFieldResizeMode) {
+        } else if (activeMode_ == kFieldResizeMode) {
             static_cast<Mixin*>(this)
                 ->commit_field_resize(fieldResizeOrigSize_.width(),
                                       fieldResizeOrigSize_.height(),
@@ -1400,9 +1400,9 @@ public:
         fillColor.setAlpha(40);
         this->setBrush(QBrush(fillColor));
 
-        pen.setWidth(1);
-        pen.setCosmetic(true);
-        this->setPen(pen);
+        pen_.setWidth(1);
+        pen_.setCosmetic(true);
+        this->setPen(pen_);
     }
 
     QString to_string() const
@@ -1458,6 +1458,6 @@ public:
     }
 
 private:
-    QColor color{Qt::black};
-    QPen pen{color};
+    QColor color_{Qt::black};
+    QPen pen_{color_};
 };

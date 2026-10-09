@@ -169,8 +169,8 @@ private:
     const std::string type = "pixmap"; // static constexpr
     const qreal cropHandleSize = 15;   // static constexpr
     QString filename_;
-    bool is_image_{true};
-    bool crop_mode = false;
+    bool isImage_{true};
+    bool cropMode_ = false;
     bool grayscale_ = false;
     QPixmap grayscalePixmap_{};
     mutable std::optional<ColorGamut> colorGamut_{};
@@ -187,11 +187,11 @@ private:
     mutable qreal downscaleCacheFactor_ = 0.0;
     mutable qint64 downscaleCacheSrcKey_ = 0;
 
-    bool is_editable_ = false;
+    bool isEditable_ = false;
     QRectF crop_{};
-    std::optional<QRectF> crop_temp{};
-    std::optional<QPointF> crop_mode_event_start{};
-    std::optional<CropHandleFn> crop_mode_move{};
+    std::optional<QRectF> cropTemp_{};
+    std::optional<QPointF> cropModeEventStart_{};
+    std::optional<CropHandleFn> cropModeMove_{};
     // Attach generalized from TextItem to IBaseItem - see
     // IBaseItem::attachedToUid()'s own comment (selector.h) for the
     // full picture. A GifItem attaching to
@@ -209,7 +209,7 @@ public:
         setPixmap(QPixmap::fromImage(image));
         reset_crop();
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
-        crop_mode = false;
+        cropMode_ = false;
         init_selectable();
         // ItemPositionChange/ItemPositionHasChanged notifications are
         // OFF by default since Qt 4.6 - needed here (like GroupItem,
@@ -218,7 +218,7 @@ public:
         this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     }
 
-    bool is_image() const override { return is_image_; }
+    bool is_image() const override { return isImage_; }
 
     QString to_string() const
     {
@@ -285,7 +285,7 @@ public:
 
     QRectF bounding_rect_unselected() const override
     {
-        if (crop_mode) {
+        if (cropMode_) {
             //ItemMixin<PixmapItem, QGraphicsPixmapItem>::bounding_rect_unselected();
             return QGraphicsPixmapItem::boundingRect();
         }
@@ -403,7 +403,7 @@ public:
     }
 
     // set_image function
-    bool is_editable() override { return is_editable_; }
+    bool is_editable() override { return isEditable_; }
 
 
     IBaseItem* create_copy() override
@@ -484,10 +484,10 @@ public:
 
     QRectF crop_handle_topleft() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF topLeft = crop_temp->topLeft();
+        const QPointF topLeft = cropTemp_->topLeft();
         return {topLeft.x(),
                 topLeft.y(),
                 crop_handle_size(),
@@ -496,10 +496,10 @@ public:
 
     QRectF crop_handle_bottomleft() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF bottomLeft = crop_temp->bottomLeft();
+        const QPointF bottomLeft = cropTemp_->bottomLeft();
         return {bottomLeft.x(),
                 bottomLeft.y() - crop_handle_size(),
                 crop_handle_size(),
@@ -508,10 +508,10 @@ public:
 
     QRectF crop_handle_bottomright() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF bottomRight = crop_temp->bottomRight();
+        const QPointF bottomRight = cropTemp_->bottomRight();
         return {bottomRight.x() - crop_handle_size(),
                 bottomRight.y() - crop_handle_size(),
                 crop_handle_size(),
@@ -520,10 +520,10 @@ public:
 
     QRectF crop_handle_topright() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF topRight = crop_temp->topRight();
+        const QPointF topRight = cropTemp_->topRight();
         return {topRight.x() - crop_handle_size(),
                 topRight.y(),
                 crop_handle_size(),
@@ -540,50 +540,50 @@ public:
 
     QRectF crop_edge_top() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF topLeft = crop_temp->topLeft();
+        const QPointF topLeft = cropTemp_->topLeft();
         return {topLeft.x() + crop_handle_size(),
                 topLeft.y(),
-                crop_temp->width() - (2 * crop_handle_size()),
+                cropTemp_->width() - (2 * crop_handle_size()),
                 crop_handle_size()};
     }
 
     QRectF crop_edge_left() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF topLeft = crop_temp->topLeft();
+        const QPointF topLeft = cropTemp_->topLeft();
         return {topLeft.x(),
                 topLeft.y() + crop_handle_size(),
                 crop_handle_size(),
-                crop_temp->height() - (2 * crop_handle_size())};
+                cropTemp_->height() - (2 * crop_handle_size())};
     }
 
     QRectF crop_edge_bottom() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF bottomLeft = crop_temp->bottomLeft();
+        const QPointF bottomLeft = cropTemp_->bottomLeft();
         return {bottomLeft.x() + crop_handle_size(),
                 bottomLeft.y() - crop_handle_size(),
-                crop_temp->width() - (2 * crop_handle_size()),
+                cropTemp_->width() - (2 * crop_handle_size()),
                 crop_handle_size()};
     }
 
     QRectF crop_edge_right() const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return {};
         }
-        const QPointF topRight = crop_temp->topRight();
+        const QPointF topRight = cropTemp_->topRight();
         return {topRight.x() - crop_handle_size(),
                 topRight.y() + crop_handle_size(),
                 crop_handle_size(),
-                crop_temp->height() - (2 * crop_handle_size())};
+                cropTemp_->height() - (2 * crop_handle_size())};
     }
 
     // Function to return all crop edge functions as a tuple
@@ -619,7 +619,7 @@ public:
     QPointF ensure_point_within_crop_bounds(const QPointF& point,
                                             CropHandleFn handle) const
     {
-        if (!crop_temp) {
+        if (!cropTemp_) {
             return point;
         }
         QPointF topleft;
@@ -628,27 +628,27 @@ public:
 
         if (handle == &PixmapItem::crop_handle_topleft) {
             topleft = QPointF(0, 0);
-            bottomright = crop_temp->bottomRight();
+            bottomright = cropTemp_->bottomRight();
         } else if (handle == &PixmapItem::crop_handle_bottomleft) {
-            topleft = QPointF(0, crop_temp->top());
-            bottomright = QPointF(crop_temp->right(), pixmapSize.height());
+            topleft = QPointF(0, cropTemp_->top());
+            bottomright = QPointF(cropTemp_->right(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_handle_bottomright) {
-            topleft = crop_temp->topLeft();
+            topleft = cropTemp_->topLeft();
             bottomright = QPointF(pixmapSize.width(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_handle_topright) {
-            topleft = QPointF(crop_temp->left(), 0);
-            bottomright = QPointF(pixmapSize.width(), crop_temp->bottom());
+            topleft = QPointF(cropTemp_->left(), 0);
+            bottomright = QPointF(pixmapSize.width(), cropTemp_->bottom());
         } else if (handle == &PixmapItem::crop_edge_top) {
             topleft = QPointF(0, 0);
-            bottomright = QPointF(pixmapSize.width(), crop_temp->bottom());
+            bottomright = QPointF(pixmapSize.width(), cropTemp_->bottom());
         } else if (handle == &PixmapItem::crop_edge_bottom) {
-            topleft = QPointF(0, crop_temp->top());
+            topleft = QPointF(0, cropTemp_->top());
             bottomright = QPointF(pixmapSize.width(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_edge_left) {
             topleft = QPointF(0, 0);
-            bottomright = QPointF(crop_temp->right(), pixmapSize.height());
+            bottomright = QPointF(cropTemp_->right(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_edge_right) {
-            topleft = QPointF(crop_temp->left(), 0);
+            topleft = QPointF(cropTemp_->left(), 0);
             bottomright = QPointF(pixmapSize.width(), pixmapSize.height());
         }
 
@@ -736,14 +736,14 @@ public:
         if (std::abs(painter->combinedTransform().m11()) < 2) {
             painter->setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
         }
-        if (crop_mode && crop_temp) {
+        if (cropMode_ && cropTemp_) {
             // TODOLATER:
             // paint_debug(painter, option, widget);
 
             // Darken image outside of cropped area
             painter->drawPixmap(0, 0, pixmap());
             QPainterPath path;
-            path.addRect(crop_temp.value());
+            path.addRect(cropTemp_.value());
             QColor color(0, 0, 0);
             color.setAlpha(100);
             painter->setBrush(QBrush(color));
@@ -756,7 +756,7 @@ public:
                 draw_crop_rect(*painter, (this->*handle)());
             }
 
-            draw_crop_rect(*painter, *crop_temp);
+            draw_crop_rect(*painter, *cropTemp_);
         } else {
             const QPixmap& pm = grayscale_ ? grayscalePixmap_ : pixmap();
             // Real bug this fixes: a big photo (a 6048x4024 RAW import,
@@ -835,10 +835,10 @@ public:
                    "Entering crop mode on {}",
                    to_string());
         this->prepareGeometryChange();
-        crop_mode = true;
-        crop_temp = crop();
-        crop_mode_move = std::nullopt;
-        crop_mode_event_start = std::nullopt;
+        cropMode_ = true;
+        cropTemp_ = crop();
+        cropModeMove_ = std::nullopt;
+        cropModeEventStart_ = std::nullopt;
         this->grabKeyboard();
         this->update();
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -854,8 +854,8 @@ public:
         // Copied out right after the check instead of being read twice:
         // the crop() call in between is opaque to the optional-access
         // check, which then treats the second read as unchecked again.
-        if (confirm && crop_temp) {
-            const QRectF pending = *crop_temp;
+        if (confirm && cropTemp_) {
+            const QRectF pending = *cropTemp_;
             if (crop() != pending) {
                 auto* scene = dynamic_cast<CanvasScene*>(this->scene());
                 // TODOLATER: interface
@@ -864,10 +864,10 @@ public:
         }
 
         this->prepareGeometryChange();
-        crop_mode = false;
-        crop_temp = std::nullopt;
-        crop_mode_move = std::nullopt;
-        crop_mode_event_start = std::nullopt;
+        cropMode_ = false;
+        cropTemp_ = std::nullopt;
+        cropModeMove_ = std::nullopt;
+        cropModeEventStart_ = std::nullopt;
         this->ungrabKeyboard();
         this->update();
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -1020,7 +1020,7 @@ protected:
 
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (!crop_mode) {
+        if (!cropMode_) {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::hoverMoveEvent(event);
             return;
         }
@@ -1046,7 +1046,7 @@ protected:
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (!crop_mode) {
+        if (!cropMode_) {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mousePressEvent(event);
             return;
         }
@@ -1056,8 +1056,8 @@ protected:
         for (auto handle : crop_handles()) {
             // Click into a handle?
             if ((this->*handle)().contains(event->pos())) {
-                crop_mode_event_start = event->pos();
-                crop_mode_move = handle;
+                cropModeEventStart_ = event->pos();
+                cropModeMove_ = handle;
                 return;
             }
         }
@@ -1065,75 +1065,75 @@ protected:
         for (auto edge : crop_edges()) {
             // Click into an edge handle?
             if ((this->*edge)().contains(event->pos())) {
-                crop_mode_event_start = event->pos();
-                crop_mode_move = edge;
+                cropModeEventStart_ = event->pos();
+                cropModeMove_ = edge;
                 return;
             }
         }
 
-        // Click not in handle, end cropping mode. No crop_temp means
+        // Click not in handle, end cropping mode. No cropTemp_ means
         // nothing was ever set up to confirm, so leave without applying.
-        exit_crop_mode(crop_temp && crop_temp->contains(event->pos()));
+        exit_crop_mode(cropTemp_ && cropTemp_->contains(event->pos()));
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (crop_mode && crop_temp && crop_mode_move && crop_mode_event_start) {
-            const QPointF diff = event->pos() - *crop_mode_event_start;
-            const CropHandleFn move = *crop_mode_move;
+        if (cropMode_ && cropTemp_ && cropModeMove_ && cropModeEventStart_) {
+            const QPointF diff = event->pos() - *cropModeEventStart_;
+            const CropHandleFn move = *cropModeMove_;
 
             if (move == &PixmapItem::crop_handle_topleft) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topLeft()
+                    = ensure_point_within_crop_bounds(cropTemp_->topLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setTopLeft(newPoint);
+                cropTemp_->setTopLeft(newPoint);
             } else if (move == &PixmapItem::crop_handle_bottomleft) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->bottomLeft()
+                    = ensure_point_within_crop_bounds(cropTemp_->bottomLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setBottomLeft(newPoint);
+                cropTemp_->setBottomLeft(newPoint);
             } else if (move == &PixmapItem::crop_handle_bottomright) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->bottomRight()
+                    = ensure_point_within_crop_bounds(cropTemp_->bottomRight()
                                                           + diff,
                                                       move);
-                crop_temp->setBottomRight(newPoint);
+                cropTemp_->setBottomRight(newPoint);
             } else if (move == &PixmapItem::crop_handle_topright) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topRight()
+                    = ensure_point_within_crop_bounds(cropTemp_->topRight()
                                                           + diff,
                                                       move);
-                crop_temp->setTopRight(newPoint);
+                cropTemp_->setTopRight(newPoint);
             } else if (move == &PixmapItem::crop_edge_top) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topLeft()
+                    = ensure_point_within_crop_bounds(cropTemp_->topLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setTop(newPoint.y());
+                cropTemp_->setTop(newPoint.y());
             } else if (move == &PixmapItem::crop_edge_left) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topLeft()
+                    = ensure_point_within_crop_bounds(cropTemp_->topLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setLeft(newPoint.x());
+                cropTemp_->setLeft(newPoint.x());
             } else if (move == &PixmapItem::crop_edge_bottom) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->bottomLeft()
+                    = ensure_point_within_crop_bounds(cropTemp_->bottomLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setBottom(newPoint.y());
+                cropTemp_->setBottom(newPoint.y());
             } else if (move == &PixmapItem::crop_edge_right) {
                 const QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topRight()
+                    = ensure_point_within_crop_bounds(cropTemp_->topRight()
                                                           + diff,
                                                       move);
-                crop_temp->setRight(newPoint.x());
+                cropTemp_->setRight(newPoint.x());
             }
 
             update();
-            crop_mode_event_start = event->pos();
+            cropModeEventStart_ = event->pos();
             event->accept();
         } else {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseMoveEvent(event);
@@ -1142,9 +1142,9 @@ protected:
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (crop_mode) {
-            crop_mode_move = std::nullopt;
-            crop_mode_event_start = std::nullopt;
+        if (cropMode_) {
+            cropModeMove_ = std::nullopt;
+            cropModeEventStart_ = std::nullopt;
             event->accept();
         } else {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseReleaseEvent(event);
@@ -1380,8 +1380,8 @@ private:
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 {
     const std::string type = "text"; // static constexpr
-    bool edit_mode = false;
-    QString old_html;
+    bool editMode_ = false;
+    QString oldHtml_;
 
 public:
     // Default note fill - the backdrop TextItem always painted, now
@@ -1391,7 +1391,7 @@ public:
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
-        , edit_mode(false)
+        , editMode_(false)
         , fillColor_(default_fill_color())
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
@@ -1719,10 +1719,10 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Entering edit mode on {}",
                    to_string());
-        edit_mode = true;
+        editMode_ = true;
         // html, not plain text: the same commit-on-exit diff also carries
         // any formatting the floating toolbar applied during the session.
-        old_html = this->toHtml();
+        oldHtml_ = this->toHtml();
         oldFillColor_ = fillColor_;
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
@@ -1735,7 +1735,7 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Exiting edit mode on {}",
                    to_string());
-        edit_mode = false;
+        editMode_ = false;
         // Reset selection:
         this->setTextCursor(QTextCursor(document()));
         this->setTextInteractionFlags(Qt::NoTextInteraction);
@@ -1745,7 +1745,7 @@ public:
         if (commit) {
             scene->undo_stack()->push(new ChangeTextCommand(this,
                                                             this->toHtml(),
-                                                            old_html,
+                                                            oldHtml_,
                                                             fillColor_,
                                                             oldFillColor_));
             if (this->toPlainText().trimmed().isEmpty()) {
@@ -1754,7 +1754,7 @@ public:
                     new DeleteItemsCommand(scene, QList<QGraphicsItem*>{this}));
             }
         } else {
-            setHtml(old_html);
+            setHtml(oldHtml_);
             set_fill_color(oldFillColor_);
         }
     }
@@ -1770,7 +1770,7 @@ public:
         return ItemMixin<TextItem, QGraphicsTextItem>::has_selection_handles();
     }
 
-    bool paints_edit_mode_handles() const override { return edit_mode; }
+    bool paints_edit_mode_handles() const override { return editMode_; }
 
     void copy_to_clipboard(QClipboard* clipboard)
     {
@@ -1791,7 +1791,7 @@ protected:
         // editing still just moves the text cursor there like normal
         // typing, instead of yanking focus away to a browser/file
         // manager every time you click near a link to keep editing.
-        // Not gated on edit_mode: the document layout can be queried
+        // Not gated on editMode_: the document layout can be queried
         // regardless, so this works the same whether the note is
         // currently being edited or just selected.
         if (event->button() == Qt::LeftButton
@@ -2629,11 +2629,11 @@ protected:
     {
         // Only for a plain Qt-native body drag (ItemIsMovable) - during
         // an active resize/rotate handle drag of THIS item directly,
-        // active_mode_ is already kScaleMode/kRotateMode and every
+        // activeMode_ is already kScaleMode/kRotateMode and every
         // member already gets its OWN independent set_scale()/
         // set_rotation() call in the very same loop (see
         // selection_action_items() above feeding SelectableMixin's
-        // handle code, selector.h) - active_mode_ == kNone is exactly
+        // handle code, selector.h) - activeMode_ == kNone is exactly
         // "not mid-handle-drag of ME", i.e. a real independent body drag.
         // !scalingOrRotating_ covers the OTHER case: THIS group being
         // scaled/rotated not as the directly-grabbed item but as a
@@ -2745,11 +2745,11 @@ class ErrorItem : public ItemMixin<ErrorItem, QGraphicsTextItem>
     // docs/fml_format_design.md §5.1/§6) - preserved so a re-save doesn't
     // mint a new identity for data that's otherwise round-tripped as-is.
     // Null if unknown (e.g. the manifest item itself was malformed).
-    QUuid original_uid{};
+    QUuid originalUid_{};
 
 public:
-    const QUuid& original_uid_value() const { return original_uid; }
-    void set_original_uid(const QUuid& uid) { original_uid = uid; }
+    const QUuid& original_uid_value() const { return originalUid_; }
+    void set_original_uid(const QUuid& uid) { originalUid_ = uid; }
 
     ErrorItem(const QString& text = QString(),
               QGraphicsTextItem* parent = nullptr)

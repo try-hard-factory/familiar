@@ -55,7 +55,7 @@ void invoke(QWidget* target, const Action* action)
 // rubber-band selection drag - CanvasScene's own, not Qt's native
 // QGraphicsView rubber band). It will never see a real release once the
 // action's callback opens a modal dialog and steals input, leaving that
-// drag stuck (CanvasScene::active_mode_ never resets, see
+// drag stuck (CanvasScene::activeMode_ never resets, see
 // canvasscene.cpp's mouseReleaseEvent). Synthesize the release directly
 // to the canvas viewport - NOT HeldButtonsTracker::pressTarget(), which
 // for this frameless/custom-mouse-handling MainWindow turned out to be

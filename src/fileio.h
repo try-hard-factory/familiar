@@ -202,10 +202,10 @@ private:
     // Accumulated across every run() call in this session (a pause+
     // resume does NOT reset these); reported out through ThreadedIO's
     // image_load_failures()/large_images_found() signals, not read directly.
-    QStringList unsupportedFormatErrors;
-    QStringList tooLargeErrors;
-    QStringList corruptErrors;
-    QStringList largeImages;
+    QStringList unsupportedFormatErrors_;
+    QStringList tooLargeErrors_;
+    QStringList corruptErrors_;
+    QStringList largeImages_;
 
     QList<QUrl> urls_;
     QPointF pos_;

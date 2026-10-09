@@ -460,7 +460,7 @@ void KeyboardSettings::set_shortcuts(const QString& group,
 // TODOLATER: ?? this fn doesn't exist in python
 QStringList KeyboardSettings::get_shortcuts(const QString& group,
                                             const QString& key,
-                                            const QStringList& defaultValues)
+                                            const QStringList& defaultValues) const
 {
     const QJsonValue v = SettingsHandler::get_instance()->json_value(group, key);
     if (!v.isUndefined()) {

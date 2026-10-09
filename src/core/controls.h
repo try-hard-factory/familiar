@@ -254,7 +254,7 @@ public:
                               const QStringList& values);
     QStringList get_shortcuts(const QString& group,
                               const QString& key,
-                              const QStringList& defaultValues = {});
+                              const QStringList& defaultValues = {}) const;
 
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────
     // Removes key when values == defaultValues (stores only non-default data).

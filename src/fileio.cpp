@@ -637,18 +637,18 @@ void ImageImportSession::run(ThreadedIO* worker)
             switch (failure) {
             case ImageLoadFailure::UnsupportedFormat:
                 FLOG_WARN(Ch::IO, "Unsupported image format: {}", label);
-                unsupportedFormatErrors.append(label);
+                unsupportedFormatErrors_.append(label);
                 break;
             case ImageLoadFailure::TooLarge:
                 FLOG_WARN(Ch::IO,
                           "Image exceeds the {} MB allocation limit: {}",
                           allocationLimitBytes / (1024 * 1024),
                           label);
-                tooLargeErrors.append(label);
+                tooLargeErrors_.append(label);
                 break;
             case ImageLoadFailure::Corrupt:
                 FLOG_WARN(Ch::IO, "Could not load (corrupt file?): {}", label);
-                corruptErrors.append(label);
+                corruptErrors_.append(label);
                 break;
             default:
                 // TODOLATER: unreachable?
@@ -677,7 +677,7 @@ void ImageImportSession::run(ThreadedIO* worker)
             if (optimizeMode == QLatin1String("warn")) {
                 if (is_image_large(img)) {
                     FLOG_DEBUG(Ch::IO, "{} is a large image", label);
-                    largeImages.append(label);
+                    largeImages_.append(label);
                 }
             } else if (optimizeMode == QLatin1String("optimize_large")) {
                 downscale_to_limit(img);
@@ -720,21 +720,21 @@ void ImageImportSession::run(ThreadedIO* worker)
     // popups about the part the user just chose to abandon is pure
     // noise: they already know they stopped it.
     if (!worker->is_canceled()) {
-        if (!largeImages.isEmpty()) {
-            emit worker->large_images_found(largeImages);
+        if (!largeImages_.isEmpty()) {
+            emit worker->large_images_found(largeImages_);
         }
-        if (!unsupportedFormatErrors.isEmpty() || !tooLargeErrors.isEmpty()
-            || !corruptErrors.isEmpty()) {
-            emit worker->image_load_failures(unsupportedFormatErrors,
-                                             tooLargeErrors,
-                                             corruptErrors);
+        if (!unsupportedFormatErrors_.isEmpty() || !tooLargeErrors_.isEmpty()
+            || !corruptErrors_.isEmpty()) {
+            emit worker->image_load_failures(unsupportedFormatErrors_,
+                                             tooLargeErrors_,
+                                             corruptErrors_);
         }
     }
     // Flat list for finished()'s own `errors` param - unchanged shape for
     // whatever else still just wants "what failed", the 3-way breakdown
     // above is additive, not a replacement.
-    const QStringList errors = unsupportedFormatErrors + tooLargeErrors
-                               + corruptErrors;
+    const QStringList errors = unsupportedFormatErrors_ + tooLargeErrors_
+                               + corruptErrors_;
     // DIAG (ProgressDialog SIGSEGV investigation).
     FLOG_DEBUG(Ch::IO, "emit finished() worker={}", static_cast<void*>(worker));
     emit worker->finished(QString(), errors);

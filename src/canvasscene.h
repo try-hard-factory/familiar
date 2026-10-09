@@ -69,7 +69,7 @@ public:
     void cancel_active_modes();
     void end_rubberband_mode();
     void cancel_crop_mode();
-    void copy_selection_to_internal_clipboard();
+    void copy_selection_to_internal_clipboard() const;
     void paste_from_internal_clipboard(QPointF position);
     // Copy+paste collapsed into one step: clones the current selection
     // (with_related_items() expansion, same as copy - group descendants
@@ -99,7 +99,7 @@ public:
     // of a new selection (guarded on "nothing was already selected"), so
     // a second/third ctrl-clicked or rubber-banded item stayed at its
     // old z, potentially still buried under unrelated content.
-    void raise_selection_to_front();
+    void raise_selection_to_front() const;
     // Drag-and-drop-to-add - called from
     // mouseReleaseEvent() after committing a body drag, with the
     // cursor's OWN scene position (not any dragged item's center/bounds
@@ -149,7 +149,7 @@ public:
     // explicit group rather than the current Qt selection. Not pushed
     // onto undoStack_ - z-raises are a plain side effect throughout
     // this class, never their own undo step (see raise_selection_to_front()).
-    void raise_group_cluster_to_front(GroupItem* group);
+    void raise_group_cluster_to_front(GroupItem* group) const;
     void normalize_width_or_height(const QString& mode);
     void normalize_height();
     void normalize_width();
@@ -186,14 +186,14 @@ public:
     QColor sample_color_at(const QPointF& position);
     void select_all_items();
     void deselect_all_items();
-    bool has_selection();
-    bool has_single_selection();
-    bool has_multi_selection();
-    bool has_single_image_selection();
+    bool has_selection() const;
+    bool has_single_selection() const;
+    bool has_multi_selection() const;
+    bool has_single_image_selection() const;
     // True if the selection is a single GroupItem, or a single item
     // that's currently a member of one (see find_owning_group()) - either
     // way, "Ungroup" has something to do.
-    bool has_group_selected();
+    bool has_group_selected() const;
 
     // Wraps the current selection (2+ items) in a new GroupItem, pushed
     // as an undoable GroupCommand. No-op if fewer than 2 are selected.
@@ -206,11 +206,11 @@ public:
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(const std::string& type);
     QList<QGraphicsItem*> items_for_save();
-    void on_view_scale_change();
+    void on_view_scale_change() const;
     QRectF itemsBoundingRect(bool selectionOnly = false,
                              QList<QGraphicsItem*> items
                              = QList<QGraphicsItem*>()) const;
-    QPointF get_selection_center();
+    QPointF get_selection_center() const;
 
     // The scene's accumulated bounding rect, kept even once the scene is
     // emptied out again (unlike itemsBoundingRect(), which reflects only

@@ -254,7 +254,7 @@ QList<QGraphicsItem*> CanvasScene::with_related_items(
     return expanded;
 }
 
-void CanvasScene::copy_selection_to_internal_clipboard()
+void CanvasScene::copy_selection_to_internal_clipboard() const
 {
     internalClipboard.clear();
     // Deep copy - with_related_items() expands the flat
@@ -398,7 +398,7 @@ void CanvasScene::raise_to_top()
     }
 }
 
-void CanvasScene::raise_selection_to_front()
+void CanvasScene::raise_selection_to_front() const
 {
     QSet<QGraphicsItem*> seen;
     QList<QGraphicsItem*> ordered;
@@ -784,7 +784,7 @@ void CanvasScene::add_to_group(QGraphicsItem* item, GroupItem* target)
     raise_group_cluster_to_front(target);
 }
 
-void CanvasScene::raise_group_cluster_to_front(GroupItem* group)
+void CanvasScene::raise_group_cluster_to_front(GroupItem* group) const
 {
     // with_attached_items(): a note attached to one of the group's
     // pictures isn't itself a group child (attachment is a uid
@@ -1300,22 +1300,22 @@ void CanvasScene::deselect_all_items()
     clearSelection();
 }
 
-bool CanvasScene::has_selection()
+bool CanvasScene::has_selection() const
 {
     return !(selectedItems(true).isEmpty());
 }
 
-bool CanvasScene::has_single_selection()
+bool CanvasScene::has_single_selection() const
 {
     return selectedItems(true).size() == 1;
 }
 
-bool CanvasScene::has_multi_selection()
+bool CanvasScene::has_multi_selection() const
 {
     return selectedItems(true).size() > 1;
 }
 
-bool CanvasScene::has_single_image_selection()
+bool CanvasScene::has_single_image_selection() const
 {
     if (has_single_selection()) {
         auto* item = dynamic_cast<IBaseItem*>(selectedItems(true).first());
@@ -1327,7 +1327,7 @@ bool CanvasScene::has_single_image_selection()
     return false;
 }
 
-bool CanvasScene::has_group_selected()
+bool CanvasScene::has_group_selected() const
 {
     if (!has_single_selection()) {
         return false;
@@ -1709,7 +1709,7 @@ QList<QGraphicsItem*> CanvasScene::items_for_save()
     return userItems;
 }
 
-void CanvasScene::on_view_scale_change()
+void CanvasScene::on_view_scale_change() const
 {
     for (QGraphicsItem* item : selectedItems()) {
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
@@ -1769,7 +1769,7 @@ QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
     return {QPointF(minX, minY), QPointF(maxX, maxY)};
 }
 
-QPointF CanvasScene::get_selection_center()
+QPointF CanvasScene::get_selection_center() const
 {
     auto rect = itemsBoundingRect(true);
     return (rect.topLeft() + rect.bottomRight()) / 2;
