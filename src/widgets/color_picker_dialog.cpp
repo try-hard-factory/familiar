@@ -482,7 +482,10 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
         set_color(c, svPicker_);
     });
     connect(hueSlider_, &HueSlider::hue_changed, this, [this](int hue) {
-        int h, s, v, a;
+        int h = 0;
+        int s = 0;
+        int v = 0;
+        int a = 0;
         current_.getHsv(&h, &s, &v, &a);
         set_color(QColor::fromHsv(hue, s, v, a), hueSlider_);
     });
@@ -550,7 +553,9 @@ void ColorPickerDialog::set_color(const QColor& color, QObject* source)
 {
     current_ = color;
 
-    int h, s, v;
+    int h = 0;
+    int s = 0;
+    int v = 0;
     color.getHsv(&h, &s, &v);
     // QColor::hue() (and getHsv()'s h) is -1 for achromatic colors
     // (saturation 0 - pure black/white/gray) since hue is meaningless

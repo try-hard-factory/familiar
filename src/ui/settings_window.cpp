@@ -267,7 +267,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
                                      || cat.name.contains(text,
                                                           Qt::CaseInsensitive);
             const QString contentFilter = nameMatches ? QString() : text;
-            bool contentMatches;
+            bool contentMatches = false;
             if (auto* kb = qobject_cast<KeyboardShortcutsPage*>(cat.page)) {
                 contentMatches = kb->apply_search_filter(contentFilter);
             } else {

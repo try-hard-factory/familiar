@@ -516,7 +516,7 @@ void ImageImportSession::run(ThreadedIO* worker)
 
             if (is_raw_file(label)) {
                 decodedAsRaw = true;
-                RawImportChoice choice;
+                RawImportChoice choice = RawImportChoice::KeepOriginal;
                 if (rawImportSetting == QLatin1String("always_optimize")) {
                     choice = RawImportChoice::Optimize;
                 } else if (rawImportSetting
