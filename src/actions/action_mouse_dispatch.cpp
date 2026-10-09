@@ -118,10 +118,10 @@ bool ActionMouseDispatcher::eventFilter(QObject* watched, QEvent* event)
 {
     Q_UNUSED(watched)
     if (event->type() == QEvent::MouseButtonPress) {
-        return try_mouse_press(static_cast<QMouseEvent*>(event));
+        return try_mouse_press(dynamic_cast<QMouseEvent*>(event));
     }
     if (event->type() == QEvent::KeyPress) {
-        return try_key_press(static_cast<QKeyEvent*>(event));
+        return try_key_press(dynamic_cast<QKeyEvent*>(event));
     }
     return false;
 }

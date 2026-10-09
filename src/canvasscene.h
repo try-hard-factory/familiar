@@ -11,6 +11,7 @@
 #include <QUuid>
 #include <QVariantMap>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <queue>
@@ -29,7 +30,7 @@ class CanvasScene : public QGraphicsScene
 {
     Q_OBJECT
 public:
-    enum ESceneMode {
+    enum ESceneMode : std::uint8_t {
         kNone = 0,
         kMoveMode = 1,
         kRubberbandMode = 2,

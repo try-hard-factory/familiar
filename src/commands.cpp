@@ -514,7 +514,7 @@ ResetCropCommand::ResetCropCommand(const QList<IBaseItem*>& items)
     // Filter only croppable items
     for (auto* item : items) {
         if (item->is_image()) {
-            items_.append(static_cast<PixmapItem*>(item));
+            items_.append(dynamic_cast<PixmapItem*>(item));
         }
     }
 }

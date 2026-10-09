@@ -193,13 +193,13 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
         const QPointF anchor = pos;
 
         if (type == "text") {
-            auto* textItem = static_cast<TextItem*>(gitem);
+            auto* textItem = dynamic_cast<TextItem*>(gitem);
             xml.writeStartElement(QStringLiteral("text"));
             xml.writeAttribute(QStringLiteral("style"), text_styles(textItem));
             xml.writeAttribute(QStringLiteral("dominant-baseline"),
                                QStringLiteral("hanging"));
         } else if (type == "pixmap") {
-            auto* pixmapItem = static_cast<PixmapItem*>(gitem);
+            auto* pixmapItem = dynamic_cast<PixmapItem*>(gitem);
             const qreal width = pixmapItem->width() * pixmapItem->scale();
             const qreal height = pixmapItem->height() * pixmapItem->scale();
             auto [bytes, imgformat]
@@ -249,7 +249,7 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
                            QString::number(gitem->opacity()));
 
         if (type == "text") {
-            xml.writeCharacters(static_cast<TextItem*>(gitem)->toPlainText());
+            xml.writeCharacters(dynamic_cast<TextItem*>(gitem)->toPlainText());
         }
         xml.writeEndElement(); // text | image
 

@@ -1,11 +1,13 @@
 #pragma once
 
+#include <cstdint>
+
 #include <QList>
 #include <QString>
 
 struct MenuNode
 {
-    enum class Type { Action, Separator, Submenu, Dynamic };
+    enum class Type : std::uint8_t { Action, Separator, Submenu, Dynamic };
 
     Type type;
     QString label;            // for Submenu

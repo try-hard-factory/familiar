@@ -8,6 +8,7 @@
 #include <utils/utils.h>
 
 #include "log/log.h"
+#include <cstdint>
 #include <memory>
 #include <QBrush>
 #include <QCursor>
@@ -353,7 +354,7 @@ public:
         bool vertical;
     };
 
-    enum EItemMode {
+    enum EItemMode : std::uint8_t {
         kNone = 0,
         kScaleMode = 1,
         kRotateMode = 2,

@@ -2,12 +2,18 @@
 
 #include <core/controls.h>
 
+#include <cstdint>
+
 #include <QList>
 #include <QString>
 
 struct Action;
 
-enum class BindingTargetKind { Action, MouseControl, MouseWheelControl };
+enum class BindingTargetKind : std::uint8_t {
+    Action,
+    MouseControl,
+    MouseWheelControl
+};
 
 // Adapter so the alias tree/dialogs never need to branch on Action-vs-
 // Control directly - wraps either an Action (menu command) or a

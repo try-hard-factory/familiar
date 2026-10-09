@@ -1570,11 +1570,11 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
             return;
         }
         if (dynamic_cast<IBaseItem*>(item)->is_editable()) {
-            static_cast<TextItem*>(item)->enter_edit_mode();
+            dynamic_cast<TextItem*>(item)->enter_edit_mode();
             // TODOLATER:
             QGraphicsScene::mousePressEvent(event);
         } else {
-            CanvasView* view = static_cast<CanvasView*>(views().first());
+            CanvasView* view = qobject_cast<CanvasView*>(views().first());
             view->fit_rect(itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
                            item);
         }
@@ -1599,7 +1599,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         // touched by the drag would end up with a higher z-value than
         // the rubberband and visually cover it.
         rubberbandItem_->bring_to_front();
-        CanvasView* view = static_cast<CanvasView*>(views().first());
+        CanvasView* view = qobject_cast<CanvasView*>(views().first());
         Q_ASSERT_X(view, "CanvasScene::mouseMoveEvent", "view == null");
         view->reset_previous_transform();
     }

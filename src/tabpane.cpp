@@ -187,12 +187,12 @@ QString TabPane::get_current_tab_project_name()
 
 CanvasView* TabPane::current_widget()
 {
-    return static_cast<CanvasView*>(tabs_->currentWidget());
+    return qobject_cast<CanvasView*>(tabs_->currentWidget());
 }
 
 CanvasView* TabPane::widget_at(int index)
 {
-    return static_cast<CanvasView*>(tabs_->widget(index));
+    return qobject_cast<CanvasView*>(tabs_->widget(index));
 }
 
 void TabPane::set_current_index(int index)

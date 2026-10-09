@@ -75,7 +75,7 @@ void WelcomeOverlay::enable_mouse_events()
 
 void WelcomeOverlay::on_context_menu(const QPoint& point)
 {
-    static_cast<CanvasView*>(parent())->on_context_menu(point);
+    qobject_cast<CanvasView*>(parent())->on_context_menu(point);
 }
 
 void WelcomeOverlay::mousePressEvent(QMouseEvent* event)

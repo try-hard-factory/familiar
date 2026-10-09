@@ -9,6 +9,7 @@
 #include <QUrl>
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <optional>
 
@@ -34,7 +35,7 @@ constexpr int klargeImageMaxDimension = 4096;
 // https://bugreports.qt.io/browse/QTBUG-124510) - TooLarge is
 // disambiguated here by checking QImageReader::size() against the
 // configured limit BEFORE attempting the real read().
-enum class ImageLoadFailure {
+enum class ImageLoadFailure : std::uint8_t {
     UnsupportedFormat,
     TooLarge,
     Corrupt,
@@ -134,7 +135,7 @@ private:
 // formats than this), covers current major camera manufacturers.
 bool is_raw_file(const QString& filename);
 
-enum class RawImportChoice {
+enum class RawImportChoice : std::uint8_t {
     // Both are a real LibRaw demosaic (decode_raw_via_demosaic(),
     // fileio.cpp) - Optimize used to just extract the camera's own
     // embedded preview JPEG instead (no demosaic at all), abandoned

@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 
 #include <QDebug>
 #include <QString>
@@ -18,9 +19,28 @@
 
 namespace familiar::log {
 
-enum class Level { Trace, Debug, Info, Warning, Error, Critical };
+// TODO: Q_ENUM research
+enum class Level : std::uint8_t {
+    Trace,
+    Debug,
+    Info,
+    Warning,
+    Error,
+    Critical
+};
 
-enum class Ch { Core, Scene, View, Items, Undo, IO, Net, Settings, UI, Qt };
+enum class Ch : std::uint8_t {
+    Core,
+    Scene,
+    View,
+    Items,
+    Undo,
+    IO,
+    Net,
+    Settings,
+    UI,
+    Qt
+};
 
 struct Options
 {

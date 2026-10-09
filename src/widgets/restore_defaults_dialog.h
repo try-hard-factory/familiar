@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <QDialog>
 #include <QMap>
 #include <QStringList>
@@ -14,7 +16,7 @@ namespace familiar {
 // hand, since FamSettings::fields() keys aren't self-describing by
 // which page shows them (see restore_defaults_dialog.cpp's own comment
 // on the exact key lists this maps to).
-enum class SettingsCategory {
+enum class SettingsCategory : std::uint8_t {
     Performance,
     ImagesAndItems,
     Colors,

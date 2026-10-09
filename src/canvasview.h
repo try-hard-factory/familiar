@@ -1,6 +1,7 @@
 #ifndef CANVASVIEW_H
 #define CANVASVIEW_H
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -47,7 +48,12 @@ class CanvasView : public MainControlsMixin<CanvasView, QGraphicsView>
 {
     Q_OBJECT
 public:
-    enum ActiveMode { kModeNone, kModePan, kModeZoom, kModeSampleColor };
+    enum ActiveMode : std::uint8_t {
+        kModeNone,
+        kModePan,
+        kModeZoom,
+        kModeSampleColor
+    };
 
     CanvasView(MainWindow& mw, QWidget* parent = nullptr);
     ~CanvasView();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <QDialog>
 #include <QList>
 #include <QPoint>
@@ -28,7 +30,7 @@ class FileBrowserDialog : public QDialog
     Q_OBJECT
 
 public:
-    enum class Mode {
+    enum class Mode : std::uint8_t {
         OpenFile,
         OpenFiles,
         Save,

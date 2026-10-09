@@ -277,7 +277,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             // Only the category's own name is a candidate for bolding here
             // - if nothing but its content matched, the name itself has
             // no matched substring to highlight.
-            static_cast<CategoryNavButton*>(cat.button)
+            dynamic_cast<CategoryNavButton*>(cat.button)
                 ->set_label_text(
                     highlight_search_match(cat.name,
                                            nameMatches ? text : QString()));

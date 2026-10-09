@@ -231,13 +231,13 @@ protected:
         }
 
         if (event->type() == QEvent::MouseMove) {
-            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            auto* mouseEvent = dynamic_cast<QMouseEvent*>(event);
             const QPoint pos = mapFromGlobal(
                 mouseEvent->globalPosition().toPoint());
             update_resize_cursor(pos);
             handle_ui_hover(pos);
         } else if (event->type() == QEvent::MouseButtonPress) {
-            auto* mouseEvent = static_cast<QMouseEvent*>(event);
+            auto* mouseEvent = dynamic_cast<QMouseEvent*>(event);
             const QPoint pos = mapFromGlobal(
                 mouseEvent->globalPosition().toPoint());
             // Resize wins over drag: the top kResizeBorder pixels overlap

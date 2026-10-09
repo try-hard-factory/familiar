@@ -3,6 +3,7 @@
 
 #include "core/controls.h"
 
+#include <cstdint>
 #include <optional>
 
 #include <QColor>
@@ -18,7 +19,7 @@
 class QWheelEvent;
 class QMouseEvent;
 
-enum EPresets {
+enum EPresets : std::uint8_t {
     kDarkPreset = 0,
     kLightPreset = 1,
     kCustom1 = 2,
@@ -28,7 +29,7 @@ enum EPresets {
     kAllPresets = 6
 };
 
-enum EPresetsColorIdx {
+enum EPresetsColorIdx : std::uint8_t {
     kBackgroundColor = 0,
     kCanvasColor = 1,
     kBorderColor = 2,
