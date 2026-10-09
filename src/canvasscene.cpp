@@ -623,7 +623,7 @@ GroupItem* CanvasScene::find_drop_target_group(
     // its own outer parent (the group-behind-its-members invariant), so
     // this naturally prefers the subgroup there without needing to
     // reason about area/nesting explicitly.
-    GroupItem* target = nullptr;
+    GroupItem* target = nullptr; // NOLINT(misc-const-correctness)
     qreal targetZ = 0;
     for (QGraphicsItem* other : items()) {
         auto* group = dynamic_cast<GroupItem*>(other);

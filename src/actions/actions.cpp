@@ -168,7 +168,7 @@ Action* ActionRegistry::find_by_shortcut(const QString& excludeId,
     if (shortcut.isEmpty()) {
         return nullptr;
     }
-    for (Action* a : all()) {
+    for (Action* a : all()) { // NOLINT(misc-const-correctness)
         if (a->id() == excludeId) {
             continue;
         }
@@ -185,7 +185,7 @@ Action* ActionRegistry::find_by_mouse_binding(const QString& excludeId,
     if (candidate.mouse_button().isEmpty()) {
         return nullptr;
     }
-    for (Action* a : all()) {
+    for (Action* a : all()) { // NOLINT(misc-const-correctness)
         if (a->id() == excludeId) {
             continue;
         }
