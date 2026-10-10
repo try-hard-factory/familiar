@@ -7,19 +7,19 @@
 
 QRectF get_rect_from_points(const QPointF& point1, const QPointF& point2)
 {
-    QPointF topLeft(std::min(point1.x(), point2.x()),
-                    std::min(point1.y(), point2.y()));
-    QPointF bottomRight(std::max(point1.x(), point2.x()),
-                        std::max(point1.y(), point2.y()));
-    return QRectF(topLeft, bottomRight);
+    const QPointF topLeft(std::min(point1.x(), point2.x()),
+                          std::min(point1.y(), point2.y()));
+    const QPointF bottomRight(std::max(point1.x(), point2.x()),
+                              std::max(point1.y(), point2.y()));
+    return {topLeft, bottomRight};
 }
 
-double roundTo(double number, double base)
+double round_to(double number, double base)
 {
     return base * std::round(number / base);
 }
 
-QString portableDataDir()
+QString portable_data_dir()
 {
 #ifdef RUN_IN_PLACE
     // A "data" sibling folder, not directly next to the .exe - keeps
@@ -28,6 +28,6 @@ QString portableDataDir()
     // other files.
     return QDir(qApp->applicationDirPath()).filePath(QStringLiteral("data"));
 #else
-    return QString();
+    return {};
 #endif
 }

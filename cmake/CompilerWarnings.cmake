@@ -3,7 +3,15 @@
 # https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Avai lable.md
 
 function(set_project_warnings project_name)
-  option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" TRUE)
+  # ON for everyone, every compiler. A warning nobody is forced to look
+  # at is a warning that accumulates - this is the only setting where the
+  # flag list below actually holds a line rather than describing one.
+  #
+  # Still an option rather than hardcoded: -DWARNINGS_AS_ERRORS=OFF is
+  # the escape hatch for the case where a new compiler version invents a
+  # warning that blocks an otherwise fine build. Turning it off should be
+  # a deliberate act, not the default.
+  option(WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 
   set(MSVC_WARNINGS
       /W4 # Baseline reasonable warnings
@@ -47,10 +55,28 @@ function(set_project_warnings project_name)
       -Wnull-dereference # warn if a null dereference is detected
       -Wdouble-promotion # warn if float is implicit promoted to double
       -Wformat=2 # warn on security issues around functions that format output (ie printf)
+      # Added on top of the upstream cppbestpractices list, taken from
+      # ms-realm's own toolchain baseline (cmake-toolchain-files/compiler/
+      # clang_gcc.cmake) so the two projects stay comparable. Only the
+      # base set from there - not that repo's full ~200-flag gcc.cmake,
+      # which pulls in -Wanalyzer-*/-Winline/-Wsuggest-attribute=* and is
+      # noise at this project's size.
+      -Winit-self # member/variable initialised with itself
+      -Wcast-qual # cast that drops a const/volatile qualifier
+      -Wwrite-strings # string literal assigned to a non-const char*
+      -Wmissing-include-dirs # -I path that doesn't exist
+      -Wswitch-default # switch without a default: label
+      -Wundef # #if on an undefined macro (typo-prone)
+      -Wextra-semi # stray ; after a member function definition
+      -Wsuggest-override # override-able method not marked override
+      -Wzero-as-null-pointer-constant # 0 or NULL used as a pointer
+      -Wdelete-non-virtual-dtor # delete through a base without virtual dtor
+      -Wpessimizing-move # std::move that blocks copy elision
+      -Wredundant-move # std::move on a value already being moved
   )
 
   if(WARNINGS_AS_ERRORS)
-    set(CLANG_WARNINGS ${CLANG_WARNINGS} -Werror)
+    set(CLANG_WARNINGS ${CLANG_WARNINGS} -Werror) #-Wall -Wextra -Wpedantic -Werror
     set(MSVC_WARNINGS ${MSVC_WARNINGS} /WX)
   endif()
 
@@ -62,6 +88,11 @@ function(set_project_warnings project_name)
       -Wlogical-op # warn about logical operations being used where bitwise were probably wanted
       -Wuseless-cast # warn if you perform a cast to the same type
   )
+  # NOT a bare -Werror in the list above: GCC_WARNINGS is built FROM
+  # CLANG_WARNINGS, which already picked up -Werror from the
+  # WARNINGS_AS_ERRORS branch. Repeating it here made GCC the one
+  # compiler where the option had no effect - it was on unconditionally,
+  # while Clang and MSVC still honoured the switch.
 
   if(MSVC)
     set(PROJECT_WARNINGS ${MSVC_WARNINGS})

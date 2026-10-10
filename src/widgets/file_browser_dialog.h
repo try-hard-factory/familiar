@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <QDialog>
 #include <QList>
 #include <QPoint>
@@ -28,7 +30,7 @@ class FileBrowserDialog : public QDialog
     Q_OBJECT
 
 public:
-    enum class Mode {
+    enum class Mode : std::uint8_t {
         OpenFile,
         OpenFiles,
         Save,
@@ -50,7 +52,7 @@ public:
 
     // Populated after exec() == QDialog::Accepted - one entry for
     // OpenFile/Save/SelectFolder, one-or-more for OpenFiles.
-    QStringList selectedFiles() const { return selected_; }
+    QStringList selected_files() const { return selected_; }
 
     // Public only so the free parseNameFilter() helper (file_browser_
     // dialog.cpp, not a member/friend) can return one - not meant as
@@ -66,17 +68,17 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
 
 private:
-    void setDirectory_(const QString& path);
-    void navigateUp_();
-    void createFolder_();
-    void renameSelected_();
-    void deleteSelected_();
-    void showContextMenu_(const QPoint& pos);
-    void onDoubleClicked_(const QModelIndex& index);
-    void onSelectionChanged_();
-    void onFilterChanged_(int index);
-    void tryAccept_();
-    void buildSidebar_(const QColor& accent);
+    void set_directory(const QString& path);
+    void navigate_up();
+    void create_folder();
+    void rename_selected();
+    void delete_selected();
+    void show_context_menu(const QPoint& pos);
+    void on_double_clicked(const QModelIndex& index);
+    void on_selection_changed();
+    void on_filter_changed(int index);
+    void try_accept();
+    void build_sidebar(const QColor& accent);
 
     Mode mode_;
     QString currentDir_;
@@ -95,27 +97,27 @@ private:
 };
 
 // One existing file, or empty if cancelled.
-QString showOpenFileDialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir = QString(),
-                           const QString& nameFilter = QString());
+QString show_open_file_dialog(QWidget* parent,
+                              const QString& title,
+                              const QString& startDir = QString(),
+                              const QString& nameFilter = QString());
 
 // One or more existing files, empty list if cancelled.
-QStringList showOpenFilesDialog(QWidget* parent,
-                                const QString& title,
-                                const QString& startDir = QString(),
-                                const QString& nameFilter = QString());
+QStringList show_open_files_dialog(QWidget* parent,
+                                   const QString& title,
+                                   const QString& startDir = QString(),
+                                   const QString& nameFilter = QString());
 
 // A path to save to (extension auto-appended per the selected filter
 // if the typed name didn't already have one; overwrite is confirmed
 // internally before returning), or empty if cancelled.
-QString showSaveFileDialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir = QString(),
-                           const QString& nameFilter = QString(),
-                           const QString& defaultFileName = QString());
+QString show_save_file_dialog(QWidget* parent,
+                              const QString& title,
+                              const QString& startDir = QString(),
+                              const QString& nameFilter = QString(),
+                              const QString& defaultFileName = QString());
 
 // A directory path, or empty if cancelled.
-QString showSelectFolderDialog(QWidget* parent,
-                               const QString& title,
-                               const QString& startDir = QString());
+QString show_select_folder_dialog(QWidget* parent,
+                                  const QString& title,
+                                  const QString& startDir = QString());

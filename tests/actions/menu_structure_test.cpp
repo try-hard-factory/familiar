@@ -15,8 +15,9 @@ TEST(MenuNodeTest, FactoryMethodsPopulateExpectedFields)
     EXPECT_EQ(dynamic.type, MenuNode::Type::Dynamic);
     EXPECT_EQ(dynamic.id, QStringLiteral("recent_files"));
 
-    const MenuNode submenu = MenuNode::submenu(
-        QStringLiteral("File"), {MenuNode::action(QStringLiteral("open"))});
+    const MenuNode submenu = MenuNode::submenu(QStringLiteral("File"),
+                                               {MenuNode::action(
+                                                   QStringLiteral("open"))});
     EXPECT_EQ(submenu.type, MenuNode::Type::Submenu);
     EXPECT_EQ(submenu.label, QStringLiteral("File"));
     ASSERT_EQ(submenu.children.size(), 1);
@@ -42,6 +43,7 @@ void checkWellFormed(const MenuNode& node)
         }
         break;
     case MenuNode::Type::Separator:
+    default:
         break;
     }
 }
@@ -49,7 +51,7 @@ void checkWellFormed(const MenuNode& node)
 
 TEST(MenuStructureTest, EveryNodeIsWellFormed)
 {
-    const QList<MenuNode>& top = menuStructure();
+    const QList<MenuNode>& top = menu_structure();
     EXPECT_FALSE(top.isEmpty());
     for (const MenuNode& node : top) {
         checkWellFormed(node);

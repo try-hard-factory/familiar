@@ -12,16 +12,19 @@ class ExtendedSlider : public QSlider
 public:
     explicit ExtendedSlider(QWidget* parent = nullptr);
 
-    int mappedValue(int min, int max);
-    void setMapedValue(int min, int val, int max);
+    int mapped_value(int min, int max);
+    void set_maped_value(int min, int val, int max);
 
 signals:
-    void modificationsEnded();
+    void modifications_ended();
 
 private slots:
-    void updateTooltip();
-    void fireTimer();
+    void update_tooltip();
+    void fire_timer();
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
-    QTimer m_timer;
+    QTimer mTimer_;
 };

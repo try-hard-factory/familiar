@@ -5,7 +5,7 @@
 #include <QPainterPath>
 
 namespace {
-constexpr int kIndicatorSize = 15;
+constexpr int kindicatorSize = 15;
 }
 
 FlatCheckBox::FlatCheckBox(const QString& text,
@@ -29,7 +29,7 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
 
-    const int size = kIndicatorSize;
+    const int size = kindicatorSize;
     const QRectF box(0, (height() - size) / 2.0, size, size);
 
     // Deliberately NOT a one-line `cond ? accent_ : Qt::NoBrush` ternary
@@ -59,9 +59,9 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
         checkPen.setJoinStyle(Qt::RoundJoin);
         p.setPen(checkPen);
         QPainterPath check;
-        check.moveTo(box.left() + size * 0.22, box.top() + size * 0.52);
-        check.lineTo(box.left() + size * 0.42, box.top() + size * 0.74);
-        check.lineTo(box.left() + size * 0.80, box.top() + size * 0.26);
+        check.moveTo(box.left() + (size * 0.22), box.top() + (size * 0.52));
+        check.lineTo(box.left() + (size * 0.42), box.top() + (size * 0.74));
+        check.lineTo(box.left() + (size * 0.80), box.top() + (size * 0.26));
         p.drawPath(check);
     }
 

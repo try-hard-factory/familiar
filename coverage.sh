@@ -107,6 +107,7 @@ lcov --remove "${REPORTS_DIR}/familiar_tests.info" \
      '/opt/*' \
      "${SCRIPT_DIR}/include/quill/*" \
      "${SCRIPT_DIR}/include/miniz/*" \
+     "${SCRIPT_DIR}/include/libraw/*" \
      "${BUILD_DIR}/*" \
      --rc branch_coverage=1 \
      --ignore-errors mismatch,negative,unused,empty,inconsistent \

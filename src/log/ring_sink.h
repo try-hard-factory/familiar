@@ -16,10 +16,11 @@ namespace familiar::log {
 
 // Full definition: log.h - forward-declared here only, since log.h itself
 // includes this header (for RingSink) before it defines Level. A
-// forward-declared scoped enum is a complete-enough type (fixed, implicit
-// int underlying type) to use by value/as a struct member below - just
-// not by enumerator name - so this doesn't need the full definition.
-enum class Level;
+// forward-declared scoped enum is a complete-enough type to use by
+// value/as a struct member below - just not by enumerator name - so this
+// doesn't need the full definition. The underlying type must be repeated
+// here exactly as log.h spells it, or the two declarations conflict.
+enum class Level : std::uint8_t;
 
 // In-memory ring buffer of the most recent formatted log lines, each
 // paired with its actual level (mapped down from quill::LogLevel - see
@@ -60,7 +61,7 @@ public:
     QList<Entry> entries() const;
 
 signals:
-    void entryAdded(Level level, const QString& line);
+    void entry_added(Level level, const QString& line);
 
 private:
     mutable QMutex mutex_;

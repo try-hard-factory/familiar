@@ -13,12 +13,12 @@ namespace familiar::setting_descriptions {
 // Looked up by SettingRowBase's constructor (widgets/setting_row.cpp),
 // keyed by the FamSettings storage key it was constructed with (e.g.
 // "Items/arrange_gap", core/settings.cpp's fields() table).
-QString forSettingsKey(const QString& key);
+QString for_settings_key(const QString& key);
 
 // Looked up by BindingsTreeWidget::buildRow() (widgets/controls/
 // bindings_tree_widget.cpp), keyed by BindingTarget::id() - an
 // Action::id for a keyboard shortcut row, or a Mouse/MouseWheel config
 // id (core/controls.h) for a Controls row.
-QString forBindingTargetId(const QString& id);
+QString for_binding_target_id(const QString& id);
 
 } // namespace familiar::setting_descriptions

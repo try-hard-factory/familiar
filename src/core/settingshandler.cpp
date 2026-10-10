@@ -23,7 +23,9 @@ using namespace familiar::log;
 #define OPTION(KEY, TYPE) \
     {QStringLiteral(KEY), QSharedPointer<ValueHandler>(new TYPE)}
 
-static QMap<int, int> opacityListDef = {
+namespace {
+
+QMap<int, int> opacityListDef = {
     {kDarkPreset, 255},
     {kLightPreset, 255},
     {kCustom1, 255},
@@ -32,67 +34,60 @@ static QMap<int, int> opacityListDef = {
     {kCustom4, 255},
 };
 
-static QMap<int, QColor> darkColorPresetDef
+QMap<int, QColor> darkColorPresetDef
     = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
        {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
        {kBorderColor, QColor({13, 13, 13})},       // kBorderColor
        {kTextColor, QColor({255, 255, 255})},      // kTextColor - white
        {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
-static QMap<int, QColor> lightColorPresetDef
+QMap<int, QColor> lightColorPresetDef
     = {{kBackgroundColor, QColor({224, 224, 224})},
        {kCanvasColor, QColor({234, 234, 234})},
        {kBorderColor, QColor({200, 200, 200})},
        {kTextColor, QColor({111, 111, 111})},
        {kSelectionColor, QColor({255, 0, 0})}};
-static QMap<int, QColor> customPreset1Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset2Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset3Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
-static QMap<int, QColor> customPreset4Def
-    = {{kBackgroundColor, QColor({32, 32, 32})},
-       {kCanvasColor, QColor({42, 42, 42})},
-       {kBorderColor, QColor({13, 13, 13})},
-       {kTextColor, QColor({122, 122, 122})},
-       {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset1Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset2Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset3Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<int, QColor> customPreset4Def = {{kBackgroundColor, QColor({32, 32, 32})},
+                                      {kCanvasColor, QColor({42, 42, 42})},
+                                      {kBorderColor, QColor({13, 13, 13})},
+                                      {kTextColor, QColor({122, 122, 122})},
+                                      {kSelectionColor, QColor({22, 142, 153})}};
 
-static QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions
-    = {
-        //         KEY                            TYPE                 DEFAULT_VALUE
-        OPTION("option0", Bool(true)),
-        OPTION("option1", Bool(true)),
-        OPTION("currentPreset",
-               BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
-        OPTION("masterOpacity", OpacityList(opacityListDef)),
-        OPTION("darkColorPreset", ColorList(darkColorPresetDef)),
-        OPTION("lightColorPreset", ColorList(lightColorPresetDef)),
-        OPTION("customPreset1", ColorList(customPreset1Def)),
-        OPTION("customPreset2", ColorList(customPreset2Def)),
-        OPTION("customPreset3", ColorList(customPreset3Def)),
-        OPTION("customPreset4", ColorList(customPreset4Def)),
+QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions = {
+    //         KEY                            TYPE                 DEFAULT_VALUE
+    OPTION("option0", Bool(true)),
+    OPTION("option1", Bool(true)),
+    OPTION("current_preset",
+           BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
+    OPTION("master_opacity", OpacityList(opacityListDef)),
+    OPTION("dark_color_preset", ColorList(darkColorPresetDef)),
+    OPTION("light_color_preset", ColorList(lightColorPresetDef)),
+    OPTION("custom_preset1", ColorList(customPreset1Def)),
+    OPTION("custom_preset2", ColorList(customPreset2Def)),
+    OPTION("custom_preset3", ColorList(customPreset3Def)),
+    OPTION("custom_preset4", ColorList(customPreset4Def)),
 
 };
-
-namespace {
 
 // QJsonValue::toVariant() doesn't guarantee int over double for whole
 // numbers, but ValueHandler::check() implementations (e.g. BoundedInt)
 // go through QVariant::toString().toInt() - safest to pin whole numbers
 // down to a real int right at the JSON/QVariant boundary, once, here.
-QVariant jsonToVariant(const QJsonValue& v)
+QVariant json_to_variant(const QJsonValue& v)
 {
     if (v.isDouble()) {
         const double d = v.toDouble();
@@ -111,8 +106,8 @@ QVariant jsonToVariant(const QJsonValue& v)
 // docs/fml_format_design.md §6), applied to settings.json instead - kept
 // deliberately separate from it (a settings-file quirk shouldn't block
 // opening a project, and vice versa).
-constexpr int kSettingsSchemaVersion = 1;
-constexpr char kSchemaVersionKey[] = "schemaVersion";
+constexpr int ksettingsSchemaVersion = 1;
+constexpr char kschemaVersionKey[] = "schemaVersion";
 
 // {fromVersion: transform} - migrations[N] upgrades a document from
 // schema N to N+1; applied in ascending order until the document reaches
@@ -124,7 +119,7 @@ constexpr char kSchemaVersionKey[] = "schemaVersion";
 // breaks reading old data (renamed/restructured key) - purely additive
 // changes (a new key with its own default, like every FamSettings field
 // added so far) don't need one.
-const QMap<int, std::function<void(QJsonObject&)>>& settingsMigrations()
+const QMap<int, std::function<void(QJsonObject&)>>& settings_migrations()
 {
     static const QMap<int, std::function<void(QJsonObject&)>> migrations = {
         // {1, [](QJsonObject& doc) { ... }},
@@ -139,53 +134,53 @@ const QMap<int, std::function<void(QJsonObject&)>>& settingsMigrations()
 // default on a bad/unrecognized value (see FamSettings::valueOrDefault()),
 // so the worst case is a handful of settings resetting to default, not a
 // hard failure to start the app over a non-critical file.
-void applySettingsMigrations(QJsonObject& doc)
+void apply_settings_migrations(QJsonObject& doc)
 {
-    int version = doc.value(QLatin1String(kSchemaVersionKey))
-                      .toInt(kSettingsSchemaVersion);
-    if (version > kSettingsSchemaVersion) {
+    int version = doc.value(QLatin1String(kschemaVersionKey))
+                      .toInt(ksettingsSchemaVersion);
+    if (version > ksettingsSchemaVersion) {
         FLOG_WARN(Ch::Settings,
                   "settings.json has schemaVersion {} - newer than this "
                   "build supports ({}) - loading best-effort",
                   version,
-                  kSettingsSchemaVersion);
+                  ksettingsSchemaVersion);
         return;
     }
-    const auto& migrations = settingsMigrations();
-    while (version < kSettingsSchemaVersion) {
+    const auto& migrations = settings_migrations();
+    while (version < ksettingsSchemaVersion) {
         auto it = migrations.find(version);
         if (it != migrations.end()) {
             it.value()(doc);
         }
         ++version;
     }
-    doc[QLatin1String(kSchemaVersionKey)] = kSettingsSchemaVersion;
+    doc[QLatin1String(kschemaVersionKey)] = ksettingsSchemaVersion;
 }
 
 } // namespace
 
 SettingsHandler::SettingsHandler()
 {
-    settingsFilePath_ = CommandlineArgs::instance().settingsFile();
+    settingsFilePath_ = CommandlineArgs::instance().settings_file();
     if (settingsFilePath_.isEmpty()) {
-        QString dir = portableDataDir();
+        QString dir = portable_data_dir();
         if (dir.isEmpty()) {
             dir = QStandardPaths::writableLocation(
                 QStandardPaths::AppConfigLocation);
         }
         settingsFilePath_ = QDir(dir).filePath(QStringLiteral("settings.json"));
     }
-    loadDocument();
+    load_document();
 }
 
 
-SettingsHandler* SettingsHandler::getInstance()
+SettingsHandler* SettingsHandler::get_instance()
 {
     static SettingsHandler config;
     return &config;
 }
 
-void SettingsHandler::loadDocument()
+void SettingsHandler::load_document()
 {
     QFile file(settingsFilePath_);
     QJsonObject doc;
@@ -206,11 +201,11 @@ void SettingsHandler::loadDocument()
                       settingsFilePath_);
         }
     }
-    applySettingsMigrations(doc);
+    apply_settings_migrations(doc);
     document_ = doc;
 }
 
-bool SettingsHandler::saveDocument() const
+bool SettingsHandler::save_document() const
 {
     QDir().mkpath(QFileInfo(settingsFilePath_).absolutePath());
     QFile file(settingsFilePath_);
@@ -224,47 +219,47 @@ bool SettingsHandler::saveDocument() const
     return true;
 }
 
-QString SettingsHandler::settingsFilePath() const
+QString SettingsHandler::settings_file_path() const
 {
     return settingsFilePath_;
 }
 
-QJsonValue SettingsHandler::jsonValue(const QString& group,
-                                      const QString& key) const
+QJsonValue SettingsHandler::json_value(const QString& group,
+                                       const QString& key) const
 {
     return document_.value(group).toObject().value(key);
 }
 
-void SettingsHandler::setJsonValue(const QString& group,
-                                   const QString& key,
-                                   const QJsonValue& value)
+void SettingsHandler::set_json_value(const QString& group,
+                                     const QString& key,
+                                     const QJsonValue& value)
 {
     QJsonObject groupObj = document_.value(group).toObject();
     groupObj.insert(key, value);
     document_.insert(group, groupObj);
-    saveDocument();
+    save_document();
 }
 
-void SettingsHandler::removeJsonValue(const QString& group, const QString& key)
+void SettingsHandler::remove_json_value(const QString& group, const QString& key)
 {
     QJsonObject groupObj = document_.value(group).toObject();
     groupObj.remove(key);
     document_.insert(group, groupObj);
-    saveDocument();
+    save_document();
 }
 
-void SettingsHandler::removeJsonGroup(const QString& group)
+void SettingsHandler::remove_json_group(const QString& group)
 {
     document_.remove(group);
-    saveDocument();
+    save_document();
 }
 
-bool SettingsHandler::jsonGroupIsEmpty(const QString& group) const
+bool SettingsHandler::json_group_is_empty(const QString& group) const
 {
     return document_.value(group).toObject().isEmpty();
 }
 
-QStringList SettingsHandler::recentFilesRaw() const
+QStringList SettingsHandler::recent_files_raw() const
 {
     QStringList out;
     for (const QJsonValue& v :
@@ -274,17 +269,17 @@ QStringList SettingsHandler::recentFilesRaw() const
     return out;
 }
 
-void SettingsHandler::setRecentFilesRaw(const QStringList& files)
+void SettingsHandler::set_recent_files_raw(const QStringList& files)
 {
     QJsonArray arr;
     for (const QString& f : files) {
         arr.append(f);
     }
     document_.insert(QStringLiteral("RecentFiles"), arr);
-    saveDocument();
+    save_document();
 }
 
-bool SettingsHandler::exportSettingsTo(const QString& path) const
+bool SettingsHandler::export_settings_to(const QString& path) const
 {
     QFile file(path);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -298,7 +293,7 @@ bool SettingsHandler::exportSettingsTo(const QString& path) const
     return true;
 }
 
-bool SettingsHandler::importSettingsFrom(const QString& path)
+bool SettingsHandler::import_settings_from(const QString& path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -316,92 +311,92 @@ bool SettingsHandler::importSettingsFrom(const QString& path)
         return false;
     }
     QJsonObject obj = doc.object();
-    applySettingsMigrations(obj);
+    apply_settings_migrations(obj);
     document_ = obj;
-    return saveDocument();
+    return save_document();
 }
 
-void SettingsHandler::setDefaultCurrentPreset()
+void SettingsHandler::set_default_current_preset()
 {
-    auto current_preset = currentPreset();
-    switch (current_preset) {
+    auto currentPreset = current_preset();
+    switch (currentPreset) {
     case EPresets::kDarkPreset:
-        removeJsonValue(QStringLiteral("Colors"),
-                        QStringLiteral("darkColorPreset"));
+        remove_json_value(QStringLiteral("Colors"),
+                          QStringLiteral("dark_color_preset"));
         break;
     case EPresets::kLightPreset:
-        removeJsonValue(QStringLiteral("Colors"),
-                        QStringLiteral("lightColorPreset"));
+        remove_json_value(QStringLiteral("Colors"),
+                          QStringLiteral("light_color_preset"));
         break;
     case EPresets::kCustom1:
-        removeJsonValue(QStringLiteral("Colors"),
-                        QStringLiteral("customPreset1"));
+        remove_json_value(QStringLiteral("Colors"),
+                          QStringLiteral("custom_preset1"));
         break;
     case EPresets::kCustom2:
-        removeJsonValue(QStringLiteral("Colors"),
-                        QStringLiteral("customPreset2"));
+        remove_json_value(QStringLiteral("Colors"),
+                          QStringLiteral("custom_preset2"));
         break;
     case EPresets::kCustom3:
-        removeJsonValue(QStringLiteral("Colors"),
-                        QStringLiteral("customPreset3"));
+        remove_json_value(QStringLiteral("Colors"),
+                          QStringLiteral("custom_preset3"));
         break;
     case EPresets::kCustom4:
-        removeJsonValue(QStringLiteral("Colors"),
-                        QStringLiteral("customPreset4"));
+        remove_json_value(QStringLiteral("Colors"),
+                          QStringLiteral("custom_preset4"));
         break;
     default:
         break;
     };
 
-    setCurrentOpacity(255);
+    set_current_opacity(255);
 }
 
 
-void SettingsHandler::setValue(const QString& key, const QVariant& value)
+void SettingsHandler::set_value(const QString& key, const QVariant& value)
 {
-    FLOG_DEBUG(Ch::Settings, "Setting {} to {}", key, debugString(value));
-    auto val = valueHandler(key)->representation(value);
-    setJsonValue(QStringLiteral("Colors"), key, QJsonValue::fromVariant(val));
+    FLOG_DEBUG(Ch::Settings, "Setting {} to {}", key, debug_string(value));
+    auto val = value_handler(key)->representation(value);
+    set_json_value(QStringLiteral("Colors"), key, QJsonValue::fromVariant(val));
 }
 
 
 QVariant SettingsHandler::value(const QString& key) const
 {
-    const QJsonValue raw = jsonValue(QStringLiteral("Colors"), key);
-    const QVariant val = raw.isUndefined() ? QVariant() : jsonToVariant(raw);
-    return valueHandler(key)->value(val);
+    const QJsonValue raw = json_value(QStringLiteral("Colors"), key);
+    const QVariant val = raw.isUndefined() ? QVariant() : json_to_variant(raw);
+    return value_handler(key)->value(val);
 }
 
 
 void SettingsHandler::remove(const QString& key)
 {
-    removeJsonValue(QStringLiteral("Colors"), key);
+    remove_json_value(QStringLiteral("Colors"), key);
 }
 
 
-void SettingsHandler::resetValue(const QString& key)
+void SettingsHandler::reset_value(const QString& key)
 {
-    setJsonValue(QStringLiteral("Colors"),
-                 key,
-                 QJsonValue::fromVariant(valueHandler(key)->fallback()));
+    set_json_value(QStringLiteral("Colors"),
+                   key,
+                   QJsonValue::fromVariant(value_handler(key)->fallback()));
 }
 
-SettingsHandler::CL SettingsHandler::getCurrentColorPreset()
+SettingsHandler::CL SettingsHandler::get_current_color_preset()
 {
-    auto current_preset = currentPreset();
-    switch (current_preset) {
+    auto currentPreset = current_preset();
+    switch (currentPreset) {
     case EPresets::kDarkPreset:
-        return darkColorPreset();
+        return dark_color_preset();
     case EPresets::kLightPreset:
-        return lightColorPreset();
+        return light_color_preset();
     case EPresets::kCustom1:
-        return customPreset1();
+        return custom_preset1();
     case EPresets::kCustom2:
-        return customPreset2();
+        return custom_preset2();
     case EPresets::kCustom3:
-        return customPreset3();
+        return custom_preset3();
     case EPresets::kCustom4:
-        return customPreset4();
+        return custom_preset4();
     default:
         break;
     };
@@ -409,52 +404,51 @@ SettingsHandler::CL SettingsHandler::getCurrentColorPreset()
 }
 
 
-void SettingsHandler::setCurrentColorPreset(const SettingsHandler::CL& preset)
+void SettingsHandler::set_current_color_preset(const SettingsHandler::CL& preset)
 {
-    auto current_preset = currentPreset();
+    auto currentPreset = current_preset();
 
-    switch (current_preset) {
+    switch (currentPreset) {
     case EPresets::kDarkPreset:
-        setDarkColorPreset(preset);
+        set_dark_color_preset(preset);
         break;
     case EPresets::kLightPreset:
-        setLightColorPreset(preset);
+        set_light_color_preset(preset);
         break;
     case EPresets::kCustom1:
-        setCustomPreset1(preset);
+        set_custom_preset1(preset);
         break;
     case EPresets::kCustom2:
-        setCustomPreset2(preset);
+        set_custom_preset2(preset);
         break;
     case EPresets::kCustom3:
-        setCustomPreset3(preset);
+        set_custom_preset3(preset);
         break;
     case EPresets::kCustom4:
-        setCustomPreset4(preset);
+        set_custom_preset4(preset);
         break;
     default:
         break;
     };
 }
 
-int SettingsHandler::getCurrentOpacity()
+int SettingsHandler::get_current_opacity()
 {
-    auto current_preset = currentPreset();
-    auto master_opacity = masterOpacity();
-    return master_opacity[current_preset];
+    auto currentPreset = current_preset();
+    auto masterOpacity = master_opacity();
+    return masterOpacity[currentPreset];
 }
 
-void SettingsHandler::setCurrentOpacity(int opacity)
+void SettingsHandler::set_current_opacity(int opacity)
 {
-    auto current_preset = currentPreset();
-    auto master_opacity = masterOpacity();
-    master_opacity[current_preset] = opacity;
-    setMasterOpacity(master_opacity);
+    auto currentPreset = current_preset();
+    auto masterOpacity = master_opacity();
+    masterOpacity[currentPreset] = opacity;
+    set_master_opacity(masterOpacity);
 }
 
 
-QSharedPointer<ValueHandler> SettingsHandler::valueHandler(
-    const QString& key) const
+QSharedPointer<ValueHandler> SettingsHandler::value_handler(const QString& key)
 {
     return ::recognizedGeneralOptions.value(key);
 }
@@ -462,91 +456,90 @@ QSharedPointer<ValueHandler> SettingsHandler::valueHandler(
 
 // ─── Facade: FamSettings-backed ────────────────────────────────────────────────
 
-void SettingsHandler::updateRecentFiles(const QString& filename)
+void SettingsHandler::update_recent_files(const QString& filename)
 {
-    FamSettings().updateRecentFiles(filename);
+    FamSettings::update_recent_files(filename);
 }
 
-QStringList SettingsHandler::getRecentFiles(bool existingOnly) const
+QStringList SettingsHandler::get_recent_files(bool existingOnly)
 {
-    return FamSettings().getRecentFiles(existingOnly);
+    return FamSettings::get_recent_files(existingOnly);
 }
 
-QString SettingsHandler::settingsFileName() const
+QString SettingsHandler::settings_file_name()
 {
-    return FamSettings().fileName();
+    return FamSettings::file_name();
 }
 
-QVariant SettingsHandler::actionState(const QString& key,
-                                      const QVariant& defaultValue) const
+QVariant SettingsHandler::action_state(const QString& key,
+                                       const QVariant& defaultValue)
 {
-    return FamSettings().value(key, defaultValue);
+    return FamSettings::value(key, defaultValue);
 }
 
-void SettingsHandler::setActionState(const QString& key, const QVariant& value)
+void SettingsHandler::set_action_state(const QString& key, const QVariant& value)
 {
-    FamSettings().setValue(key, value);
+    FamSettings::set_value(key, value);
 }
 
-qreal SettingsHandler::arrangeGap() const
+qreal SettingsHandler::arrange_gap()
 {
-    return FamSettings()
-        .valueOrDefault(QStringLiteral("Items/arrange_gap"))
+    return FamSettings::value_or_default(QStringLiteral("Items/arrange_gap"))
         .toReal();
 }
 
-QString SettingsHandler::arrangeDefault() const
+QString SettingsHandler::arrange_default()
 {
-    return FamSettings()
-        .valueOrDefault(QStringLiteral("Items/arrange_default"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/arrange_default"))
         .toString();
 }
 
-QString SettingsHandler::imageStorageFormat() const
+QString SettingsHandler::image_storage_format()
 {
-    return FamSettings()
-        .valueOrDefault(QStringLiteral("Items/image_storage_format"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/image_storage_format"))
         .toString();
 }
 
-int SettingsHandler::undoHistorySize() const
+int SettingsHandler::undo_history_size()
 {
-    return FamSettings()
-        .valueOrDefault(QStringLiteral("Items/undo_history_size"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/undo_history_size"))
         .toInt();
 }
 
-QString SettingsHandler::autoOptimizeImportedImages() const
+QString SettingsHandler::auto_optimize_imported_images()
 {
-    return FamSettings()
-        .valueOrDefault(QStringLiteral("Items/auto_optimize_imported_images"))
+    return FamSettings::value_or_default(
+               QStringLiteral("Items/auto_optimize_imported_images"))
         .toString();
 }
 
 // ─── Facade: KeyboardSettings-backed ───────────────────────────────────────────
 
-std::optional<ControlMatch> SettingsHandler::mousewheelActionForEvent(
-    const QWheelEvent* event) const
+std::optional<ControlMatch> SettingsHandler::mousewheel_action_for_event(
+    const QWheelEvent* event)
 {
-    return KeyboardSettings().mousewheelActionForEvent(event);
+    return KeyboardSettings::mousewheel_action_for_event(event);
 }
 
-std::optional<ControlMatch> SettingsHandler::mouseActionForEvent(
-    const QMouseEvent* event) const
+std::optional<ControlMatch> SettingsHandler::mouse_action_for_event(
+    const QMouseEvent* event)
 {
-    return KeyboardSettings().mouseActionForEvent(event);
+    return KeyboardSettings::mouse_action_for_event(event);
 }
 
-QStringList SettingsHandler::getShortcuts(const QString& group,
-                                          const QString& key,
-                                          const QStringList& defaults) const
+QStringList SettingsHandler::get_shortcuts(const QString& group,
+                                           const QString& key,
+                                           const QStringList& defaults)
 {
     return KeyboardSettings().get_shortcuts(group, key, defaults);
 }
 
-void SettingsHandler::setShortcuts(const QString& group,
-                                   const QString& key,
-                                   const QStringList& values)
+void SettingsHandler::set_shortcuts(const QString& group,
+                                    const QString& key,
+                                    const QStringList& values)
 {
-    KeyboardSettings().setShortcuts(group, key, values);
+    KeyboardSettings::set_shortcuts(group, key, values);
 }

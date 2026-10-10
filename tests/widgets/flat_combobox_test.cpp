@@ -31,8 +31,8 @@ TEST(FlatComboBoxTest, SelectingItemUpdatesCurrentTextAndEmitsSignal)
     box.addItem(QStringLiteral("Third"));
 
     QSignalSpy indexChangedSpy(&box,
-                              QOverload<int>::of(
-                                  &QComboBox::currentIndexChanged));
+                               QOverload<int>::of(
+                                   &QComboBox::currentIndexChanged));
 
     box.setCurrentIndex(2);
 

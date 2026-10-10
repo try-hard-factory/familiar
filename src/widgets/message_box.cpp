@@ -14,9 +14,9 @@
 
 namespace {
 
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
 
-QString buttonLabel(QMessageBox::StandardButton id)
+QString button_label(QMessageBox::StandardButton id)
 {
     switch (id) {
     case QMessageBox::Ok:
@@ -30,7 +30,7 @@ QString buttonLabel(QMessageBox::StandardButton id)
     case QMessageBox::Discard:
         return CustomMessageBox::tr("Discard");
     default:
-        return QString();
+        return {};
     }
 }
 
@@ -43,6 +43,7 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
                                    QMessageBox::StandardButtons buttons,
                                    QMessageBox::StandardButton defaultButton)
     : QDialog(parent)
+    , iconLabel_(new QLabel(this))
     , icon_(icon)
 {
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
@@ -65,7 +66,8 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -78,12 +80,12 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     auto* topRow = new QHBoxLayout();
     topRow->setSpacing(12);
 
-    iconLabel_ = new QLabel(this);
-    iconLabel_->setFixedSize(kIconSize, kIconSize);
+
+    iconLabel_->setFixedSize(kiconSize, kiconSize);
     iconLabel_->setPixmap(
-        familiar::dialog_style::severityIcon(icon_,
-                                             accent,
-                                             devicePixelRatioF()));
+        familiar::dialog_style::severity_icon(icon_,
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel_, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -130,7 +132,7 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
         QMessageBox::Cancel,
     };
     QList<QMessageBox::StandardButton> order;
-    for (QMessageBox::StandardButton b : kPriority) {
+    for (const QMessageBox::StandardButton b : kPriority) {
         if (buttons & b) {
             order.append(b);
         }
@@ -144,13 +146,15 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     }
 
     auto addButton = [&](QMessageBox::StandardButton id, bool isPrimary) {
-        auto* btn = new QPushButton(buttonLabel(id), this);
+        auto* btn = new QPushButton(button_label(id), this);
         btn->setFocusPolicy(Qt::StrongFocus);
         btn->setDefault(isPrimary);
         if (isPrimary) {
-            familiar::dialog_style::stylePrimaryButton(btn, accent);
+            familiar::dialog_style::style_primary_button(btn, accent);
         } else {
-            familiar::dialog_style::styleSecondaryButton(btn, textColor, border);
+            familiar::dialog_style::style_secondary_button(btn,
+                                                           textColor,
+                                                           border);
         }
         connect(btn, &QPushButton::clicked, this, [this, id] { done(int(id)); });
         buttonRow->addWidget(btn);
@@ -159,7 +163,7 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
         }
     };
 
-    for (QMessageBox::StandardButton id : order) {
+    for (const QMessageBox::StandardButton id : order) {
         addButton(id, false);
     }
     if (primary != QMessageBox::NoButton) {
@@ -176,20 +180,22 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
         escapeButton_ = defaultButton;
     }
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("CustomMessageBox",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("cmbCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("CustomMessageBox",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("cmbCloseBtn",
+                                                           textColor,
+                                                           accent));
 }
 
-void CustomMessageBox::setIconPixmap(const QPixmap& pixmap)
+void CustomMessageBox::set_icon_pixmap(const QPixmap& pixmap)
 {
-    iconLabel_->setPixmap(pixmap.scaled(kIconSize * devicePixelRatioF(),
-                                        kIconSize * devicePixelRatioF(),
+    const int scaledSize = static_cast<int>(kiconSize * devicePixelRatioF());
+    iconLabel_->setPixmap(pixmap.scaled(scaledSize,
+                                        scaledSize,
                                         Qt::KeepAspectRatio,
                                         Qt::SmoothTransformation));
 }
@@ -215,7 +221,7 @@ void CustomMessageBox::reject()
     done(int(escapeButton_));
 }
 
-QMessageBox::StandardButton showMessageBox(
+QMessageBox::StandardButton show_message_box(
     QMessageBox::Icon icon,
     QWidget* parent,
     const QString& title,

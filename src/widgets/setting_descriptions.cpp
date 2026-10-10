@@ -20,7 +20,7 @@ const QString& placeholder()
 // <ul>/<li>, etc. all render (same subset QLabel/QTextDocument always
 // support elsewhere in this app, e.g. HelpDialog). Keep it to inline
 // tags, not full <html>/<body> wrapping - QLabel doesn't need it.
-const QMap<QString, QString>& settingsTable()
+const QMap<QString, QString>& settings_table()
 {
     static const QMap<QString, QString> table = {
         {QStringLiteral("Items/arrange_gap"),
@@ -52,7 +52,7 @@ const QMap<QString, QString>& settingsTable()
 // Keyed by BindingTarget::id() - for an Action this is Action::id
 // (actions/actions.cpp's A::make() calls), not its display text, e.g.
 // "open" for the Ctrl+O row, not "Open".
-const QMap<QString, QString>& bindingTargetsTable()
+const QMap<QString, QString>& binding_targets_table()
 {
     static const QMap<QString, QString> table = {
         {QStringLiteral("open"),
@@ -66,14 +66,14 @@ const QMap<QString, QString>& bindingTargetsTable()
 
 } // namespace
 
-QString forSettingsKey(const QString& key)
+QString for_settings_key(const QString& key)
 {
-    return settingsTable().value(key, placeholder());
+    return settings_table().value(key, placeholder());
 }
 
-QString forBindingTargetId(const QString& id)
+QString for_binding_target_id(const QString& id)
 {
-    return bindingTargetsTable().value(id, placeholder());
+    return binding_targets_table().value(id, placeholder());
 }
 
 } // namespace familiar::setting_descriptions

@@ -39,11 +39,8 @@ Bool::Bool(bool def)
 
 bool Bool::check(const QVariant& val)
 {
-    QString str = val.toString();
-    if (str != "true" && str != "false") {
-        return false;
-    }
-    return true;
+    const QString str = val.toString();
+    return ((str == "true") || (str == "false"));
 }
 
 QVariant Bool::fallback()
@@ -64,11 +61,8 @@ KeySequence::KeySequence(const QKeySequence& fallback)
 
 bool KeySequence::check(const QVariant& val)
 {
-    QString str = val.toString();
-    if (!str.isEmpty() && QKeySequence(str).toString().isEmpty()) {
-        return false;
-    }
-    return true;
+    const QString str = val.toString();
+    return str.isEmpty() || !QKeySequence(str).toString().isEmpty();
 }
 
 QVariant KeySequence::fallback()
@@ -83,7 +77,7 @@ QString KeySequence::expected()
 
 QVariant KeySequence::representation(const QVariant& val)
 {
-    QString str(val.toString());
+    const QString str = val.toString();
     if (QKeySequence(str) == QKeySequence(Qt::Key_Return)) {
         return QStringLiteral("Enter");
     }
@@ -92,7 +86,7 @@ QVariant KeySequence::representation(const QVariant& val)
 
 QVariant KeySequence::process(const QVariant& val)
 {
-    QString str(val.toString());
+    const QString str = val.toString();
     if (str == "Enter") {
         return QKeySequence(Qt::Key_Return).toString();
     }
@@ -103,34 +97,34 @@ QVariant KeySequence::process(const QVariant& val)
 // BOUNDED INT
 
 BoundedInt::BoundedInt(int min, int max, int def)
-    : m_min(min)
-    , m_max(max)
-    , m_def(def)
+    : mMin_(min)
+    , mMax_(max)
+    , mDef_(def)
 {}
 
 bool BoundedInt::check(const QVariant& val)
 {
-    QString str = val.toString();
-    bool conversionOk;
-    int num = str.toInt(&conversionOk);
-    return conversionOk && m_min <= num && num <= m_max;
+    const QString str = val.toString();
+    bool conversionOk = false;
+    const int num = str.toInt(&conversionOk);
+    return conversionOk && mMin_ <= num && num <= mMax_;
 }
 
 QVariant BoundedInt::fallback()
 {
-    return m_def;
+    return mDef_;
 }
 
 QString BoundedInt::expected()
 {
-    return QStringLiteral("number between %1 and %2").arg(m_min).arg(m_max);
+    return QStringLiteral("number between %1 and %2").arg(mMin_).arg(mMax_);
 }
 
 
 // COLOR
 
 Color::Color(QColor def)
-    : m_def(std::move(def))
+    : mDef_(std::move(def))
 {}
 
 bool Color::check(const QVariant& val)
@@ -149,7 +143,7 @@ QVariant Color::process(const QVariant& val)
     QColor color(str);
     if (str.length() == 9 && str[0] == '#') {
         // Convert #RRGGBBAA (flameshot) to #AARRGGBB (QColor)
-        int blue = color.blue();
+        const int blue = color.blue();
         color.setBlue(color.green());
         color.setGreen(color.red());
         color.setRed(color.alpha());
@@ -160,7 +154,7 @@ QVariant Color::process(const QVariant& val)
 
 QVariant Color::fallback()
 {
-    return m_def;
+    return mDef_;
 }
 
 QVariant Color::representation(const QVariant& val)
@@ -169,7 +163,7 @@ QVariant Color::representation(const QVariant& val)
     QColor color(str);
     if (str.length() == 9 && str[0] == '#') {
         // Convert #AARRGGBB (QColor) to #RRGGBBAA (flameshot)
-        int alpha = color.alpha();
+        const int alpha = color.alpha();
         color.setAlpha(color.red());
         color.setRed(color.green());
         color.setGreen(color.blue());
@@ -187,10 +181,10 @@ QString Color::expected()
 // COLOR LIST
 
 ColorList::ColorList(QMap<int, QColor> def)
-    : m_def(def)
+    : mDef_(def)
 {}
 
-bool ColorList::check(const QVariant& val)
+bool ColorList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
@@ -215,7 +209,7 @@ QVariant ColorList::process(const QVariant& val)
 
 QVariant ColorList::fallback()
 {
-    return QVariant::fromValue(m_def);
+    return QVariant::fromValue(mDef_);
 }
 
 QVariant ColorList::representation(const QVariant& val)
@@ -237,10 +231,10 @@ QString ColorList::expected()
 // OPACITY LIST
 
 OpacityList::OpacityList(QMap<int, int> def)
-    : m_def(def)
+    : mDef_(def)
 {}
 
-bool OpacityList::check(const QVariant& val)
+bool OpacityList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
@@ -258,7 +252,7 @@ QVariant OpacityList::process(const QVariant& val)
 
 QVariant OpacityList::fallback()
 {
-    return QVariant::fromValue(m_def);
+    return QVariant::fromValue(mDef_);
 }
 
 QVariant OpacityList::representation(const QVariant& val)

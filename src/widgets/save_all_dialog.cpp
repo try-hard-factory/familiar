@@ -21,7 +21,7 @@
 using namespace familiar::log;
 
 namespace {
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
 }
 
 SaveAllDialog::SaveAllDialog(MainWindow* wm,
@@ -45,7 +45,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
@@ -59,11 +60,11 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     topRow->setSpacing(12);
 
     auto* iconLabel = new QLabel(this);
-    iconLabel->setFixedSize(kIconSize, kIconSize);
+    iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
-        familiar::dialog_style::severityIcon(QMessageBox::Warning,
-                                             accent,
-                                             devicePixelRatioF()));
+        familiar::dialog_style::severity_icon(QMessageBox::Warning,
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -128,39 +129,40 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
 
     auto* closeWithoutSaveBtn = new QPushButton(tr("Close without saving"),
                                                 this);
-    familiar::dialog_style::styleSecondaryButton(closeWithoutSaveBtn,
-                                                 textColor,
-                                                 border);
+    familiar::dialog_style::style_secondary_button(closeWithoutSaveBtn,
+                                                   textColor,
+                                                   border);
     connect(closeWithoutSaveBtn,
             &QPushButton::clicked,
             this,
-            &SaveAllDialog::onCloseWithoutSave_);
+            &SaveAllDialog::on_close_without_save);
     buttonRow->addWidget(closeWithoutSaveBtn);
 
     buttonRow->addStretch();
 
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-    familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
     connect(cancelBtn, &QPushButton::clicked, this, &SaveAllDialog::close);
     buttonRow->addWidget(cancelBtn);
 
     auto* saveBtn = new QPushButton(tr("Save"), this);
-    familiar::dialog_style::stylePrimaryButton(saveBtn, accent);
+    familiar::dialog_style::style_primary_button(saveBtn, accent);
     saveBtn->setDefault(true);
-    connect(saveBtn, &QPushButton::clicked, this, &SaveAllDialog::onSave_);
+    connect(saveBtn, &QPushButton::clicked, this, &SaveAllDialog::on_save);
     buttonRow->addWidget(saveBtn);
 
     outer->addLayout(buttonRow);
     saveBtn->setFocus();
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("SaveAllDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("sadCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("SaveAllDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("sadCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(window_, this);
     show();
@@ -179,13 +181,13 @@ void SaveAllDialog::mousePressEvent(QMouseEvent* event)
     QDialog::mousePressEvent(event);
 }
 
-void SaveAllDialog::onCloseWithoutSave_()
+void SaveAllDialog::on_close_without_save()
 {
     FLOG_DEBUG(Ch::UI, "SaveAllDialog: close without save");
-    window_->exitProject();
+    MainWindow::exit_project();
 }
 
-void SaveAllDialog::onSave_()
+void SaveAllDialog::on_save()
 {
     std::map<int, bool> m;
     for (auto it = checkboxes_.constBegin(); it != checkboxes_.constEnd();
@@ -197,5 +199,5 @@ void SaveAllDialog::onSave_()
                    it.value()->isChecked());
         m.emplace(it.key(), it.value()->isChecked());
     }
-    window_->saveAllWindowSaveCB(this, std::move(m));
+    window_->save_all_window_save_cb(this, std::move(m));
 }

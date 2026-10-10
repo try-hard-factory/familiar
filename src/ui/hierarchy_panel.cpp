@@ -37,70 +37,70 @@ using namespace familiar::log;
 
 namespace {
 
-constexpr int kIconSize = 18;
-constexpr int kUidRole = Qt::UserRole;
+constexpr int kiconSize = 18;
+constexpr int kuidRole = Qt::UserRole;
 
 // Same drawn-icon approach as every other icon in this app
 // (group_toolbar.cpp, gif_playback_toolbar.cpp) - no external asset.
-QIcon makeGroupIcon(const QColor& glyphColor)
+QIcon make_group_icon(const QColor& glyphColor)
 {
-    QPixmap pm(kIconSize, kIconSize);
+    QPixmap pm(kiconSize, kiconSize);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
-    const qreal cell = kIconSize * 0.38;
-    const qreal gap = kIconSize * 0.14;
+    const qreal cell = kiconSize * 0.38;
+    const qreal gap = kiconSize * 0.14;
     for (int row = 0; row < 2; ++row) {
         for (int col = 0; col < 2; ++col) {
-            const qreal x = kIconSize * 0.08 + col * (cell + gap);
-            const qreal y = kIconSize * 0.08 + row * (cell + gap);
+            const qreal x = (kiconSize * 0.08) + (col * (cell + gap));
+            const qreal y = (kiconSize * 0.08) + (row * (cell + gap));
             p.drawRoundedRect(QRectF(x, y, cell, cell), 2, 2);
         }
     }
     p.end();
-    return QIcon(pm);
+    return {pm};
 }
 
-QIcon makeTextIcon(const QColor& glyphColor)
+QIcon make_text_icon(const QColor& glyphColor)
 {
-    QPixmap pm(kIconSize, kIconSize);
+    QPixmap pm(kiconSize, kiconSize);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     QFont f = p.font();
     f.setBold(true);
-    f.setPixelSize(int(kIconSize * 0.7));
+    f.setPixelSize(int(kiconSize * 0.7));
     p.setFont(f);
     p.setPen(glyphColor);
-    p.drawText(QRectF(0, 0, kIconSize, kIconSize),
+    p.drawText(QRectF(0, 0, kiconSize, kiconSize),
                Qt::AlignCenter,
                QStringLiteral("T"));
     p.end();
-    return QIcon(pm);
+    return {pm};
 }
 
-QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
+QIcon make_picture_icon(const QPixmap& source, const QColor& glyphColor)
 {
-    QPixmap pm(kIconSize, kIconSize);
+    QPixmap pm(kiconSize, kiconSize);
     pm.fill(Qt::transparent);
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::SmoothPixmapTransform);
     QPainterPath clip;
-    clip.addRoundedRect(QRectF(0.5, 0.5, kIconSize - 1, kIconSize - 1), 3, 3);
+    clip.addRoundedRect(QRectF(0.5, 0.5, kiconSize - 1, kiconSize - 1), 3, 3);
     p.setClipPath(clip);
     if (!source.isNull()) {
         // Scaled+cropped to fill the square (KeepAspectRatioByExpanding),
         // not letterboxed - a thumbnail is more recognizable filling the
         // whole icon than shrunk down with empty borders.
-        const QPixmap scaled = source.scaled(kIconSize,
-                                             kIconSize,
+        const QPixmap scaled = source.scaled(kiconSize,
+                                             kiconSize,
                                              Qt::KeepAspectRatioByExpanding,
                                              Qt::SmoothTransformation);
-        p.drawPixmap((kIconSize - scaled.width()) / 2,
-                     (kIconSize - scaled.height()) / 2,
+        p.drawPixmap((kiconSize - scaled.width()) / 2,
+                     (kiconSize - scaled.height()) / 2,
                      scaled);
     } else {
         p.fillRect(pm.rect(),
@@ -116,7 +116,7 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
     p.setBrush(Qt::NoBrush);
     p.drawPath(clip);
     p.end();
-    return QIcon(pm);
+    return {pm};
 }
 
 // "Export" on a group (context menu, showContextMenu_()) - every picture
@@ -126,13 +126,13 @@ QIcon makePictureIcon(const QPixmap& source, const QColor& glyphColor)
 // the group becomes a real member too - see CanvasScene::
 // attach_item_to()), so this needs no separate attach-chain walk of its
 // own, just group membership.
-void collectGroupPictures(GroupItem* group, QList<PixmapItem*>& out)
+void collect_group_pictures(GroupItem* group, QList<PixmapItem*>& out)
 {
     for (QGraphicsItem* child : group->resolve_children()) {
         if (auto* picture = dynamic_cast<PixmapItem*>(child)) {
             out.append(picture);
         } else if (auto* nested = dynamic_cast<GroupItem*>(child)) {
-            collectGroupPictures(nested, out);
+            collect_group_pictures(nested, out);
         }
     }
 }
@@ -156,7 +156,10 @@ public:
     // dragged is always non-null (Qt doesn't start a drag without a
     // current item); target is null when dropped on empty space below
     // the last root row.
-    std::function<void(QTreeWidgetItem* dragged, QTreeWidgetItem* target)> onDrop;
+    using DropHandler
+        = std::function<void(QTreeWidgetItem* dragged, QTreeWidgetItem* target)>;
+
+    void set_on_drop(DropHandler handler) { onDrop_ = std::move(handler); }
 
 protected:
     void dropEvent(QDropEvent* event) override
@@ -180,10 +183,13 @@ protected:
         // thing that ever deletes tree nodes.
         event->setDropAction(Qt::IgnoreAction);
         event->accept();
-        if (dragged && onDrop) {
-            onDrop(dragged, target);
+        if (dragged && onDrop_) {
+            onDrop_(dragged, target);
         }
     }
+
+private:
+    DropHandler onDrop_;
 };
 
 // Rename prompt (HierarchyPanel::startRename_()) - a real, small, modal
@@ -208,6 +214,7 @@ class RenameDialog : public QDialog
 public:
     RenameDialog(const QString& currentName, QWidget* parent)
         : QDialog(parent)
+        , edit_(new QLineEdit(currentName, this))
     {
         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
         setAttribute(Qt::WA_TranslucentBackground, false);
@@ -216,7 +223,7 @@ public:
         setFixedWidth(320);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
         const QColor& background
             = colorPreset[EPresetsColorIdx::kBackgroundColor];
@@ -239,7 +246,7 @@ public:
         titleLabel->setFont(titleFont);
         outer->addWidget(titleLabel);
 
-        edit_ = new QLineEdit(currentName, this);
+
         edit_->selectAll();
         connect(edit_, &QLineEdit::returnPressed, this, &QDialog::accept);
         outer->addWidget(edit_);
@@ -247,13 +254,13 @@ public:
         auto* buttonRow = new QHBoxLayout();
         buttonRow->addStretch();
         auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-        familiar::dialog_style::styleSecondaryButton(cancelBtn,
-                                                     textColor,
-                                                     border);
+        familiar::dialog_style::style_secondary_button(cancelBtn,
+                                                       textColor,
+                                                       border);
         connect(cancelBtn, &QPushButton::clicked, this, &QDialog::reject);
         buttonRow->addWidget(cancelBtn);
         auto* okBtn = new QPushButton(tr("Rename"), this);
-        familiar::dialog_style::stylePrimaryButton(okBtn, accent);
+        familiar::dialog_style::style_primary_button(okBtn, accent);
         okBtn->setDefault(true);
         connect(okBtn, &QPushButton::clicked, this, &QDialog::accept);
         buttonRow->addWidget(okBtn);
@@ -268,11 +275,11 @@ public:
         // to fall back to MainWindow's app-wide "background: transparent"
         // with nothing underneath to actually paint (rendered solid
         // black, stale content visibly not clearing while typing).
-        setStyleSheet(familiar::dialog_style::panelStyleSheet("QDialog",
-                                                              background,
-                                                              border,
-                                                              textColor,
-                                                              /*radiusPx=*/0)
+        setStyleSheet(familiar::dialog_style::panel_style_sheet("QDialog",
+                                                                background,
+                                                                border,
+                                                                textColor,
+                                                                /*radiusPx=*/0)
                       + QStringLiteral("QLineEdit {"
                                        "  background-color: rgba(0, 0, 0, 20);"
                                        "  color: %1;"
@@ -304,6 +311,8 @@ private:
 
 HierarchyPanel::HierarchyPanel(QWidget* parent)
     : QDockWidget(QObject::tr("Hierarchy"), parent)
+    , titleBar_(new QWidget(this))
+    , rebuildTimer_(new QTimer(this))
 {
     setObjectName(QStringLiteral("hierarchyPanel"));
     // No DockWidgetClosable/Floatable - those draw Qt's native, unstyled
@@ -320,7 +329,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     // QWidget/QLabel does, and still gets QDockWidget's own drag-to-move
     // handling for free (that's generic to whatever titleBarWidget() is,
     // native or not) - DockWidgetMovable above still works.
-    titleBar_ = new QWidget(this);
+
     titleBar_->setAttribute(Qt::WA_StyledBackground);
     auto* titleLayout = new QHBoxLayout(titleBar_);
     titleLayout->setContentsMargins(8, 5, 8, 5);
@@ -344,17 +353,17 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     tree_->setAcceptDrops(true);
     tree_->setDropIndicatorShown(true);
     tree_->setDragDropMode(QAbstractItemView::InternalMove);
-    tree->onDrop = [this](QTreeWidgetItem* dragged, QTreeWidgetItem* target) {
-        handleTreeDrop_(dragged, target);
-    };
+    tree->set_on_drop([this](QTreeWidgetItem* dragged, QTreeWidgetItem* target) {
+        handle_tree_drop(dragged, target);
+    });
     connect(tree_,
             &QTreeWidget::itemClicked,
             this,
-            &HierarchyPanel::onItemClicked_);
+            &HierarchyPanel::on_item_clicked);
     connect(tree_,
             &QTreeWidget::itemDoubleClicked,
             this,
-            &HierarchyPanel::onItemDoubleClicked_);
+            &HierarchyPanel::on_item_double_clicked);
     auto* renameShortcut = new QShortcut(QKeySequence(Qt::Key_F2), tree_);
     // WindowShortcut, not Widget/WidgetWithChildrenShortcut - neither of
     // those ever fired at all (confirmed via debug log during
@@ -366,33 +375,34 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     // this app is bound to F2 (grepped), so this is safe app-wide.
     renameShortcut->setContext(Qt::WindowShortcut);
     connect(renameShortcut, &QShortcut::activated, this, [this] {
-        startRename_(tree_->currentItem());
+        start_rename(tree_->currentItem());
     });
     tree_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(tree_,
             &QTreeWidget::customContextMenuRequested,
             this,
-            &HierarchyPanel::showContextMenu_);
+            &HierarchyPanel::show_context_menu);
     setWidget(tree_);
 
-    rebuildTimer_ = new QTimer(this);
+
     rebuildTimer_->setSingleShot(true);
     rebuildTimer_->setInterval(150);
     connect(rebuildTimer_, &QTimer::timeout, this, &HierarchyPanel::refresh);
 
-    applyColorStyle_();
-    connect(SettingsHandler::getInstance(),
-            &SettingsHandler::settingsChanged,
+    apply_color_style();
+    connect(SettingsHandler::get_instance(),
+            &SettingsHandler::settings_changed,
             this,
             [this] {
-                applyColorStyle_();
+                apply_color_style();
                 refresh();
             });
 }
 
-void HierarchyPanel::applyColorStyle_()
+void HierarchyPanel::apply_color_style()
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
     const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
@@ -430,11 +440,11 @@ void HierarchyPanel::applyColorStyle_()
     }
 }
 
-void HierarchyPanel::setScene(CanvasScene* scene, CanvasView* view)
+void HierarchyPanel::set_scene(CanvasScene* scene, CanvasView* view)
 {
     scene_ = scene;
     view_ = view;
-    rebuild_();
+    rebuild();
 }
 
 void HierarchyPanel::refresh()
@@ -443,10 +453,10 @@ void HierarchyPanel::refresh()
         dirty_ = true;
         return;
     }
-    rebuild_();
+    rebuild();
 }
 
-void HierarchyPanel::scheduleRefresh()
+void HierarchyPanel::schedule_refresh()
 {
     // Throttle, not debounce - see this class's header comment for why
     // its trigger changed from CanvasScene::changed() (fired
@@ -467,11 +477,11 @@ void HierarchyPanel::showEvent(QShowEvent* event)
 {
     QDockWidget::showEvent(event);
     if (dirty_) {
-        rebuild_();
+        rebuild();
     }
 }
 
-void HierarchyPanel::rebuild_()
+void HierarchyPanel::rebuild()
 {
     dirty_ = false;
     // Tear down every gif-frame connection from the PREVIOUS tree before
@@ -496,7 +506,7 @@ void HierarchyPanel::rebuild_()
     QSet<QUuid> consumed;
     const QList<QGraphicsItem*> allItems = scene_->items();
     for (QGraphicsItem* item : allItems) {
-        if (!scene_->itemAddByUser(item)) {
+        if (!CanvasScene::item_add_by_user(item)) {
             continue;
         }
         if (auto* group = dynamic_cast<GroupItem*>(item)) {
@@ -505,7 +515,7 @@ void HierarchyPanel::rebuild_()
             }
         }
         if (auto* base = dynamic_cast<IBaseItem*>(item)) {
-            if (!base->attachedToUid().isNull()) {
+            if (!base->attached_to_uid().isNull()) {
                 consumed.insert(base->uid());
             }
         }
@@ -513,21 +523,21 @@ void HierarchyPanel::rebuild_()
 
     QSet<QUuid> added;
     for (QGraphicsItem* item : allItems) {
-        if (!scene_->itemAddByUser(item)) {
+        if (!CanvasScene::item_add_by_user(item)) {
             continue;
         }
         auto* base = dynamic_cast<IBaseItem*>(item);
         if (!base || consumed.contains(base->uid())) {
             continue;
         }
-        addItemNode_(nullptr, item, added);
+        add_item_node(nullptr, item, added);
     }
     tree_->expandAll();
 }
 
-void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
-                                  QGraphicsItem* item,
-                                  QSet<QUuid>& added)
+void HierarchyPanel::add_item_node(QTreeWidgetItem* parent,
+                                   QGraphicsItem* item,
+                                   QSet<QUuid>& added)
 {
     auto* base = dynamic_cast<IBaseItem*>(item);
     if (!base || added.contains(base->uid())) {
@@ -535,7 +545,7 @@ void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
     }
     added.insert(base->uid());
 
-    QTreeWidgetItem* node = makeNode_(item);
+    QTreeWidgetItem* node = make_node(item);
     if (parent) {
         parent->addChild(node);
     } else {
@@ -544,60 +554,62 @@ void HierarchyPanel::addItemNode_(QTreeWidgetItem* parent,
 
     if (auto* group = dynamic_cast<GroupItem*>(item)) {
         for (QGraphicsItem* child : group->resolve_children()) {
-            addItemNode_(node, child, added);
+            add_item_node(node, child, added);
         }
     }
     if (auto* picture = dynamic_cast<PixmapItem*>(
             item)) { // GifItem IS-A PixmapItem
         for (QGraphicsItem* note : scene_->find_attached_items(picture->uid())) {
-            addItemNode_(node, note, added);
+            add_item_node(node, note, added);
         }
     }
     if (auto* gif = dynamic_cast<GifItem*>(item)) {
-        connectGifAnimation_(node, gif);
+        connect_gif_animation(node, gif);
     }
 }
 
-void HierarchyPanel::connectGifAnimation_(QTreeWidgetItem* node, GifItem* gif)
+void HierarchyPanel::connect_gif_animation(QTreeWidgetItem* node, GifItem* gif)
 {
     // Now that the panel's rebuild trigger is QUndoStack::
     // indexChanged rather than the animation-driven CanvasScene::
     // changed(), a per-node icon update on frameChanged is a targeted,
     // cheap operation (setIcon() on one row) instead of a full tree
     // rebuild every frame.
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor glyphColor = colorPreset[EPresetsColorIdx::kTextColor];
-    QMetaObject::Connection conn
+    const QMetaObject::Connection conn
         = QObject::connect(gif->movie(),
                            &QMovie::frameChanged,
                            this,
                            [node, gif, glyphColor](int) {
                                node->setIcon(0,
-                                             makePictureIcon(gif->pixmap(),
-                                                             glyphColor));
+                                             make_picture_icon(gif->pixmap(),
+                                                               glyphColor));
                            });
     gifIconConnections_.append(conn);
 }
 
-QTreeWidgetItem* HierarchyPanel::makeNode_(QGraphicsItem* item)
+QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
 
     QString label;
     QIcon icon;
     if (dynamic_cast<GroupItem*>(item)) {
         label = QObject::tr("Group");
-        icon = makeGroupIcon(text);
+        icon = make_group_icon(text);
     } else if (auto* picture = dynamic_cast<PixmapItem*>(item)) {
-        label = picture->filename_.isEmpty()
+        label = picture->filename().isEmpty()
                     ? QObject::tr("Untitled")
-                    : QFileInfo(picture->filename_).fileName();
-        icon = makePictureIcon(picture->pixmap(), text);
+                    : QFileInfo(picture->filename()).fileName();
+        icon = make_picture_icon(picture->pixmap(), text);
     } else if (auto* txt = dynamic_cast<TextItem*>(item)) {
         const QString plain = txt->toPlainText().trimmed();
         label = plain.isEmpty() ? QObject::tr("Text") : plain.left(40);
-        icon = makeTextIcon(text);
+        icon = make_text_icon(text);
     } else {
         label = QObject::tr("Item");
     }
@@ -606,17 +618,17 @@ QTreeWidgetItem* HierarchyPanel::makeNode_(QGraphicsItem* item)
     node->setText(0, label);
     node->setIcon(0, icon);
     if (auto* base = dynamic_cast<IBaseItem*>(item)) {
-        node->setData(0, kUidRole, base->uid());
+        node->setData(0, kuidRole, base->uid());
     }
     return node;
 }
 
-void HierarchyPanel::onItemClicked_(QTreeWidgetItem* node)
+void HierarchyPanel::on_item_clicked(QTreeWidgetItem* node)
 {
     if (!scene_ || syncingSelection_) {
         return;
     }
-    const QUuid uid = node->data(0, kUidRole).toUuid();
+    const QUuid uid = node->data(0, kuidRole).toUuid();
     QGraphicsItem* item = scene_->find_by_uid(uid);
     if (!item) {
         return;
@@ -625,12 +637,12 @@ void HierarchyPanel::onItemClicked_(QTreeWidgetItem* node)
     item->setSelected(true);
 }
 
-void HierarchyPanel::onItemDoubleClicked_(QTreeWidgetItem* node)
+void HierarchyPanel::on_item_double_clicked(QTreeWidgetItem* node)
 {
     if (!scene_ || !view_) {
         return;
     }
-    const QUuid uid = node->data(0, kUidRole).toUuid();
+    const QUuid uid = node->data(0, kuidRole).toUuid();
     QGraphicsItem* item = scene_->find_by_uid(uid);
     if (!item) {
         return;
@@ -644,18 +656,19 @@ void HierarchyPanel::onItemDoubleClicked_(QTreeWidgetItem* node)
         text->setFocus();
         return;
     }
-    view_->fitRect(scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
-                   item);
+    view_->fit_rect(scene_->itemsBoundingRect(false,
+                                              QList<QGraphicsItem*>{item}),
+                    item);
 }
 
-void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
-                                     QTreeWidgetItem* target)
+void HierarchyPanel::handle_tree_drop(QTreeWidgetItem* dragged,
+                                      QTreeWidgetItem* target)
 {
     if (!scene_ || dragged == target) {
         return;
     }
     QGraphicsItem* draggedItem = scene_->find_by_uid(
-        dragged->data(0, kUidRole).toUuid());
+        dragged->data(0, kuidRole).toUuid());
     if (!draggedItem) {
         return;
     }
@@ -671,7 +684,7 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
     }
 
     QGraphicsItem* targetItem = scene_->find_by_uid(
-        target->data(0, kUidRole).toUuid());
+        target->data(0, kuidRole).toUuid());
     if (!targetItem) {
         return;
     }
@@ -693,13 +706,13 @@ void HierarchyPanel::handleTreeDrop_(QTreeWidgetItem* dragged,
     // Dropped on a TextItem node: nothing attaches to a note - no-op.
 }
 
-void HierarchyPanel::showContextMenu_(const QPoint& pos)
+void HierarchyPanel::show_context_menu(const QPoint& pos)
 {
     QTreeWidgetItem* node = tree_->itemAt(pos);
     if (!node || !scene_) {
         return;
     }
-    QGraphicsItem* item = scene_->find_by_uid(node->data(0, kUidRole).toUuid());
+    QGraphicsItem* item = scene_->find_by_uid(node->data(0, kuidRole).toUuid());
     if (!item) {
         return;
     }
@@ -717,11 +730,11 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
         renameAction = menu.addAction(tr("Rename"));
         renameAction->setShortcut(QKeySequence(Qt::Key_F2));
     }
-    QAction* editAction = nullptr;
+    const QAction* editAction = nullptr;
     if (text) {
         editAction = menu.addAction(tr("Edit"));
     }
-    QAction* exportAction = nullptr;
+    const QAction* exportAction = nullptr;
     if (picture || group) {
         exportAction = menu.addAction(tr("Export..."));
     }
@@ -732,7 +745,8 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
     // it falls back to the app-wide "background: transparent" (MainWindow's
     // own setStyleSheet()) with nothing underneath to actually paint,
     // rendering solid black.
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
     const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
     const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
     const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
@@ -760,7 +774,7 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
     // Acted on AFTER exec() returns, not from the actions' own
     // triggered() handlers - QMenu is still mid-close/ungrab at the
     // moment a handler fires from inside its own nested event loop.
-    QAction* chosen = menu.exec(tree_->viewport()->mapToGlobal(pos));
+    const QAction* chosen = menu.exec(tree_->viewport()->mapToGlobal(pos));
     // Dismissing the menu without picking anything (Escape, click
     // elsewhere) returns nullptr from exec() - without this guard that
     // matched whichever of renameAction/editAction/exportAction wasn't
@@ -774,7 +788,7 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
         return;
     }
     if (chosen == renameAction) {
-        startRename_(node);
+        start_rename(node);
     } else if (chosen == editAction) {
         // Same as double-clicking the row (onItemDoubleClicked_) - drops
         // straight into the note's own in-canvas text editing, not a
@@ -796,19 +810,19 @@ void HierarchyPanel::showContextMenu_(const QPoint& pos)
         if (picture) {
             pictures.append(picture);
         } else if (group) {
-            collectGroupPictures(group, pictures);
+            collect_group_pictures(group, pictures);
         }
-        view_->exportPictures(pictures);
+        view_->export_pictures(pictures);
     }
 }
 
-void HierarchyPanel::startRename_(QTreeWidgetItem* node)
+void HierarchyPanel::start_rename(QTreeWidgetItem* node)
 {
     if (!node || !scene_) {
         return;
     }
     auto* picture = dynamic_cast<PixmapItem*>(
-        scene_->find_by_uid(node->data(0, kUidRole).toUuid()));
+        scene_->find_by_uid(node->data(0, kuidRole).toUuid()));
     if (!picture) {
         return; // F2/Rename only meaningful for a picture row
     }
@@ -818,9 +832,9 @@ void HierarchyPanel::startRename_(QTreeWidgetItem* node)
         return;
     }
 
-    const QString currentLabel = picture->filename_.isEmpty()
+    const QString currentLabel = picture->filename().isEmpty()
                                      ? tr("Untitled")
-                                     : QFileInfo(picture->filename_).fileName();
+                                     : QFileInfo(picture->filename()).fileName();
     const QString newName = dlg.text().trimmed();
     if (newName.isEmpty() || newName == currentLabel) {
         return;
@@ -830,11 +844,11 @@ void HierarchyPanel::startRename_(QTreeWidgetItem* node)
                "startRename_: '{}' -> '{}'",
                currentLabel.toStdString(),
                newName.toStdString());
-    scene_->undo_stack_->push(
-        new RenamePictureCommand(picture, picture->filename_, newName));
+    scene_->undo_stack()->push(
+        new RenamePictureCommand(picture, picture->filename(), newName));
 }
 
-void HierarchyPanel::syncSelectionFromScene()
+void HierarchyPanel::sync_selection_from_scene()
 {
     if (!scene_) {
         return;
@@ -848,7 +862,7 @@ void HierarchyPanel::syncSelectionFromScene()
     }
 
     std::function<void(QTreeWidgetItem*)> walk = [&](QTreeWidgetItem* node) {
-        const QUuid uid = node->data(0, kUidRole).toUuid();
+        const QUuid uid = node->data(0, kuidRole).toUuid();
         node->setSelected(selectedUids.contains(uid));
         for (int i = 0; i < node->childCount(); ++i) {
             walk(node->child(i));

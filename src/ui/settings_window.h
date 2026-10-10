@@ -32,7 +32,7 @@ public:
     // HelpDialog's "Keyboard Shortcuts" link opens this window already
     // on that page instead of whatever was last selected. No-op
     // (silently) if nothing matches.
-    void selectCategory(const QString& name);
+    void select_category(const QString& name);
 
 protected:
     void keyPressEvent(QKeyEvent*) override;

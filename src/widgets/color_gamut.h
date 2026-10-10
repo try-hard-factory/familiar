@@ -21,19 +21,19 @@ class GamutPainterThread : public QThread
     Q_OBJECT
 
 public:
-    static constexpr int RADIUS = 250;
+    static constexpr int kradius = 250;
 
     GamutPainterThread(GamutWidget* parent, PixmapItem* item);
 
-    void setThreshold(int threshold) { m_threshold = threshold; }
+    void set_threshold(int threshold) { mThreshold_ = threshold; }
     void run() override;
 
 signals:
-    void imageReady(const QImage& image);
+    void image_ready(const QImage& image);
 
 private:
-    PixmapItem* m_item;
-    int m_threshold = 20;
+    PixmapItem* mItem_;
+    int mThreshold_ = 20;
 };
 
 
@@ -44,19 +44,22 @@ class GamutWidget : public QWidget
 public:
     GamutWidget(QWidget* parent, PixmapItem* item);
 
-    QSize minimumSizeHint() const override { return QSize(200, 200); }
-    void updateValues();
+    QSize minimumSizeHint() const override { return {200, 200}; }
+    void update_values();
     int threshold() const;
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private slots:
-    void onImageReady(const QImage& image);
+    void on_image_ready(const QImage& image);
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
-    GamutPainterThread* m_worker;
-    QImage m_image;
+    GamutPainterThread* mWorker_;
+    QImage mImage_;
 };
 
 
@@ -67,12 +70,15 @@ class GamutDialog : public QDialog
 public:
     GamutDialog(QWidget* parent, PixmapItem* item);
 
-    int threshold() const { return m_thresholdInput->value(); }
+    int threshold() const { return mThresholdInput_->value(); }
 
 private slots:
-    void onValueChanged(int value);
+    void on_value_changed(int value);
 
+// Closes the slots/signals section above - moc needs it, even
+// though to the compiler it repeats the enclosing access level.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
-    GamutWidget* m_gamutWidget;
-    QSlider* m_thresholdInput;
+    GamutWidget* mGamutWidget_;
+    QSlider* mThresholdInput_;
 };

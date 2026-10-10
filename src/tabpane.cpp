@@ -11,26 +11,28 @@
 TabPane::TabPane(QWidget* parent, MainWindow& mw)
     : QWidget(parent)
     , mainwindow_(mw)
+    , layout_(new QVBoxLayout)
+    , tabs_(new QTabWidget(this))
 {
-    layout_ = new QVBoxLayout; // try some other layout
+    // try some other layout
     layout_->setContentsMargins(0, 0, 0, 0);
     this->setLayout(layout_);
 
-    tabs_ = new QTabWidget(this);
+
     tabs_->setTabsClosable(true);
     tabs_->setWindowFlags(Qt::FramelessWindowHint);
     tabs_->setAttribute(Qt::WA_TranslucentBackground);
     // // tabs_->setStyleSheet("background: transparent; background-color: rgba(255, 255, 255, 128);");
     layout_->addWidget(tabs_);
 
-    addNewUntitledTab();
+    add_new_untitled_tab();
 
     // // setStyleSheet("background: transparent; background-color: rgba(0, 0, 0, 128);");
     connect(tabs_, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
     connect(tabs_,
             &QTabWidget::currentChanged,
             this,
-            &TabPane::currentTabChanged);
+            &TabPane::current_tab_changed);
 }
 
 TabPane::~TabPane()
@@ -48,9 +50,9 @@ TabPane::~TabPane()
 //     //QWidget::paintEvent(event); // Вызов базовой реализации
 // }
 
-void TabPane::addNewTab(const QString& path)
+void TabPane::add_new_tab(const QString& path)
 {
-    int count = tabs_->count();
+    const int count = tabs_->count();
 
     // CanvasView(MainWindow&, QWidget* parent = nullptr) - canvasView has
     // NO parent yet at this point, so calling show() here (like this
@@ -62,38 +64,38 @@ void TabPane::addNewTab(const QString& path)
     // handles showing/hiding its pages itself once they're actually
     // added - no need to show() a widget that isn't parented into
     // anything real yet.
-    CanvasView* canvasView = new CanvasView(mainwindow_);
-    project_settings* ps = new project_settings(this, canvasView);
+    auto* canvasView = new CanvasView(mainwindow_);
+    auto* ps = new ProjectSettings(this, canvasView);
 
     ps->path(path);
-    ps->projectName(QFileInfo(path).fileName());
-    canvasView->setProjectSettings(ps);
+    ps->project_name(QFileInfo(path).fileName());
+    canvasView->set_project_settings(ps);
 
     tabs_->addTab(canvasView, QFileInfo(path).fileName());
-    setCloseButtonTooltip_(count);
+    set_close_button_tooltip(count);
     tabs_->setCurrentIndex(count);
 }
 
-void TabPane::closeTabByIndex(int idx)
+void TabPane::close_tab_by_index(int idx)
 {
     tabs_->removeTab(idx);
 }
 
-void TabPane::addNewUntitledTab()
+void TabPane::add_new_untitled_tab()
 {
-    int count = tabs_->count();
+    const int count = tabs_->count();
 
     // No premature show() here either - see addNewTab()'s own comment.
-    CanvasView* canvasWidget = new CanvasView(mainwindow_);
-    project_settings* ps = new project_settings(this, canvasWidget);
-    canvasWidget->setProjectSettings(ps);
+    auto* canvasWidget = new CanvasView(mainwindow_);
+    auto* ps = new ProjectSettings(this, canvasWidget);
+    canvasWidget->set_project_settings(ps);
 
     tabs_->addTab(canvasWidget, "untitled");
-    setCloseButtonTooltip_(count);
+    set_close_button_tooltip(count);
     tabs_->setCurrentIndex(count);
 }
 
-void TabPane::setCloseButtonTooltip_(int index)
+void TabPane::set_close_button_tooltip(int index)
 {
     // The close button can be docked on either side depending on the
     // active style, so try both rather than assuming RightSide.
@@ -105,27 +107,27 @@ void TabPane::setCloseButtonTooltip_(int index)
     }
 }
 
-void TabPane::setCurrentTabPath(const QString& path)
+void TabPane::set_current_tab_path(const QString& path)
 {
-    currentWidget()->setPath(path);
+    current_widget()->set_path(path);
 }
 
-QString TabPane::getCurrentTabPath()
+QString TabPane::get_current_tab_path()
 {
-    return currentWidget()->path();
+    return current_widget()->path();
 }
 
-void TabPane::onTabClosed(int index)
+void TabPane::on_tab_closed(int index)
 {
-    CanvasView* canvasview = widgetAt(index);
+    CanvasView* canvasview = widget_at(index);
     // This tab's fate (saved or explicitly discarded) is being decided
     // right now by the branches below - whatever they choose, a stale
     // recovery snapshot from earlier in this session shouldn't linger
     // and falsely offer to "recover" an already-closed tab after some
     // later crash in the same run (see recovery.h).
-    familiar::recovery::remove(canvasview->recoveryId());
-    if (canvasview->isModified()) {
-        QMessageBox::StandardButton resBtn = showMessageBox(
+    familiar::recovery::remove(canvasview->recovery_id());
+    if (canvasview->is_modified()) {
+        const QMessageBox::StandardButton resBtn = show_message_box(
             QMessageBox::Warning,
             this,
             tr("Warning!"),
@@ -134,33 +136,33 @@ void TabPane::onTabClosed(int index)
             QMessageBox::No);
 
         if (resBtn == QMessageBox::Yes) {
-            if (mainwindow_.fileActions().saveFile() == QDialog::Accepted) {
+            if (mainwindow_.file_actions().save_file() == QDialog::Accepted) {
                 delete canvasview;
                 if (tabs_->count() == 0) {
-                    addNewUntitledTab();
+                    add_new_untitled_tab();
                 }
             }
         } else if (resBtn == QMessageBox::No) {
             delete canvasview;
             if (tabs_->count() == 0) {
-                addNewUntitledTab();
+                add_new_untitled_tab();
             }
         }
     } else {
         delete canvasview;
         if (tabs_->count() == 0) {
-            addNewUntitledTab();
+            add_new_untitled_tab();
         }
     }
 }
 
 
-void TabPane::setCurrentTabTitle(const QString& title)
+void TabPane::set_current_tab_title(const QString& title)
 {
     tabs_->setTabText(tabs_->currentIndex(), title);
 }
 
-void TabPane::setTabTitle(CanvasView* view, const QString& title)
+void TabPane::set_tab_title(CanvasView* view, const QString& title)
 {
     const int idx = tabs_->indexOf(view);
     if (idx >= 0) {
@@ -168,32 +170,32 @@ void TabPane::setTabTitle(CanvasView* view, const QString& title)
     }
 }
 
-QString TabPane::getCurrentTabTitle()
+QString TabPane::get_current_tab_title()
 {
     return tabs_->tabText(tabs_->currentIndex());
 }
 
-void TabPane::setCurrentTabProjectName(const QString& pn)
+void TabPane::set_current_tab_project_name(const QString& pn)
 {
-    currentWidget()->setProjectName(pn);
+    current_widget()->set_project_name(pn);
 }
 
-QString TabPane::getCurrentTabProjectName()
+QString TabPane::get_current_tab_project_name()
 {
-    return currentWidget()->projectName();
+    return current_widget()->project_name();
 }
 
-CanvasView* TabPane::currentWidget()
+CanvasView* TabPane::current_widget()
 {
-    return static_cast<CanvasView*>(tabs_->currentWidget());
+    return qobject_cast<CanvasView*>(tabs_->currentWidget());
 }
 
-CanvasView* TabPane::widgetAt(int index)
+CanvasView* TabPane::widget_at(int index)
 {
-    return static_cast<CanvasView*>(tabs_->widget(index));
+    return qobject_cast<CanvasView*>(tabs_->widget(index));
 }
 
-void TabPane::setCurrentIndex(int index)
+void TabPane::set_current_index(int index)
 {
     tabs_->setCurrentIndex(index);
 }

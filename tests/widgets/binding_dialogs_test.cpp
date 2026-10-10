@@ -34,11 +34,11 @@ TEST(MouseButtonCaptureFieldTest, SetButtonAndClearBindingUpdateDisplay)
 {
     MouseButtonCaptureField field;
 
-    field.setButton(QStringLiteral("Left"));
+    field.set_button(QStringLiteral("Left"));
     EXPECT_EQ(field.button(), QStringLiteral("Left"));
     EXPECT_EQ(field.text(), QStringLiteral("Left MB"));
 
-    field.clearBinding();
+    field.clear_binding();
     EXPECT_TRUE(field.button().isEmpty());
     EXPECT_TRUE(field.text().isEmpty());
 }
@@ -71,7 +71,7 @@ TEST(KeySequenceCaptureFieldTest, EscapeIsIgnoredNotCaptured)
     // comment) is actually verifiable: event->ignore(), not just "the
     // field's own state didn't change".
     KeySequenceCaptureField field;
-    field.setSequence(QStringLiteral("Ctrl+S")); // pre-existing binding
+    field.set_sequence(QStringLiteral("Ctrl+S")); // pre-existing binding
 
     QKeyEvent escape(QEvent::KeyPress, Qt::Key_Escape, Qt::NoModifier);
     QCoreApplication::sendEvent(&field, &escape);

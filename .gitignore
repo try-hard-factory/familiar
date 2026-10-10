@@ -9,3 +9,6 @@ install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+
+# clang-tidy run logs (./tidy.sh)
+tidy-*.log

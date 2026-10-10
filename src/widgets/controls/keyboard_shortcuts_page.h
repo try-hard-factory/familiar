@@ -24,7 +24,7 @@ public:
     // whether the page has anything visible at all, so the sidebar
     // (ui/settings_window.cpp) can decide whether to show this
     // category when searching by content rather than by category name.
-    bool applySearchFilter(const QString& text);
+    bool apply_search_filter(const QString& text);
 
 private:
     QList<BindingTarget*> actionTargets_;

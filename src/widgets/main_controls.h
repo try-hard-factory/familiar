@@ -29,7 +29,7 @@ public:
         this->setAcceptDrops(true);
     }
 
-    bool mousePressEventMainControls(QMouseEvent* event)
+    bool mouse_press_event_main_controls(QMouseEvent* event)
     {
         if (event->button() == Qt::RightButton) {
             movewinStart_ = QCursor::pos();
@@ -41,14 +41,14 @@ public:
         return false;
     }
 
-    bool mouseMoveEventMainControls(QMouseEvent* event)
+    bool mouse_move_event_main_controls(QMouseEvent* event)
     {
         if (event->buttons() & Qt::RightButton) {
             rightMoveFlag_ = true;
             if (isMoving_) {
-                QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(
+                const QPointF pos = static_cast<QWidget*>(this)->mapToGlobal(
                     event->position());
-                QPointF delta = pos - movewinStart_;
+                const QPointF delta = pos - movewinStart_;
                 movewinStart_ = pos;
                 if (mainWindow_) {
                     mainWindow_->move(mainWindow_->x() + int(delta.x()),
@@ -62,7 +62,7 @@ public:
         return false;
     }
 
-    bool mouseReleaseEventMainControls(QMouseEvent* event)
+    bool mouse_release_event_main_controls(QMouseEvent* event)
     {
         if (event->button() == Qt::RightButton) {
             if (!rightMoveFlag_) {
@@ -79,10 +79,10 @@ public:
         return false;
     }
 
-    bool keyPressEventMainControls(QKeyEvent* event)
+    bool key_press_event_main_controls(QKeyEvent* event)
     {
         if (isMoving_) {
-            exitMovewinMode();
+            exit_movewin_mode();
             event->accept();
             return true;
         }
@@ -90,16 +90,19 @@ public:
     }
 
 protected:
-    QWidget* controlTarget_ = nullptr;
+    // Set once by the mixing-in widget (CanvasView, WelcomeOverlay) -
+    // which widget the notifications/move-window gestures act on.
+    void set_control_target(QWidget* target) { controlTarget_ = target; }
+    QWidget* control_target() const { return controlTarget_; }
 
-    void enterMovewinMode()
+    void enter_movewin_mode()
     {
         static_cast<QWidget*>(this)->setCursor(Qt::SizeAllCursor);
         movewinStart_ = QCursor::pos();
         isMoving_ = true;
     }
 
-    void exitMovewinMode()
+    void exit_movewin_mode()
     {
         isMoving_ = false;
         static_cast<QWidget*>(this)->unsetCursor();
@@ -110,7 +113,7 @@ protected:
         const auto* mimedata = event->mimeData();
         FLOG_DEBUG(familiar::log::Ch::UI,
                    "Drag enter event: {}",
-                   familiar::log::debugString(mimedata->formats()));
+                   familiar::log::debug_string(mimedata->formats()));
         if (mimedata->hasUrls()) {
             event->acceptProposedAction();
         } else if (mimedata->hasImage()) {
@@ -118,7 +121,7 @@ protected:
         } else {
             const QString msg = "Attempted drop not an image or image too big";
             FLOG_DEBUG(familiar::log::Ch::UI, "{}", msg);
-            FamNotification(controlTarget_, msg);
+            FamNotification(control_target(), msg);
         }
     }
 
@@ -127,13 +130,14 @@ protected:
         event->acceptProposedAction();
     }
 
-    void dropEvent(QDropEvent* event) override
+    void dropEvent([[maybe_unused]] QDropEvent* event) override
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
                    "MainControlMixin Handling file drop:");
     }
 
 private:
+    QWidget* controlTarget_ = nullptr;
     bool isMoving_ = false;
     bool rightMoveFlag_ = false;
     QPointF movewinStart_;

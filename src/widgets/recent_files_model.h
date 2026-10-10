@@ -16,17 +16,17 @@ public:
     int rowCount(const QModelIndex& parent = QModelIndex()) const override
     {
         Q_UNUSED(parent);
-        return files_.size();
+        return static_cast<int>(files_.size());
     }
 
     QVariant data(const QModelIndex& index, int role) const override
     {
         if (!index.isValid()) {
-            return QVariant();
+            return {};
         }
 
         if (index.row() < 0 || index.row() >= files_.size()) {
-            return QVariant();
+            return {};
         }
 
         if (role == Qt::DisplayRole) {
@@ -45,10 +45,10 @@ public:
             return icon;
         }
 
-        return QVariant();
+        return {};
     }
 
-    void setFiles(const QStringList& files) { files_ = files; }
+    void set_files(const QStringList& files) { files_ = files; }
 
 private:
     QStringList files_;

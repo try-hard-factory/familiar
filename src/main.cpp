@@ -32,7 +32,7 @@ namespace {
 // nothing is really attached to any more) - not a 100% guarantee on
 // every platform/Qt version, but good enough for "don't start a second
 // window" without reaching for a heavier IPC-based liveness check.
-bool acquireSingleInstanceLock(QSharedMemory& guard)
+bool acquire_single_instance_lock(QSharedMemory& guard)
 {
     if (guard.attach()) {
         guard.detach();
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
     qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
 
-    QApplication a(argc, argv);
+    const QApplication a(argc, argv);
 
     // Checked here, before anything below sets up real app state
     // (single-instance lock, SettingsHandler, MainWindow) - "familiar
@@ -85,14 +85,14 @@ int main(int argc, char* argv[])
     // Organization name deliberately left unset - Qt nests
     // AppConfigLocation under BOTH organizationName and applicationName
     // when both are set, which produced ".config/familiar/familiar/".
-    a.setApplicationName(QStringLiteral("familiar"));
+    QApplication::setApplicationName(QStringLiteral("familiar"));
     // FAMILIAR_VERSION_STRING - CMakeLists.txt's own -D define (platform-
     // independent, unlike the WIN32-only FAMILIAR_VERSION_MAJOR/MINOR/...
     // block). Without this, QCommandLineParser::addVersionOption()'s
     // --version prints an empty string - it reads
     // QCoreApplication::applicationVersion(), which nothing else here
     // ever sets (real bug this fixes).
-    a.setApplicationVersion(QStringLiteral(FAMILIAR_VERSION_STRING));
+    QApplication::setApplicationVersion(QStringLiteral(FAMILIAR_VERSION_STRING));
 
     // Declared here (not in a narrower scope) so it stays alive - and
     // the lock held - for the whole process lifetime, releasing only
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
     // windows, which is exactly what this guards against.
     QSharedMemory singleInstanceGuard(
         QStringLiteral("familiar-single-instance-9f3b2c7a"));
-    if (!acquireSingleInstanceLock(singleInstanceGuard)) {
+    if (!acquire_single_instance_lock(singleInstanceGuard)) {
         // Plain native QMessageBox, not this app's own custom-chrome one
         // (widgets/message_box.h) - this fires before SettingsHandler/
         // the color preset system are initialized at all, and exiting
@@ -129,10 +129,10 @@ int main(int argc, char* argv[])
     QIcon appIcon;
     appIcon.addFile(QStringLiteral(":/img/app/familiar_256.png"));
     appIcon.addFile(QStringLiteral(":/img/app/familiar_512.png"));
-    a.setWindowIcon(appIcon);
+    QApplication::setWindowIcon(appIcon);
 
     Options logOptions;
-    logOptions.consoleLevel = levelFromName(
+    logOptions.consoleLevel = level_from_name(
         CommandlineArgs::instance().loglevel());
     familiar::log::init(logOptions);
 
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
     // the logger is initialized is a real null-logger crash (confirmed
     // via a real backtrace: quill::LoggerBase::get_log_level() on a null
     // `this`).
-    FamSettings().onStartup();
+    FamSettings::on_startup();
 
 
 #ifdef NDEBUG
@@ -160,9 +160,9 @@ int main(int argc, char* argv[])
     // below, if any) until it's dismissed - see
     // MainWindow::showOrOfferRecovery()'s own comment for why that
     // ordering matters.
-    w.showOrOfferRecovery(CommandlineArgs::instance().filename());
+    w.show_or_offer_recovery(CommandlineArgs::instance().filename());
 
-    const int result = a.exec();
+    const int result = QApplication::exec();
 
     familiar::log::shutdown();
     return result;

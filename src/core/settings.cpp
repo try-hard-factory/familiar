@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QImageReader>
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -32,7 +33,7 @@ namespace {
 // only failing much later with a generic "file not found" from the
 // file-opening code - this catches the same "clearly not meant as a
 // path" case up front instead, with a proper CLI-style error.
-bool looksLikeAPlaceholderNotAPath(const QString& arg)
+bool looks_like_a_placeholder_not_a_path(const QString& arg)
 {
     const QString trimmed = arg.trimmed();
     if (trimmed.isEmpty()) {
@@ -46,9 +47,7 @@ bool looksLikeAPlaceholderNotAPath(const QString& arg)
     return true;
 }
 
-} // namespace
-
-static void addOptions(QCommandLineParser& parser)
+void add_options(QCommandLineParser& parser)
 {
     parser.addOption(
         {QStringList{QStringLiteral("f"), QStringLiteral("file")},
@@ -81,6 +80,8 @@ static void addOptions(QCommandLineParser& parser)
                           "Draw item's transform handle areas for debugging")});
 }
 
+} // namespace
+
 void CommandlineArgs::process(const QCoreApplication& app)
 {
     QCommandLineParser parser;
@@ -89,7 +90,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
         "images."));
     const QCommandLineOption helpOption = parser.addHelpOption();
     const QCommandLineOption versionOption = parser.addVersionOption();
-    addOptions(parser);
+    add_options(parser);
 
     // parser.parse() + manual handling below, not parser.process(app) -
     // process() exits on error with Qt's own terse one-liner ("familiar:
@@ -102,6 +103,10 @@ void CommandlineArgs::process(const QCoreApplication& app)
     // right under the specific error message. Long options already
     // accept `--option=value` as well as `--option value` - that's
     // QCommandLineParser's own native behavior, nothing to add for it.
+    // Through `app`, not QCoreApplication::arguments(): the parameter is
+    // what makes "a QCoreApplication must already exist" part of this
+    // function's signature instead of an unwritten precondition.
+    // NOLINTNEXTLINE(readability-static-accessed-through-instance)
     if (!parser.parse(app.arguments())) {
         std::fputs(qPrintable(parser.errorText()), stderr);
         std::fputs("\n\n", stderr);
@@ -121,10 +126,11 @@ void CommandlineArgs::process(const QCoreApplication& app)
 
     const QStringList positional = parser.positionalArguments();
     if (!positional.isEmpty()) {
-        if (looksLikeAPlaceholderNotAPath(positional.first())) {
-            const QString msg = QStringLiteral("%1: Not a valid file path: \"%2\".\n\n")
-                                     .arg(QCoreApplication::applicationName(),
-                                          positional.first());
+        if (looks_like_a_placeholder_not_a_path(positional.first())) {
+            const QString msg = QStringLiteral(
+                                    "%1: Not a valid file path: \"%2\".\n\n")
+                                    .arg(QCoreApplication::applicationName(),
+                                         positional.first());
             std::fputs(qPrintable(msg), stderr);
             std::fputs(qPrintable(parser.helpText()), stderr);
             std::exit(EXIT_FAILURE);
@@ -145,7 +151,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
 void CommandlineArgs::parse(const QStringList& args)
 {
     QCommandLineParser parser;
-    addOptions(parser);
+    add_options(parser);
     parser.parse(args); // does not exit on unknown options
 
     const QStringList positional = parser.positionalArguments();
@@ -180,12 +186,12 @@ SettingsEvents& SettingsEvents::instance()
 namespace {
 
 // "Save/confirm_close_unsaved" -> group="Save", subkey="confirm_close_unsaved".
-QString keyGroup(const QString& key)
+QString key_group(const QString& key)
 {
     return key.section(QLatin1Char('/'), 0, 0);
 }
 
-QString keySubkey(const QString& key)
+QString key_subkey(const QString& key)
 {
     return key.section(QLatin1Char('/'), 1);
 }
@@ -197,37 +203,49 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
     static const QMap<QString, FieldConfig> map = {
         {"Items/image_storage_format",
          {
-             /*default*/ QString("best"),
-             /*cast*/ {},
+             /*default*/ .defaultValue = QString("best"),
+             /*cast*/ .cast = {},
              /*validate*/
-             [](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("png") || s == QLatin1String("jpg")
-                        || s == QLatin1String("best");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("png")
+                            || s == QLatin1String("jpg")
+                            || s == QLatin1String("best");
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/arrange_gap",
          {
-             /*default*/ 0,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
-             /*validate*/
-             [](const QVariant& v) {
-                 const int n = v.toInt();
-                 return n >= 0 && n <= 200;
+             /*default*/ .defaultValue = 0,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
              },
+             /*validate*/
+             .validate =
+                 [](const QVariant& v) {
+                     const int n = v.toInt();
+                     return n >= 0 && n <= 200;
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/arrange_default",
          {
-             /*default*/ QString("optimal"),
-             /*cast*/ {},
+             /*default*/ .defaultValue = QString("optimal"),
+             /*cast*/ .cast = {},
              /*validate*/
-             [](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("optimal")
-                        || s == QLatin1String("horizontal")
-                        || s == QLatin1String("vertical")
-                        || s == QLatin1String("square");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("optimal")
+                            || s == QLatin1String("horizontal")
+                            || s == QLatin1String("vertical")
+                            || s == QLatin1String("square");
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/image_allocation_limit",
          {
@@ -247,37 +265,50 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // photo (20+ MP commonly decodes past 32MB at 32 bits/pixel,
              // e.g. a real 6240x3512 photo ≈ 83.6MB - a genuine bug
              // report this raised).
-             /*default*/ 256,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue = 256,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
+             },
              /*validate*/
-             [](const QVariant& v) {
-                 const int n = v.toInt();
-                 return n >= 0 && n <= 1024;
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const int n = v.toInt();
+                     return n >= 0 && n <= 1024;
+                 },
              /*postSaveCallback*/
-             [](const QVariant& v) {
-                 QImageReader::setAllocationLimit(v.toInt());
-             },
+             .postSaveCallback =
+                 [](const QVariant& v) {
+                     QImageReader::setAllocationLimit(v.toInt());
+                 },
          }},
         {"Items/undo_history_size",
          {
              // Matches the hardcoded undoStack_->setUndoLimit(100) this
              // is meant to replace (canvasview.cpp) - not wired up to it
              // yet, UI only for now.
-             /*default*/ 100,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
-             /*validate*/ [](const QVariant& v) { return v.toInt() >= 0; },
+             /*default*/ .defaultValue = 100,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
+             },
+             /*validate*/ .validate =
+                 [](const QVariant& v) { return v.toInt() >= 0; },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/auto_optimize_imported_images",
          {
-             /*default*/ QString("warn"),
-             /*cast*/ {},
+             /*default*/ .defaultValue = QString("warn"),
+             /*cast*/ .cast = {},
              /*validate*/
-             [](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("off") || s == QLatin1String("warn")
-                        || s == QLatin1String("optimize_large");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("off")
+                            || s == QLatin1String("warn")
+                            || s == QLatin1String("optimize_large");
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Items/raw_import_choice",
          {
@@ -288,53 +319,63 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              // then on - set by that dialog's own "Remember choice for
              // future files" checkbox (widgets/raw_import_dialog.cpp),
              // not exposed as its own row on the Performance page.
-             /*default*/ QString("ask"),
-             /*cast*/ {},
+             /*default*/ .defaultValue = QString("ask"),
+             /*cast*/ .cast = {},
              /*validate*/
-             [](const QVariant& v) {
-                 const QString s = v.toString();
-                 return s == QLatin1String("ask")
-                        || s == QLatin1String("always_optimize")
-                        || s == QLatin1String("always_keep_original");
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const QString s = v.toString();
+                     return s == QLatin1String("ask")
+                            || s == QLatin1String("always_optimize")
+                            || s == QLatin1String("always_keep_original");
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
          }},
         {"Save/autosave_enabled",
          {
-             /*default*/ false,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toBool(); },
-             /*validate*/ {},
-             /*postSaveCallback*/
-             [](const QVariant&) {
-                 emit SettingsEvents::instance().autosaveSettingsChanged();
+             /*default*/ .defaultValue = false,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toBool();
              },
+             /*validate*/ .validate = {},
+             /*postSaveCallback*/
+             .postSaveCallback =
+                 [](const QVariant&) {
+                     emit SettingsEvents::instance().autosave_settings_changed();
+                 },
          }},
         {"Save/autosave_interval_seconds",
          {
-             /*default*/ 5,
-             /*cast*/ [](const QVariant& v) -> QVariant { return v.toInt(); },
+             /*default*/ .defaultValue = 5,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toInt();
+             },
              /*validate*/
-             [](const QVariant& v) {
-                 const int n = v.toInt();
-                 return n >= 1 && n <= 3600;
-             },
+             .validate =
+                 [](const QVariant& v) {
+                     const int n = v.toInt();
+                     return n >= 1 && n <= 3600;
+                 },
              /*postSaveCallback*/
-             [](const QVariant&) {
-                 emit SettingsEvents::instance().autosaveSettingsChanged();
-             },
+             .postSaveCallback =
+                 [](const QVariant&) {
+                     emit SettingsEvents::instance().autosave_settings_changed();
+                 },
          }},
     };
     return map;
 }
 
-QVariant FamSettings::valueOrDefault(const QString& key) const
+QVariant FamSettings::value_or_default(const QString& key)
 {
     const auto& f = fields();
     Q_ASSERT(f.contains(key));
     const FieldConfig& conf = f[key];
 
     const QJsonValue raw
-        = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
-                                                    keySubkey(key));
+        = SettingsHandler::get_instance()->json_value(key_group(key),
+                                                      key_subkey(key));
     if (raw.isUndefined()) {
         return conf.defaultValue;
     }
@@ -364,97 +405,100 @@ QVariant FamSettings::valueOrDefault(const QString& key) const
     return val;
 }
 
-bool FamSettings::valueChanged(const QString& key) const
+bool FamSettings::value_changed(const QString& key)
 {
-    return valueOrDefault(key) != fields().value(key).defaultValue;
+    return value_or_default(key) != fields().value(key).defaultValue;
 }
 
-void FamSettings::restoreDefaults()
+void FamSettings::restore_defaults()
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Save"));
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Items"));
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Save"));
+    SettingsHandler::get_instance()->remove_json_group(QStringLiteral("Items"));
     for (const QString& key : fields().keys()) {
         const auto& conf = fields()[key];
         if (conf.postSaveCallback) {
             conf.postSaveCallback(conf.defaultValue);
         }
     }
-    emit SettingsEvents::instance().restoreDefaults();
+    emit SettingsEvents::instance().restore_defaults();
 }
 
-void FamSettings::onStartup()
+void FamSettings::on_startup()
 {
     const QByteArray envAlloc = qgetenv("QT_IMAGEIO_MAXALLOC");
     if (!envAlloc.isEmpty()) {
         QImageReader::setAllocationLimit(envAlloc.toInt());
     } else {
-        const int alloc = valueOrDefault(
+        const int alloc = value_or_default(
                               QStringLiteral("Items/image_allocation_limit"))
                               .toInt();
         QImageReader::setAllocationLimit(alloc);
     }
 }
 
-void FamSettings::setValue(const QString& key, const QVariant& value)
+void FamSettings::set_value(const QString& key, const QVariant& value)
 {
-    SettingsHandler::getInstance()->setJsonValue(keyGroup(key),
-                                                 keySubkey(key),
-                                                 QJsonValue::fromVariant(value));
+    SettingsHandler::get_instance()->set_json_value(key_group(key),
+                                                    key_subkey(key),
+                                                    QJsonValue::fromVariant(
+                                                        value));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
         f[key].postSaveCallback(value);
     }
 }
 
-QVariant FamSettings::value(const QString& key,
-                            const QVariant& defaultValue) const
+QVariant FamSettings::value(const QString& key, const QVariant& defaultValue)
 {
     const QJsonValue raw
-        = SettingsHandler::getInstance()->jsonValue(keyGroup(key),
-                                                    keySubkey(key));
+        = SettingsHandler::get_instance()->json_value(key_group(key),
+                                                      key_subkey(key));
     return raw.isUndefined() ? defaultValue : raw.toVariant();
 }
 
 void FamSettings::remove(const QString& key)
 {
-    SettingsHandler::getInstance()->removeJsonValue(keyGroup(key),
-                                                    keySubkey(key));
+    SettingsHandler::get_instance()->remove_json_value(key_group(key),
+                                                       key_subkey(key));
     const auto& f = fields();
     if (f.contains(key) && f[key].postSaveCallback) {
-        f[key].postSaveCallback(valueOrDefault(key));
+        f[key].postSaveCallback(value_or_default(key));
     }
 }
 
-void FamSettings::updateRecentFiles(const QString& filename)
+void FamSettings::update_recent_files(const QString& filename)
 {
     const QString abs = QFileInfo(filename).absoluteFilePath();
 
-    QStringList values = getRecentFiles();
+    QStringList values = get_recent_files();
     values.removeAll(abs);
     values.prepend(abs);
     if (values.size() > 10) {
         values = values.mid(0, 10);
     }
 
-    SettingsHandler::getInstance()->setRecentFilesRaw(values);
+    SettingsHandler::get_instance()->set_recent_files_raw(values);
 }
 
-QStringList FamSettings::getRecentFiles(bool existingOnly) const
+QStringList FamSettings::get_recent_files(bool existingOnly)
 {
-    QStringList values = SettingsHandler::getInstance()->recentFilesRaw();
+    QStringList values = SettingsHandler::get_instance()->recent_files_raw();
 
     if (existingOnly) {
-        values.erase(std::remove_if(values.begin(),
-                                    values.end(),
-                                    [](const QString& f) {
-                                        return !QFileInfo::exists(f);
-                                    }),
+        // .begin() on the result: the ranges overload returns a subrange,
+        // not an iterator, so it can't be handed to erase() directly the
+        // way std::remove_if's return value could.
+        values.erase(std::ranges::remove_if(values,
+                                            [](const QString& f) {
+                                                return !QFileInfo::exists(f);
+                                            })
+                         .begin(),
                      values.end());
     }
     return values;
 }
 
-QString FamSettings::fileName() const
+QString FamSettings::file_name()
 {
-    return SettingsHandler::getInstance()->settingsFilePath();
+    return SettingsHandler::get_instance()->settings_file_path();
 }

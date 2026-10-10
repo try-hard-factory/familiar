@@ -21,7 +21,7 @@ class QKeyEvent;
 // name ("Ctrl"/"Shift"/"Alt"/"Meta"). Used by both the capture field that
 // records a binding and the dispatchers that match a live key press
 // against one, so they agree on the same strings.
-QString keyEventToSequenceString(const QKeyEvent* event);
+QString key_event_to_sequence_string(const QKeyEvent* event);
 
 // ─── Binding ──────────────────────────────────────────────────────────────────
 
@@ -33,42 +33,73 @@ QString keyEventToSequenceString(const QKeyEvent* event);
 // reserved for a later phase (see memory/familiar_next_steps.md step 6).
 struct Binding
 {
-    QString keySequence;
-    QString mouseButton;
-    QStringList mouseModifiers;
-    bool inverted = false;
-    bool systemGlobal
-        = false; // stored for forward compat; no dispatch effect yet
+public:
+    Binding() = default;
+    // Positional, matching the old aggregate-init order the defaults table
+    // in controls.cpp is written in (Binding{{}, "Middle", {"Ctrl"}, false}).
+    Binding(QString keySequence,
+            QString mouseButton,
+            QStringList mouseModifiers,
+            bool inverted = false,
+            bool systemGlobal = false)
+        : keySequence_(std::move(keySequence))
+        , mouseButton_(std::move(mouseButton))
+        , mouseModifiers_(std::move(mouseModifiers))
+        , inverted_(inverted)
+        , systemGlobal_(systemGlobal)
+    {}
 
-    bool isEmpty() const
+    const QString& key_sequence() const { return keySequence_; }
+    void set_key_sequence(const QString& value) { keySequence_ = value; }
+    const QString& mouse_button() const { return mouseButton_; }
+    void set_mouse_button(const QString& value) { mouseButton_ = value; }
+    const QStringList& mouse_modifiers() const { return mouseModifiers_; }
+    void set_mouse_modifiers(const QStringList& value)
     {
-        return keySequence.isEmpty() && mouseButton.isEmpty();
+        mouseModifiers_ = value;
     }
-    bool isKeyboardOnly() const
+    bool is_inverted() const { return inverted_; }
+    void set_inverted(bool value) { inverted_ = value; }
+    // Stored for forward compat; no dispatch effect yet.
+    bool is_system_global() const { return systemGlobal_; }
+    void set_system_global(bool value) { systemGlobal_ = value; }
+
+    bool is_empty() const
     {
-        return mouseButton.isEmpty() && !keySequence.isEmpty();
+        return keySequence_.isEmpty() && mouseButton_.isEmpty();
     }
-    bool isMouseOnly() const
+    bool is_keyboard_only() const
     {
-        return !mouseButton.isEmpty() && keySequence.isEmpty();
+        return mouseButton_.isEmpty() && !keySequence_.isEmpty();
     }
-    bool isMixed() const
+    bool is_mouse_only() const
     {
-        return !mouseButton.isEmpty() && !keySequence.isEmpty();
+        return !mouseButton_.isEmpty() && keySequence_.isEmpty();
+    }
+    bool is_mixed() const
+    {
+        return !mouseButton_.isEmpty() && !keySequence_.isEmpty();
     }
 
     // Chip label, e.g. "Ctrl+S", "Middle MB", "Left MB + Ctrl+Alt+Shift".
-    QString displayText() const;
+    QString display_text() const;
 
     QString serialize() const;
     static Binding deserialize(const QString& s);
 
     bool operator==(const Binding& o) const
     {
-        return keySequence == o.keySequence && mouseButton == o.mouseButton
-               && mouseModifiers == o.mouseModifiers && inverted == o.inverted
-               && systemGlobal == o.systemGlobal;
+        return keySequence_ == o.keySequence_ && mouseButton_ == o.mouseButton_
+               && mouseModifiers_ == o.mouseModifiers_
+               && inverted_ == o.inverted_ && systemGlobal_ == o.systemGlobal_;
     }
+
+private:
+    QString keySequence_;
+    QString mouseButton_;
+    QStringList mouseModifiers_;
+    bool inverted_ = false;
+    bool systemGlobal_ = false;
 };
 
 // ─── MouseConfigBase ──────────────────────────────────────────────────────────
@@ -81,42 +112,45 @@ public:
     virtual const QString& id() const = 0;
     virtual const QString& group() const = 0;
     virtual const QString& text() const = 0;
-    virtual const char* settingsGroup() const = 0;
+    virtual const char* settings_group() const = 0;
 
-    virtual bool controlsChanged() const = 0;
-    virtual bool isConfigured() const = 0;
-    virtual void removeControls() const = 0;
+    virtual bool controls_changed() const = 0;
+    virtual bool is_configured() const = 0;
+    virtual void remove_controls() const = 0;
 
-    bool isInvertible() const { return invertible_; }
-    bool defaultInverted() const { return defaultBindings_.value(0).inverted; }
-    QStringList defaultModifiers() const
+    bool is_invertible() const { return invertible_; }
+    bool default_inverted() const
     {
-        return defaultBindings_.value(0).mouseModifiers;
+        return default_bindings_ref().value(0).is_inverted();
     }
-    virtual QString defaultButton() const { return {}; }
+    QStringList default_modifiers() const
+    {
+        return default_bindings_ref().value(0).mouse_modifiers();
+    }
+    virtual QString default_button() const { return {}; }
 
     bool operator==(const MouseConfigBase& o) const { return id() == o.id(); }
 
     // Ordered modifier name → Qt flag mapping.
-    static const QList<QPair<QString, Qt::KeyboardModifier>>& modifierMap();
+    static const QList<QPair<QString, Qt::KeyboardModifier>>& modifier_map();
     // Ordered button name → Qt flag mapping.
-    static const QList<QPair<QString, Qt::MouseButton>>& buttonMap();
+    static const QList<QPair<QString, Qt::MouseButton>>& button_map();
     // Convert list of modifier names to combined Qt::KeyboardModifiers.
-    static Qt::KeyboardModifiers modifiersToQt(const QStringList& modifiers);
+    static Qt::KeyboardModifiers modifiers_to_qt(const QStringList& modifiers);
 
     // N-alias API.
-    QList<Binding> getBindings() const;
-    void setBindings(const QList<Binding>& bindings) const;
-    const QList<Binding>& defaultBindings() const { return defaultBindings_; }
+    QList<Binding> get_bindings() const;
+    void set_bindings(const QList<Binding>& bindings) const;
+    const QList<Binding>& default_bindings() const { return defaultBindings_; }
 
     // Single-binding API kept for the existing Mouse/Mouse Wheel table
     // widgets (widgets/controls/mouse_controls.cpp,
     // mousewheel_controls.cpp) - thin wrappers over getBindings()[0], see
     // core/controls.cpp.
-    QStringList getModifiers() const;
-    void setModifiers(const QStringList& values) const;
-    bool getInverted() const;
-    void setInverted(bool value) const;
+    QStringList get_modifiers() const;
+    void set_modifiers(const QStringList& values) const;
+    bool get_inverted() const;
+    void set_inverted(bool value) const;
 
 protected:
     MouseConfigBase(const QString& id,
@@ -125,6 +159,17 @@ protected:
                     const QList<Binding>& defaultBindings,
                     bool invertible);
 
+    // Subclasses read these; only this class's constructor sets them.
+    const QString& id_ref() const { return id_; }
+    const QString& group_ref() const { return group_; }
+    const QString& text_ref() const { return text_; }
+    const QList<Binding>& default_bindings_ref() const
+    {
+        return defaultBindings_;
+    }
+    bool invertible_flag() const { return invertible_; }
+
+private:
     QString id_;
     QString group_;
     QString text_;
@@ -143,15 +188,15 @@ public:
                      const QList<Binding>& defaultBindings,
                      bool invertible);
 
-    const QString& id() const override { return id_; }
-    const QString& group() const override { return group_; }
-    const QString& text() const override { return text_; }
-    const char* settingsGroup() const override;
+    const QString& id() const override { return id_ref(); }
+    const QString& group() const override { return group_ref(); }
+    const QString& text() const override { return text_ref(); }
+    const char* settings_group() const override;
 
-    bool controlsChanged() const override;
-    bool isConfigured() const override;
-    void removeControls() const override;
-    std::optional<Binding> matchesEvent(const QWheelEvent* event) const;
+    bool controls_changed() const override;
+    bool is_configured() const override;
+    void remove_controls() const override;
+    std::optional<Binding> matches_event(const QWheelEvent* event) const;
 };
 
 // ─── MouseConfig ──────────────────────────────────────────────────────────────
@@ -165,20 +210,20 @@ public:
                 const QList<Binding>& defaultBindings,
                 bool invertible);
 
-    const QString& id() const override { return id_; }
-    const QString& group() const override { return group_; }
-    const QString& text() const override { return text_; }
-    const char* settingsGroup() const override;
+    const QString& id() const override { return id_ref(); }
+    const QString& group() const override { return group_ref(); }
+    const QString& text() const override { return text_ref(); }
+    const char* settings_group() const override;
 
     // "Not Configured" if the primary (index-0) binding has no mouse button.
-    QString getButton() const;
-    void setButton(const QString& value) const;
-    QString defaultButton() const override;
+    QString get_button() const;
+    void set_button(const QString& value) const;
+    QString default_button() const override;
 
-    bool controlsChanged() const override;
-    bool isConfigured() const override;
-    void removeControls() const override;
-    std::optional<Binding> matchesEvent(const QMouseEvent* event) const;
+    bool controls_changed() const override;
+    bool is_configured() const override;
+    void remove_controls() const override;
+    std::optional<Binding> matches_event(const QMouseEvent* event) const;
 };
 
 // ─── KeyboardSettings ─────────────────────────────────────────────────────────
@@ -199,55 +244,61 @@ class KeyboardSettings
 public:
     KeyboardSettings() = default;
 
-    static const QList<MouseWheelConfig>& mousewheelActions();
-    static const QList<MouseConfig>& mouseActions();
+    static const QList<MouseWheelConfig>& mousewheel_actions();
+    static const QList<MouseConfig>& mouse_actions();
 
     // ── Shortcut API (used by Action) ─────────────────────────────────────────
     // Saves even if equal to default (saveUnknownShortcuts flag controls this).
-    void setShortcuts(const QString& group,
-                      const QString& key,
-                      const QStringList& values);
+    static void set_shortcuts(const QString& group,
+                              const QString& key,
+                              const QStringList& values);
     QStringList get_shortcuts(const QString& group,
                               const QString& key,
-                              const QStringList& defaultValues = {});
+                              const QStringList& defaultValues = {}) const;
 
     // ── Generic list API (used by mouse/wheel configs) ────────────────────────
     // Removes key when values == defaultValues (stores only non-default data).
-    void setList(const QString& group,
-                 const QString& key,
-                 const QStringList& values,
-                 const QStringList& defaultValues = {});
-    QStringList getList(const QString& group,
-                        const QString& key,
-                        const QStringList& defaultValues = {}) const;
+    static void set_list(const QString& group,
+                         const QString& key,
+                         const QStringList& values,
+                         const QStringList& defaultValues = {});
+    static QStringList get_list(const QString& group,
+                                const QString& key,
+                                const QStringList& defaultValues = {});
 
     // ── Generic scalar API (used by mouse/wheel configs) ──────────────────────
-    void setScalar(const QString& group,
-                   const QString& key,
-                   const QVariant& value,
-                   const QVariant& defaultValue = {});
-    QVariant getScalar(const QString& group,
-                       const QString& key,
-                       const QVariant& defaultValue = {}) const;
+    static void set_scalar(const QString& group,
+                           const QString& key,
+                           const QVariant& value,
+                           const QVariant& defaultValue = {});
+    static QVariant get_scalar(const QString& group,
+                               const QString& key,
+                               const QVariant& defaultValue = {});
 
     // Removes all stored controls and emits SettingsEvents::restoreKeyboardDefaults.
-    void restoreDefaults();
-
-    std::optional<ControlMatch> mousewheelActionForEvent(
-        const QWheelEvent* event) const;
-    std::optional<ControlMatch> mouseActionForEvent(
-        const QMouseEvent* event) const;
+    static void restore_defaults();
+    static std::optional<ControlMatch> mousewheel_action_for_event(
+        const QWheelEvent* event);
+    static std::optional<ControlMatch> mouse_action_for_event(
+        const QMouseEvent* event);
 
     // Index into mouseActions()/mousewheelActions() of a group (other than
     // excludeId) whose bindings already use the same button+modifiers as
     // `candidate`, or -1 if none. Used by both the old single-binding
     // Mouse/Mouse Wheel dialogs and the new alias dialogs.
-    int findConflictingMouseGroup(const QString& excludeId,
-                                  const Binding& candidate) const;
-    int findConflictingWheelGroup(const QString& excludeId,
-                                  const Binding& candidate) const;
+    static int find_conflicting_mouse_group(const QString& excludeId,
+                                            const Binding& candidate);
+    static int find_conflicting_wheel_group(const QString& excludeId,
+                                            const Binding& candidate);
 
-    bool saveUnknownShortcuts = true;
+    bool save_unknown_shortcuts() const { return saveUnknownShortcuts_; }
+    void set_save_unknown_shortcuts(bool value)
+    {
+        saveUnknownShortcuts_ = value;
+    }
+
+private:
+    bool saveUnknownShortcuts_ = true;
 };
 
 #endif // CONTROLS_H

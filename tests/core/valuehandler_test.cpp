@@ -80,15 +80,15 @@ TEST(BoundedIntValueHandlerTest, ExpectedDescribesRange)
 }
 
 // ─── ColorList ───────────────────────────────────────────────────────
-// The real storage shape for e.g. "darkColorPreset" (settingshandler.cpp)
+// The real storage shape for e.g. "dark_color_preset" (settingshandler.cpp)
 // - a JSON array of hex strings, index = QMap key. See ColorList::process()'s
 // own comment for why this replaced storing the QMap<int,QColor> directly.
 
 TEST(ColorListValueHandlerTest, ProcessConvertsIndexedHexStringsToColorMap)
 {
     ColorList handler({});
-    const QVariantList raw
-        = {QStringLiteral("#ff0000"), QStringLiteral("#00ff00")};
+    const QVariantList raw = {QStringLiteral("#ff0000"),
+                              QStringLiteral("#00ff00")};
 
     const auto map = handler.process(raw).value<QMap<int, QColor>>();
     EXPECT_EQ(map.value(0), QColor(QStringLiteral("#ff0000")));
@@ -96,7 +96,7 @@ TEST(ColorListValueHandlerTest, ProcessConvertsIndexedHexStringsToColorMap)
 }
 
 TEST(ColorListValueHandlerTest,
-    RepresentationConvertsColorMapToIndexedHexArgbStrings)
+     RepresentationConvertsColorMapToIndexedHexArgbStrings)
 {
     QMap<int, QColor> map;
     map[0] = QColor(255, 0, 0);
@@ -107,8 +107,7 @@ TEST(ColorListValueHandlerTest,
         = handler.representation(QVariant::fromValue(map)).toList();
     ASSERT_EQ(list.size(), 2);
     EXPECT_EQ(list[0].toString(), QColor(255, 0, 0).name(QColor::HexArgb));
-    EXPECT_EQ(list[1].toString(),
-             QColor(0, 255, 0, 128).name(QColor::HexArgb));
+    EXPECT_EQ(list[1].toString(), QColor(0, 255, 0, 128).name(QColor::HexArgb));
 }
 
 TEST(ColorListValueHandlerTest, FallbackReturnsConstructorDefault)
@@ -138,7 +137,7 @@ TEST(ColorListValueHandlerTest, CheckIsAlwaysTrue)
 
 // ─── OpacityList ─────────────────────────────────────────────────────
 // Same indexed-storage shape as ColorList, just plain ints (used for
-// "masterOpacity" - one opacity per color preset).
+// "master_opacity" - one opacity per color preset).
 
 TEST(OpacityListValueHandlerTest, ProcessConvertsIndexedIntsToMap)
 {

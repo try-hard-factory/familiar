@@ -9,6 +9,7 @@
 #include <QUrl>
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
 #include <optional>
 
@@ -21,7 +22,7 @@ class CanvasScene;
 // ImageLoadFailure::TooLarge below - that's about a load that FAILED
 // outright (Items/image_allocation_limit, a memory ceiling in MB); this
 // is a pixel-dimension threshold applied only AFTER a successful load.
-constexpr int kLargeImageMaxDimension = 4096;
+constexpr int klargeImageMaxDimension = 4096;
 
 // Why ImageImportSession::run() couldn't produce a usable QImage for one url - lets
 // the UI tell "this format isn't supported at all" apart from "this
@@ -34,7 +35,7 @@ constexpr int kLargeImageMaxDimension = 4096;
 // https://bugreports.qt.io/browse/QTBUG-124510) - TooLarge is
 // disambiguated here by checking QImageReader::size() against the
 // configured limit BEFORE attempting the real read().
-enum class ImageLoadFailure {
+enum class ImageLoadFailure : std::uint8_t {
     UnsupportedFormat,
     TooLarge,
     Corrupt,
@@ -54,12 +55,14 @@ public:
     // for correlation against a crash backtrace's `this=` pointer.
     ~ThreadedIO() override;
 
-    std::atomic<bool> canceled{false};
+    // Polled from the worker function (a free function, not a member),
+    // hence public - set only by on_canceled().
+    bool is_canceled() const { return canceled_.load(); }
 
     // QThread::msleep() is protected; expose it for worker functions
     // (which are not members of this class) the same way Python's
     // worker.msleep(10) is just called on the thread object directly.
-    void sleepMs(unsigned long ms) { QThread::msleep(ms); }
+    static void sleep_ms(unsigned long ms) { QThread::msleep(ms); }
 
 protected:
     void run() override;
@@ -67,22 +70,22 @@ protected:
 signals:
     void progress(int value);
     void finished(const QString& error, const QStringList& errors);
-    void beginProcessing(int count);
-    void userInputRequired(const QString& message);
+    void begin_processing(int count);
+    void user_input_required(const QString& message);
     // Emitted once, right before finished(), when
     // ImageImportSession::run() ran in "warn" mode (Items/auto_optimize_imported_images)
     // and found one or more images over the large-image size threshold.
     // Separate from finished()'s `errors` - these images loaded fine and
     // were queued as-is, just flagged as candidates for optimization.
-    void largeImagesFound(const QStringList& filenames);
+    void large_images_found(const QStringList& filenames);
     // Emitted once, right before finished(), by ImageImportSession::run() ONLY - the
     // 3-way breakdown of finished()'s own `errors` list (same filenames,
     // just classified - see ImageLoadFailure). finished()'s `errors`
     // keeps carrying the flat list too (log/back-compat), this is
     // additive for the UI to build a clearer message from.
-    void imageLoadFailures(const QStringList& unsupportedFormat,
-                          const QStringList& tooLarge,
-                          const QStringList& corrupt);
+    void image_load_failures(const QStringList& unsupportedFormat,
+                             const QStringList& tooLarge,
+                             const QStringList& corrupt);
     // Emitted (instead of finished()) by ImageImportSession::run() the
     // first time it reaches a RAW file whose handling isn't decided yet
     // (see ImageImportSession::setQueueChoice()) - the worker thread has
@@ -92,7 +95,7 @@ signals:
     // RawImportDialog, calls setQueueChoice() on the SAME session
     // object, then start()s this same ThreadedIO again to resume from
     // exactly this file.
-    void rawImportChoiceRequired(const QString& filename);
+    void raw_import_choice_required(const QString& filename);
     // Emitted right before ImageImportSession::run() starts decoding a
     // RAW file (either RawImportChoice - both go through a real LibRaw
     // demosaic now, see decode_raw_via_demosaic()), and again once that
@@ -101,25 +104,26 @@ signals:
     // otherwise, so progress() alone would leave the progress bar
     // looking frozen/stuck for that whole stretch instead of showing
     // something's actively happening.
-    void rawDecodeStateChanged(bool decoding);
+    void raw_decode_state_changed(bool decoding);
     // Real sub-progress WITHIN a single RAW file's demosaic (either
     // RawImportChoice - Optimize's half_size=1 pass walks the same named
     // pipeline stages, just faster), 0-100 - LibRaw::
     // set_progress_handler() reports back which of its ~20 named
     // pipeline stages (OPEN, LOAD_RAW, INTERPOLATE, CONVERT_RGB, ...)
     // just completed; see fileio.cpp's rawProgressCallback().
-    void rawDecodeProgress(int percent);
+    void raw_decode_progress(int percent);
     // Name of the item about to be processed, emitted right before work
     // on it starts - purely for display (ProgressDialog shows it under
     // the operation's own title, so "Loading images" also says WHICH
     // image is loading right now). Optional: an operation that never
     // emits it just leaves that line blank.
-    void currentItemChanged(const QString& name);
+    void current_item_changed(const QString& name);
 
 public slots:
-    void onCanceled();
+    void on_canceled();
 
 private:
+    std::atomic<bool> canceled_{false};
     WorkerFunc func_;
 };
 
@@ -131,7 +135,7 @@ private:
 // formats than this), covers current major camera manufacturers.
 bool is_raw_file(const QString& filename);
 
-enum class RawImportChoice {
+enum class RawImportChoice : std::uint8_t {
     // Both are a real LibRaw demosaic (decode_raw_via_demosaic(),
     // fileio.cpp) - Optimize used to just extract the camera's own
     // embedded preview JPEG instead (no demosaic at all), abandoned
@@ -182,24 +186,28 @@ public:
     // Sticks for every remaining file in this session once set (mirrors
     // ExportImagesFileExistsDialog's skip_all/overwrite_all - "Apply
     // choice to this queue" checked in RawImportDialog).
-    void setQueueChoice(RawImportChoice choice) { queueChoice_ = choice; }
+    void set_queue_choice(RawImportChoice choice) { queueChoice_ = choice; }
     // Answers ONLY for pendingRawFile() (unchecked "Apply choice to this
     // queue") - consumed (cleared) the moment run() uses it, so the NEXT
     // RAW file in the queue, if any, pauses fresh again instead of
     // silently reusing this answer.
-    void setOneShotChoice(RawImportChoice choice) { oneShotChoice_ = choice; }
+    void set_one_shot_choice(RawImportChoice choice)
+    {
+        oneShotChoice_ = choice;
+    }
     // Filename run() paused on - only meaningful right after
     // rawImportChoiceRequired() fired, before the next run().
-    const QString& pendingRawFile() const { return pendingRawFile_; }
-
-    // Accumulated across every run() call in this session (a pause+
-    // resume does NOT reset these) - read once after finished() fires.
-    QStringList unsupportedFormatErrors;
-    QStringList tooLargeErrors;
-    QStringList corruptErrors;
-    QStringList largeImages;
+    const QString& pending_raw_file() const { return pendingRawFile_; }
 
 private:
+    // Accumulated across every run() call in this session (a pause+
+    // resume does NOT reset these); reported out through ThreadedIO's
+    // image_load_failures()/large_images_found() signals, not read directly.
+    QStringList unsupportedFormatErrors_;
+    QStringList tooLargeErrors_;
+    QStringList corruptErrors_;
+    QStringList largeImages_;
+
     QList<QUrl> urls_;
     QPointF pos_;
     CanvasScene* scene_;

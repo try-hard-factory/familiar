@@ -141,10 +141,10 @@ public:
             }
             if (!others.isEmpty()) {
                 qreal minZ = others.first()->zValue();
-                for (QGraphicsItem* other : others) {
+                for (const QGraphicsItem* other : others) {
                     minZ = qMin(minZ, other->zValue());
                 }
-                this->set_z_value(minZ - scene->Z_STEP);
+                this->set_z_value(minZ - scene->z_step());
             }
         }
     }
@@ -158,16 +158,22 @@ public:
 class PixmapItem : public ItemMixin<PixmapItem, QGraphicsPixmapItem>
 {
 public:
-    const std::string TYPE = "pixmap"; // static constexpr
-    const qreal CROP_HANDLE_SIZE = 15; // static constexpr
     using ColorGamut = QMap<QPair<int, int>, int>;
     using CropHandleFn = QRectF (PixmapItem::*)() const;
+
+    const QString& filename() const { return filename_; }
+    void set_filename(const QString& value) { filename_ = value; }
+    const QRectF& crop() const { return crop_; }
+
+private:
+    const std::string type = "pixmap"; // static constexpr
+    const qreal cropHandleSize = 15;   // static constexpr
     QString filename_;
-    bool is_image_{true};
-    bool crop_mode = false;
+    bool isImage_{true};
+    bool cropMode_ = false;
     bool grayscale_ = false;
-    QPixmap grayscalePixmap_{};
-    mutable std::optional<ColorGamut> colorGamut_{};
+    QPixmap grayscalePixmap_;
+    mutable std::optional<ColorGamut> colorGamut_;
 
     // Mipmap-style cache: this picture's own pixmap, pre-downscaled once
     // with a proper area-averaging scale, for whenever it's rendered far
@@ -177,15 +183,15 @@ public:
     // pixmap replacement (setPixmap(), a grayscale toggle, a GIF frame)
     // invalidates it automatically instead of silently rendering stale
     // content.
-    mutable QPixmap downscaleCache_{};
+    mutable QPixmap downscaleCache_;
     mutable qreal downscaleCacheFactor_ = 0.0;
     mutable qint64 downscaleCacheSrcKey_ = 0;
 
-    bool is_editable_ = false;
-    QRectF crop_{};
-    std::optional<QRectF> crop_temp{};
-    std::optional<QPointF> crop_mode_event_start{};
-    std::optional<CropHandleFn> crop_mode_move{};
+    bool isEditable_ = false;
+    QRectF crop_;
+    std::optional<QRectF> cropTemp_;
+    std::optional<QPointF> cropModeEventStart_;
+    std::optional<CropHandleFn> cropModeMove_;
     // Attach generalized from TextItem to IBaseItem - see
     // IBaseItem::attachedToUid()'s own comment (selector.h) for the
     // full picture. A GifItem attaching to
@@ -193,6 +199,7 @@ public:
     // this covers that for free.
     QUuid attachedToUid_;
 
+public:
     PixmapItem(const QImage& image,
                const QString& filename = QString(),
                QGraphicsPixmapItem* parent = nullptr)
@@ -201,8 +208,8 @@ public:
     {
         setPixmap(QPixmap::fromImage(image));
         reset_crop();
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
-        crop_mode = false;
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
+        cropMode_ = false;
         init_selectable();
         // ItemPositionChange/ItemPositionHasChanged notifications are
         // OFF by default since Qt 4.6 - needed here (like GroupItem,
@@ -211,11 +218,11 @@ public:
         this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
     }
 
-    bool is_image() const override { return is_image_; }
+    bool is_image() const override { return isImage_; }
 
-    QString toString() const
+    QString to_string() const
     {
-        QSize size = pixmap().size();
+        const QSize size = pixmap().size();
         return QString("Image \"%1\" %2 x %3")
             .arg(filename_)
             .arg(size.width())
@@ -230,7 +237,7 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Setting crop for {} to {}",
-                   toString(),
+                   to_string(),
                    crop);
         this->prepareGeometryChange();
         this->crop_ = crop;
@@ -238,17 +245,17 @@ public:
     }
 
     bool grayscale() const { return grayscale_; }
-    void setGrayscale(bool value)
+    void set_grayscale(bool value)
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Setting grayscale for {} to {}",
-                   toString(),
+                   to_string(),
                    value);
         grayscale_ = value;
         if (value) {
             QImage img(pixmap().size(), QImage::Format_Grayscale8);
             auto colorPreset
-                = SettingsHandler::getInstance()->getCurrentColorPreset();
+                = SettingsHandler::get_instance()->get_current_color_preset();
             img.fill(colorPreset[EPresetsColorIdx::kCanvasColor]);
             QPainter painter(&img);
             painter.drawPixmap(0, 0, pixmap());
@@ -260,24 +267,25 @@ public:
         update();
     }
     // TODOTALER: use standart type func
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
 
     QColor sample_color_at(const QPointF& pos)
     {
-        QPointF ipos = this->mapFromScene(pos);
-        QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
-        QImage img = pm.toImage();
+        const QPointF ipos = this->mapFromScene(pos);
+        const QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
+        const QImage img = pm.toImage();
 
-        QColor color = img.pixelColor((int) ipos.x(), (int) ipos.y());
+        QColor color = img.pixelColor(static_cast<int>(ipos.x()),
+                                      static_cast<int>(ipos.y()));
         if (color.alpha()) {
             return color;
         }
-        return QColor();
+        return {};
     }
 
     QRectF bounding_rect_unselected() const override
     {
-        if (crop_mode) {
+        if (cropMode_) {
             //ItemMixin<PixmapItem, QGraphicsPixmapItem>::bounding_rect_unselected();
             return QGraphicsPixmapItem::boundingRect();
         }
@@ -326,16 +334,16 @@ public:
         }
     }
 
-    QUuid attachedToUid() const override { return attachedToUid_; }
+    QUuid attached_to_uid() const override { return attachedToUid_; }
     void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
     // TODOLATER: not wired up to a caller yet (batch export).
     QString get_filename_for_export(const QString& imgformat) const
     {
-        QString id = uid().toString(QUuid::WithoutBraces);
+        const QString id = uid().toString(QUuid::WithoutBraces);
 
         if (!filename_.isEmpty()) {
-            QString basename = QFileInfo(filename_).completeBaseName();
+            const QString basename = QFileInfo(filename_).completeBaseName();
             return QString("%1-%2.%3").arg(id, basename, imgformat);
         }
         return QString("%1.%2").arg(id, imgformat);
@@ -344,7 +352,7 @@ public:
     // Determines the format for storing this image.
     QString get_imgformat(const QImage& img) const
     {
-        QString formt = SettingsHandler::getInstance()->imageStorageFormat();
+        QString formt = SettingsHandler::image_storage_format();
 
         if (formt == QLatin1String("best")) {
             if (img.hasAlphaChannel()
@@ -358,25 +366,25 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Found format {} for {}",
                    formt,
-                   toString());
+                   to_string());
         return formt;
     }
 
-    std::pair<QByteArray, QString> pixmap_to_bytes(bool apply_grayscale = false,
-                                                   bool apply_crop = false)
+    std::pair<QByteArray, QString> pixmap_to_bytes(bool applyGrayscale = false,
+                                                   bool applyCrop = false)
     {
         QByteArray barray;
         QBuffer buffer(&barray);
         buffer.open(QIODevice::WriteOnly);
 
-        QPixmap pm = (apply_grayscale && grayscale_) ? grayscalePixmap_
-                                                     : pixmap();
-        if (apply_crop) {
+        QPixmap pm = (applyGrayscale && grayscale_) ? grayscalePixmap_
+                                                    : pixmap();
+        if (applyCrop) {
             pm = pm.copy(crop_.toRect());
         }
 
-        QImage img = pm.toImage();
-        QString imgformat = get_imgformat(img);
+        const QImage img = pm.toImage();
+        const QString imgformat = get_imgformat(img);
         img.save(&buffer, imgformat.toUpper().toUtf8().constData(), 90);
         return {barray, imgformat};
     }
@@ -395,7 +403,7 @@ public:
     }
 
     // set_image function
-    bool is_editable() override { return is_editable_; }
+    bool is_editable() override { return isEditable_; }
 
 
     IBaseItem* create_copy() override
@@ -407,7 +415,7 @@ public:
         item->setScale(scale());
         item->setRotation(rotation());
         item->setOpacity(opacity());
-        item->setGrayscale(grayscale_);
+        item->set_grayscale(grayscale_);
         if (flip() == -1) {
             item->do_flip();
         }
@@ -425,21 +433,20 @@ public:
         if (!colorGamut_) {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Calculating color gamut for {}",
-                       toString());
+                       to_string());
             ColorGamut gamut;
-            QImage img = pixmap().toImage();
+            const QImage img = pixmap().toImage();
             // Don't evaluate every pixel for larger images:
-            int step = std::max(1,
-                                static_cast<int>(
-                                    std::max(img.width(), img.height()) / 1000));
+            const int step
+                = std::max(1, std::max(img.width(), img.height()) / 1000);
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Considering every {}. row/column",
                        step);
 
             for (int i = 0; i < img.width(); i += step) {
                 for (int j = 0; j < img.height(); j += step) {
-                    QColor rgb = img.pixelColor(i, j);
-                    int r = rgb.red(), g = rgb.blue(), b = rgb.green();
+                    const QColor rgb = img.pixelColor(i, j);
+                    const int r = rgb.red(), g = rgb.blue(), b = rgb.green();
                     if (rgb.alpha() > 5 && std::min({r, g, b}) < 250
                         && std::max({r, g, b}) > 5) {
                         // Only consider pixels that aren't close to
@@ -472,46 +479,58 @@ public:
 
     qreal crop_handle_size() const
     {
-        return this->fixed_length_for_viewport(CROP_HANDLE_SIZE);
+        return this->fixed_length_for_viewport(cropHandleSize);
     }
 
     QRectF crop_handle_topleft() const
     {
-        QPointF topLeft = crop_temp->topLeft();
-        return QRectF(topLeft.x(),
-                      topLeft.y(),
-                      crop_handle_size(),
-                      crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF topLeft = cropTemp_->topLeft();
+        return {topLeft.x(),
+                topLeft.y(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     QRectF crop_handle_bottomleft() const
     {
-        QPointF bottomLeft = crop_temp->bottomLeft();
-        return QRectF(bottomLeft.x(),
-                      bottomLeft.y() - crop_handle_size(),
-                      crop_handle_size(),
-                      crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF bottomLeft = cropTemp_->bottomLeft();
+        return {bottomLeft.x(),
+                bottomLeft.y() - crop_handle_size(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     QRectF crop_handle_bottomright() const
     {
-        QPointF bottomRight = crop_temp->bottomRight();
-        return QRectF(bottomRight.x() - crop_handle_size(),
-                      bottomRight.y() - crop_handle_size(),
-                      crop_handle_size(),
-                      crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF bottomRight = cropTemp_->bottomRight();
+        return {bottomRight.x() - crop_handle_size(),
+                bottomRight.y() - crop_handle_size(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
     QRectF crop_handle_topright() const
     {
-        QPointF topRight = crop_temp->topRight();
-        return QRectF(topRight.x() - crop_handle_size(),
-                      topRight.y(),
-                      crop_handle_size(),
-                      crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF topRight = cropTemp_->topRight();
+        return {topRight.x() - crop_handle_size(),
+                topRight.y(),
+                crop_handle_size(),
+                crop_handle_size()};
     }
 
-    QList<CropHandleFn> crop_handles() const
+    static QList<CropHandleFn> crop_handles()
     {
         return {&PixmapItem::crop_handle_topleft,
                 &PixmapItem::crop_handle_bottomleft,
@@ -521,42 +540,54 @@ public:
 
     QRectF crop_edge_top() const
     {
-        QPointF topLeft = crop_temp->topLeft();
-        return QRectF(topLeft.x() + crop_handle_size(),
-                      topLeft.y(),
-                      crop_temp->width() - 2 * crop_handle_size(),
-                      crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF topLeft = cropTemp_->topLeft();
+        return {topLeft.x() + crop_handle_size(),
+                topLeft.y(),
+                cropTemp_->width() - (2 * crop_handle_size()),
+                crop_handle_size()};
     }
 
     QRectF crop_edge_left() const
     {
-        QPointF topLeft = crop_temp->topLeft();
-        return QRectF(topLeft.x(),
-                      topLeft.y() + crop_handle_size(),
-                      crop_handle_size(),
-                      crop_temp->height() - 2 * crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF topLeft = cropTemp_->topLeft();
+        return {topLeft.x(),
+                topLeft.y() + crop_handle_size(),
+                crop_handle_size(),
+                cropTemp_->height() - (2 * crop_handle_size())};
     }
 
     QRectF crop_edge_bottom() const
     {
-        QPointF bottomLeft = crop_temp->bottomLeft();
-        return QRectF(bottomLeft.x() + crop_handle_size(),
-                      bottomLeft.y() - crop_handle_size(),
-                      crop_temp->width() - 2 * crop_handle_size(),
-                      crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF bottomLeft = cropTemp_->bottomLeft();
+        return {bottomLeft.x() + crop_handle_size(),
+                bottomLeft.y() - crop_handle_size(),
+                cropTemp_->width() - (2 * crop_handle_size()),
+                crop_handle_size()};
     }
 
     QRectF crop_edge_right() const
     {
-        QPointF topRight = crop_temp->topRight();
-        return QRectF(topRight.x() - crop_handle_size(),
-                      topRight.y() + crop_handle_size(),
-                      crop_handle_size(),
-                      crop_temp->height() - 2 * crop_handle_size());
+        if (!cropTemp_) {
+            return {};
+        }
+        const QPointF topRight = cropTemp_->topRight();
+        return {topRight.x() - crop_handle_size(),
+                topRight.y() + crop_handle_size(),
+                crop_handle_size(),
+                cropTemp_->height() - (2 * crop_handle_size())};
     }
 
     // Function to return all crop edge functions as a tuple
-    QList<CropHandleFn> crop_edges() const
+    static QList<CropHandleFn> crop_edges()
     {
         return {&PixmapItem::crop_edge_top,
                 &PixmapItem::crop_edge_left,
@@ -566,55 +597,58 @@ public:
 
     Qt::CursorShape get_crop_handle_cursor(CropHandleFn handle)
     {
-        bool is_topleft_or_bottomright
+        const bool isTopleftOrBottomright
             = (handle == &PixmapItem::crop_handle_topleft
                || handle == &PixmapItem::crop_handle_bottomright);
-        return get_diag_cursor(is_topleft_or_bottomright);
+        return get_diag_cursor(isTopleftOrBottomright);
     }
 
     Qt::CursorShape get_crop_edge_cursor(CropHandleFn edge)
     {
-        bool top_or_bottom = (edge == &PixmapItem::crop_edge_top
-                              || edge == &PixmapItem::crop_edge_bottom);
+        const bool topOrBottom = (edge == &PixmapItem::crop_edge_top
+                                  || edge == &PixmapItem::crop_edge_bottom);
 
-        bool sideways = (45 < rotation() && rotation() < 135)
-                        || (225 < rotation() && rotation() < 315);
+        const bool sideways = (45 < rotation() && rotation() < 135)
+                              || (225 < rotation() && rotation() < 315);
 
-        return (top_or_bottom == sideways) ? Qt::SizeHorCursor
-                                           : Qt::SizeVerCursor;
+        return (topOrBottom == sideways) ? Qt::SizeHorCursor
+                                         : Qt::SizeVerCursor;
     }
 
     // Returns the point, or the nearest point within the pixmap.
     QPointF ensure_point_within_crop_bounds(const QPointF& point,
                                             CropHandleFn handle) const
     {
+        if (!cropTemp_) {
+            return point;
+        }
         QPointF topleft;
         QPointF bottomright;
-        QSize pixmapSize = pixmap().size();
+        const QSize pixmapSize = pixmap().size();
 
         if (handle == &PixmapItem::crop_handle_topleft) {
             topleft = QPointF(0, 0);
-            bottomright = crop_temp->bottomRight();
+            bottomright = cropTemp_->bottomRight();
         } else if (handle == &PixmapItem::crop_handle_bottomleft) {
-            topleft = QPointF(0, crop_temp->top());
-            bottomright = QPointF(crop_temp->right(), pixmapSize.height());
+            topleft = QPointF(0, cropTemp_->top());
+            bottomright = QPointF(cropTemp_->right(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_handle_bottomright) {
-            topleft = crop_temp->topLeft();
+            topleft = cropTemp_->topLeft();
             bottomright = QPointF(pixmapSize.width(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_handle_topright) {
-            topleft = QPointF(crop_temp->left(), 0);
-            bottomright = QPointF(pixmapSize.width(), crop_temp->bottom());
+            topleft = QPointF(cropTemp_->left(), 0);
+            bottomright = QPointF(pixmapSize.width(), cropTemp_->bottom());
         } else if (handle == &PixmapItem::crop_edge_top) {
             topleft = QPointF(0, 0);
-            bottomright = QPointF(pixmapSize.width(), crop_temp->bottom());
+            bottomright = QPointF(pixmapSize.width(), cropTemp_->bottom());
         } else if (handle == &PixmapItem::crop_edge_bottom) {
-            topleft = QPointF(0, crop_temp->top());
+            topleft = QPointF(0, cropTemp_->top());
             bottomright = QPointF(pixmapSize.width(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_edge_left) {
             topleft = QPointF(0, 0);
-            bottomright = QPointF(crop_temp->right(), pixmapSize.height());
+            bottomright = QPointF(cropTemp_->right(), pixmapSize.height());
         } else if (handle == &PixmapItem::crop_edge_right) {
-            topleft = QPointF(crop_temp->left(), 0);
+            topleft = QPointF(cropTemp_->left(), 0);
             bottomright = QPointF(pixmapSize.width(), pixmapSize.height());
         }
 
@@ -626,7 +660,7 @@ public:
         return result;
     }
 
-    void draw_crop_rect(QPainter& painter, const QRectF& rect)
+    static void draw_crop_rect(QPainter& painter, const QRectF& rect)
     {
         QPen pen(Qt::white);
         pen.setWidth(2);
@@ -702,14 +736,14 @@ public:
         if (std::abs(painter->combinedTransform().m11()) < 2) {
             painter->setRenderHint(QPainter::RenderHint::SmoothPixmapTransform);
         }
-        if (crop_mode) {
+        if (cropMode_ && cropTemp_) {
             // TODOLATER:
             // paint_debug(painter, option, widget);
 
             // Darken image outside of cropped area
             painter->drawPixmap(0, 0, pixmap());
             QPainterPath path;
-            path.addRect(crop_temp.value());
+            path.addRect(cropTemp_.value());
             QColor color(0, 0, 0);
             color.setAlpha(100);
             painter->setBrush(QBrush(color));
@@ -722,7 +756,7 @@ public:
                 draw_crop_rect(*painter, (this->*handle)());
             }
 
-            draw_crop_rect(*painter, *crop_temp);
+            draw_crop_rect(*painter, *cropTemp_);
         } else {
             const QPixmap& pm = grayscale_ ? grayscalePixmap_ : pixmap();
             // Real bug this fixes: a big photo (a 6048x4024 RAW import,
@@ -773,11 +807,11 @@ public:
             // it isn't part of the selection itself.
             if (!attachedToUid_.isNull()) {
                 if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                    if (QGraphicsItem* anchor = scene->find_by_uid(
+                    if (const QGraphicsItem* anchor = scene->find_by_uid(
                             attachedToUid_);
                         anchor && anchor->isSelected()) {
-                        auto colorPreset = SettingsHandler::getInstance()
-                                               ->getCurrentColorPreset();
+                        auto colorPreset = SettingsHandler::get_instance()
+                                               ->get_current_color_preset();
                         QColor highlightColor
                             = colorPreset[EPresetsColorIdx::kSelectionColor];
                         highlightColor.setAlpha(230);
@@ -799,16 +833,16 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Entering crop mode on {}",
-                   toString());
+                   to_string());
         this->prepareGeometryChange();
-        crop_mode = true;
-        crop_temp = crop();
-        crop_mode_move = std::nullopt;
-        crop_mode_event_start = std::nullopt;
+        cropMode_ = true;
+        cropTemp_ = crop();
+        cropModeMove_ = std::nullopt;
+        cropModeEventStart_ = std::nullopt;
         this->grabKeyboard();
         this->update();
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->crop_item = this;
+        scene->set_crop_item(this);
     }
 
     void exit_crop_mode(bool confirm)
@@ -816,23 +850,28 @@ public:
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Exiting crop mode with {} on {}",
                    confirm,
-                   toString());
-        if (confirm && crop() != *crop_temp) {
-            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-            // TODOLATER: interface
-            scene->undo_stack_->push(
-                new CropItemCommand(this, crop_temp.value()));
+                   to_string());
+        // Copied out right after the check instead of being read twice:
+        // the crop() call in between is opaque to the optional-access
+        // check, which then treats the second read as unchecked again.
+        if (confirm && cropTemp_) {
+            const QRectF pending = *cropTemp_;
+            if (crop() != pending) {
+                auto* scene = dynamic_cast<CanvasScene*>(this->scene());
+                // TODOLATER: interface
+                scene->undo_stack()->push(new CropItemCommand(this, pending));
+            }
         }
 
         this->prepareGeometryChange();
-        crop_mode = false;
-        crop_temp = std::nullopt;
-        crop_mode_move = std::nullopt;
-        crop_mode_event_start = std::nullopt;
+        cropMode_ = false;
+        cropTemp_ = std::nullopt;
+        cropModeMove_ = std::nullopt;
+        cropModeEventStart_ = std::nullopt;
         this->ungrabKeyboard();
         this->update();
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->crop_item = nullptr;
+        scene->set_crop_item(nullptr);
     }
 
     // Attached items (a note, or picture-to-picture)
@@ -981,7 +1020,7 @@ protected:
 
     void hoverMoveEvent(QGraphicsSceneHoverEvent* event) override
     {
-        if (!crop_mode) {
+        if (!cropMode_) {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::hoverMoveEvent(event);
             return;
         }
@@ -1007,7 +1046,7 @@ protected:
 
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (!crop_mode) {
+        if (!cropMode_) {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mousePressEvent(event);
             return;
         }
@@ -1017,8 +1056,8 @@ protected:
         for (auto handle : crop_handles()) {
             // Click into a handle?
             if ((this->*handle)().contains(event->pos())) {
-                crop_mode_event_start = event->pos();
-                crop_mode_move = handle;
+                cropModeEventStart_ = event->pos();
+                cropModeMove_ = handle;
                 return;
             }
         }
@@ -1026,74 +1065,75 @@ protected:
         for (auto edge : crop_edges()) {
             // Click into an edge handle?
             if ((this->*edge)().contains(event->pos())) {
-                crop_mode_event_start = event->pos();
-                crop_mode_move = edge;
+                cropModeEventStart_ = event->pos();
+                cropModeMove_ = edge;
                 return;
             }
         }
 
-        // Click not in handle, end cropping mode:
-        exit_crop_mode(crop_temp->contains(event->pos()));
+        // Click not in handle, end cropping mode. No cropTemp_ means
+        // nothing was ever set up to confirm, so leave without applying.
+        exit_crop_mode(cropTemp_ && cropTemp_->contains(event->pos()));
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (crop_mode && crop_mode_move && crop_mode_event_start) {
-            QPointF diff = event->pos() - *crop_mode_event_start;
-            CropHandleFn move = *crop_mode_move;
+        if (cropMode_ && cropTemp_ && cropModeMove_ && cropModeEventStart_) {
+            const QPointF diff = event->pos() - *cropModeEventStart_;
+            const CropHandleFn move = *cropModeMove_;
 
             if (move == &PixmapItem::crop_handle_topleft) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topLeft()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->topLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setTopLeft(newPoint);
+                cropTemp_->setTopLeft(newPoint);
             } else if (move == &PixmapItem::crop_handle_bottomleft) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->bottomLeft()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->bottomLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setBottomLeft(newPoint);
+                cropTemp_->setBottomLeft(newPoint);
             } else if (move == &PixmapItem::crop_handle_bottomright) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->bottomRight()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->bottomRight()
                                                           + diff,
                                                       move);
-                crop_temp->setBottomRight(newPoint);
+                cropTemp_->setBottomRight(newPoint);
             } else if (move == &PixmapItem::crop_handle_topright) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topRight()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->topRight()
                                                           + diff,
                                                       move);
-                crop_temp->setTopRight(newPoint);
+                cropTemp_->setTopRight(newPoint);
             } else if (move == &PixmapItem::crop_edge_top) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topLeft()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->topLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setTop(newPoint.y());
+                cropTemp_->setTop(newPoint.y());
             } else if (move == &PixmapItem::crop_edge_left) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topLeft()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->topLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setLeft(newPoint.x());
+                cropTemp_->setLeft(newPoint.x());
             } else if (move == &PixmapItem::crop_edge_bottom) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->bottomLeft()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->bottomLeft()
                                                           + diff,
                                                       move);
-                crop_temp->setBottom(newPoint.y());
+                cropTemp_->setBottom(newPoint.y());
             } else if (move == &PixmapItem::crop_edge_right) {
-                QPointF newPoint
-                    = ensure_point_within_crop_bounds(crop_temp->topRight()
+                const QPointF newPoint
+                    = ensure_point_within_crop_bounds(cropTemp_->topRight()
                                                           + diff,
                                                       move);
-                crop_temp->setRight(newPoint.x());
+                cropTemp_->setRight(newPoint.x());
             }
 
             update();
-            crop_mode_event_start = event->pos();
+            cropModeEventStart_ = event->pos();
             event->accept();
         } else {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseMoveEvent(event);
@@ -1102,9 +1142,9 @@ protected:
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (crop_mode) {
-            crop_mode_move = std::nullopt;
-            crop_mode_event_start = std::nullopt;
+        if (cropMode_) {
+            cropModeMove_ = std::nullopt;
+            cropModeEventStart_ = std::nullopt;
             event->accept();
         } else {
             ItemMixin<PixmapItem, QGraphicsPixmapItem>::mouseReleaseEvent(event);
@@ -1125,23 +1165,23 @@ protected:
 // ever stop it emitting).
 class GifItem : public PixmapItem
 {
-public:
-    const std::string TYPE = "gif"; // static constexpr
+    const std::string type = "gif"; // static constexpr
 
+public:
     explicit GifItem(const QByteArray& gifBytes,
                      const QString& filename = QString(),
                      QGraphicsPixmapItem* parent = nullptr)
         : PixmapItem(QImage(), filename, parent)
         , gifBytes_(gifBytes)
     {
-        build_thumbnails_();
-        init_movie_(); // connects frameChanged, jumps to frame 0
+        build_thumbnails();
+        init_movie(); // connects frameChanged, jumps to frame 0
         // Base PixmapItem's ctor already ran reset_crop() against the
         // empty placeholder QImage() above - redo it now that pixmap()
         // reflects the real first frame's actual size.
         reset_crop();
         movie_->start();
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
     ~GifItem() override
@@ -1150,7 +1190,7 @@ public:
         delete gifBuffer_;
     }
 
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
 
     // See PixmapItem::caches_downscaled_render()'s own comment: this
     // item's pixmap is replaced on every animation frame (init_movie_()'s
@@ -1182,7 +1222,7 @@ public:
 
     IBaseItem* create_copy() override
     {
-        auto* item = new GifItem(gifBytes_, filename_);
+        auto* item = new GifItem(gifBytes_, filename());
         item->setPos(pos());
         item->setZValue(zValue());
         item->setScale(scale());
@@ -1191,11 +1231,11 @@ public:
         if (this->flip() == -1) {
             item->do_flip();
         }
-        item->set_crop(crop_);
+        item->set_crop(crop());
         item->set_speed_percent(speed_percent());
         // See PixmapItem::create_copy()'s own comment - remapped (or
         // cleared) later by CanvasScene::paste_from_internal_clipboard().
-        item->attachedToUid_ = attachedToUid_;
+        item->set_attached_to(attached_to_uid());
         return item;
     }
 
@@ -1209,7 +1249,10 @@ public:
     // lazily determined for some formats/plugins and not reliable before
     // a full pass, so this doubles as the authoritative frame count too.
     const QList<QPixmap>& frame_thumbnails() const { return frameThumbnails_; }
-    int frame_count() const { return frameThumbnails_.size(); }
+    int frame_count() const
+    {
+        return static_cast<int>(frameThumbnails_.size());
+    }
 
     bool is_playing() const
     {
@@ -1251,7 +1294,7 @@ public:
             return;
         }
         pause();
-        const int count = frameThumbnails_.size();
+        const int count = static_cast<int>(frameThumbnails_.size());
         int next = (current_frame() + delta) % count;
         if (next < 0) {
             next += count;
@@ -1264,7 +1307,8 @@ public:
             return;
         }
         pause();
-        movie_->jumpToFrame(qBound(0, index, frameThumbnails_.size() - 1));
+        movie_->jumpToFrame(
+            qBound(0, index, static_cast<int>(frameThumbnails_.size()) - 1));
     }
     // QMovie's own convention: 100 = normal speed, 25 = x0.25, 200 = x2 -
     // matches the x0.25-x2 steps this app's own UI displays directly, no
@@ -1283,14 +1327,14 @@ private:
     // the filmstrip. QImageReader::read()/canRead() auto-advance through
     // an animated source's frames, same idiom as Qt's own animated-image
     // examples - no explicit jumpToNextImage() needed.
-    void build_thumbnails_()
+    void build_thumbnails()
     {
         QBuffer buf;
         buf.setData(gifBytes_);
         buf.open(QIODevice::ReadOnly);
         QImageReader reader(&buf);
         while (reader.canRead()) {
-            QImage frame = reader.read();
+            const QImage frame = reader.read();
             if (frame.isNull()) {
                 break;
             }
@@ -1302,7 +1346,7 @@ private:
         }
     }
 
-    void init_movie_()
+    void init_movie()
     {
         gifBuffer_ = new QBuffer();
         gifBuffer_->setData(gifBytes_);
@@ -1335,36 +1379,37 @@ private:
 
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 {
-public:
-    const std::string TYPE = "text"; // static constexpr
-    bool edit_mode = false;
-    QString old_html;
+    const std::string type = "text"; // static constexpr
+    bool editMode_ = false;
+    QString oldHtml_;
 
+public:
     // Default note fill - the backdrop TextItem always painted, now
     // per-item and persisted.
-    static QColor default_fill_color() { return QColor(0, 0, 0, 40); }
+    static QColor default_fill_color() { return {0, 0, 0, 40}; }
 
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
-        , fill_color_(default_fill_color())
+        , editMode_(false)
+        , fillColor_(default_fill_color())
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
 
         init_selectable();
-        edit_mode = false;
+
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
     bool is_image() const override { return false; }
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
     // int type() const override { return 666; }
     bool is_editable() override { return true; }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("Text \"%1\"").arg(this->toPlainText().left(40));
     }
@@ -1383,8 +1428,8 @@ public:
         // fallback and greppable manifests (docs/fml_format_design.md).
         data[QStringLiteral("text")] = this->toPlainText();
         data[QStringLiteral("html")] = this->toHtml();
-        if (fill_color_ != default_fill_color()) {
-            data[QStringLiteral("fill_color")] = fill_color_.name(
+        if (fillColor_ != default_fill_color()) {
+            data[QStringLiteral("fill_color")] = fillColor_.name(
                 QColor::HexArgb);
         }
         // Manual field size from the edit-mode square handles
@@ -1414,9 +1459,9 @@ public:
         }
         const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
-            QColor c(fill);
+            const QColor c(fill);
             if (c.isValid()) {
-                fill_color_ = c;
+                fillColor_ = c;
             }
         }
         if (data.contains(QStringLiteral("field_width"))) {
@@ -1433,7 +1478,7 @@ public:
         }
     }
 
-    QColor fill_color() const { return fill_color_; }
+    QColor fill_color() const { return fillColor_; }
     void set_fill_color(const QColor& color)
     {
         // TEMPORARY debug logging (fill-color
@@ -1441,15 +1486,15 @@ public:
         // fixed.
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "set_fill_color: {},{},{},{} -> {},{},{},{}",
-                   fill_color_.red(),
-                   fill_color_.green(),
-                   fill_color_.blue(),
-                   fill_color_.alpha(),
+                   fillColor_.red(),
+                   fillColor_.green(),
+                   fillColor_.blue(),
+                   fillColor_.alpha(),
                    color.red(),
                    color.green(),
                    color.blue(),
                    color.alpha());
-        fill_color_ = color;
+        fillColor_ = color;
         update();
     }
 
@@ -1504,7 +1549,7 @@ public:
                       bool anchorRight,
                       bool anchorBottom) override
     {
-        constexpr qreal kMinFieldSize = 20.0;
+        constexpr qreal kminFieldSize = 20.0;
         this->prepareGeometryChange();
 
         const qreal oldWidth = document()->textWidth() < 0
@@ -1515,10 +1560,10 @@ public:
                                     : manualHeight_;
 
         const qreal clampedWidth = newWidth < 0 ? -1
-                                                : qMax(newWidth, kMinFieldSize);
+                                                : qMax(newWidth, kminFieldSize);
         const qreal clampedHeight = newHeight < 0
                                         ? -1
-                                        : qMax(newHeight, kMinFieldSize);
+                                        : qMax(newHeight, kminFieldSize);
 
         document()->setTextWidth(clampedWidth);
         manualHeight_ = clampedHeight;
@@ -1551,7 +1596,7 @@ public:
         if (!scene) {
             return;
         }
-        scene->undo_stack_->push(
+        scene->undo_stack()->push(
             new ResizeTextFieldCommand(this,
                                        document()->textWidth(),
                                        manualHeight_,
@@ -1577,7 +1622,7 @@ public:
         }
         resize_field(-1, -1, false, false);
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            scene->undo_stack_->push(new ResizeTextFieldCommand(
+            scene->undo_stack()->push(new ResizeTextFieldCommand(
                 this, -1, -1, oldWidth, oldHeight, false, false, true));
         }
     }
@@ -1595,17 +1640,17 @@ public:
         // investigation) - remove once the BG/H no-op bug is confirmed
         // fixed. Throttled to once per actual value (paint() runs every
         // frame) so this doesn't flood the log.
-        if (fill_color_ != lastPaintLoggedFillColor_) {
-            lastPaintLoggedFillColor_ = fill_color_;
+        if (fillColor_ != lastPaintLoggedFillColor_) {
+            lastPaintLoggedFillColor_ = fillColor_;
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "paint(): drawing fill_color_ = {},{},{},{}",
-                       fill_color_.red(),
-                       fill_color_.green(),
-                       fill_color_.blue(),
-                       fill_color_.alpha());
+                       fillColor_.red(),
+                       fillColor_.green(),
+                       fillColor_.blue(),
+                       fillColor_.alpha());
         }
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(fill_color_));
+        painter->setBrush(QBrush(fillColor_));
         // bounding_rect_unselected(), not QGraphicsTextItem::boundingRect()
         // directly: the manual-height padding from resize_field() needs
         // to actually show up as extra colored space, not just affect
@@ -1623,10 +1668,11 @@ public:
         // both source from RubberbandItem's own selection-color fill.
         if (!attachedToUid_.isNull()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-                if (QGraphicsItem* picture = scene->find_by_uid(attachedToUid_);
+                if (const QGraphicsItem* picture = scene->find_by_uid(
+                        attachedToUid_);
                     picture && picture->isSelected()) {
-                    auto colorPreset = SettingsHandler::getInstance()
-                                           ->getCurrentColorPreset();
+                    auto colorPreset = SettingsHandler::get_instance()
+                                           ->get_current_color_preset();
                     QColor highlightColor
                         = colorPreset[EPresetsColorIdx::kSelectionColor];
                     highlightColor.setAlpha(230);
@@ -1647,40 +1693,40 @@ public:
 
     IBaseItem* create_copy() override
     {
-        auto* new_item = new TextItem(this->toPlainText());
-        new_item->setHtml(this->toHtml());
-        new_item->set_fill_color(fill_color_);
-        new_item->document()->setTextWidth(this->document()->textWidth());
-        new_item->manualHeight_ = manualHeight_;
-        new_item->setPos(this->pos());
-        new_item->setZValue(this->zValue());
-        new_item->setScale(this->scale());
-        new_item->setRotation(this->rotation());
+        auto* newItem = new TextItem(this->toPlainText());
+        newItem->setHtml(this->toHtml());
+        newItem->set_fill_color(fillColor_);
+        newItem->document()->setTextWidth(this->document()->textWidth());
+        newItem->manualHeight_ = manualHeight_;
+        newItem->setPos(this->pos());
+        newItem->setZValue(this->zValue());
+        newItem->setScale(this->scale());
+        newItem->setRotation(this->rotation());
         if (this->flip() == -1) {
-            new_item->do_flip();
+            newItem->do_flip();
         }
         // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
         // CanvasScene::paste_from_internal_clipboard() remaps this to
         // the anchor's own copy afterward, or clears it if the anchor
         // wasn't part of this copy - see its own comment.
-        new_item->attachedToUid_ = attachedToUid_;
+        newItem->attachedToUid_ = attachedToUid_;
 
-        return new_item;
+        return newItem;
     }
 
     void enter_edit_mode()
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Entering edit mode on {}",
-                   toString());
-        edit_mode = true;
+                   to_string());
+        editMode_ = true;
         // html, not plain text: the same commit-on-exit diff also carries
         // any formatting the floating toolbar applied during the session.
-        old_html = this->toHtml();
-        old_fill_color_ = fill_color_;
+        oldHtml_ = this->toHtml();
+        oldFillColor_ = fillColor_;
         this->setTextInteractionFlags(Qt::TextEditorInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->edit_item = this;
+        scene->set_edit_item(this);
         scene->notify_edit_item_changed(this);
     }
 
@@ -1688,28 +1734,28 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Exiting edit mode on {}",
-                   toString());
-        edit_mode = false;
+                   to_string());
+        editMode_ = false;
         // Reset selection:
         this->setTextCursor(QTextCursor(document()));
         this->setTextInteractionFlags(Qt::NoTextInteraction);
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        scene->edit_item = nullptr;
+        scene->set_edit_item(nullptr);
         scene->notify_edit_item_changed(nullptr);
         if (commit) {
-            scene->undo_stack_->push(new ChangeTextCommand(this,
-                                                           this->toHtml(),
-                                                           old_html,
-                                                           fill_color_,
-                                                           old_fill_color_));
+            scene->undo_stack()->push(new ChangeTextCommand(this,
+                                                            this->toHtml(),
+                                                            oldHtml_,
+                                                            fillColor_,
+                                                            oldFillColor_));
             if (this->toPlainText().trimmed().isEmpty()) {
                 FLOG_DEBUG(familiar::log::Ch::Items, "Removing empty text item");
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new DeleteItemsCommand(scene, QList<QGraphicsItem*>{this}));
             }
         } else {
-            setHtml(old_html);
-            set_fill_color(old_fill_color_);
+            setHtml(oldHtml_);
+            set_fill_color(oldFillColor_);
         }
     }
 
@@ -1724,7 +1770,7 @@ public:
         return ItemMixin<TextItem, QGraphicsTextItem>::has_selection_handles();
     }
 
-    bool paints_edit_mode_handles() const override { return edit_mode; }
+    bool paints_edit_mode_handles() const override { return editMode_; }
 
     void copy_to_clipboard(QClipboard* clipboard)
     {
@@ -1745,7 +1791,7 @@ protected:
         // editing still just moves the text cursor there like normal
         // typing, instead of yanking focus away to a browser/file
         // manager every time you click near a link to keep editing.
-        // Not gated on edit_mode: the document layout can be queried
+        // Not gated on editMode_: the document layout can be queried
         // regardless, so this works the same whether the note is
         // currently being edited or just selected.
         if (event->button() == Qt::LeftButton
@@ -1788,12 +1834,12 @@ protected:
     }
 
 public:
-    QUuid attachedToUid() const override { return attachedToUid_; }
+    QUuid attached_to_uid() const override { return attachedToUid_; }
     void set_attached_to(const QUuid& uid) override { attachedToUid_ = uid; }
 
 private:
-    QColor fill_color_;
-    QColor old_fill_color_;
+    QColor fillColor_;
+    QColor oldFillColor_;
     // TEMPORARY (see paint() above) - remove together with that logging.
     QColor lastPaintLoggedFillColor_;
     // -1 = natural (content-driven) height, matching document()->
@@ -1814,10 +1860,10 @@ private:
 // anticipated.
 class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
 {
-public:
-    const std::string TYPE = "group"; // static constexpr
+    const std::string type = "group"; // static constexpr
 
-    static QColor default_fill_color() { return QColor(20, 20, 20, 255); }
+public:
+    static QColor default_fill_color() { return {20, 20, 20, 255}; }
     // Visual breathing room kept between the members' own tight bounding
     // box and the group's fill rect - single source of truth for both
     // CanvasScene::group_selection() (initial fit, on creation) and
@@ -1828,18 +1874,18 @@ public:
     // border, regardless of how big the grouped
     // images actually are - so this is proportional to the group's own
     // content size, with a floor for tiny groups.
-    static constexpr qreal kMinPadding = 20.0;
-    static constexpr qreal kPaddingRatio = 0.03;
+    static constexpr qreal kminPadding = 20.0;
+    static constexpr qreal kpaddingRatio = 0.03;
     static qreal compute_padding(const QRectF& contentRect)
     {
-        return qMax(kMinPadding,
+        return qMax(kminPadding,
                     (contentRect.width() + contentRect.height()) / 2.0
-                        * kPaddingRatio);
+                        * kpaddingRatio);
     }
 
     GroupItem(QGraphicsRectItem* parent = nullptr)
         : ItemMixin<GroupItem, QGraphicsRectItem>(parent)
-        , fill_color_(default_fill_color())
+        , fillColor_(default_fill_color())
     {
         init_selectable();
         // ItemPositionChange/ItemPositionHasChanged notifications are
@@ -1851,16 +1897,16 @@ public:
         // init_selectable(), so every other item type's behavior/
         // performance stays exactly as before.
         this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("Group (%1 items)").arg(childIds_.size());
     }
 
     bool is_image() const override { return false; }
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
     bool is_editable() override { return false; }
     void enter_crop_mode() override
     {
@@ -1921,20 +1967,20 @@ public:
         // CanvasScene::paste_from_internal_clipboard() does that
         // remapping afterward, once every clone in the batch actually
         // exists - see its own comment for the full picture.
-        auto* new_item = new GroupItem();
-        new_item->set_local_rect(localRect_);
-        new_item->fill_color_ = fill_color_;
-        new_item->childIds_ = childIds_;
-        new_item->locked_ = locked_;
-        new_item->dragDropEnabled_ = dragDropEnabled_;
-        new_item->setPos(this->pos());
-        new_item->setZValue(this->zValue());
-        new_item->setScale(this->scale());
-        new_item->setRotation(this->rotation());
+        auto* newItem = new GroupItem();
+        newItem->set_local_rect(localRect_);
+        newItem->fillColor_ = fillColor_;
+        newItem->childIds_ = childIds_;
+        newItem->locked_ = locked_;
+        newItem->dragDropEnabled_ = dragDropEnabled_;
+        newItem->setPos(this->pos());
+        newItem->setZValue(this->zValue());
+        newItem->setScale(this->scale());
+        newItem->setRotation(this->rotation());
         if (this->flip() == -1) {
-            new_item->do_flip();
+            newItem->do_flip();
         }
-        return new_item;
+        return newItem;
     }
 
     // Membership (child_ids) + fill color + the group's own local
@@ -1952,8 +1998,8 @@ public:
             idList.append(id.toString(QUuid::WithoutBraces));
         }
         data[QStringLiteral("child_ids")] = idList;
-        if (fill_color_ != default_fill_color()) {
-            data[QStringLiteral("fill_color")] = fill_color_.name(
+        if (fillColor_ != default_fill_color()) {
+            data[QStringLiteral("fill_color")] = fillColor_.name(
                 QColor::HexArgb);
         }
         data[QStringLiteral("rect_width")] = localRect_.width();
@@ -1989,9 +2035,9 @@ public:
 
         const QString fill = data.value(QStringLiteral("fill_color")).toString();
         if (!fill.isEmpty()) {
-            QColor c(fill);
+            const QColor c(fill);
             if (c.isValid()) {
-                fill_color_ = c;
+                fillColor_ = c;
             }
         }
 
@@ -2020,10 +2066,10 @@ public:
     // CanvasScene::add_queued_items() invokes after a whole load batch.
     void invalidate_children_cache() { resolvedChildrenDirty_ = true; }
 
-    QColor fill_color() const { return fill_color_; }
+    QColor fill_color() const { return fillColor_; }
     void set_fill_color(const QColor& color)
     {
-        fill_color_ = color;
+        fillColor_ = color;
         update();
     }
 
@@ -2070,7 +2116,7 @@ public:
             return;
         }
         qreal minChildZ = children.first()->zValue();
-        for (QGraphicsItem* child : children) {
+        for (const QGraphicsItem* child : children) {
             minChildZ = qMin(minChildZ, child->zValue());
         }
         if (this->zValue() >= minChildZ) {
@@ -2079,11 +2125,11 @@ public:
                            "GroupItem::keep_below_children() {} uid={} was "
                            "AT OR ABOVE its own children (z={}, min child "
                            "z={}) - correcting",
-                           toString(),
+                           to_string(),
                            uid().toString(QUuid::WithoutBraces).toStdString(),
                            this->zValue(),
                            minChildZ);
-                this->set_z_value(minChildZ - scene->Z_STEP);
+                this->set_z_value(minChildZ - scene->z_step());
             }
         }
     }
@@ -2106,7 +2152,7 @@ public:
         // self-check - dragging an OUTER group cascades down to an INNER
         // one too, and the inner one isn't itself the grabber.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (GroupItem* ancestor = this; ancestor;
+            for (const GroupItem* ancestor = this; ancestor;
                  ancestor = scene->find_owning_group(ancestor->uid())) {
                 if (scene->mouseGrabberItem() == ancestor) {
                     return;
@@ -2182,13 +2228,13 @@ public:
         // position differing at the 1e-12 level). 1e-6 is far above that
         // noise floor and far below anything visually meaningful at any
         // sane zoom level.
-        constexpr qreal kEps = 1e-6;
-        const bool unchanged = qAbs(unionRect.x() - localRect_.x()) < kEps
-                               && qAbs(unionRect.y() - localRect_.y()) < kEps
+        constexpr qreal keps = 1e-6;
+        const bool unchanged = qAbs(unionRect.x() - localRect_.x()) < keps
+                               && qAbs(unionRect.y() - localRect_.y()) < keps
                                && qAbs(unionRect.width() - localRect_.width())
-                                      < kEps
+                                      < keps
                                && qAbs(unionRect.height() - localRect_.height())
-                                      < kEps;
+                                      < keps;
         if (unchanged) {
             return;
         }
@@ -2197,7 +2243,7 @@ public:
                    "GroupItem::fit_to_contain_children() {} uid={} z={} "
                    "refitting (local) {},{} {}x{} -> {},{} {}x{} ({} "
                    "children)",
-                   toString(),
+                   to_string(),
                    uid().toString(QUuid::WithoutBraces).toStdString(),
                    this->zValue(),
                    localRect_.x(),
@@ -2311,7 +2357,7 @@ public:
     {
         bool ancestorLocked = false;
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (GroupItem* owner = scene->find_owning_group(this->uid());
+            for (const GroupItem* owner = scene->find_owning_group(this->uid());
                  owner;
                  owner = scene->find_owning_group(owner->uid())) {
                 if (owner->locked()) {
@@ -2376,13 +2422,12 @@ public:
                                   "already a member of ANOTHER group ({}, "
                                   "uid={}) - {} is about to become a SECOND "
                                   "owner of it",
-                                   id.toString(QUuid::WithoutBraces)
-                                       .toStdString(),
-                                   otherGroup->toString(),
-                                   otherGroup->uid()
-                                       .toString(QUuid::WithoutBraces)
-                                       .toStdString(),
-                                   toString());
+                                  id.toString(QUuid::WithoutBraces).toStdString(),
+                                  otherGroup->to_string(),
+                                  otherGroup->uid()
+                                      .toString(QUuid::WithoutBraces)
+                                      .toStdString(),
+                                  to_string());
                     }
                 }
             }
@@ -2497,7 +2542,7 @@ public:
                QWidget* widget = nullptr) override
     {
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(fill_color_));
+        painter->setBrush(QBrush(fillColor_));
         painter->drawRect(bounding_rect_unselected());
 
         // Nested groups: if ANY ancestor of mine (direct parent, or
@@ -2519,7 +2564,7 @@ public:
         // subgroup's boundary at all.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             bool ancestorSelected = false;
-            for (GroupItem* owner = scene->find_owning_group(this->uid());
+            for (const GroupItem* owner = scene->find_owning_group(this->uid());
                  owner;
                  owner = scene->find_owning_group(owner->uid())) {
                 if (owner->isSelected()) {
@@ -2547,7 +2592,7 @@ public:
         // opacity here since this is a border, not a translucent fill.
         if (highlighted_) {
             auto colorPreset
-                = SettingsHandler::getInstance()->getCurrentColorPreset();
+                = SettingsHandler::get_instance()->get_current_color_preset();
             QColor highlightColor
                 = colorPreset[EPresetsColorIdx::kSelectionColor];
             highlightColor.setAlpha(230);
@@ -2584,11 +2629,11 @@ protected:
     {
         // Only for a plain Qt-native body drag (ItemIsMovable) - during
         // an active resize/rotate handle drag of THIS item directly,
-        // active_mode_ is already kScaleMode/kRotateMode and every
+        // activeMode_ is already kScaleMode/kRotateMode and every
         // member already gets its OWN independent set_scale()/
         // set_rotation() call in the very same loop (see
         // selection_action_items() above feeding SelectableMixin's
-        // handle code, selector.h) - active_mode_ == kNone is exactly
+        // handle code, selector.h) - activeMode_ == kNone is exactly
         // "not mid-handle-drag of ME", i.e. a real independent body drag.
         // !scalingOrRotating_ covers the OTHER case: THIS group being
         // scaled/rotated not as the directly-grabbed item but as a
@@ -2606,7 +2651,7 @@ protected:
         // up with a member that already moved, not a body drag that
         // should carry members along.
         if (change == QGraphicsItem::ItemPositionChange && this->scene()
-            && active_mode_ == kNone && !autoExpanding_
+            && active_mode() == kNone && !autoExpanding_
             && !scalingOrRotating_) {
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
@@ -2615,7 +2660,7 @@ protected:
                     "GroupItem::itemChange() {} uid={} ItemPositionChange "
                     "delta=({},{}) selected={} - cascading to {} "
                     "children",
-                    toString(),
+                    to_string(),
                     uid().toString(QUuid::WithoutBraces).toStdString(),
                     delta.x(),
                     delta.y(),
@@ -2679,7 +2724,7 @@ protected:
 
 private:
     QRectF localRect_;
-    QColor fill_color_;
+    QColor fillColor_;
     QList<QUuid> childIds_;
     QList<QGraphicsItem*> resolvedChildren_;
     bool resolvedChildrenDirty_ = true;
@@ -2695,13 +2740,16 @@ private:
 // stand-in gets deleted or the file is saved again.
 class ErrorItem : public ItemMixin<ErrorItem, QGraphicsTextItem>
 {
-public:
-    const std::string TYPE = "error"; // static constexpr
+    const std::string type = "error"; // static constexpr
     // The uid of the manifest item this stand-in couldn't load (see
     // docs/fml_format_design.md §5.1/§6) - preserved so a re-save doesn't
     // mint a new identity for data that's otherwise round-tripped as-is.
     // Null if unknown (e.g. the manifest item itself was malformed).
-    QUuid original_uid{};
+    QUuid originalUid_;
+
+public:
+    const QUuid& original_uid_value() const { return originalUid_; }
+    void set_original_uid(const QUuid& uid) { originalUid_ = uid; }
 
     ErrorItem(const QString& text = QString(),
               QGraphicsTextItem* parent = nullptr)
@@ -2710,16 +2758,16 @@ public:
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);
         init_selectable();
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
+            = SettingsHandler::get_instance()->get_current_color_preset();
         setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
     bool is_image() const override { return false; }
-    std::string get_type() const override { return TYPE; }
+    std::string get_type() const override { return type; }
     bool is_editable() override { return false; }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("Error \"%1\"").arg(this->toPlainText().left(40));
     }
@@ -2756,12 +2804,12 @@ public:
 
     IBaseItem* create_copy() override
     {
-        auto* new_item = new ErrorItem(this->toPlainText());
-        new_item->setPos(this->pos());
-        new_item->setZValue(this->zValue());
-        new_item->setScale(this->scale());
-        new_item->setRotation(this->rotation());
-        return new_item;
+        auto* newItem = new ErrorItem(this->toPlainText());
+        newItem->setPos(this->pos());
+        newItem->setZValue(this->zValue());
+        newItem->setScale(this->scale());
+        newItem->setRotation(this->rotation());
+        return newItem;
     }
 
     // Never display error messages flipped.

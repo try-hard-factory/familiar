@@ -7,10 +7,10 @@
 class TabPane;
 class CanvasView;
 
-class project_settings
+class ProjectSettings
 {
 public:
-    explicit project_settings(TabPane* tp, CanvasView* view);
+    explicit ProjectSettings(TabPane* tp, CanvasView* view);
 
     void title(const QString& t);
     const QString& title() const noexcept { return title_; }
@@ -18,13 +18,13 @@ public:
     void path(const QString& p);
     const QString& path() const noexcept { return path_; }
 
-    void projectName(const QString& p);
-    const QString& projectName() const noexcept { return projectName_; };
+    void project_name(const QString& p);
+    const QString& project_name() const noexcept { return projectName_; }
 
     void modified(bool s);
     bool modified() const noexcept { return changed_; }
 
-    bool isDefaultProjectName() const
+    bool is_default_project_name() const
     {
         return (0 == projectName_.compare("untitled"));
     }
@@ -33,7 +33,7 @@ public:
     // via Save As - identifies this tab's own file(s) in the crash-
     // recovery folder (see recovery.h), which needs an identity that
     // doesn't depend on ever having a real save path.
-    QUuid recoveryId() const noexcept { return recoveryId_; }
+    QUuid recovery_id() const noexcept { return recoveryId_; }
 
 private:
     TabPane* tp_;

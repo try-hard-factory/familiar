@@ -14,9 +14,9 @@ public:
     FileActions(MainWindow& mw);
     ~FileActions();
 
-    void newFile();
-    void openFile();
-    void processOpenFile(const QString& file);
+    void new_file();
+    void open_file();
+    void process_open_file(const QString& file);
 
     // Saves `canvasView` specifically, regardless of which tab is
     // currently active - used by autosave to save background tabs
@@ -26,10 +26,10 @@ public:
     // tab); if it doesn't, this falls back to saveFileAs(), which is
     // hard-wired to the *current* tab, so passing a background view with
     // a nonexistent path would silently save the wrong tab instead.
-    int saveFile(CanvasView* canvasView, const QString& path);
-    int saveFile(const QString& path);
-    int saveFile();
-    int saveFileAs();
+    int save_file(CanvasView* canvasView, const QString& path);
+    int save_file(const QString& path);
+    int save_file();
+    int save_file_as();
 
     // Opens a fresh tab (titled at `originalPath` if non-empty, untitled
     // otherwise - see recovery.h's Entry::originalPath) and loads
@@ -42,16 +42,16 @@ public:
     // loadFmlIntoCurrentTab()'s recoveryIdToClear param below; the
     // caller must NOT delete the recovery file itself right after
     // calling this, since the load hasn't necessarily read it yet.
-    void restoreFromRecovery(const QString& recoveryFmlPath,
-                             const QString& originalPath,
-                             const QUuid& recoveryId);
+    void restore_from_recovery(const QString& recoveryFmlPath,
+                               const QString& originalPath,
+                               const QUuid& recoveryId);
 
     // Returns the first still-blank ("untitled", unmodified) tab, or
     // nullptr - meant to be called BEFORE restoring anything (see
     // closeTab() below for why), to identify the pointless empty tab
     // every session starts with, so it can be closed once real recovered
     // content has replaced the need for it.
-    CanvasView* findBlankTab();
+    CanvasView* find_blank_tab();
 
     // Deletes `cv` outright - same direct approach TabPane::onTabClosed()
     // uses for its own "nothing to lose" branch. Only ever called on a
@@ -65,7 +65,7 @@ public:
     // CanvasScene an in-flight ThreadedIO worker still held a pointer
     // to, crashing inside QGraphicsScene::addItem once that load
     // finished.
-    void closeTab(CanvasView* cv);
+    static void close_tab(CanvasView* cv);
 
 private:
     // Loads `path` into whatever tab is currently active, in the
@@ -82,9 +82,9 @@ private:
     // previously-shipped bug: deleting it immediately raced the
     // background read and intermittently produced a "No such file or
     // directory" error).
-    void loadFmlIntoCurrentTab(const QString& path,
-                               bool markModifiedAfterLoad = false,
-                               const QUuid& recoveryIdToClear = QUuid());
+    void load_fml_into_current_tab(const QString& path,
+                                   bool markModifiedAfterLoad = false,
+                                   const QUuid& recoveryIdToClear = QUuid());
 
     MainWindow& mainwindow_;
 };

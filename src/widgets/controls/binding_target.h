@@ -2,12 +2,18 @@
 
 #include <core/controls.h>
 
+#include <cstdint>
+
 #include <QList>
 #include <QString>
 
 struct Action;
 
-enum class BindingTargetKind { Action, MouseControl, MouseWheelControl };
+enum class BindingTargetKind : std::uint8_t {
+    Action,
+    MouseControl,
+    MouseWheelControl
+};
 
 // Adapter so the alias tree/dialogs never need to branch on Action-vs-
 // Control directly - wraps either an Action (menu command) or a
@@ -21,12 +27,12 @@ public:
     virtual QString id() const = 0;
     virtual QString text() const = 0;
     virtual BindingTargetKind kind() const = 0;
-    virtual bool isInvertible() const { return false; }
+    virtual bool is_invertible() const { return false; }
     virtual QList<Binding> bindings() const = 0;
-    virtual QList<Binding> defaultBindings() const = 0;
-    virtual void setBindings(const QList<Binding>& bindings) = 0;
+    virtual QList<Binding> default_bindings() const = 0;
+    virtual void set_bindings(const QList<Binding>& bindings) = 0;
 
-    bool bindingsChanged() const { return bindings() != defaultBindings(); }
+    bool bindings_changed() const { return bindings() != default_bindings(); }
 };
 
 // Phase 1: keyboard-only (Action doesn't have a mouse-chord binding path
@@ -46,8 +52,8 @@ public:
         return BindingTargetKind::Action;
     }
     QList<Binding> bindings() const override;
-    QList<Binding> defaultBindings() const override;
-    void setBindings(const QList<Binding>& bindings) override;
+    QList<Binding> default_bindings() const override;
+    void set_bindings(const QList<Binding>& bindings) override;
 
 private:
     Action* action_;
@@ -65,15 +71,15 @@ public:
     QString id() const override { return config_->id(); }
     QString text() const override { return config_->text(); }
     BindingTargetKind kind() const override { return kind_; }
-    bool isInvertible() const override { return config_->isInvertible(); }
-    QList<Binding> bindings() const override { return config_->getBindings(); }
-    QList<Binding> defaultBindings() const override
+    bool is_invertible() const override { return config_->is_invertible(); }
+    QList<Binding> bindings() const override { return config_->get_bindings(); }
+    QList<Binding> default_bindings() const override
     {
-        return config_->defaultBindings();
+        return config_->default_bindings();
     }
-    void setBindings(const QList<Binding>& bindings) override
+    void set_bindings(const QList<Binding>& bindings) override
     {
-        config_->setBindings(bindings);
+        config_->set_bindings(bindings);
     }
 
 private:
