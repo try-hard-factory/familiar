@@ -952,8 +952,8 @@ public:
 
     struct Position
     {
-        int x;
-        int y;
+        int x = 0;
+        int y = 0;
     };
 
     struct Shelf
@@ -2110,7 +2110,7 @@ QUuid CanvasScene::recovery_id()
 
 void CanvasScene::settings_changed_slot()
 {
-    auto settings = SettingsHandler::get_instance();
+    auto* settings = SettingsHandler::get_instance();
     auto colorPreset = settings->get_current_color_preset();
     selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
 }

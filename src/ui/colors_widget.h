@@ -16,7 +16,7 @@ class ColorsWidget : public QWidget
     Q_OBJECT
 public:
     explicit ColorsWidget(QWidget* parent = nullptr);
-    ~ColorsWidget();
+    ~ColorsWidget() override;
 
 private:
     void labels_init();

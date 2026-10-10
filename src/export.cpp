@@ -203,8 +203,8 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
             const qreal width = pixmapItem->width() * pixmapItem->scale();
             const qreal height = pixmapItem->height() * pixmapItem->scale();
             auto [bytes, imgformat]
-                = pixmapItem->pixmap_to_bytes(/*apply_grayscale=*/true,
-                                              /*apply_crop=*/true);
+                = pixmapItem->pixmap_to_bytes(/*applyGrayscale=*/true,
+                                              /*applyCrop=*/true);
             const QString b64 = QString::fromLatin1(bytes.toBase64());
 
             xml.writeStartElement(QStringLiteral("image"));

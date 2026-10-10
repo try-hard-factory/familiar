@@ -261,11 +261,11 @@ public:
 private:
     struct TransformValues
     {
-        qreal scale;
-        qreal rotation;
-        qreal flip;
+        qreal scale = 1;
+        qreal rotation = 0;
+        qreal flip = 1;
         QRectF crop;
-        bool hasCrop;
+        bool hasCrop = false;
     };
 
     QList<IBaseItem*> items_;

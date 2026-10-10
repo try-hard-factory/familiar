@@ -391,7 +391,7 @@ void GifPlaybackToolbar::rebuild_filmstrip()
         return;
     }
 
-    QLayoutItem* child = nullptr;
+    const QLayoutItem* child = nullptr;
     while ((child = filmstripLay_->takeAt(0)) != nullptr) {
         delete child->widget();
         delete child;

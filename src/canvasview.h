@@ -39,7 +39,7 @@ class GroupToolbar;
 
 struct PreviousTransform
 {
-    QGraphicsItem* toggleItem;
+    QGraphicsItem* toggleItem = nullptr;
     QTransform transform;
     QPointF center;
 };
@@ -56,7 +56,7 @@ public:
     };
 
     CanvasView(MainWindow& mw, QWidget* parent = nullptr);
-    ~CanvasView();
+    ~CanvasView() override;
 
     void set_project_settings(ProjectSettings* ps);
     void do_insert_images(const QList<QUrl>& urls,
@@ -354,7 +354,7 @@ private:
 
     QColor canvasColor_;
     QColor borderColor_;
-    int currentOpacity_;
+    int currentOpacity_ = 255;
 
     // State for the in-flight do_insert_images() operation, read by
     // on_items_loaded()/on_insert_images_finished(). Assumes at most one

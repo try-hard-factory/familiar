@@ -23,6 +23,7 @@
 #include <QMessageBox>
 #include <QPointer>
 #include <QWindow>
+#include <utility>
 class ProjectSettings;
 class QFileDialog;
 class SaveAllDialog;
@@ -49,7 +50,7 @@ public:
      *                           is normal)
      */
     MainWindow(QWidget* parent = nullptr);
-    ~MainWindow();
+    ~MainWindow() override;
 
     void quit_project();
     void save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&& m);
@@ -90,7 +91,7 @@ public:
 
     void clipboard_items(QVector<QGraphicsItem*> ci) noexcept
     {
-        clipboardItems_ = ci;
+        clipboardItems_ = std::move(ci);
     }
     QVector<QGraphicsItem*>& clipboard_items() noexcept
     {
@@ -456,7 +457,7 @@ private:
     // had it on independently before enabling transparent-to-mouse.
     bool forcedAlwaysOnTopForTransparency_ = false;
 
-    int currentOpacity_;
+    int currentOpacity_ = 255;
     QColor backGroundColor_;
     QString rgbaBackGroundStr_;
 };

@@ -1163,7 +1163,7 @@ public:
         show();
     }
 
-    ~ChangeOpacityDialog() { delete command_; }
+    ~ChangeOpacityDialog() override { delete command_; }
 
 // moc requires the access level to be spelled out on a slots
 // section, even when it repeats the enclosing one.

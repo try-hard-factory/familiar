@@ -164,7 +164,7 @@ void BindingsTreeWidget::refresh_target(BindingTarget* target)
     }
 
     QLayout* rowLayout = container->layout();
-    QLayoutItem* item = nullptr;
+    const QLayoutItem* item = nullptr;
     while ((item = rowLayout->takeAt(0)) != nullptr) {
         delete item->widget();
         delete item;

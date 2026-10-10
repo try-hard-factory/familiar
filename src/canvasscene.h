@@ -40,7 +40,7 @@ public:
                 uint64_t& zc,
                 QUndoStack* undoStack,
                 QGraphicsScene* scene = nullptr);
-    ~CanvasScene();
+    ~CanvasScene() override;
 
     // TextItem is not in a position to emit our signals itself (signals
     // are protected in Qt) - it calls this instead.
@@ -416,7 +416,7 @@ private:
     QMutex itemsToAddMutex_;
     TextItem* editItem_ = nullptr;
     PixmapItem* cropItem_ = nullptr;
-    QPointF eventStart_{};
+    QPointF eventStart_;
     ESceneMode activeMode_{kNone};
     bool clearOngoing_ = false;
 
@@ -469,7 +469,7 @@ private:
     MainWindow& mainwindow_;
     uint64_t& zCounter_;
     qreal parentViewScaleFactor_ = 1;
-    ProjectSettings* projectSettings_;
+    ProjectSettings* projectSettings_ = nullptr;
     QRectF rememberedBoundingRect_;
     QPointF origin_;
     QRectF rubberBand_;

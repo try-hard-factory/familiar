@@ -172,8 +172,8 @@ private:
     bool isImage_{true};
     bool cropMode_ = false;
     bool grayscale_ = false;
-    QPixmap grayscalePixmap_{};
-    mutable std::optional<ColorGamut> colorGamut_{};
+    QPixmap grayscalePixmap_;
+    mutable std::optional<ColorGamut> colorGamut_;
 
     // Mipmap-style cache: this picture's own pixmap, pre-downscaled once
     // with a proper area-averaging scale, for whenever it's rendered far
@@ -183,15 +183,15 @@ private:
     // pixmap replacement (setPixmap(), a grayscale toggle, a GIF frame)
     // invalidates it automatically instead of silently rendering stale
     // content.
-    mutable QPixmap downscaleCache_{};
+    mutable QPixmap downscaleCache_;
     mutable qreal downscaleCacheFactor_ = 0.0;
     mutable qint64 downscaleCacheSrcKey_ = 0;
 
     bool isEditable_ = false;
-    QRectF crop_{};
-    std::optional<QRectF> cropTemp_{};
-    std::optional<QPointF> cropModeEventStart_{};
-    std::optional<CropHandleFn> cropModeMove_{};
+    QRectF crop_;
+    std::optional<QRectF> cropTemp_;
+    std::optional<QPointF> cropModeEventStart_;
+    std::optional<CropHandleFn> cropModeMove_;
     // Attach generalized from TextItem to IBaseItem - see
     // IBaseItem::attachedToUid()'s own comment (selector.h) for the
     // full picture. A GifItem attaching to
@@ -2745,7 +2745,7 @@ class ErrorItem : public ItemMixin<ErrorItem, QGraphicsTextItem>
     // docs/fml_format_design.md §5.1/§6) - preserved so a re-save doesn't
     // mint a new identity for data that's otherwise round-tripped as-is.
     // Null if unknown (e.g. the manifest item itself was malformed).
-    QUuid originalUid_{};
+    QUuid originalUid_;
 
 public:
     const QUuid& original_uid_value() const { return originalUid_; }

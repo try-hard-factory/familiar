@@ -13,7 +13,7 @@ class TabPane : public QWidget
     Q_OBJECT
 public:
     explicit TabPane(QWidget* parent, MainWindow& mw);
-    ~TabPane();
+    ~TabPane() override;
 
     void add_new_tab(const QString& path);
     void close_tab_by_index(int idx);

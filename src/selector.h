@@ -155,7 +155,7 @@ public:
         }
     }
 
-    virtual void bring_to_front() override
+    void bring_to_front() override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
@@ -176,7 +176,7 @@ public:
         this->setPos(this->pos() - diff);
     }
 
-    virtual qreal flip() const override
+    qreal flip() const override
     {
         // We use the transformation matrix only for flipping, so checking
         // the x scale is enough
@@ -310,10 +310,10 @@ class SelectableMixin : public BaseItemMixin<T>
     // comment for why this must differ between a corner drag (the
     // diagonal) and an edge drag (just that edge's own dimension).
     qreal scaleRefLength_{0};
-    qreal scaleOrigFactor_;
-    qreal rotateOrigDegrees_;
+    qreal scaleOrigFactor_{0};
+    qreal rotateOrigDegrees_{0};
     QPointF eventAnchor_;
-    qreal rotateStartAngle_;
+    qreal rotateStartAngle_{0};
     int viewportScale_{1};
     bool isEditable_{false};
 
@@ -351,7 +351,7 @@ public:
     struct EdgeBounds
     {
         QRectF rect;
-        bool vertical;
+        bool vertical = false;
     };
 
     enum EItemMode : std::uint8_t {

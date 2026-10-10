@@ -261,7 +261,7 @@ int FileActions::save_file_as()
         if (!mainwindow_.tab_pane().current_widget()->is_untitled()
             && mainwindow_.tab_pane().get_current_tab_project_name()
                    != QFileInfo(selected).fileName()) {
-            auto canvasView = mainwindow_.tab_pane().current_widget();
+            auto* canvasView = mainwindow_.tab_pane().current_widget();
             mainwindow_.tab_pane().add_new_tab(selected);
             load_fml_into_current_tab(canvasView->path());
         }
