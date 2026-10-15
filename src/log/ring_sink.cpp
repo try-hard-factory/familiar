@@ -67,10 +67,10 @@ void RingSink::write_log(
     std::string_view logStatement)
 {
     // logStatement is newline-terminated; strip it for QPlainTextEdit-style consumers.
-    const size_t len = !logStatement.empty() && logStatement.back() == '\n'
-                           ? logStatement.size() - 1
-                           : logStatement.size();
-    const QString line = QString::fromUtf8(logStatement.data(), int(len));
+    if (!logStatement.empty() && logStatement.back() == '\n') {
+        logStatement.remove_suffix(1);
+    }
+    const QString line = QString::fromUtf8(logStatement);
     const Level level = from_quill_level(logLevel);
 
     {

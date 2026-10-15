@@ -114,9 +114,7 @@ protected:
         FLOG_DEBUG(familiar::log::Ch::UI,
                    "Drag enter event: {}",
                    familiar::log::debug_string(mimedata->formats()));
-        if (mimedata->hasUrls()) {
-            event->acceptProposedAction();
-        } else if (mimedata->hasImage()) {
+        if (mimedata->hasUrls() || mimedata->hasImage()) {
             event->acceptProposedAction();
         } else {
             const QString msg = "Attempted drop not an image or image too big";

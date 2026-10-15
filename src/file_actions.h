@@ -12,7 +12,7 @@ class FileActions
 {
 public:
     FileActions(MainWindow& mw);
-    ~FileActions();
+    ~FileActions() = default;
 
     void new_file();
     void open_file();

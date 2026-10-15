@@ -26,6 +26,7 @@ using namespace familiar::log;
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <limits>
 
 namespace {
 
@@ -1006,12 +1007,16 @@ private:
     {
         // Find best free rectangle
         int bestIndex = -1;
-        int bestArea = INT_MAX;
+        // qint64, not int: the container is grown until it fits (see
+        // arrange_optimal()), and its side passes 46341 - where side*side
+        // no longer fits in an int - as soon as the items' total area
+        // passes INT_MAX, i.e. at ~259 items of 3840x2160.
+        qint64 bestArea = std::numeric_limits<qint64>::max();
 
         for (int i = 0; i < freeRects.size(); ++i) {
             const auto& fr = freeRects[i];
             if (fr.width >= width && fr.height >= height) {
-                const int area = fr.width * fr.height;
+                const qint64 area = static_cast<qint64>(fr.width) * fr.height;
                 if (area < bestArea) {
                     bestArea = area;
                     bestIndex = i;
@@ -1154,12 +1159,20 @@ void CanvasScene::arrange_optimal()
     const QPointF center = itemsBoundingRect(false, items).center();
 
     // Минимальная площадь элементов
-    int minArea = 0;
+    // qint64: as int this overflowed at ~259 items of 3840x2160 (signed
+    // overflow, so formally UB), sqrt() of the wrapped negative gave NaN,
+    // the cast gave INT_MIN, and INT_MIN * 1.2 stays INT_MIN - the
+    // grow-until-it-fits loop below then never terminated and the UI hung.
+    qint64 minArea = 0;
     for (const auto& size : sizes) {
-        minArea += size.width * size.height;
+        minArea += static_cast<qint64>(size.width) * size.height;
     }
 
-    int width = static_cast<int>(std::ceil(std::sqrt(minArea)));
+    // Side of a square of that area, not a width - sqrt() of an area is a
+    // square's side by construction, which is why pack() below gets it for
+    // both of its bounds.
+    int side = static_cast<int>(
+        std::ceil(std::sqrt(static_cast<double>(minArea))));
 
     QList<RectPacker::Position> positions;
     int boundsWidth = 0;
@@ -1168,9 +1181,9 @@ void CanvasScene::arrange_optimal()
     // Пробуем увеличить размер контейнера пока не получится упаковать
     while (positions.isEmpty()) {
         positions
-            = RectPacker::pack(sizes, width, width, boundsWidth, boundsHeight);
+            = RectPacker::pack(sizes, side, side, boundsWidth, boundsHeight);
         if (positions.isEmpty()) {
-            width = static_cast<int>(std::ceil(width * 1.2));
+            side = static_cast<int>(std::ceil(side * 1.2));
         }
     }
 
@@ -1575,7 +1588,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
             // TODOLATER:
             QGraphicsScene::mousePressEvent(event);
         } else {
-            CanvasView* view = qobject_cast<CanvasView*>(views().first());
+            auto* view = qobject_cast<CanvasView*>(views().first());
             view->fit_rect(itemsBoundingRect(false, QList<QGraphicsItem*>{item}),
                            item);
         }
@@ -1600,7 +1613,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         // touched by the drag would end up with a higher z-value than
         // the rubberband and visually cover it.
         rubberbandItem_->bring_to_front();
-        CanvasView* view = qobject_cast<CanvasView*>(views().first());
+        auto* view = qobject_cast<CanvasView*>(views().first());
         Q_ASSERT_X(view, "CanvasScene::mouseMoveEvent", "view == null");
         view->reset_previous_transform();
     }

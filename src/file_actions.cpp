@@ -16,8 +16,6 @@ FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
 {}
 
-FileActions::~FileActions() = default;
-
 void FileActions::new_file()
 {
     mainwindow_.tab_pane().add_new_untitled_tab();

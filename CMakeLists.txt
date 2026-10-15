@@ -119,6 +119,21 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
+# quill throws quill::QuillError from its SPSC queue whenever that queue
+# can't grow (UnboundedSPSCQueue::_handle_full_queue()), which makes every
+# FLOG_* formally a throwing call - and bugprone-exception-escape rightly
+# flagged the four destructors and main() that log, since a destructor is
+# implicitly noexcept. This app has no exception model of its own (zero
+# `throw`s, a single catch(...) in core/settings.cpp) and nothing anywhere
+# catches QuillError, so today that exception unwinds straight to
+# std::terminate. quill's own option prints the error and calls
+# std::abort() instead: same end state, reached without pretending the
+# exception is handleable, and log/log.cpp's crash handler still gets its
+# SIGABRT. Set before add_subdirectory and FORCEd so it survives a
+# reconfigure; it must be build-wide rather than a #define in log.h,
+# because the macro changes bodies of inline functions in quill's headers
+# and a per-TU define would be an ODR violation.
+set(QUILL_NO_EXCEPTIONS ON CACHE BOOL "" FORCE)
 add_subdirectory(${CMAKE_SOURCE_DIR}/include/quill)
 
 # miniz: zip read/write for the .fml project file format (see
