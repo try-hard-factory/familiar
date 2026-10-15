@@ -24,7 +24,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
         auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
-        masterOpacity[kCustom1] = currentOpacity;
+        masterOpacity[EPresets::Custom1] = currentOpacity;
         SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
         SettingsHandler::get_instance()->set_custom_preset1(currentPreset);
         close();
@@ -36,7 +36,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
         auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
-        masterOpacity[kCustom2] = currentOpacity;
+        masterOpacity[EPresets::Custom2] = currentOpacity;
         SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
         SettingsHandler::get_instance()->set_custom_preset2(currentPreset);
         close();
@@ -48,7 +48,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
         auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
-        masterOpacity[kCustom3] = currentOpacity;
+        masterOpacity[EPresets::Custom3] = currentOpacity;
         SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
         SettingsHandler::get_instance()->set_custom_preset3(currentPreset);
         close();
@@ -60,7 +60,7 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
         auto currentOpacity
             = SettingsHandler::get_instance()->get_current_opacity();
         auto masterOpacity = SettingsHandler::get_instance()->master_opacity();
-        masterOpacity[kCustom4] = currentOpacity;
+        masterOpacity[EPresets::Custom4] = currentOpacity;
         SettingsHandler::get_instance()->set_master_opacity(masterOpacity);
         SettingsHandler::get_instance()->set_custom_preset4(currentPreset);
         close();

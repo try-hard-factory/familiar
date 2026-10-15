@@ -96,7 +96,7 @@ QImage SceneToPixmapExporter::render_to_image() const
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor canvasColor = colorPreset[EPresetsColorIdx::kCanvasColor];
+    const QColor canvasColor = colorPreset[EPresetsColorIdx::CanvasColor];
 
     QImage image(size_, QImage::Format_RGB32);
     image.fill(canvasColor);

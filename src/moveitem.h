@@ -70,7 +70,7 @@ public:
     // handles use. anchorRight/anchorBottom say which side must stay
     // visually fixed (true = the right/bottom edge is the anchor,
     // i.e. the left/top handle is what's being dragged) - see
-    // selector.h's kFieldResizeMode for how these are derived. Only
+    // selector.h's FieldResizeMode for how these are derived. Only
     // TextItem overrides this with a real implementation - everything
     // else never has paints_edit_mode_handles() true, so this is never
     // actually invoked for them; it only needs to exist so the CRTP call
@@ -86,7 +86,7 @@ public:
         Q_UNUSED(anchorBottom);
     }
 
-    // Pushes the undo command for a completed kFieldResizeMode drag
+    // Pushes the undo command for a completed FieldResizeMode drag
     // (selector.h mouseReleaseEvent()). A separate hook from
     // resize_field() itself (which only applies the live value, called
     // on every mouseMove) because the actual QUndoCommand
@@ -117,12 +117,12 @@ public:
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         Q_ASSERT(scene);
         // Only bring to front when the user directly clicked this item
-        // (kMoveMode). During a rubber-band drag (kRubberbandMode),
+        // (MoveMode). During a rubber-band drag (RubberbandMode),
         // stacked/overlapping images would otherwise get reshuffled in
         // z-order just by being swept over, which is surprising and
         // unwanted - selecting shouldn't itself change stacking order.
         if (value && scene && !scene->has_selection()
-            && scene->active_mode() == CanvasScene::ESceneMode::kMoveMode) {
+            && scene->active_mode() == CanvasScene::ESceneMode::MoveMode) {
             this->bring_to_front();
         }
 
@@ -132,7 +132,7 @@ public:
         // selected images stay visually on top of the one just excluded
         // instead of it covering them.
         if (!value && scene
-            && scene->active_mode() == CanvasScene::ESceneMode::kMoveMode) {
+            && scene->active_mode() == CanvasScene::ESceneMode::MoveMode) {
             QList<QGraphicsItem*> others;
             for (QGraphicsItem* other : scene->selectedItems(true)) {
                 if (other != this) {
@@ -256,7 +256,7 @@ public:
             QImage img(pixmap().size(), QImage::Format_Grayscale8);
             auto colorPreset
                 = SettingsHandler::get_instance()->get_current_color_preset();
-            img.fill(colorPreset[EPresetsColorIdx::kCanvasColor]);
+            img.fill(colorPreset[EPresetsColorIdx::CanvasColor]);
             QPainter painter(&img);
             painter.drawPixmap(0, 0, pixmap());
             painter.end();
@@ -446,7 +446,9 @@ public:
             for (int i = 0; i < img.width(); i += step) {
                 for (int j = 0; j < img.height(); j += step) {
                     const QColor rgb = img.pixelColor(i, j);
-                    const int r = rgb.red(), g = rgb.blue(), b = rgb.green();
+                    const int r = rgb.red();
+                    const int g = rgb.blue();
+                    const int b = rgb.green();
                     if (rgb.alpha() > 5 && std::min({r, g, b}) < 250
                         && std::max({r, g, b}) > 5) {
                         // Only consider pixels that aren't close to
@@ -813,7 +815,7 @@ public:
                         auto colorPreset = SettingsHandler::get_instance()
                                                ->get_current_color_preset();
                         QColor highlightColor
-                            = colorPreset[EPresetsColorIdx::kSelectionColor];
+                            = colorPreset[EPresetsColorIdx::SelectionColor];
                         highlightColor.setAlpha(230);
                         painter->save();
                         QPen highlightPen(highlightColor);
@@ -943,7 +945,7 @@ public:
     // its own begin/end_group_batch() (unlike relying on the plain
     // itemChange() cascade above) - resize-handle drags always run
     // inside an OUTER begin_group_batch() already (SelectableMixin::
-    // mouseMoveEvent()'s kScaleMode branch, selector.h, wraps EVERY
+    // mouseMoveEvent()'s ScaleMode branch, selector.h, wraps EVERY
     // handle-driven set_scale() call this way, lone item or not), which
     // would otherwise suppress itemChange()'s position cascade entirely
     // and leave attached items completely frozen in place mid-resize
@@ -1400,7 +1402,7 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
+        setDefaultTextColor(colorPreset[EPresetsColorIdx::TextColor]);
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
@@ -1518,7 +1520,7 @@ public:
     }
 
     // Edit-mode (square handle) drag target - see moveitem.h's
-    // ItemMixin::resize_field() and selector.h's kFieldResizeMode.
+    // ItemMixin::resize_field() and selector.h's FieldResizeMode.
     // Unlike the round handles' uniform set_scale(), this changes the
     // field's own width (word-wrap via setTextWidth(), Qt handles the
     // rest) and height (manualHeight_, only ever pads empty space below
@@ -1583,7 +1585,7 @@ public:
     }
 
     // Pushes the undo command for a completed drag (selector.h
-    // mouseReleaseEvent(), kFieldResizeMode) - the live values were
+    // mouseReleaseEvent(), FieldResizeMode) - the live values were
     // already applied by resize_field() on every mouseMove, so this
     // just needs the "old" side and ignoreFirstRedo (see
     // ResizeTextFieldCommand, commands.h).
@@ -1674,7 +1676,7 @@ public:
                     auto colorPreset = SettingsHandler::get_instance()
                                            ->get_current_color_preset();
                     QColor highlightColor
-                        = colorPreset[EPresetsColorIdx::kSelectionColor];
+                        = colorPreset[EPresetsColorIdx::SelectionColor];
                     highlightColor.setAlpha(230);
                     painter->save();
                     QPen highlightPen(highlightColor);
@@ -2594,7 +2596,7 @@ public:
             auto colorPreset
                 = SettingsHandler::get_instance()->get_current_color_preset();
             QColor highlightColor
-                = colorPreset[EPresetsColorIdx::kSelectionColor];
+                = colorPreset[EPresetsColorIdx::SelectionColor];
             highlightColor.setAlpha(230);
             painter->save();
             QPen highlightPen(highlightColor);
@@ -2629,11 +2631,11 @@ protected:
     {
         // Only for a plain Qt-native body drag (ItemIsMovable) - during
         // an active resize/rotate handle drag of THIS item directly,
-        // activeMode_ is already kScaleMode/kRotateMode and every
+        // activeMode_ is already ScaleMode/RotateMode and every
         // member already gets its OWN independent set_scale()/
         // set_rotation() call in the very same loop (see
         // selection_action_items() above feeding SelectableMixin's
-        // handle code, selector.h) - activeMode_ == kNone is exactly
+        // handle code, selector.h) - activeMode_ == NoneMode is exactly
         // "not mid-handle-drag of ME", i.e. a real independent body drag.
         // !scalingOrRotating_ covers the OTHER case: THIS group being
         // scaled/rotated not as the directly-grabbed item but as a
@@ -2651,7 +2653,7 @@ protected:
         // up with a member that already moved, not a body drag that
         // should carry members along.
         if (change == QGraphicsItem::ItemPositionChange && this->scene()
-            && active_mode() == kNone && !autoExpanding_
+            && active_mode() == EItemMode::NoneMode && !autoExpanding_
             && !scalingOrRotating_) {
             const QPointF delta = value.toPointF() - this->pos();
             if (!delta.isNull()) {
@@ -2759,7 +2761,7 @@ public:
         init_selectable();
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        setDefaultTextColor(colorPreset[EPresetsColorIdx::kTextColor]);
+        setDefaultTextColor(colorPreset[EPresetsColorIdx::TextColor]);
         FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 

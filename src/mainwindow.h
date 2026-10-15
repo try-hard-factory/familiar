@@ -53,7 +53,8 @@ public:
     ~MainWindow() override;
 
     void quit_project();
-    void save_all_window_save_cb(SaveAllDialog* w, std::map<int, bool>&& m);
+    void save_all_window_save_cb(SaveAllDialog* w,
+                                 const std::map<int, bool>& m);
     void cleanup_workplace();
     static void exit_project();
     TabPane& tab_pane();

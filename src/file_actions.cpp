@@ -16,7 +16,7 @@ FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
 {}
 
-FileActions::~FileActions() {}
+FileActions::~FileActions() = default;
 
 void FileActions::new_file()
 {

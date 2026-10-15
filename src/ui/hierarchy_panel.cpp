@@ -224,11 +224,11 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
         const QColor& background
-            = colorPreset[EPresetsColorIdx::kBackgroundColor];
-        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+            = colorPreset[EPresetsColorIdx::BackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
         auto* shadow = new QGraphicsDropShadowEffect(this);
         shadow->setBlurRadius(24);
@@ -403,9 +403,9 @@ void HierarchyPanel::apply_color_style()
 {
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     setStyleSheet(
         QStringLiteral("QTreeWidget {"
                        "  background-color: %1;"
@@ -577,7 +577,7 @@ void HierarchyPanel::connect_gif_animation(QTreeWidgetItem* node, GifItem* gif)
     // rebuild every frame.
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor glyphColor = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor glyphColor = colorPreset[EPresetsColorIdx::TextColor];
     const QMetaObject::Connection conn
         = QObject::connect(gif->movie(),
                            &QMovie::frameChanged,
@@ -594,7 +594,7 @@ QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
 {
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
 
     QString label;
     QIcon icon;
@@ -747,10 +747,10 @@ void HierarchyPanel::show_context_menu(const QPoint& pos)
     // rendering solid black.
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& menuBg = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& menuBorder = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& menuText = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& menuAccent = colorPreset[EPresetsColorIdx::SelectionColor];
     menu.setStyleSheet(QStringLiteral("QMenu {"
                                       "  background-color: %1;"
                                       "  color: %2;"

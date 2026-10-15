@@ -59,16 +59,17 @@ const QList<SettingsCategory>& all_categories()
 // exist at all").
 QString current_preset_json_key()
 {
-    switch (SettingsHandler::get_instance()->current_preset()) {
-    case EPresets::kDarkPreset:
+    switch (static_cast<EPresets>(
+        SettingsHandler::get_instance()->current_preset())) {
+    case EPresets::DarkPreset:
         return QStringLiteral("dark_color_preset");
-    case EPresets::kLightPreset:
+    case EPresets::LightPreset:
         return QStringLiteral("light_color_preset");
-    case EPresets::kCustom1:
+    case EPresets::Custom1:
         return QStringLiteral("custom_preset1");
-    case EPresets::kCustom2:
+    case EPresets::Custom2:
         return QStringLiteral("custom_preset2");
-    case EPresets::kCustom3:
+    case EPresets::Custom3:
         return QStringLiteral("custom_preset3");
     default:
         return {};
@@ -198,10 +199,10 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
     // Fixed red, not the theme accent - flags this specific button as
     // destructive regardless of which color preset is active (matches
     // the reference screenshot Max sent).

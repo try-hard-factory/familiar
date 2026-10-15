@@ -7,6 +7,7 @@
 #include <optional>
 
 #include <QColor>
+#include <QDebug>
 #include <QJsonObject>
 #include <QJsonValue>
 #include <QObject>
@@ -19,24 +20,38 @@
 class QWheelEvent;
 class QMouseEvent;
 
-enum EPresets : std::uint8_t {
-    kDarkPreset = 0,
-    kLightPreset = 1,
-    kCustom1 = 2,
-    kCustom2 = 3,
-    kCustom3 = 4,
-    kCustom4 = 5,
-    kAllPresets = 6
+enum class EPresets : std::uint8_t {
+    DarkPreset = 0,
+    LightPreset = 1,
+    Custom1 = 2,
+    Custom2 = 3,
+    Custom3 = 4,
+    Custom4 = 5,
+    AllPresets = 6
 };
 
-enum EPresetsColorIdx : std::uint8_t {
-    kBackgroundColor = 0,
-    kCanvasColor = 1,
-    kBorderColor = 2,
-    kTextColor = 3,
-    kSelectionColor = 4,
-    kAllIdx = 5
+enum class EPresetsColorIdx : std::uint8_t {
+    BackgroundColor = 0,
+    CanvasColor = 1,
+    BorderColor = 2,
+    TextColor = 3,
+    SelectionColor = 4,
+    AllIdx = 5
 };
+
+// Both enums are scoped, so they have no built-in QDebug overload - and
+// Qt's generic QMap operator<< needs one for the key type before a map
+// keyed by them can go through familiar::log::debug_string() (which is
+// what colors_widget.cpp does with master_opacity()).
+inline QDebug operator<<(QDebug dbg, EPresets value)
+{
+    return dbg << static_cast<int>(value);
+}
+
+inline QDebug operator<<(QDebug dbg, EPresetsColorIdx value)
+{
+    return dbg << static_cast<int>(value);
+}
 
 class ValueHandler;
 template<class T>
@@ -76,9 +91,9 @@ public:
 
     // GENERIC GETTERS AND SETTERS
     SETTINGS_GETTER_SETTER(current_preset, set_current_preset, int)
-    using OL = QMap<int, int>;
+    using OL = QMap<EPresets, int>;
     SETTINGS_GETTER_SETTER(master_opacity, set_master_opacity, OL)
-    using CL = QMap<int, QColor>;
+    using CL = QMap<EPresetsColorIdx, QColor>;
     SETTINGS_GETTER_SETTER(dark_color_preset, set_dark_color_preset, CL)
     SETTINGS_GETTER_SETTER(light_color_preset, set_light_color_preset, CL)
     SETTINGS_GETTER_SETTER(custom_preset1, set_custom_preset1, CL)

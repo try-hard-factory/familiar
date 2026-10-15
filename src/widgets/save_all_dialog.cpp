@@ -47,10 +47,10 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(20, 16, 16, 16);
@@ -199,5 +199,5 @@ void SaveAllDialog::on_save()
                    it.value()->isChecked());
         m.emplace(it.key(), it.value()->isChecked());
     }
-    window_->save_all_window_save_cb(this, std::move(m));
+    window_->save_all_window_save_cb(this, m);
 }

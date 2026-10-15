@@ -525,7 +525,7 @@ void TextEditToolbar::apply_link(const QString& href)
     format.setFontUnderline(true);
     format.setForeground(
         SettingsHandler::get_instance()
-            ->get_current_color_preset()[EPresetsColorIdx::kSelectionColor]);
+            ->get_current_color_preset()[EPresetsColorIdx::SelectionColor]);
 
     // Inserts href AS the visible link text rather than
     // formatting whatever's currently selected - a selection is replaced
@@ -570,9 +570,9 @@ void TextEditToolbar::show_link_popup()
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
     popup->setStyleSheet(
         QStringLiteral("QWidget {"
                        "  background-color: %1;"
@@ -773,13 +773,16 @@ void TextEditToolbar::sync_from_cursor()
     const QTextCharFormat format = item_->textCursor().charFormat();
 
     {
-        const QSignalBlocker b1(boldBtn_), b2(italicBtn_), b3(underlineBtn_);
+        const QSignalBlocker b1(boldBtn_);
+        const QSignalBlocker b2(italicBtn_);
+        const QSignalBlocker b3(underlineBtn_);
         boldBtn_->setChecked(format.fontWeight() >= QFont::Bold);
         italicBtn_->setChecked(format.fontItalic());
         underlineBtn_->setChecked(format.fontUnderline());
     }
     {
-        const QSignalBlocker b1(bulletListBtn_), b2(numberedListBtn_);
+        const QSignalBlocker b1(bulletListBtn_);
+        const QSignalBlocker b2(numberedListBtn_);
         const QTextList* list = item_->textCursor().currentList();
         const QTextListFormat::Style style
             = list ? list->format().style()
@@ -838,10 +841,10 @@ void TextEditToolbar::restyle_from_preset()
 {
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     iconGlyphColor_ = text;
     auto rgba = [](const QColor& c, int alpha) {
         return QStringLiteral("rgba(%1, %2, %3, %4)")

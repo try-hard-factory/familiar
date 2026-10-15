@@ -107,11 +107,11 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
         const QColor& background
-            = colorPreset[EPresetsColorIdx::kBackgroundColor];
-        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+            = colorPreset[EPresetsColorIdx::BackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
         auto* shadow = new QGraphicsDropShadowEffect(this);
         shadow->setBlurRadius(24);
@@ -1058,11 +1058,11 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
         const QColor& background
-            = colorPreset[EPresetsColorIdx::kBackgroundColor];
-        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+            = colorPreset[EPresetsColorIdx::BackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
         auto* shadow = new QGraphicsDropShadowEffect(this);
         shadow->setBlurRadius(24);
@@ -1326,11 +1326,11 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
         const QColor& background
-            = colorPreset[EPresetsColorIdx::kBackgroundColor];
-        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+            = colorPreset[EPresetsColorIdx::BackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
         auto* shadow = new QGraphicsDropShadowEffect(this);
         shadow->setBlurRadius(24);

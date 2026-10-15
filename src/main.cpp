@@ -54,8 +54,8 @@ int main(int argc, char* argv[])
     }
 #endif
 
-    qRegisterMetaType<QMap<int, QColor>>("QMap<int, QColor>");
-    qRegisterMetaType<QMap<int, int>>("QMap<int, int>");
+    qRegisterMetaType<SettingsHandler::CL>("SettingsHandler::CL");
+    qRegisterMetaType<SettingsHandler::OL>("SettingsHandler::OL");
 
     const QApplication a(argc, argv);
 

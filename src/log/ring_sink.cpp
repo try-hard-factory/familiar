@@ -1,5 +1,7 @@
 #include "ring_sink.h"
 
+#include <utility>
+
 #include <QMutexLocker>
 
 #include "log.h" // for the real Level enum - only forward-declared in ring_sink.h
@@ -74,7 +76,7 @@ void RingSink::write_log(
     {
         const QMutexLocker locker(&mutex_);
         ring_.append({.level = level, .line = line});
-        while (size_t(ring_.size()) > capacity_) {
+        while (std::cmp_greater(ring_.size(), capacity_)) {
             ring_.removeFirst();
         }
     }

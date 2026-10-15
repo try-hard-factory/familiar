@@ -327,7 +327,8 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
 
         QPointF scenePos;
         stream >> scenePos;
-        qint32 h = 0, w = 0;
+        qint32 h = 0;
+        qint32 w = 0;
         stream >> h >> w;
         QRectF br;
         stream >> br;

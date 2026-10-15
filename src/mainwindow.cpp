@@ -69,11 +69,11 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+        const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
         const QColor& background
-            = colorPreset[EPresetsColorIdx::kBackgroundColor];
-        const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-        const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+            = colorPreset[EPresetsColorIdx::BackgroundColor];
+        const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+        const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
         auto* shadow = new QGraphicsDropShadowEffect(this);
         shadow->setBlurRadius(24);
@@ -448,7 +448,7 @@ void MainWindow::settings_changed_slot()
 {
     auto* settings = SettingsHandler::get_instance();
     auto colorPreset = settings->get_current_color_preset();
-    backGroundColor_ = colorPreset[EPresetsColorIdx::kBackgroundColor];
+    backGroundColor_ = colorPreset[EPresetsColorIdx::BackgroundColor];
     currentOpacity_ = settings->get_current_opacity();
     rgbaBackGroundStr_ = QString("rgba(%1, %2, %3, %4);")
                              .arg(backGroundColor_.red())
@@ -456,15 +456,15 @@ void MainWindow::settings_changed_slot()
                              .arg(backGroundColor_.blue())
                              .arg(currentOpacity_);
 
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
     // All tabs share the same background color; the selected one is
     // marked only by a selection-color underline. Unselected tabs get the
     // same 2px border in a transparent color rather than no border at
     // all, so the box model stays identical and tabs don't resize when
     // the selection changes.
     const QColor& selectionColor
-        = colorPreset[EPresetsColorIdx::kSelectionColor];
-    const QColor& borderColor = colorPreset[EPresetsColorIdx::kBorderColor];
+        = colorPreset[EPresetsColorIdx::SelectionColor];
+    const QColor& borderColor = colorPreset[EPresetsColorIdx::BorderColor];
     auto rgb = [](const QColor& c) {
         return QString("rgb(%1, %2, %3)")
             .arg(c.red())
@@ -519,7 +519,7 @@ bool MainWindow::check_save()
 }
 
 void MainWindow::save_all_window_save_cb(SaveAllDialog* w,
-                                         std::map<int, bool>&& m)
+                                         const std::map<int, bool>& m)
 {
     w->close();
 
@@ -846,10 +846,10 @@ void MainWindow::update_window_controls_style()
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     auto rgba = [](const QColor& c, int alpha) {
         return QStringLiteral("rgba(%1, %2, %3, %4)")
             .arg(c.red())
@@ -895,9 +895,9 @@ void MainWindow::update_menubar_style()
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     auto rgba = [](const QColor& c, int alpha) {
         return QStringLiteral("rgba(%1, %2, %3, %4)")
             .arg(c.red())

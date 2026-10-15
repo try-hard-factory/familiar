@@ -1,14 +1,15 @@
 #include "valuehandler.h"
 
+#include <utility>
+
 #include <QVariant>
 
 QVariant ValueHandler::value(const QVariant& val)
 {
     if (!val.isValid() || !check(val)) {
         return fallback();
-    } else {
-        return process(val);
     }
+    return process(val);
 }
 
 QVariant ValueHandler::fallback()
@@ -180,8 +181,8 @@ QString Color::expected()
 
 // COLOR LIST
 
-ColorList::ColorList(QMap<int, QColor> def)
-    : mDef_(def)
+ColorList::ColorList(QMap<EPresetsColorIdx, QColor> def)
+    : mDef_(std::move(def))
 {}
 
 bool ColorList::check([[maybe_unused]] const QVariant& val)
@@ -190,19 +191,19 @@ bool ColorList::check([[maybe_unused]] const QVariant& val)
 }
 
 // Stored as a JSON array of hex color strings, index = map key - not the
-// QMap<int,QColor> itself, which only round-tripped through QSettings by
+// QMap itself, which only round-tripped through QSettings by
 // accident (IniFormat base64-encodes unknown QVariant types via
 // QDataStream, i.e. the "ini" file held opaque blobs for this key). The
 // value handled internally (process()'s return, what callers actually
-// get back from SettingsHandler::value()) is still QMap<int,QColor> -
+// get back from SettingsHandler::value()) is still the QMap -
 // only the storage-facing shape (representation()/the input to process())
 // changed.
 QVariant ColorList::process(const QVariant& val)
 {
-    QMap<int, QColor> out;
+    QMap<EPresetsColorIdx, QColor> out;
     const QVariantList list = val.toList();
     for (int i = 0; i < list.size(); ++i) {
-        out[i] = QColor(list[i].toString());
+        out[static_cast<EPresetsColorIdx>(i)] = QColor(list[i].toString());
     }
     return QVariant::fromValue(out);
 }
@@ -214,10 +215,11 @@ QVariant ColorList::fallback()
 
 QVariant ColorList::representation(const QVariant& val)
 {
-    const auto map = val.value<QMap<int, QColor>>();
+    const auto map = val.value<QMap<EPresetsColorIdx, QColor>>();
     QVariantList out;
     for (int i = 0; i < map.size(); ++i) {
-        out.append(map.value(i).name(QColor::HexArgb));
+        out.append(
+            map.value(static_cast<EPresetsColorIdx>(i)).name(QColor::HexArgb));
     }
     return out;
 }
@@ -230,8 +232,8 @@ QString ColorList::expected()
 
 // OPACITY LIST
 
-OpacityList::OpacityList(QMap<int, int> def)
-    : mDef_(def)
+OpacityList::OpacityList(QMap<EPresets, int> def)
+    : mDef_(std::move(def))
 {}
 
 bool OpacityList::check([[maybe_unused]] const QVariant& val)
@@ -242,10 +244,10 @@ bool OpacityList::check([[maybe_unused]] const QVariant& val)
 // Same reasoning as ColorList above - JSON array of ints, index = map key.
 QVariant OpacityList::process(const QVariant& val)
 {
-    QMap<int, int> out;
+    QMap<EPresets, int> out;
     const QVariantList list = val.toList();
     for (int i = 0; i < list.size(); ++i) {
-        out[i] = list[i].toInt();
+        out[static_cast<EPresets>(i)] = list[i].toInt();
     }
     return QVariant::fromValue(out);
 }
@@ -257,10 +259,10 @@ QVariant OpacityList::fallback()
 
 QVariant OpacityList::representation(const QVariant& val)
 {
-    const auto map = val.value<QMap<int, int>>();
+    const auto map = val.value<QMap<EPresets, int>>();
     QVariantList out;
     for (int i = 0; i < map.size(); ++i) {
-        out.append(map.value(i));
+        out.append(map.value(static_cast<EPresets>(i)));
     }
     return out;
 }

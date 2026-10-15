@@ -1,6 +1,8 @@
 #ifndef VALUEHANDLER_H
 #define VALUEHANDLER_H
 
+#include <cstdint>
+
 #include <QColor>
 #include <QKeySequence>
 #include <QList>
@@ -8,6 +10,14 @@
 #include <QString>
 
 class QVariant;
+
+// Full definitions: core/settingshandler.h. Opaque declarations with the
+// underlying type spelled out, which makes these complete types - enough
+// for the QMap keys below without this header pulling the whole settings
+// header in (the dependency runs the other way round). The underlying type
+// must match settingshandler.h exactly or the declarations conflict.
+enum class EPresets : std::uint8_t;
+enum class EPresetsColorIdx : std::uint8_t;
 
 /**
  * @brief Handles the value of a configuration option (abstract class).
@@ -146,7 +156,7 @@ private:
 class ColorList : public ValueHandler
 {
 public:
-    ColorList(QMap<int, QColor> def);
+    ColorList(QMap<EPresetsColorIdx, QColor> def);
     bool check(const QVariant& val) override;
     QVariant process(const QVariant& val) override;
     QVariant fallback() override;
@@ -154,13 +164,13 @@ public:
     QString expected() override;
 
 private:
-    QMap<int, QColor> mDef_;
+    QMap<EPresetsColorIdx, QColor> mDef_;
 };
 
 class OpacityList : public ValueHandler
 {
 public:
-    OpacityList(QMap<int, int> def);
+    OpacityList(QMap<EPresets, int> def);
     bool check(const QVariant& val) override;
     QVariant process(const QVariant& val) override;
     QVariant fallback() override;
@@ -168,7 +178,7 @@ public:
     QString expected() override;
 
 private:
-    QMap<int, int> mDef_;
+    QMap<EPresets, int> mDef_;
 };
 
 #endif // VALUEHANDLER_H

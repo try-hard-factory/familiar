@@ -108,9 +108,9 @@ void CommandlineArgs::process(const QCoreApplication& app)
     // function's signature instead of an unwritten precondition.
     // NOLINTNEXTLINE(readability-static-accessed-through-instance)
     if (!parser.parse(app.arguments())) {
-        std::fputs(qPrintable(parser.errorText()), stderr);
-        std::fputs("\n\n", stderr);
-        std::fputs(qPrintable(parser.helpText()), stderr);
+        (void) std::fputs(qPrintable(parser.errorText()), stderr);
+        (void) std::fputs("\n\n", stderr);
+        (void) std::fputs(qPrintable(parser.helpText()), stderr);
         std::exit(EXIT_FAILURE);
     }
     if (parser.isSet(versionOption)) {
@@ -120,7 +120,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
         std::exit(EXIT_SUCCESS);
     }
     if (parser.isSet(helpOption)) {
-        std::fputs(qPrintable(parser.helpText()), stdout);
+        (void) std::fputs(qPrintable(parser.helpText()), stdout);
         std::exit(EXIT_SUCCESS);
     }
 
@@ -131,8 +131,8 @@ void CommandlineArgs::process(const QCoreApplication& app)
                                     "%1: Not a valid file path: \"%2\".\n\n")
                                     .arg(QCoreApplication::applicationName(),
                                          positional.first());
-            std::fputs(qPrintable(msg), stderr);
-            std::fputs(qPrintable(parser.helpText()), stderr);
+            (void) std::fputs(qPrintable(msg), stderr);
+            (void) std::fputs(qPrintable(parser.helpText()), stderr);
             std::exit(EXIT_FAILURE);
         }
         filename_ = positional.first();

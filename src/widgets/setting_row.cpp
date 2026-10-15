@@ -332,7 +332,7 @@ void ComboSettingRow::set_value(const QVariant& value)
 
 QString ComboSettingRow::default_value_display_text() const
 {
-    const QString def = FamSettings::value_or_default(settings_key()).toString();
+    QString def = FamSettings::value_or_default(settings_key()).toString();
     for (const ComboOption& opt : options_) {
         if (opt.value == def) {
             return opt.label;

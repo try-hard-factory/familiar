@@ -45,7 +45,8 @@ private:
     // that enum - see presetsInit().
     QButtonGroup* presetButtons_ = nullptr;
     // Indexed by EPresetsColorIdx.
-    QToolButton* colorSwatches_[EPresetsColorIdx::kAllIdx] = {};
+    QToolButton* colorSwatches_[static_cast<int>(EPresetsColorIdx::AllIdx)]
+        = {};
 };
 
 #endif // COLORSWIDGET_H

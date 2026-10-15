@@ -293,16 +293,16 @@ void CanvasView::on_context_menu(const QPoint& point)
     mainwindow_.context_menu()->exec(mapToGlobal(point));
 }
 
-void CanvasView::on_cursor_changed(QCursor cursor)
+void CanvasView::on_cursor_changed(const QCursor& cursor)
 {
-    if (activeMode_ == kModeNone) {
+    if (activeMode_ == ActiveMode::ModeNone) {
         viewport()->setCursor(cursor);
     }
 }
 
 void CanvasView::on_cursor_cleared()
 {
-    if (activeMode_ == kModeNone) {
+    if (activeMode_ == ActiveMode::ModeNone) {
         viewport()->unsetCursor();
     }
 }
@@ -316,8 +316,8 @@ void CanvasView::settings_changed_slot()
 {
     auto* settings = SettingsHandler::get_instance();
     auto colorPreset = settings->get_current_color_preset();
-    canvasColor_ = colorPreset[EPresetsColorIdx::kCanvasColor];
-    borderColor_ = colorPreset[EPresetsColorIdx::kBorderColor];
+    canvasColor_ = colorPreset[EPresetsColorIdx::CanvasColor];
+    borderColor_ = colorPreset[EPresetsColorIdx::BorderColor];
     currentOpacity_ = settings->get_current_opacity();
     if (textToolbar_) {
         textToolbar_->restyle_from_preset();
@@ -334,7 +334,7 @@ void CanvasView::settings_changed_slot()
 
 void CanvasView::cancel_sample_color_mode()
 {
-    activeMode_ = kModeNone;
+    activeMode_ = ActiveMode::ModeNone;
     viewport()->unsetCursor();
     if (sampleColorWidget_) {
         delete sampleColorWidget_;
@@ -349,7 +349,7 @@ void CanvasView::cancel_active_modes()
 {
     scene_->cancel_active_modes();
     cancel_sample_color_mode();
-    activeMode_ = kModeNone;
+    activeMode_ = ActiveMode::ModeNone;
 }
 
 // ─── View geometry ────────────────────────────────────────────────────────────
@@ -512,7 +512,8 @@ void CanvasView::update_group_toolbar_pos()
     groupToolbar_->move(x, y);
 }
 
-double CanvasView::get_zoom_size(std::function<double(double, double)> func) const
+double CanvasView::get_zoom_size(
+    const std::function<double(double, double)>& func) const
 {
     const QRectF rect = scene_->itemsBoundingRect();
     const QPoint tl = mapFromScene(rect.topLeft());
@@ -621,7 +622,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
         return;
     }
 
-    if (activeMode_ == kModeSampleColor) {
+    if (activeMode_ == ActiveMode::ModeSampleColor) {
         if (event->button() == Qt::LeftButton) {
             const QColor color = scene_->sample_color_at(
                 mapToScene(event->pos()));
@@ -645,7 +646,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     auto match = SettingsHandler::mouse_action_for_event(event);
     if (match) {
         if (match->group == QLatin1String("zoom")) {
-            activeMode_ = kModeZoom;
+            activeMode_ = ActiveMode::ModeZoom;
             eventStart_ = event->position();
             eventAnchor_ = event->position();
             eventInverted_ = match->inverted;
@@ -653,7 +654,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
             return;
         }
         if (match->group == QLatin1String("pan")) {
-            activeMode_ = kModePan;
+            activeMode_ = ActiveMode::ModePan;
             eventStart_ = event->position();
             viewport()->setCursor(Qt::ClosedHandCursor);
             event->accept();
@@ -678,7 +679,7 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
 
 void CanvasView::mouseMoveEvent(QMouseEvent* event)
 {
-    if (activeMode_ == kModePan) {
+    if (activeMode_ == ActiveMode::ModePan) {
         reset_previous_transform();
         const QPointF pos = event->position();
         pan(eventStart_ - pos);
@@ -687,7 +688,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (activeMode_ == kModeZoom) {
+    if (activeMode_ == ActiveMode::ModeZoom) {
         reset_previous_transform();
         const QPointF pos = event->position();
         double delta = (eventStart_ - pos).y();
@@ -700,7 +701,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (activeMode_ == kModeSampleColor) {
+    if (activeMode_ == ActiveMode::ModeSampleColor) {
         sampleColorWidget_->update(event->position(),
                                    scene_->sample_color_at(
                                        mapToScene(event->pos())));
@@ -737,14 +738,14 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
                "CanvasView::mouseReleaseEvent activeMode_={} spontaneous={}",
                int(activeMode_),
                event->spontaneous());
-    if (activeMode_ == kModePan) {
+    if (activeMode_ == ActiveMode::ModePan) {
         viewport()->unsetCursor();
-        activeMode_ = kModeNone;
+        activeMode_ = ActiveMode::ModeNone;
         event->accept();
         return;
     }
-    if (activeMode_ == kModeZoom) {
-        activeMode_ = kModeNone;
+    if (activeMode_ == ActiveMode::ModeZoom) {
+        activeMode_ = ActiveMode::ModeNone;
         event->accept();
         return;
     }
@@ -787,7 +788,7 @@ void CanvasView::keyPressEvent(QKeyEvent* event)
     if (key_press_event_main_controls(event)) {
         return;
     }
-    if (activeMode_ == kModeSampleColor) {
+    if (activeMode_ == ActiveMode::ModeSampleColor) {
         cancel_sample_color_mode();
         event->accept();
         return;
@@ -1723,7 +1724,7 @@ void CanvasView::on_action_sample_color()
     cancel_active_modes();
     FLOG_DEBUG(Ch::View, "Entering sample color mode");
     viewport()->setCursor(Qt::CrossCursor);
-    activeMode_ = kModeSampleColor;
+    activeMode_ = ActiveMode::ModeSampleColor;
 
     if (scene_->has_multi_selection()) {
         // We don't want to sample the multi select item, so temporarily

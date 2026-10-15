@@ -122,10 +122,10 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(16, 12, 16, 16);
@@ -527,10 +527,10 @@ void FileBrowserDialog::show_context_menu(const QPoint& pos)
     // type that rule doesn't cover.
     const auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& menuBg = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& menuBorder = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& menuText = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& menuAccent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     QMenu menu(this);
     menu.setStyleSheet(QStringLiteral("QMenu {"

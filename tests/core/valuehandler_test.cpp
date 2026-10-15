@@ -1,5 +1,7 @@
 #include "core/valuehandler.h"
 
+#include "core/settingshandler.h"
+
 #include <gtest/gtest.h>
 
 #include <QVariant>
@@ -82,7 +84,7 @@ TEST(BoundedIntValueHandlerTest, ExpectedDescribesRange)
 // ─── ColorList ───────────────────────────────────────────────────────
 // The real storage shape for e.g. "dark_color_preset" (settingshandler.cpp)
 // - a JSON array of hex strings, index = QMap key. See ColorList::process()'s
-// own comment for why this replaced storing the QMap<int,QColor> directly.
+// own comment for why this replaced storing the QMap directly.
 
 TEST(ColorListValueHandlerTest, ProcessConvertsIndexedHexStringsToColorMap)
 {
@@ -90,17 +92,20 @@ TEST(ColorListValueHandlerTest, ProcessConvertsIndexedHexStringsToColorMap)
     const QVariantList raw = {QStringLiteral("#ff0000"),
                               QStringLiteral("#00ff00")};
 
-    const auto map = handler.process(raw).value<QMap<int, QColor>>();
-    EXPECT_EQ(map.value(0), QColor(QStringLiteral("#ff0000")));
-    EXPECT_EQ(map.value(1), QColor(QStringLiteral("#00ff00")));
+    const auto map
+        = handler.process(raw).value<QMap<EPresetsColorIdx, QColor>>();
+    EXPECT_EQ(map.value(EPresetsColorIdx::BackgroundColor),
+              QColor(QStringLiteral("#ff0000")));
+    EXPECT_EQ(map.value(EPresetsColorIdx::CanvasColor),
+              QColor(QStringLiteral("#00ff00")));
 }
 
 TEST(ColorListValueHandlerTest,
      RepresentationConvertsColorMapToIndexedHexArgbStrings)
 {
-    QMap<int, QColor> map;
-    map[0] = QColor(255, 0, 0);
-    map[1] = QColor(0, 255, 0, 128);
+    QMap<EPresetsColorIdx, QColor> map;
+    map[EPresetsColorIdx::BackgroundColor] = QColor(255, 0, 0);
+    map[EPresetsColorIdx::CanvasColor] = QColor(0, 255, 0, 128);
     ColorList handler({});
 
     const QVariantList list
@@ -112,14 +117,14 @@ TEST(ColorListValueHandlerTest,
 
 TEST(ColorListValueHandlerTest, FallbackReturnsConstructorDefault)
 {
-    // The comma inside QMap<int, QColor>'s template args would otherwise
+    // The comma inside the QMap's template args would otherwise
     // be read as a THIRD macro argument by EXPECT_EQ - the preprocessor
     // matches (), [], {} but not <>, so it can't tell a template
     // argument list from an actual argument separator. A type alias
     // sidesteps it entirely.
-    using ColorMap = QMap<int, QColor>;
+    using ColorMap = QMap<EPresetsColorIdx, QColor>;
     ColorMap def;
-    def[0] = QColor(Qt::black);
+    def[EPresetsColorIdx::BackgroundColor] = QColor(Qt::black);
     ColorList handler(def);
     EXPECT_EQ(handler.fallback().value<ColorMap>(), def);
 }
@@ -127,7 +132,7 @@ TEST(ColorListValueHandlerTest, FallbackReturnsConstructorDefault)
 TEST(ColorListValueHandlerTest, CheckIsAlwaysTrue)
 {
     // check() is a stub here - see its own comment in valuehandler.cpp
-    // for why (the QMap<int,QColor> shape only round-tripped through the
+    // for why (the QMap shape only round-tripped through the
     // old QSettings backend "by accident"). process() is what actually
     // matters for this type, not check().
     ColorList handler({});
@@ -144,15 +149,16 @@ TEST(OpacityListValueHandlerTest, ProcessConvertsIndexedIntsToMap)
     OpacityList handler({});
     const QVariantList raw = {10, 20, 30};
 
-    const auto map = handler.process(raw).value<QMap<int, int>>();
-    EXPECT_EQ(map.value(0), 10);
-    EXPECT_EQ(map.value(1), 20);
-    EXPECT_EQ(map.value(2), 30);
+    const auto map = handler.process(raw).value<QMap<EPresets, int>>();
+    EXPECT_EQ(map.value(EPresets::DarkPreset), 10);
+    EXPECT_EQ(map.value(EPresets::LightPreset), 20);
+    EXPECT_EQ(map.value(EPresets::Custom1), 30);
 }
 
 TEST(OpacityListValueHandlerTest, RepresentationConvertsMapToIndexedList)
 {
-    QMap<int, int> map = {{0, 10}, {1, 20}};
+    QMap<EPresets, int> map = {{EPresets::DarkPreset, 10},
+                               {EPresets::LightPreset, 20}};
     OpacityList handler({});
 
     const QVariantList list
@@ -166,8 +172,8 @@ TEST(OpacityListValueHandlerTest, FallbackReturnsConstructorDefault)
 {
     // Same EXPECT_EQ-vs-template-comma issue as
     // ColorListValueHandlerTest.FallbackReturnsConstructorDefault above.
-    using OpacityMap = QMap<int, int>;
-    OpacityMap def = {{0, 255}};
+    using OpacityMap = QMap<EPresets, int>;
+    OpacityMap def = {{EPresets::DarkPreset, 255}};
     OpacityList handler(def);
     EXPECT_EQ(handler.fallback().value<OpacityMap>(), def);
 }

@@ -19,37 +19,37 @@
 // FamSettings/KeyboardSettings-backed facade methods are already covered
 // by famsettings_test.cpp/keyboard_settings_test.cpp respectively.
 
-using CL = QMap<int, QColor>;
-using OL = QMap<int, int>;
+using CL = SettingsHandler::CL;
+using OL = SettingsHandler::OL;
 
 namespace {
 CL makeColorList(int seed)
 {
-    return CL{{kBackgroundColor, QColor(seed, 0, 0)},
-              {kCanvasColor, QColor(0, seed, 0)},
-              {kBorderColor, QColor(0, 0, seed)},
-              {kTextColor, QColor(seed, seed, 0)},
-              {kSelectionColor, QColor(seed, 0, seed)}};
+    return CL{{EPresetsColorIdx::BackgroundColor, QColor(seed, 0, 0)},
+              {EPresetsColorIdx::CanvasColor, QColor(0, seed, 0)},
+              {EPresetsColorIdx::BorderColor, QColor(0, 0, seed)},
+              {EPresetsColorIdx::TextColor, QColor(seed, seed, 0)},
+              {EPresetsColorIdx::SelectionColor, QColor(seed, 0, seed)}};
 }
 } // namespace
 
 TEST(SettingsHandlerTest, CurrentPresetGetSetRoundTrips)
 {
     auto* h = SettingsHandler::get_instance();
-    h->set_current_preset(EPresets::kCustom2);
-    EXPECT_EQ(h->current_preset(), int(EPresets::kCustom2));
+    h->set_current_preset(static_cast<int>(EPresets::Custom2));
+    EXPECT_EQ(h->current_preset(), int(EPresets::Custom2));
     h->remove(QStringLiteral("current_preset"));
 }
 
 TEST(SettingsHandlerTest, MasterOpacityGetSetRoundTrips)
 {
     auto* h = SettingsHandler::get_instance();
-    const OL opacities{{kDarkPreset, 100},
-                       {kLightPreset, 150},
-                       {kCustom1, 200},
-                       {kCustom2, 255},
-                       {kCustom3, 10},
-                       {kCustom4, 0}};
+    const OL opacities{{EPresets::DarkPreset, 100},
+                       {EPresets::LightPreset, 150},
+                       {EPresets::Custom1, 200},
+                       {EPresets::Custom2, 255},
+                       {EPresets::Custom3, 10},
+                       {EPresets::Custom4, 0}};
     h->set_master_opacity(opacities);
     EXPECT_EQ(h->master_opacity(), opacities);
     h->remove(QStringLiteral("master_opacity"));
@@ -72,11 +72,11 @@ TEST(SettingsHandlerTest, GetCurrentColorPresetDispatchesOnCurrentPreset)
     const CL lightPreset = makeColorList(11);
     const CL custom1Preset = makeColorList(22);
 
-    h->set_current_preset(EPresets::kLightPreset);
+    h->set_current_preset(static_cast<int>(EPresets::LightPreset));
     h->set_light_color_preset(lightPreset);
     EXPECT_EQ(h->get_current_color_preset(), lightPreset);
 
-    h->set_current_preset(EPresets::kCustom1);
+    h->set_current_preset(static_cast<int>(EPresets::Custom1));
     h->set_custom_preset1(custom1Preset);
     EXPECT_EQ(h->get_current_color_preset(), custom1Preset);
 
@@ -90,7 +90,7 @@ TEST(SettingsHandlerTest, SetCurrentColorPresetDispatchesOnCurrentPreset)
     auto* h = SettingsHandler::get_instance();
     const CL preset = makeColorList(77);
 
-    h->set_current_preset(EPresets::kCustom3);
+    h->set_current_preset(static_cast<int>(EPresets::Custom3));
     h->set_current_color_preset(preset);
     EXPECT_EQ(h->custom_preset3(), preset);
     // Only the dispatched-to preset changed - a sibling stays untouched.
@@ -103,11 +103,11 @@ TEST(SettingsHandlerTest, SetCurrentColorPresetDispatchesOnCurrentPreset)
 TEST(SettingsHandlerTest, GetSetCurrentOpacityTargetsTheActivePresetSlot)
 {
     auto* h = SettingsHandler::get_instance();
-    h->set_current_preset(EPresets::kDarkPreset);
+    h->set_current_preset(static_cast<int>(EPresets::DarkPreset));
 
     h->set_current_opacity(128);
     EXPECT_EQ(h->get_current_opacity(), 128);
-    EXPECT_EQ(h->master_opacity()[EPresets::kDarkPreset], 128);
+    EXPECT_EQ(h->master_opacity()[EPresets::DarkPreset], 128);
 
     h->remove(QStringLiteral("current_preset"));
     h->remove(QStringLiteral("master_opacity"));
@@ -116,7 +116,7 @@ TEST(SettingsHandlerTest, GetSetCurrentOpacityTargetsTheActivePresetSlot)
 TEST(SettingsHandlerTest, SetDefaultCurrentPresetResetsColorsAndOpacity)
 {
     auto* h = SettingsHandler::get_instance();
-    h->set_current_preset(EPresets::kDarkPreset);
+    h->set_current_preset(static_cast<int>(EPresets::DarkPreset));
     const CL custom = makeColorList(99);
     h->set_dark_color_preset(custom);
     h->set_current_opacity(50);

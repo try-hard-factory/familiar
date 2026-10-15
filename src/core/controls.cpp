@@ -71,7 +71,7 @@ Binding Binding::deserialize(const QString& s)
 {
     const QStringList parts = s.split(QLatin1Char('|'));
     Binding b;
-    if (parts.size() > 0) {
+    if (!parts.isEmpty()) {
         b.set_key_sequence(parts[0]);
     }
     if (parts.size() > 1) {

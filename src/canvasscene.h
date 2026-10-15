@@ -30,10 +30,10 @@ class CanvasScene : public QGraphicsScene
 {
     Q_OBJECT
 public:
-    enum ESceneMode : std::uint8_t {
-        kNone = 0,
-        kMoveMode = 1,
-        kRubberbandMode = 2,
+    enum class ESceneMode : std::uint8_t {
+        NoneMode = 0,
+        MoveMode = 1,
+        RubberbandMode = 2,
     };
 
     CanvasScene(MainWindow& mw,
@@ -209,7 +209,7 @@ public:
     QList<QGraphicsItem*> items_for_save();
     void on_view_scale_change() const;
     QRectF itemsBoundingRect(bool selectionOnly = false,
-                             QList<QGraphicsItem*> items
+                             const QList<QGraphicsItem*>& items
                              = QList<QGraphicsItem*>()) const;
     QPointF get_selection_center() const;
 
@@ -417,7 +417,7 @@ private:
     TextItem* editItem_ = nullptr;
     PixmapItem* cropItem_ = nullptr;
     QPointF eventStart_;
-    ESceneMode activeMode_{kNone};
+    ESceneMode activeMode_{ESceneMode::NoneMode};
     bool clearOngoing_ = false;
 
 public:

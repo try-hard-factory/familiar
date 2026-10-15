@@ -314,10 +314,10 @@ void GifPlaybackToolbar::show_speed_popup()
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     popup->setStyleSheet(
         QStringLiteral("QWidget {"
                        "  background-color: %1;"
@@ -436,10 +436,10 @@ void GifPlaybackToolbar::restyle_from_preset()
 {
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     iconGlyphColor_ = text;
     auto rgba = [](const QColor& c, int alpha) {
         return QStringLiteral("rgba(%1, %2, %3, %4)")

@@ -47,8 +47,8 @@ void InsertItemsCommand::redo()
         }
         const QRectF rect = scene_->itemsBoundingRect(false, graphicsItems);
 
-        for (int i = 0; i < items_.size(); ++i) {
-            auto* item = dynamic_cast<QGraphicsItem*>(items_[i]);
+        for (auto& i : items_) {
+            auto* item = dynamic_cast<QGraphicsItem*>(i);
             oldPositions_.append(item->pos());
             const QPointF newPos = item->pos() + *position_ - rect.center();
             item->setPos(newPos);

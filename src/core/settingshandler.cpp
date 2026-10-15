@@ -25,54 +25,56 @@ using namespace familiar::log;
 
 namespace {
 
-QMap<int, int> opacityListDef = {
-    {kDarkPreset, 255},
-    {kLightPreset, 255},
-    {kCustom1, 255},
-    {kCustom2, 255},
-    {kCustom3, 255},
-    {kCustom4, 255},
+QMap<EPresets, int> opacityListDef = {
+    {EPresets::DarkPreset, 255},
+    {EPresets::LightPreset, 255},
+    {EPresets::Custom1, 255},
+    {EPresets::Custom2, 255},
+    {EPresets::Custom3, 255},
+    {EPresets::Custom4, 255},
 };
 
-QMap<int, QColor> darkColorPresetDef
-    = {{kBackgroundColor, QColor({32, 32, 32})},   // kBackgroundColor
-       {kCanvasColor, QColor({42, 42, 42})},       // kCanvasColor
-       {kBorderColor, QColor({13, 13, 13})},       // kBorderColor
-       {kTextColor, QColor({255, 255, 255})},      // kTextColor - white
-       {kSelectionColor, QColor({22, 142, 153})}}; // kSelectionColor
-QMap<int, QColor> lightColorPresetDef
-    = {{kBackgroundColor, QColor({224, 224, 224})},
-       {kCanvasColor, QColor({234, 234, 234})},
-       {kBorderColor, QColor({200, 200, 200})},
-       {kTextColor, QColor({111, 111, 111})},
-       {kSelectionColor, QColor({255, 0, 0})}};
-QMap<int, QColor> customPreset1Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                      {kCanvasColor, QColor({42, 42, 42})},
-                                      {kBorderColor, QColor({13, 13, 13})},
-                                      {kTextColor, QColor({122, 122, 122})},
-                                      {kSelectionColor, QColor({22, 142, 153})}};
-QMap<int, QColor> customPreset2Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                      {kCanvasColor, QColor({42, 42, 42})},
-                                      {kBorderColor, QColor({13, 13, 13})},
-                                      {kTextColor, QColor({122, 122, 122})},
-                                      {kSelectionColor, QColor({22, 142, 153})}};
-QMap<int, QColor> customPreset3Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                      {kCanvasColor, QColor({42, 42, 42})},
-                                      {kBorderColor, QColor({13, 13, 13})},
-                                      {kTextColor, QColor({122, 122, 122})},
-                                      {kSelectionColor, QColor({22, 142, 153})}};
-QMap<int, QColor> customPreset4Def = {{kBackgroundColor, QColor({32, 32, 32})},
-                                      {kCanvasColor, QColor({42, 42, 42})},
-                                      {kBorderColor, QColor({13, 13, 13})},
-                                      {kTextColor, QColor({122, 122, 122})},
-                                      {kSelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> darkColorPresetDef
+    = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},   // BackgroundColor
+       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},       // CanvasColor
+       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},       // BorderColor
+       {EPresetsColorIdx::TextColor, QColor({255, 255, 255})},      // TextColor - white
+       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}}; // SelectionColor
+QMap<EPresetsColorIdx, QColor> lightColorPresetDef
+    = {{EPresetsColorIdx::BackgroundColor, QColor({224, 224, 224})},
+       {EPresetsColorIdx::CanvasColor, QColor({234, 234, 234})},
+       {EPresetsColorIdx::BorderColor, QColor({200, 200, 200})},
+       {EPresetsColorIdx::TextColor, QColor({111, 111, 111})},
+       {EPresetsColorIdx::SelectionColor, QColor({255, 0, 0})}};
+QMap<EPresetsColorIdx, QColor> customPreset1Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset2Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset3Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset4Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
 
 QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions = {
     //         KEY                            TYPE                 DEFAULT_VALUE
     OPTION("option0", Bool(true)),
     OPTION("option1", Bool(true)),
     OPTION("current_preset",
-           BoundedInt(0, EPresets::kAllPresets, EPresets::kDarkPreset)),
+           BoundedInt(0,
+                      static_cast<int>(EPresets::AllPresets),
+                      static_cast<int>(EPresets::DarkPreset))),
     OPTION("master_opacity", OpacityList(opacityListDef)),
     OPTION("dark_color_preset", ColorList(darkColorPresetDef)),
     OPTION("light_color_preset", ColorList(lightColorPresetDef)),
@@ -318,29 +320,29 @@ bool SettingsHandler::import_settings_from(const QString& path)
 
 void SettingsHandler::set_default_current_preset()
 {
-    auto currentPreset = current_preset();
+    const auto currentPreset = static_cast<EPresets>(current_preset());
     switch (currentPreset) {
-    case EPresets::kDarkPreset:
+    case EPresets::DarkPreset:
         remove_json_value(QStringLiteral("Colors"),
                           QStringLiteral("dark_color_preset"));
         break;
-    case EPresets::kLightPreset:
+    case EPresets::LightPreset:
         remove_json_value(QStringLiteral("Colors"),
                           QStringLiteral("light_color_preset"));
         break;
-    case EPresets::kCustom1:
+    case EPresets::Custom1:
         remove_json_value(QStringLiteral("Colors"),
                           QStringLiteral("custom_preset1"));
         break;
-    case EPresets::kCustom2:
+    case EPresets::Custom2:
         remove_json_value(QStringLiteral("Colors"),
                           QStringLiteral("custom_preset2"));
         break;
-    case EPresets::kCustom3:
+    case EPresets::Custom3:
         remove_json_value(QStringLiteral("Colors"),
                           QStringLiteral("custom_preset3"));
         break;
-    case EPresets::kCustom4:
+    case EPresets::Custom4:
         remove_json_value(QStringLiteral("Colors"),
                           QStringLiteral("custom_preset4"));
         break;
@@ -383,19 +385,19 @@ void SettingsHandler::reset_value(const QString& key)
 
 SettingsHandler::CL SettingsHandler::get_current_color_preset()
 {
-    auto currentPreset = current_preset();
+    const auto currentPreset = static_cast<EPresets>(current_preset());
     switch (currentPreset) {
-    case EPresets::kDarkPreset:
+    case EPresets::DarkPreset:
         return dark_color_preset();
-    case EPresets::kLightPreset:
+    case EPresets::LightPreset:
         return light_color_preset();
-    case EPresets::kCustom1:
+    case EPresets::Custom1:
         return custom_preset1();
-    case EPresets::kCustom2:
+    case EPresets::Custom2:
         return custom_preset2();
-    case EPresets::kCustom3:
+    case EPresets::Custom3:
         return custom_preset3();
-    case EPresets::kCustom4:
+    case EPresets::Custom4:
         return custom_preset4();
     default:
         break;
@@ -406,25 +408,25 @@ SettingsHandler::CL SettingsHandler::get_current_color_preset()
 
 void SettingsHandler::set_current_color_preset(const SettingsHandler::CL& preset)
 {
-    auto currentPreset = current_preset();
+    const auto currentPreset = static_cast<EPresets>(current_preset());
 
     switch (currentPreset) {
-    case EPresets::kDarkPreset:
+    case EPresets::DarkPreset:
         set_dark_color_preset(preset);
         break;
-    case EPresets::kLightPreset:
+    case EPresets::LightPreset:
         set_light_color_preset(preset);
         break;
-    case EPresets::kCustom1:
+    case EPresets::Custom1:
         set_custom_preset1(preset);
         break;
-    case EPresets::kCustom2:
+    case EPresets::Custom2:
         set_custom_preset2(preset);
         break;
-    case EPresets::kCustom3:
+    case EPresets::Custom3:
         set_custom_preset3(preset);
         break;
-    case EPresets::kCustom4:
+    case EPresets::Custom4:
         set_custom_preset4(preset);
         break;
     default:
@@ -434,14 +436,14 @@ void SettingsHandler::set_current_color_preset(const SettingsHandler::CL& preset
 
 int SettingsHandler::get_current_opacity()
 {
-    auto currentPreset = current_preset();
+    const auto currentPreset = static_cast<EPresets>(current_preset());
     auto masterOpacity = master_opacity();
     return masterOpacity[currentPreset];
 }
 
 void SettingsHandler::set_current_opacity(int opacity)
 {
-    auto currentPreset = current_preset();
+    const auto currentPreset = static_cast<EPresets>(current_preset());
     auto masterOpacity = master_opacity();
     masterOpacity[currentPreset] = opacity;
     set_master_opacity(masterOpacity);

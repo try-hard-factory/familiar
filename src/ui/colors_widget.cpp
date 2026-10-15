@@ -116,12 +116,12 @@ void ColorsWidget::presets_init()
         EPresets preset;
     };
     const QList<PresetBtn> presets = {
-        {.label = tr("Dark"), .preset = EPresets::kDarkPreset},
-        {.label = tr("Light"), .preset = EPresets::kLightPreset},
-        {.label = tr("Custom 1"), .preset = EPresets::kCustom1},
-        {.label = tr("Custom 2"), .preset = EPresets::kCustom2},
-        {.label = tr("Custom 3"), .preset = EPresets::kCustom3},
-        {.label = tr("Custom 4"), .preset = EPresets::kCustom4},
+        {.label = tr("Dark"), .preset = EPresets::DarkPreset},
+        {.label = tr("Light"), .preset = EPresets::LightPreset},
+        {.label = tr("Custom 1"), .preset = EPresets::Custom1},
+        {.label = tr("Custom 2"), .preset = EPresets::Custom2},
+        {.label = tr("Custom 3"), .preset = EPresets::Custom3},
+        {.label = tr("Custom 4"), .preset = EPresets::Custom4},
     };
 
     for (const PresetBtn& preset : presets) {
@@ -166,7 +166,8 @@ void ColorsWidget::presets_init()
 
         const EPresets value = preset.preset;
         connect(btn, &QPushButton::clicked, this, [value]() {
-            SettingsHandler::get_instance()->set_current_preset(value);
+            SettingsHandler::get_instance()->set_current_preset(
+                static_cast<int>(value));
             emit SettingsHandler::get_instance() -> presets_changed();
         });
 
@@ -200,12 +201,12 @@ void ColorsWidget::color_init()
     };
     const QList<ColorRow> rows = {
         {.label = tr("Background color: "),
-         .idx = EPresetsColorIdx::kBackgroundColor},
-        {.label = tr("Canvas color: "), .idx = EPresetsColorIdx::kCanvasColor},
-        {.label = tr("Border color: "), .idx = EPresetsColorIdx::kBorderColor},
-        {.label = tr("UI Text Color: "), .idx = EPresetsColorIdx::kTextColor},
+         .idx = EPresetsColorIdx::BackgroundColor},
+        {.label = tr("Canvas color: "), .idx = EPresetsColorIdx::CanvasColor},
+        {.label = tr("Border color: "), .idx = EPresetsColorIdx::BorderColor},
+        {.label = tr("UI Text Color: "), .idx = EPresetsColorIdx::TextColor},
         {.label = tr("Selection color: "),
-         .idx = EPresetsColorIdx::kSelectionColor},
+         .idx = EPresetsColorIdx::SelectionColor},
     };
 
     for (const ColorRow& row : rows) {
@@ -224,7 +225,7 @@ void ColorsWidget::color_init()
             "QToolButton { border: none; background: transparent; }"));
         rowLayout->addWidget(swatch);
 
-        colorSwatches_[row.idx] = swatch;
+        colorSwatches_[static_cast<int>(row.idx)] = swatch;
         const EPresetsColorIdx idx = row.idx;
         connect(swatch, &QToolButton::clicked, this, [this, idx]() {
             pick_color(idx);
@@ -233,7 +234,7 @@ void ColorsWidget::color_init()
         colorsLayout->addLayout(rowLayout);
     }
 
-    for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
+    for (int i = 0; i < static_cast<int>(EPresetsColorIdx::AllIdx); ++i) {
         refresh_swatch(static_cast<EPresetsColorIdx>(i));
     }
 
@@ -247,11 +248,11 @@ void ColorsWidget::pick_color(EPresetsColorIdx idx)
     const QColor oldColor = preset[idx];
 
     const QMap<EPresetsColorIdx, QString> titles = {
-        {EPresetsColorIdx::kBackgroundColor, tr("Background color")},
-        {EPresetsColorIdx::kCanvasColor, tr("Canvas color")},
-        {EPresetsColorIdx::kBorderColor, tr("Border color")},
-        {EPresetsColorIdx::kTextColor, tr("UI Text Color")},
-        {EPresetsColorIdx::kSelectionColor, tr("Selection color")},
+        {EPresetsColorIdx::BackgroundColor, tr("Background color")},
+        {EPresetsColorIdx::CanvasColor, tr("Canvas color")},
+        {EPresetsColorIdx::BorderColor, tr("Border color")},
+        {EPresetsColorIdx::TextColor, tr("UI Text Color")},
+        {EPresetsColorIdx::SelectionColor, tr("Selection color")},
     };
 
     ColorPickerDialog dialog(this, oldColor, titles.value(idx));
@@ -280,7 +281,7 @@ void ColorsWidget::pick_color(EPresetsColorIdx idx)
 
 void ColorsWidget::refresh_swatch(EPresetsColorIdx idx)
 {
-    QToolButton* swatch = colorSwatches_[idx];
+    QToolButton* swatch = colorSwatches_[static_cast<int>(idx)];
     if (!swatch) {
         return;
     }
@@ -352,7 +353,7 @@ void ColorsWidget::update_components()
 {
     auto* settings = SettingsHandler::get_instance();
 
-    for (int i = 0; i < EPresetsColorIdx::kAllIdx; ++i) {
+    for (int i = 0; i < static_cast<int>(EPresetsColorIdx::AllIdx); ++i) {
         refresh_swatch(static_cast<EPresetsColorIdx>(i));
     }
 

@@ -48,11 +48,11 @@ class CanvasView : public MainControlsMixin<CanvasView, QGraphicsView>
 {
     Q_OBJECT
 public:
-    enum ActiveMode : std::uint8_t {
-        kModeNone,
-        kModePan,
-        kModeZoom,
-        kModeSampleColor
+    enum class ActiveMode : std::uint8_t {
+        ModeNone,
+        ModePan,
+        ModeZoom,
+        ModeSampleColor
     };
 
     CanvasView(MainWindow& mw, QWidget* parent = nullptr);
@@ -141,7 +141,7 @@ public slots:
     void on_scene_changed();
     void on_selection_changed();
     void on_context_menu(const QPoint& point);
-    void on_cursor_changed(QCursor cursor);
+    void on_cursor_changed(const QCursor& cursor);
     void on_cursor_cleared();
     void on_undo_clean_changed(bool clean);
     void settings_changed_slot();
@@ -250,7 +250,7 @@ protected:
 private:
     void recalc_scene_rect();
     void do_scale(qreal sx, qreal sy);
-    double get_zoom_size(std::function<double(double, double)> func) const;
+    double get_zoom_size(const std::function<double(double, double)>& func) const;
     // Discrete one-step nudge for a Control keyboard-alias (see
     // widgets/controls/binding_dialogs.cpp - Controls can now carry a
     // keySequence too), reusing wheelEvent()'s existing single-notch step
@@ -298,7 +298,7 @@ private:
     CanvasScene* scene_;
     uint64_t zCounter_ = 0;
 
-    ActiveMode activeMode_ = kModeNone;
+    ActiveMode activeMode_ = ActiveMode::ModeNone;
     QPointF eventStart_;
     QPointF eventAnchor_;
     bool eventInverted_ = false;

@@ -317,7 +317,7 @@ class SelectableMixin : public BaseItemMixin<T>
     int viewportScale_{1};
     bool isEditable_{false};
 
-    // kFieldResizeMode drag state (edit-mode square handles only - see
+    // FieldResizeMode drag state (edit-mode square handles only - see
     // ItemMixin::resize_field(), moveitem.h). eventAnchor_ above holds
     // the SCENE position of the fixed corner/edge, captured once at
     // press - re-mapped into LOCAL coordinates fresh on every
@@ -343,7 +343,7 @@ class SelectableMixin : public BaseItemMixin<T>
 
 public:
     // Was FlipBounds/flip_v - these edge zones used to trigger a flip on
-    // click; they now trigger the same uniform kScaleMode drag as the
+    // click; they now trigger the same uniform ScaleMode drag as the
     // corner handles (see mousePressEvent()), just anchored on the
     // opposite edge instead of the opposite corner. `vertical` still
     // marks whether this is a top/bottom edge (true) or left/right
@@ -354,17 +354,17 @@ public:
         bool vertical = false;
     };
 
-    enum EItemMode : std::uint8_t {
-        kNone = 0,
-        kScaleMode = 1,
-        kRotateMode = 2,
+    enum class EItemMode : std::uint8_t {
+        NoneMode = 0,
+        ScaleMode = 1,
+        RotateMode = 2,
         // Edit-mode (square handle) drag - resizes the field itself
         // (ItemMixin::resize_field()) instead of uniformly scaling.
-        kFieldResizeMode = 3,
+        FieldResizeMode = 3,
     };
 
 private:
-    EItemMode activeMode_{kNone};
+    EItemMode activeMode_{EItemMode::NoneMode};
 
 protected:
     // Subclasses (GroupItem::itemChange()) need the exact mode, not just
@@ -505,7 +505,7 @@ public:
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        QColor selectColor = colorPreset[EPresetsColorIdx::kSelectionColor];
+        QColor selectColor = colorPreset[EPresetsColorIdx::SelectionColor];
         selectColor.setAlphaF(selectColor.alphaF()
                               * static_cast<float>(outlineOpacity));
 
@@ -524,17 +524,17 @@ public:
         // mid-operation. activeMode_ covers the scale/rotate case
         // directly; a plain body drag doesn't set THIS item's own
         // activeMode_ (see GroupItem::itemChange()'s own comment on
-        // why - kNone is what lets the position cascade run), so that
+        // why - NoneMode is what lets the position cascade run), so that
         // case is instead read off the SCENE's active_mode() - true for
         // every currently-selected item during a drag, not just whichever
         // one Qt happens to be dragging directly.
-        bool suppressHandles = activeMode_ == kScaleMode
-                               || activeMode_ == kRotateMode
-                               || activeMode_ == kFieldResizeMode;
+        bool suppressHandles = activeMode_ == EItemMode::ScaleMode
+                               || activeMode_ == EItemMode::RotateMode
+                               || activeMode_ == EItemMode::FieldResizeMode;
         if (!suppressHandles && this->isSelected() && this->scene()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 suppressHandles = scene->active_mode()
-                                  == CanvasScene::ESceneMode::kMoveMode;
+                                  == CanvasScene::ESceneMode::MoveMode;
             }
         }
 
@@ -593,7 +593,7 @@ public:
     }
 
     // Whether this item is currently mid scale/rotate/flip drag.
-    bool is_action_active() const override { return activeMode_ != kNone; }
+    bool is_action_active() const override { return activeMode_ != EItemMode::NoneMode; }
 
     qreal scale_orig_factor() const override { return scaleOrigFactor_; }
     void set_scale_orig_factor(qreal value) override
@@ -764,7 +764,8 @@ protected:
             if (is_in_scale_handle(corner, pos)) {
                 this->set_cursor(get_corner_scale_cursor(corner));
                 return;
-            } else if (!resizeOnly && is_in_rotate_handle(corner, pos)) {
+            }
+            if (!resizeOnly && is_in_rotate_handle(corner, pos)) {
                 // TODOLATER: custom rotate icon
                 this->set_cursor(QCursor(Qt::SizeAllCursor));
                 return;
@@ -838,7 +839,7 @@ protected:
                     if (resizeOnly) {
                         // Edit mode: resize the field (both dimensions -
                         // it's a corner), not a uniform scale.
-                        activeMode_ = kFieldResizeMode;
+                        activeMode_ = EItemMode::FieldResizeMode;
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(corner));
                         const QPointF c = this->center();
@@ -851,7 +852,7 @@ protected:
                         event->accept();
                         return;
                     }
-                    activeMode_ = kScaleMode;
+                    activeMode_ = EItemMode::ScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(get_scale_anchor(corner));
@@ -870,7 +871,7 @@ protected:
 
                 //Check if we are in one of the corner's rotate areas
                 if (!resizeOnly && is_in_rotate_handle(corner, event->pos())) {
-                    activeMode_ = kRotateMode;
+                    activeMode_ = EItemMode::RotateMode;
                     eventAnchor_ = this->center_scene_coords();
                     rotateStartAngle_ = get_rotate_angle(event->scenePos());
                     for (auto& item :
@@ -884,7 +885,7 @@ protected:
             }
 
             //Check if we are in one of the edge's scale areas - same
-            //kScaleMode drag as a corner, just anchored on the opposite
+            //ScaleMode drag as a corner, just anchored on the opposite
             //edge (get_scale_anchor() mirrors any local point around the
             //item's center, corner or edge midpoint alike).
             for (const auto& edge : get_edge_bounds()) {
@@ -893,7 +894,7 @@ protected:
                         // Edit mode: resize the field along whichever
                         // one axis this edge governs, leaving the other
                         // dimension untouched.
-                        activeMode_ = kFieldResizeMode;
+                        activeMode_ = EItemMode::FieldResizeMode;
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(edge.rect.center()));
                         const QPointF c = this->center();
@@ -910,7 +911,7 @@ protected:
                         event->accept();
                         return;
                     }
-                    activeMode_ = kScaleMode;
+                    activeMode_ = EItemMode::ScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(
@@ -1007,24 +1008,25 @@ protected:
         if (isTopLeftOrBottomRight) {
             if ((22.5 < rotation) && (rotation < 67.5)) {
                 return Qt::SizeVerCursor;
-            } else if ((67.5 < rotation) && (rotation < 112.5)) {
-                return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
-            } else if ((112.5 < rotation) && (rotation < 157.5)) {
-                return Qt::SizeHorCursor;
-            } else {
-                return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
             }
-        } else {
-            if ((22.5 < rotation) && (rotation < 67.5)) {
-                return Qt::SizeHorCursor;
-            } else if ((67.5 < rotation) && (rotation < 112.5)) {
-                return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
-            } else if ((112.5 < rotation) && (rotation < 157.5)) {
-                return Qt::SizeVerCursor;
-            } else {
+            if ((67.5 < rotation) && (rotation < 112.5)) {
                 return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
             }
+            if ((112.5 < rotation) && (rotation < 157.5)) {
+                return Qt::SizeHorCursor;
+            }
+            return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
         }
+        if ((22.5 < rotation) && (rotation < 67.5)) {
+            return Qt::SizeHorCursor;
+        }
+        if ((67.5 < rotation) && (rotation < 112.5)) {
+            return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
+        }
+        if ((112.5 < rotation) && (rotation < 157.5)) {
+            return Qt::SizeVerCursor;
+        }
+        return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
     }
 
     // Whether dragging this edge visually affects the item's vertical
@@ -1036,9 +1038,8 @@ protected:
         if (((this->rotation() > 45) && (this->rotation() < 135))
             || ((this->rotation() > 225) && (this->rotation() < 315))) {
             return !edge.vertical;
-        } else {
-            return edge.vertical;
         }
+        return edge.vertical;
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
@@ -1050,7 +1051,7 @@ protected:
             view->reset_previous_transform(nullptr);
         }
 
-        if (activeMode_ == kScaleMode) {
+        if (activeMode_ == EItemMode::ScaleMode) {
             const qreal factor = get_scale_factor(event);
             // begin/end_group_batch(): a group's own scale drags every
             // one of selection_action_items()'s flat entries
@@ -1074,14 +1075,15 @@ protected:
             }
             event->accept();
             return;
-        } else if (activeMode_ == kRotateMode) {
+        }
+        if (activeMode_ == EItemMode::RotateMode) {
             auto snap = (event->modifiers()
                              == Qt::KeyboardModifier::ShiftModifier
                          || event->modifiers()
                                 == Qt::KeyboardModifier::ControlModifier);
 
             const qreal delta = get_rotate_delta(event->scenePos(), snap);
-            // Same reasoning as kScaleMode above.
+            // Same reasoning as ScaleMode above.
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             if (scene) {
                 scene->begin_group_batch();
@@ -1098,7 +1100,8 @@ protected:
             }
             event->accept();
             return;
-        } else if (activeMode_ == kFieldResizeMode) {
+        }
+        if (activeMode_ == EItemMode::FieldResizeMode) {
             // Local coordinates throughout (not the diagonal-projection
             // math get_scale_factor() uses) - a field resize just needs
             // "how far past the anchor is the mouse now", one axis at a
@@ -1130,11 +1133,11 @@ protected:
         T::mouseMoveEvent(event); // see mousePressEvent() comment above
     }
 
-    void reset_actions() { activeMode_ = kNone; }
+    void reset_actions() { activeMode_ = EItemMode::NoneMode; }
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (activeMode_ == kScaleMode) {
+        if (activeMode_ == EItemMode::ScaleMode) {
             const qreal factor = get_scale_factor(event);
             if (factor != 1) {
                 // TODOLATER: static or dynamic? assert?
@@ -1149,7 +1152,8 @@ protected:
             event->accept();
             reset_actions();
             return;
-        } else if (activeMode_ == kRotateMode) {
+        }
+        if (activeMode_ == EItemMode::RotateMode) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             scene->on_selection_change(); // or emit selectionChange()
             const qreal delta = get_rotate_delta(event->scenePos());
@@ -1164,7 +1168,8 @@ protected:
             event->accept();
             reset_actions();
             return;
-        } else if (activeMode_ == kFieldResizeMode) {
+        }
+        if (activeMode_ == EItemMode::FieldResizeMode) {
             static_cast<Mixin*>(this)
                 ->commit_field_resize(fieldResizeOrigSize_.width(),
                                       fieldResizeOrigSize_.height(),
@@ -1397,7 +1402,7 @@ public:
     {
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        QColor fillColor = colorPreset[EPresetsColorIdx::kSelectionColor];
+        QColor fillColor = colorPreset[EPresetsColorIdx::SelectionColor];
         fillColor.setAlpha(40);
         this->setBrush(QBrush(fillColor));
 

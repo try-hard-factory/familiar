@@ -203,7 +203,7 @@ void CanvasScene::end_rubberband_mode()
         FLOG_DEBUG(Ch::Scene, "End rubberband mode");
         removeItem(rubberbandItem_);
     }
-    activeMode_ = kNone;
+    activeMode_ = ESceneMode::NoneMode;
 }
 
 void CanvasScene::cancel_crop_mode()
@@ -1162,7 +1162,8 @@ void CanvasScene::arrange_optimal()
     int width = static_cast<int>(std::ceil(std::sqrt(minArea)));
 
     QList<RectPacker::Position> positions;
-    int boundsWidth = 0, boundsHeight = 0;
+    int boundsWidth = 0;
+    int boundsHeight = 0;
 
     // Пробуем увеличить размер контейнера пока не получится упаковать
     while (positions.isEmpty()) {
@@ -1517,9 +1518,9 @@ void CanvasScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
         }
 
         if (itemAtPos) {
-            activeMode_ = kMoveMode;
+            activeMode_ = ESceneMode::MoveMode;
         } else if (!items().isEmpty()) {
-            activeMode_ = kRubberbandMode;
+            activeMode_ = ESceneMode::RubberbandMode;
         }
     }
 
@@ -1586,7 +1587,7 @@ void CanvasScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 
 void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (activeMode_ == kRubberbandMode) {
+    if (activeMode_ == ESceneMode::RubberbandMode) {
         if (!rubberbandItem_->scene()) {
             FLOG_DEBUG(Ch::Scene, "Activating rubberband selection");
             addItem(rubberbandItem_);
@@ -1604,7 +1605,7 @@ void CanvasScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
         view->reset_previous_transform();
     }
 
-    if (activeMode_ == kMoveMode && has_selection()
+    if (activeMode_ == ESceneMode::MoveMode && has_selection()
         && !multiselectItem_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
@@ -1631,10 +1632,10 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     FLOG_DEBUG(Ch::Scene,
                "CanvasScene::mouseReleaseEvent activeMode_={}",
                int(activeMode_));
-    if (activeMode_ == kRubberbandMode) {
+    if (activeMode_ == ESceneMode::RubberbandMode) {
         end_rubberband_mode();
     }
-    if (activeMode_ == kMoveMode && has_selection()
+    if (activeMode_ == ESceneMode::MoveMode && has_selection()
         && !multiselectItem_->is_action_active()
         && !dynamic_cast<IBaseItem*>(selectedItems().first())
                 ->is_action_active()) {
@@ -1662,9 +1663,9 @@ void CanvasScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     // ordering): Qt defers a ctrl+click deselect-toggle on an
     // already-selected item to this base mouseReleaseEvent call, and
     // ItemMixin::on_selected_change() needs active_mode() to still read
-    // kMoveMode when that fires.
+    // MoveMode when that fires.
     QGraphicsScene::mouseReleaseEvent(event);
-    activeMode_ = kNone;
+    activeMode_ = ESceneMode::NoneMode;
 }
 
 QList<QGraphicsItem*> CanvasScene::selectedItems(bool userOnly) const
@@ -1719,7 +1720,7 @@ void CanvasScene::on_view_scale_change() const
 }
 
 QRectF CanvasScene::itemsBoundingRect(bool selectionOnly,
-                                      QList<QGraphicsItem*> itemsIn) const
+                                      const QList<QGraphicsItem*>& itemsIn) const
 {
     auto filterUserItems =
         [](const QList<QGraphicsItem*>& itemList) -> QList<QGraphicsItem*> {
@@ -1784,17 +1785,18 @@ void CanvasScene::on_selection_change()
     // Same mode guard ItemMixin::on_selected_change() (moveitem.h) uses
     // for its own (single-item, first-of-a-fresh-selection-only)
     // bring-to-front - keeps this from firing during a file load
-    // restoring a saved selection (activeMode_ is kNone then, no mouse
+    // restoring a saved selection (activeMode_ is NoneMode then, no mouse
     // interaction in progress) or any other non-click-driven selection
-    // change, only for an actual user click (kMoveMode) or rubber-band
-    // sweep (kRubberbandMode, so a multi-select-by-dragging ends up on
+    // change, only for an actual user click (MoveMode) or rubber-band
+    // sweep (RubberbandMode, so a multi-select-by-dragging ends up on
     // top too, not just ctrl+click accumulation).
     FLOG_DEBUG(Ch::Scene,
                "CanvasScene::on_selection_change() activeMode_={} "
                "selectedCount={}",
                int(activeMode_),
                selectedItems(true).size());
-    if (activeMode_ == kMoveMode || activeMode_ == kRubberbandMode) {
+    if (activeMode_ == ESceneMode::MoveMode
+        || activeMode_ == ESceneMode::RubberbandMode) {
         raise_selection_to_front();
     }
 
@@ -2112,7 +2114,7 @@ void CanvasScene::settings_changed_slot()
 {
     auto* settings = SettingsHandler::get_instance();
     auto colorPreset = settings->get_current_color_preset();
-    selectionColor_ = colorPreset[EPresetsColorIdx::kSelectionColor];
+    selectionColor_ = colorPreset[EPresetsColorIdx::SelectionColor];
 }
 
 void CanvasScene::clipboard_changed()
