@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <optional>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -82,7 +83,7 @@ void add_options(QCommandLineParser& parser)
 
 } // namespace
 
-void CommandlineArgs::process(const QCoreApplication& app)
+std::optional<int> CommandlineArgs::process(const QCoreApplication& app)
 {
     QCommandLineParser parser;
     parser.setApplicationDescription(QCoreApplication::tr(
@@ -111,17 +112,17 @@ void CommandlineArgs::process(const QCoreApplication& app)
         (void) std::fputs(qPrintable(parser.errorText()), stderr);
         (void) std::fputs("\n\n", stderr);
         (void) std::fputs(qPrintable(parser.helpText()), stderr);
-        std::exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
     if (parser.isSet(versionOption)) {
         std::printf("%s %s\n",
                     qPrintable(QCoreApplication::applicationName()),
                     qPrintable(QCoreApplication::applicationVersion()));
-        std::exit(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
     if (parser.isSet(helpOption)) {
         (void) std::fputs(qPrintable(parser.helpText()), stdout);
-        std::exit(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
 
     const QStringList positional = parser.positionalArguments();
@@ -133,7 +134,7 @@ void CommandlineArgs::process(const QCoreApplication& app)
                                          positional.first());
             (void) std::fputs(qPrintable(msg), stderr);
             (void) std::fputs(qPrintable(parser.helpText()), stderr);
-            std::exit(EXIT_FAILURE);
+            return EXIT_FAILURE;
         }
         filename_ = positional.first();
     }
@@ -146,6 +147,8 @@ void CommandlineArgs::process(const QCoreApplication& app)
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
     debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
     debugHandles_ = parser.isSet(QStringLiteral("debug-handles"));
+
+    return std::nullopt;
 }
 
 void CommandlineArgs::parse(const QStringList& args)

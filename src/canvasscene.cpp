@@ -67,7 +67,6 @@ CanvasScene::CanvasScene(MainWindow& mw,
                          QUndoStack* undoStack,
                          QGraphicsScene* scene)
     : undoStack_(undoStack)
-    , clearOngoing_(false)
     , mainwindow_(mw)
     , zCounter_(zc)
 {
@@ -683,7 +682,7 @@ void CanvasScene::maybe_add_dropped_items_to_group(
     // other group (see the transfer branch below), or a GroupItem
     // itself - dragging a whole subgroup onto another group nests it
     // the same way "select both + Ctrl+G" would
-    const QList<QGraphicsItem*> candidates = movedItems;
+    const QList<QGraphicsItem*>& candidates = movedItems;
     if (candidates.isEmpty()) {
         return;
     }

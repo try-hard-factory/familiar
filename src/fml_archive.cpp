@@ -215,7 +215,7 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
 
     QSet<QUuid> seenIds;
     const QJsonArray items = root.value(QStringLiteral("items")).toArray();
-    for (const QJsonValue& v : items) {
+    for (const auto& v : items) {
         const QJsonObject obj = v.toObject();
         ManifestItem item;
 

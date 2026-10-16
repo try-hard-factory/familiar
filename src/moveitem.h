@@ -1393,7 +1393,6 @@ public:
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
         : ItemMixin<TextItem, QGraphicsTextItem>(parent)
-        , editMode_(false)
         , fillColor_(default_fill_color())
     {
         setPlainText(text.isEmpty() ? QStringLiteral("Text") : text);

@@ -264,7 +264,7 @@ bool SettingsHandler::json_group_is_empty(const QString& group) const
 QStringList SettingsHandler::recent_files_raw() const
 {
     QStringList out;
-    for (const QJsonValue& v :
+    for (const auto& v :
          document_.value(QStringLiteral("RecentFiles")).toArray()) {
         out.append(v.toString());
     }

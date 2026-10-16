@@ -933,7 +933,6 @@ public:
     SceneToPixmapExporterDialog(QWidget* parent, QSize defaultSize)
         : QDialog(parent)
         , defaultSize_(defaultSize)
-        , ignoreChange_(false)
     {
         if (defaultSize.width() > kmaxSize || defaultSize.width() >= kmaxSize) {
             defaultSize.scale(kmaxSize, kmaxSize, Qt::KeepAspectRatio);
@@ -1012,7 +1011,7 @@ private slots:
 // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QSize defaultSize_;
-    bool ignoreChange_;
+    bool ignoreChange_ = false;
     QSpinBox* widthInput_;
     QSpinBox* heightInput_;
 };

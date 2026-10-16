@@ -162,7 +162,7 @@ private:
     {
         qaction->setCheckable(true);
 
-        const QString settingsKey = action->settings_key();
+        const QString& settingsKey = action->settings_key();
         const bool defaultChecked = action->initially_checked();
         qaction->setChecked(defaultChecked);
 
@@ -318,7 +318,7 @@ private:
             get_actions().add(a);
 
             if (i < files.size()) {
-                const QString filename = files[i];
+                const QString& filename = files[i];
                 auto* qa = new QAction(QFileInfo(filename).fileName(),
                                        static_cast<T*>(this));
 

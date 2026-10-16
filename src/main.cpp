@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 
+#include <optional>
+
 #include <QApplication>
 #include <QIcon>
 #include <QMessageBox>
@@ -120,7 +122,10 @@ int main(int argc, char* argv[])
 
     // Must run before anything below reads a CommandlineArgs getter (log
     // level, filename to open, ...) - see CommandlineArgs::process().
-    CommandlineArgs::instance().process(a);
+    if (const std::optional<int> exitCode
+        = CommandlineArgs::instance().process(a)) {
+        return *exitCode;
+    }
 
     // Window/taskbar icon. Built from the raster PNGs (rather than the
     // .svg also in graphics.qrc) since QIcon needs the Qt SVG icon-engine

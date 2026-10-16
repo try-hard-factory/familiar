@@ -2,6 +2,7 @@
 #define SETTINGS_H
 
 #include <functional>
+#include <optional>
 #include <QMap>
 #include <QObject>
 #include <QStringList>
@@ -16,8 +17,19 @@ class CommandlineArgs
 public:
     static CommandlineArgs& instance();
 
-    // Call once from main() after constructing QApplication, before anything else.
-    void process(const QCoreApplication& app);
+    // Call once from main() after constructing QApplication, before anything
+    // else. Returns the exit code main() should return for the "print and
+    // quit" arguments (--help/--version/a parse error), or nullopt to carry
+    // on starting up.
+    //
+    // Deliberately NOT std::exit() from in here, which is what this used to
+    // do: exit() skips every local destructor in main(), including the
+    // single-instance QSharedMemory guard's. Measured, not theoretical -
+    // every --help/--version left a System V segment behind (`ipcs -m`,
+    // nattch 0 and no `dest` flag, so not even marked for destruction). One
+    // at a time: the next launch's attach()-then-detach() does clear the
+    // previous one (see acquire_single_instance_lock() in main.cpp).
+    [[nodiscard]] std::optional<int> process(const QCoreApplication& app);
 
     // For unit tests: parse without exiting on unknown args.
     void parse(const QStringList& args);

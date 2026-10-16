@@ -28,6 +28,15 @@ enum class Level : std::uint8_t;
 // without re-parsing the formatted text. Feeds DebugLogDialog's live tail
 // (including its per-level filter checkboxes) and gives a crash handler
 // something to dump even when the file sink hasn't flushed yet.
+// Both bases carry their own state, so this is real multiple
+// implementation inheritance rather than "one class + pure interfaces" -
+// quill::Sink has only two pure virtuals and seven data members of its
+// own (filters, a spinlock, two atomics). Unavoidable here: quill
+// requires deriving from Sink, and entry_added() requires QObject. The
+// alternative is splitting this into a sink plus a separate QObject
+// emitter it holds a pointer to, i.e. an extra indirection for the
+// linter's sake.
+// NOLINTNEXTLINE(fuchsia-multiple-inheritance)
 class RingSink final : public QObject, public quill::Sink
 {
     Q_OBJECT

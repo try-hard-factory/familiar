@@ -440,7 +440,7 @@ QJsonArray to_json_array(const QStringList& values)
 QStringList from_json_array(const QJsonValue& v)
 {
     QStringList out;
-    for (const QJsonValue& e : v.toArray()) {
+    for (const auto& e : v.toArray()) {
         out.append(e.toString());
     }
     return out;

@@ -114,7 +114,15 @@ public:
     virtual void set_attached_to(const QUuid& uid) { Q_UNUSED(uid); }
 };
 
+// T is a heavyweight Qt item (QGraphicsPixmapItem/TextItem/RectItem) and
+// IBaseItem is an interface in spirit - ~30 pure virtuals - but not
+// formally: it inherits std::enable_shared_from_this (state: the weak_ptr
+// to the control block, which acquire_shared() above needs) and keeps
+// three virtuals with bodies as defaults for subclasses that don't need
+// them. Making it formally pure would mean dropping acquire_shared() and
+// repeating those three bodies in every subclass.
 template<typename T>
+// NOLINTNEXTLINE(fuchsia-multiple-inheritance)
 class BaseItemMixin : public T, public IBaseItem
 {
     // See uid()/set_uid() below.
