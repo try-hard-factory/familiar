@@ -287,6 +287,7 @@ public:
     {
         if (cropMode_) {
             //ItemMixin<PixmapItem, QGraphicsPixmapItem>::bounding_rect_unselected();
+            // NOLINTNEXTLINE(bugprone-parent-virtual-call) would recurse
             return QGraphicsPixmapItem::boundingRect();
         }
 
@@ -1511,6 +1512,7 @@ public:
     // boundingRect(), wrapping included.
     QRectF bounding_rect_unselected() const override
     {
+        // NOLINTNEXTLINE(bugprone-parent-virtual-call) would recurse
         QRectF rect = QGraphicsTextItem::boundingRect();
         if (manualHeight_ > rect.height()) {
             rect.setHeight(manualHeight_);
@@ -1553,12 +1555,14 @@ public:
         constexpr qreal kminFieldSize = 20.0;
         this->prepareGeometryChange();
 
+        // NOLINTBEGIN(bugprone-parent-virtual-call) natural text size
         const qreal oldWidth = document()->textWidth() < 0
                                    ? QGraphicsTextItem::boundingRect().width()
                                    : document()->textWidth();
         const qreal oldHeight = manualHeight_ < 0
                                     ? QGraphicsTextItem::boundingRect().height()
                                     : manualHeight_;
+        // NOLINTEND(bugprone-parent-virtual-call)
 
         const qreal clampedWidth = newWidth < 0 ? -1
                                                 : qMax(newWidth, kminFieldSize);
@@ -1659,6 +1663,7 @@ public:
         painter->drawRect(this->bounding_rect_unselected());
         QStyleOptionGraphicsItem updatedOption(*option);
         updatedOption.state = QStyle::State_Enabled;
+        // NOLINTNEXTLINE(bugprone-parent-virtual-call) draws the text
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
 
         // Attached-note indicator: while the picture this
@@ -2789,9 +2794,11 @@ public:
     {
         painter->setPen(Qt::NoPen);
         painter->setBrush(QBrush(QColor(200, 0, 0)));
+        // NOLINTNEXTLINE(bugprone-parent-virtual-call) text's own rect
         painter->drawRect(QGraphicsTextItem::boundingRect());
         QStyleOptionGraphicsItem updatedOption(*option);
         updatedOption.state = QStyle::State_Enabled;
+        // NOLINTNEXTLINE(bugprone-parent-virtual-call) draws the text
         QGraphicsTextItem::paint(painter, &updatedOption, widget);
         this->paint_selectable(painter, option, widget);
     }

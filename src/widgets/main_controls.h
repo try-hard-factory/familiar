@@ -108,6 +108,7 @@ protected:
         static_cast<QWidget*>(this)->unsetCursor();
     }
 
+    // NOLINTNEXTLINE(portability-template-virtual-member-function) see .cpp
     void dragEnterEvent(QDragEnterEvent* event) override
     {
         const auto* mimedata = event->mimeData();
@@ -123,11 +124,13 @@ protected:
         }
     }
 
+    // NOLINTNEXTLINE(portability-template-virtual-member-function) see .cpp
     void dragMoveEvent(QDragMoveEvent* event) override
     {
         event->acceptProposedAction();
     }
 
+    // NOLINTNEXTLINE(portability-template-virtual-member-function) see .cpp
     void dropEvent([[maybe_unused]] QDropEvent* event) override
     {
         FLOG_DEBUG(familiar::log::Ch::UI,
