@@ -359,15 +359,45 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
             continue;
         }
 
-        // Let QImage compute its own (aligned) bytesPerLine from w/format
-        // instead of trusting whatever the writer used - safer than
-        // replaying the original save_to_file() code, which was never
-        // actually exercised (see the comment above).
-        QImage image(reinterpret_cast<const uchar*>(raw.constData()),
-                     w,
-                     h,
-                     QImage::Format(format));
-        image = image.copy(); // detach before `raw` goes out of scope
+        // Own buffer + memcpy, NOT the (const uchar*, w, h, format)
+        // QImage constructor this used to use. That one neither copies nor
+        // knows how big the buffer is: it derives bytesPerLine from w and
+        // format, and the copy() that followed then read h*bytesPerLine
+        // bytes - while w, h and format all come straight off the stream
+        // above, unvalidated. A file declaring larger dimensions than it
+        // carries data for read past the end of `raw`, in a loader whose
+        // input is by definition untrusted.
+        //
+        // isNull() rejects a bogus format value (it is a quint16 from the
+        // file, cast to an enum) and zero dimensions; the size comparison
+        // rejects the dimensions/data mismatch. Deliberately >=, not ==:
+        // extra trailing bytes loaded fine before and still do, only a
+        // short buffer is now refused instead of overread. bytesPerLine
+        // stays QImage's own (aligned) value rather than whatever the
+        // writer used - same as before, and see the comment above for why
+        // no real file with content is known to exist here anyway.
+        QImage image(w, h, QImage::Format(format));
+        if (image.isNull() || raw.size() < image.sizeInBytes()) {
+            result.itemErrors.append(
+                QStringLiteral("Item %1: image data does not match its "
+                               "declared size/format")
+                    .arg(i));
+            FLOG_WARN(Ch::IO,
+                      "load_legacy: item {} image data does not match its "
+                      "declared size/format (w={} h={} format={} bytes={})",
+                      i,
+                      w,
+                      h,
+                      format,
+                      raw.size());
+            if (worker) {
+                emit worker->progress(i);
+            }
+            continue;
+        }
+        std::memcpy(image.bits(),
+                    raw.constData(),
+                    static_cast<size_t>(image.sizeInBytes()));
 
         QVariantMap itemData;
         itemData[QStringLiteral("type")] = QStringLiteral("pixmap");

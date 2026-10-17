@@ -68,10 +68,10 @@ std::string short_function_name(std::string_view prettyName)
 std::string function_name_for(const QMessageLogContext& context)
 {
     if (!context.function) {
-        return std::string("unknown");
+        return {"unknown"};
     }
     if (gVerboseFunctions.load(std::memory_order_relaxed)) {
-        return std::string(context.function);
+        return {context.function};
     }
     return short_function_name(context.function);
 }

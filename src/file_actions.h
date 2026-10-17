@@ -14,6 +14,18 @@ public:
     FileActions(MainWindow& mw);
     ~FileActions() = default;
 
+    // Spelled out rather than left implicit. mainwindow_ below is a
+    // reference, which already deleted operator= silently - and that is
+    // what cppcoreguidelines-avoid-const-or-ref-data-members objects to:
+    // a copy restriction nothing in the class declares. Stating it makes
+    // the actual contract visible - exactly one FileActions exists, owned
+    // by MainWindow for that window's whole lifetime (mainwindow.cpp) -
+    // and completes the rule of five while it is at it.
+    FileActions(const FileActions&) = delete;
+    FileActions& operator=(const FileActions&) = delete;
+    FileActions(FileActions&&) = delete;
+    FileActions& operator=(FileActions&&) = delete;
+
     void new_file();
     void open_file();
     void process_open_file(const QString& file);
@@ -68,6 +80,12 @@ public:
     static void close_tab(CanvasView* cv);
 
 private:
+    // The actual write, with no "does the path exist yet?" fallback -
+    // that fallback is what used to make save_file() and save_file_as()
+    // mutually recursive. Both now end here instead: save_file() after
+    // its existence check, save_file_as() straight after the dialog.
+    int write_to_path(CanvasView* canvasView, const QString& path);
+
     // Loads `path` into whatever tab is currently active, in the
     // background (see fml_archive.h). Shared by processOpenFile(),
     // saveFileAs()'s "reload the previous file into a fresh tab" branch,

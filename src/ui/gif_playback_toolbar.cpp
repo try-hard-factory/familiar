@@ -1,5 +1,7 @@
 #include "gif_playback_toolbar.h"
 
+#include <array>
+
 #include <core/settingshandler.h>
 #include <moveitem.h>
 
@@ -342,16 +344,21 @@ void GifPlaybackToolbar::show_speed_popup()
     grid->setContentsMargins(6, 6, 6, 6);
     grid->setSpacing(2);
 
-    const int speeds[] = {25, 50, 75, 100, 125, 150, 175, 200};
+    constexpr std::array<int, 8> kspeedPercents
+        = {25, 50, 75, 100, 125, 150, 175, 200};
+    constexpr int kspeedColumns = 4;
     const int currentSpeed = item_->speed_percent();
-    for (int i = 0; i < 8; ++i) {
-        const int percent = speeds[i];
+    // Explicit counter rather than indexing: the loop bound used to be a
+    // hand-written 8 with no tie to the array's length, so adding a speed
+    // would have silently skipped it (or read past the end).
+    int index = 0;
+    for (const int percent : kspeedPercents) {
         auto* btn = new QToolButton(popup);
         btn->setText(QStringLiteral("x%1").arg(percent / 100.0, 0, 'g', 3));
         btn->setCheckable(true);
         btn->setChecked(percent == currentSpeed);
         btn->setFocusPolicy(Qt::NoFocus);
-        grid->addWidget(btn, i / 4, i % 4);
+        grid->addWidget(btn, index / kspeedColumns, index % kspeedColumns);
         connect(btn, &QToolButton::clicked, this, [this, percent, popup] {
             if (item_) {
                 item_->set_speed_percent(percent);
@@ -359,6 +366,7 @@ void GifPlaybackToolbar::show_speed_popup()
             update_speed_label();
             popup->close();
         });
+        ++index;
     }
 
     auto* escShortcut = new QShortcut(QKeySequence(Qt::Key_Escape), popup);

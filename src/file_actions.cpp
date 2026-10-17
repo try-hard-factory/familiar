@@ -181,7 +181,11 @@ int FileActions::save_file(CanvasView* canvasView, const QString& path)
     if (!file.exists()) {
         return save_file_as();
     }
+    return write_to_path(canvasView, path);
+}
 
+int FileActions::write_to_path(CanvasView* canvasView, const QString& path)
+{
     // Synchronous (not backgrounded like loadFmlIntoCurrentTab()): several
     // callers (TabPane::onTabClosed(), MainWindow::saveAllWindowSaveCB())
     // close the tab or quit the app right after this returns, assuming the
@@ -270,11 +274,16 @@ int FileActions::save_file_as()
         mainwindow_.tab_pane().set_current_tab_project_name(
             QFileInfo(selected).fileName());
 
-        // Pre-touch the file into existence: saveFile(path) bails into
-        // saveFileAs() again if the path doesn't exist yet, which would
-        // recurse right back here for a genuinely new file.
-        (void) QFile(selected).open(QFile::ReadWrite);
-        save_file(selected);
+        // write_to_path(), not save_file(): the latter bails back into
+        // THIS function when the path doesn't exist yet, which for a
+        // genuinely new file meant mutual recursion. It was held off by
+        // pre-touching the file into existence here first - with the
+        // result of that open() discarded, so a directory that refused
+        // the create (read-only, no permission, full disk) looped the
+        // Save As dialog instead of reporting anything. FmlArchive::save()
+        // writes through QSaveFile and creates the target itself, so
+        // nothing has to exist beforehand.
+        write_to_path(mainwindow_.tab_pane().current_widget(), selected);
         retval = QDialog::Accepted;
     }
 

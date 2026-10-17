@@ -3,6 +3,7 @@
 
 #include <core/settingshandler.h> // EPresetsColorIdx
 
+#include <QMap>
 #include <QWidget>
 
 class QButtonGroup;
@@ -44,9 +45,12 @@ private:
     // One button per EPresets value (Dark/Light/Custom1-4), ids matching
     // that enum - see presetsInit().
     QButtonGroup* presetButtons_ = nullptr;
-    // Indexed by EPresetsColorIdx.
-    QToolButton* colorSwatches_[static_cast<int>(EPresetsColorIdx::AllIdx)]
-        = {};
+    // Keyed by EPresetsColorIdx rather than a C array indexed by it: the
+    // array had exactly AllIdx (5) slots while AllIdx itself is a legal
+    // enum value, so refresh_swatch(AllIdx) indexed one past the end.
+    // value() returns nullptr for an absent key, which is what the
+    // existing null check in refresh_swatch() already expects.
+    QMap<EPresetsColorIdx, QToolButton*> colorSwatches_;
 };
 
 #endif // COLORSWIDGET_H

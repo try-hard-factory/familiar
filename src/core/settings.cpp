@@ -115,9 +115,11 @@ std::optional<int> CommandlineArgs::process(const QCoreApplication& app)
         return EXIT_FAILURE;
     }
     if (parser.isSet(versionOption)) {
-        std::printf("%s %s\n",
-                    qPrintable(QCoreApplication::applicationName()),
-                    qPrintable(QCoreApplication::applicationVersion()));
+        const QString version
+            = QStringLiteral("%1 %2\n")
+                  .arg(QCoreApplication::applicationName(),
+                       QCoreApplication::applicationVersion());
+        (void) std::fputs(qPrintable(version), stdout);
         return EXIT_SUCCESS;
     }
     if (parser.isSet(helpOption)) {

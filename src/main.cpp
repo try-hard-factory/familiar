@@ -65,19 +65,23 @@ int main(int argc, char* argv[])
     // (single-instance lock, SettingsHandler, MainWindow) - "familiar
     // -t" runs the GoogleTest suite in place of the app proper and
     // exits, it doesn't launch a window alongside it.
-    for (int i = 1; i < argc; ++i) {
-        if (QString::fromLocal8Bit(argv[i]) == QStringLiteral("-t")) {
-            ::testing::InitGoogleTest(&argc, argv);
-            // Owned by GoogleTest from here on (::testing::Environment's
-            // documented contract - it deletes registered environments
-            // itself during RUN_ALL_TESTS() teardown), not leaked. Log
-            // registered first - SetUp() runs in registration order, and
-            // nothing should run before logging is safe to call (see
-            // LogTestEnvironment's own comment for the crash this avoids).
-            ::testing::AddGlobalTestEnvironment(new LogTestEnvironment());
-            ::testing::AddGlobalTestEnvironment(new SettingsTestEnvironment());
-            return RUN_ALL_TESTS();
-        }
+    // arguments() rather than walking argv directly: no raw-pointer
+    // indexing, and on Windows it reads the native Unicode command line
+    // (GetCommandLineW) instead of pushing each argument through the
+    // 8-bit locale, which is what QString::fromLocal8Bit(argv[i]) used to
+    // do here. mid(1) skips the program name and, unlike sliced(), is
+    // defined even if arguments() somehow comes back empty.
+    if (QCoreApplication::arguments().mid(1).contains(QStringLiteral("-t"))) {
+        ::testing::InitGoogleTest(&argc, argv);
+        // Owned by GoogleTest from here on (::testing::Environment's
+        // documented contract - it deletes registered environments
+        // itself during RUN_ALL_TESTS() teardown), not leaked. Log
+        // registered first - SetUp() runs in registration order, and
+        // nothing should run before logging is safe to call (see
+        // LogTestEnvironment's own comment for the crash this avoids).
+        ::testing::AddGlobalTestEnvironment(new LogTestEnvironment());
+        ::testing::AddGlobalTestEnvironment(new SettingsTestEnvironment());
+        return RUN_ALL_TESTS();
     }
 
     // Needed for a sane default settings file location

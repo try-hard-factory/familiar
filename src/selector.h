@@ -380,6 +380,15 @@ protected:
     EItemMode active_mode() const { return activeMode_; }
 
 public:
+    // Not gated the way ItemMixin/MainControlsMixin are: this
+    // constructor is called by the INTERMEDIATE ItemMixin<Mixin, T>
+    // (moveitem.h), not by Mixin itself, so `friend Mixin` alone would
+    // reject the very hierarchy it exists to describe. Gating it
+    // properly needs `friend ItemMixin<Mixin, T>` as well, and ItemMixin
+    // lives in a header that includes this one - the dependency would
+    // have to run backwards. MultiSelectItem below derives straight from
+    // here too, so there would be two different friends to name.
+    // NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
     explicit SelectableMixin(T* parent = nullptr)
         : BaseItemMixin<T>(parent)
     {}

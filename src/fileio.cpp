@@ -17,6 +17,7 @@
 #include <QTimer>
 #include <QUrlQuery>
 
+#include <cstddef>
 #include <optional>
 
 #include <libraw/libraw.h>
@@ -96,8 +97,8 @@ int raw_progress_callback(void* data,
     }
     auto bit = static_cast<unsigned>(stage);
     int bitPos = 0;
-    while (bit > 1u) {
-        bit >>= 1;
+    while (bit > 1U) {
+        bit >>= 1U;
         ++bitPos;
     }
     if (bitPos < krawProgressKnownStages) {
@@ -171,10 +172,10 @@ QImage decode_raw_via_demosaic(const QString& filename,
     QImage result;
     if (image->type == LIBRAW_IMAGE_BITMAP && image->colors == 3
         && image->bits == 8) {
-        result = QImage(reinterpret_cast<const uchar*>(image->data),
+        result = QImage(image->data,
                         image->width,
                         image->height,
-                        image->width * 3,
+                        static_cast<qsizetype>(image->width * 3),
                         QImage::Format_RGB888)
                      .copy();
     }

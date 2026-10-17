@@ -254,6 +254,7 @@ private:
         }
     }
 
+    // NOLINTNEXTLINE(misc-no-recursion) static MenuNode tree
     void create_menu(QMenu* menu, const QList<MenuNode>& nodes)
     {
         for (const MenuNode& node : nodes) {

@@ -37,10 +37,16 @@
 template<typename U, typename T>
 class ItemMixin : public SelectableMixin<U, T>
 {
-public:
+    // Same CRTP gate as MainControlsMixin (widgets/main_controls.h) - see
+    // its comment. Works here because every user constructs this through
+    // U itself: PixmapItem/TextItem/GroupItem/ErrorItem, and GifItem via
+    // PixmapItem's own constructor.
     explicit ItemMixin(T* parent = nullptr)
         : SelectableMixin<U, T>(parent)
     {}
+    friend U;
+
+public:
     virtual void set_pos_center(const QPointF& pos)
     {
         this->setPos(pos - this->center_scene_coords());
@@ -2384,6 +2390,7 @@ public:
     // still protects ITS children even after an unlocked ancestor's own
     // pass would otherwise re-enable them (see set_locked()'s class
     // comment).
+    // NOLINTNEXTLINE(misc-no-recursion) group nesting is acyclic
     void apply_effective_lock(bool ancestorLocked)
     {
         const bool effective = ancestorLocked || locked_;

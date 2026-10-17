@@ -18,11 +18,18 @@
 template<typename Mixin, typename T>
 class MainControlsMixin : public T
 {
-public:
+    // CRTP: this class static_cast<Mixin*>s itself (see
+    // mouse_press_event_main_controls()), which is only valid while Mixin
+    // really is the class deriving from it. Private constructor + friend
+    // makes the compiler enforce that pairing rather than leaving it to
+    // convention - `class Wrong : public MainControlsMixin<Right, T>` is
+    // now a compile error instead of silent UB at the first cast.
     explicit MainControlsMixin(T* parent = nullptr)
         : T(parent)
     {}
+    friend Mixin;
 
+public:
     void init_main_controls(QWidget* mainWindow = nullptr)
     {
         mainWindow_ = mainWindow;

@@ -225,7 +225,7 @@ void ColorsWidget::color_init()
             "QToolButton { border: none; background: transparent; }"));
         rowLayout->addWidget(swatch);
 
-        colorSwatches_[static_cast<int>(row.idx)] = swatch;
+        colorSwatches_[row.idx] = swatch;
         const EPresetsColorIdx idx = row.idx;
         connect(swatch, &QToolButton::clicked, this, [this, idx]() {
             pick_color(idx);
@@ -281,7 +281,7 @@ void ColorsWidget::pick_color(EPresetsColorIdx idx)
 
 void ColorsWidget::refresh_swatch(EPresetsColorIdx idx)
 {
-    QToolButton* swatch = colorSwatches_[static_cast<int>(idx)];
+    QToolButton* swatch = colorSwatches_.value(idx);
     if (!swatch) {
         return;
     }

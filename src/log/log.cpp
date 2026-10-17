@@ -1,5 +1,6 @@
 #include "log.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdio>
 #include <memory>
@@ -449,12 +450,18 @@ void init(const Options& options)
     const quill::LogLevel loggerLevel = detail::to_quill_level(
         more_verbose(options.consoleLevel, options.fileLevel));
 
-    for (size_t i = 0; i < kchannelNames.size(); ++i) {
-        gLoggers[i] = quill::Frontend::create_or_get_logger(kchannelNames[i],
-                                                            sinks,
-                                                            pattern);
-        gLoggers[i]->set_log_level(loggerLevel);
-    }
+    // transform rather than an indexed loop: gLoggers and kchannelNames
+    // are parallel std::arrays of the same length, so there is no index to
+    // get wrong here at all.
+    std::ranges::transform(kchannelNames,
+                           gLoggers.begin(),
+                           [&](const char* name) {
+                               quill::Logger* logger
+                                   = quill::Frontend::create_or_get_logger(
+                                       name, sinks, pattern);
+                               logger->set_log_level(loggerLevel);
+                               return logger;
+                           });
 
     log_session_header(filePath);
     detail::install_qt_message_bridge();
@@ -483,7 +490,14 @@ void set_channel_level(Ch channel, Level level)
 
 quill::Logger* channel_logger(Ch channel)
 {
-    return gLoggers[static_cast<size_t>(channel)];
+    // Bounds-checked: the index is an enum VALUE, not a constant, so a
+    // bogus Ch would otherwise read past gLoggers. Returning nullptr is
+    // already what every caller handles (see set_channel_level() above).
+    const auto index = static_cast<size_t>(channel);
+    if (index >= gLoggers.size()) {
+        return nullptr;
+    }
+    return gLoggers.at(index);
 }
 
 RingSink* ring_sink()

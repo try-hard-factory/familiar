@@ -126,6 +126,7 @@ QIcon make_picture_icon(const QPixmap& source, const QColor& glyphColor)
 // the group becomes a real member too - see CanvasScene::
 // attach_item_to()), so this needs no separate attach-chain walk of its
 // own, just group membership.
+// NOLINTNEXTLINE(misc-no-recursion) group nesting is acyclic
 void collect_group_pictures(GroupItem* group, QList<PixmapItem*>& out)
 {
     for (QGraphicsItem* child : group->resolve_children()) {
@@ -535,6 +536,7 @@ void HierarchyPanel::rebuild()
     tree_->expandAll();
 }
 
+// NOLINTNEXTLINE(misc-no-recursion) `added` is the visited set
 void HierarchyPanel::add_item_node(QTreeWidgetItem* parent,
                                    QGraphicsItem* item,
                                    QSet<QUuid>& added)
