@@ -94,17 +94,17 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
     auto drawArrow = [&p](const QRect& r, bool up) {
         const qreal cx = r.center().x();
         const qreal cy = r.center().y();
-        constexpr qreal halfW = 3.0;
-        constexpr qreal halfH = 2.0;
+        constexpr qreal khalfW = 3.0;
+        constexpr qreal khalfH = 2.0;
         QPainterPath path;
         if (up) {
-            path.moveTo(cx - halfW, cy + halfH);
-            path.lineTo(cx + halfW, cy + halfH);
-            path.lineTo(cx, cy - halfH);
+            path.moveTo(cx - khalfW, cy + khalfH);
+            path.lineTo(cx + khalfW, cy + khalfH);
+            path.lineTo(cx, cy - khalfH);
         } else {
-            path.moveTo(cx - halfW, cy - halfH);
-            path.lineTo(cx + halfW, cy - halfH);
-            path.lineTo(cx, cy + halfH);
+            path.moveTo(cx - khalfW, cy - khalfH);
+            path.lineTo(cx + khalfW, cy - khalfH);
+            path.lineTo(cx, cy + khalfH);
         }
         path.closeSubpath();
         p.drawPath(path);

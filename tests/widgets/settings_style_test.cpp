@@ -23,7 +23,7 @@ TEST(SettingsStyleTest, PaletteIsAFixedSingleton)
 TEST(SettingsStyleTest, RootStyleSheetIncludesBackgroundAndTextColors)
 {
     const Palette& p = palette();
-    const QString qss = rootStyleSheet();
+    const QString qss = root_style_sheet();
     EXPECT_TRUE(qss.contains(p.background.name()));
     EXPECT_TRUE(qss.contains(p.text.name()));
 }
@@ -31,7 +31,7 @@ TEST(SettingsStyleTest, RootStyleSheetIncludesBackgroundAndTextColors)
 TEST(SettingsStyleTest, SidebarButtonStyleSheetIncludesNavColors)
 {
     const Palette& p = palette();
-    const QString qss = sidebarButtonStyleSheet();
+    const QString qss = sidebar_button_style_sheet();
     EXPECT_TRUE(qss.contains(p.navIdleBg.name()));
     EXPECT_TRUE(qss.contains(p.navSelectedBg.name()));
     EXPECT_TRUE(qss.contains(p.navHoverBg.name()));
@@ -40,7 +40,7 @@ TEST(SettingsStyleTest, SidebarButtonStyleSheetIncludesNavColors)
 TEST(SettingsStyleTest, ShortcutChipStyleSheetIncludesChipColors)
 {
     const Palette& p = palette();
-    const QString qss = shortcutChipStyleSheet();
+    const QString qss = shortcut_chip_style_sheet();
     EXPECT_TRUE(qss.contains(p.chipBackground.name()));
     EXPECT_TRUE(qss.contains(p.border.name()));
 }
@@ -48,7 +48,7 @@ TEST(SettingsStyleTest, ShortcutChipStyleSheetIncludesChipColors)
 TEST(SettingsStyleTest, FilledButtonStyleSheetIncludesNavColors)
 {
     const Palette& p = palette();
-    const QString qss = filledButtonStyleSheet();
+    const QString qss = filled_button_style_sheet();
     EXPECT_TRUE(qss.contains(p.navIdleBg.name()));
     EXPECT_TRUE(qss.contains(p.navHoverBg.name()));
     EXPECT_TRUE(qss.contains(p.navSelectedBg.name()));
@@ -61,7 +61,7 @@ TEST(SettingsStyleTest, SliderStyleSheetUsesNavSelectedBgNotAccent)
     // warning color on this page, so it was swapped for the same
     // neutral gray this window's other "on" states already use.
     const Palette& p = palette();
-    const QString qss = sliderStyleSheet();
+    const QString qss = slider_style_sheet();
     EXPECT_TRUE(qss.contains(p.navSelectedBg.name()));
     EXPECT_FALSE(qss.contains(p.accent.name()));
 }

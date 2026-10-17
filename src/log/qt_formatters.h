@@ -20,9 +20,12 @@
 template<>
 struct fmtquill::formatter<QString>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QString& value, format_context& ctx) const
+    static auto format(const QString& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(), "{}", value.toStdString());
     }
@@ -35,9 +38,12 @@ struct quill::Codec<QString> : quill::DeferredFormatCodec<QString>
 template<>
 struct fmtquill::formatter<QPointF>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QPointF& value, format_context& ctx) const
+    static auto format(const QPointF& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(), "({}, {})", value.x(), value.y());
     }
@@ -50,9 +56,12 @@ struct quill::Codec<QPointF> : quill::DeferredFormatCodec<QPointF>
 template<>
 struct fmtquill::formatter<QRectF>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QRectF& value, format_context& ctx) const
+    static auto format(const QRectF& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(),
                                    "({}, {}, {}x{})",
@@ -70,9 +79,12 @@ struct quill::Codec<QRectF> : quill::DeferredFormatCodec<QRectF>
 template<>
 struct fmtquill::formatter<QSizeF>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QSizeF& value, format_context& ctx) const
+    static auto format(const QSizeF& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(),
                                    "{}x{}",
@@ -88,9 +100,12 @@ struct quill::Codec<QSizeF> : quill::DeferredFormatCodec<QSizeF>
 template<>
 struct fmtquill::formatter<QColor>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QColor& value, format_context& ctx) const
+    static auto format(const QColor& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(),
                                    "{}",
@@ -105,9 +120,12 @@ struct quill::Codec<QColor> : quill::DeferredFormatCodec<QColor>
 template<>
 struct fmtquill::formatter<QUrl>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QUrl& value, format_context& ctx) const
+    static auto format(const QUrl& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(),
                                    "{}",
@@ -122,9 +140,12 @@ struct quill::Codec<QUrl> : quill::DeferredFormatCodec<QUrl>
 template<>
 struct fmtquill::formatter<QTransform>
 {
-    constexpr auto parse(format_parse_context& ctx) { return ctx.begin(); }
+    static constexpr auto parse(format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
 
-    auto format(const QTransform& value, format_context& ctx) const
+    static auto format(const QTransform& value, format_context& ctx)
     {
         return fmtquill::format_to(ctx.out(),
                                    "[{} {} {}; {} {} {}; {} {} {}]",

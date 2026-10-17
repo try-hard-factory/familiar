@@ -4,8 +4,8 @@
 
 void RecentFilesView::on_clicked(const QModelIndex& index)
 {
-    if (!mainWindow_ || !index.isValid() || index.row() >= files.size()) {
+    if (!mainWindow_ || !index.isValid() || index.row() >= files_.size()) {
         return;
     }
-    mainWindow_->fileActions().processOpenFile(files[index.row()]);
+    mainWindow_->file_actions().process_open_file(files_[index.row()]);
 }

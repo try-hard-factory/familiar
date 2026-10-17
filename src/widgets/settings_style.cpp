@@ -5,23 +5,23 @@ namespace familiar::settings_style {
 const Palette& palette()
 {
     static const Palette p{
-        QColor(0xFF, 0xFF, 0xFF), // background
-        QColor(0x22, 0x22, 0x22), // text
-        QColor(0x8A, 0x8A, 0x8A), // mutedText
-        QColor(0xD8, 0xD8, 0xD8), // border
-        QColor(0xF1, 0xF1, 0xF1), // hoverBg
-        QColor(0xD2, 0x60, 0x1C), // accent
-        QColor(0xE3, 0xE3, 0xE3), // chipBackground
-        QColor(0xEC, 0xEC, 0xEC), // navIdleBg
-        QColor(0xDD, 0xDD, 0xDD), // navHoverBg
-        QColor(0xBD, 0xBD, 0xBD), // navSelectedBg
-        QColor(0xE3, 0xE3, 0xE3), // popupBackground
-        QColor(0xCB, 0xCB, 0xCB), // popupItemHover
+        .background = QColor(0xFF, 0xFF, 0xFF),      // background
+        .text = QColor(0x22, 0x22, 0x22),            // text
+        .mutedText = QColor(0x8A, 0x8A, 0x8A),       // mutedText
+        .border = QColor(0xD8, 0xD8, 0xD8),          // border
+        .hoverBg = QColor(0xF1, 0xF1, 0xF1),         // hoverBg
+        .accent = QColor(0xD2, 0x60, 0x1C),          // accent
+        .chipBackground = QColor(0xE3, 0xE3, 0xE3),  // chipBackground
+        .navIdleBg = QColor(0xEC, 0xEC, 0xEC),       // navIdleBg
+        .navHoverBg = QColor(0xDD, 0xDD, 0xDD),      // navHoverBg
+        .navSelectedBg = QColor(0xBD, 0xBD, 0xBD),   // navSelectedBg
+        .popupBackground = QColor(0xE3, 0xE3, 0xE3), // popupBackground
+        .popupItemHover = QColor(0xCB, 0xCB, 0xCB),  // popupItemHover
     };
     return p;
 }
 
-QString rootStyleSheet()
+QString root_style_sheet()
 {
     const Palette& p = palette();
     return QStringLiteral("* {"
@@ -160,7 +160,7 @@ QString rootStyleSheet()
              p.popupItemHover.name());
 }
 
-QString sidebarButtonStyleSheet()
+QString sidebar_button_style_sheet()
 {
     const Palette& p = palette();
     return QStringLiteral("QPushButton#categoryButton {"
@@ -178,7 +178,7 @@ QString sidebarButtonStyleSheet()
         .arg(p.navIdleBg.name(), p.navSelectedBg.name(), p.navHoverBg.name());
 }
 
-QString shortcutChipStyleSheet()
+QString shortcut_chip_style_sheet()
 {
     const Palette& p = palette();
     return QStringLiteral("QPushButton {"
@@ -197,7 +197,7 @@ QString shortcutChipStyleSheet()
              p.chipBackground.darker(112).name());
 }
 
-QString miniButtonStyleSheet()
+QString mini_button_style_sheet()
 {
     const Palette& p = palette();
     // Same box as shortcutChipStyleSheet() (chipBackground fill + a real
@@ -223,7 +223,7 @@ QString miniButtonStyleSheet()
              p.chipBackground.darker(112).name());
 }
 
-QString outlineButtonStyleSheet()
+QString outline_button_style_sheet()
 {
     const Palette& p = palette();
     // Explicit :focus/:default color rules, not just the base
@@ -255,7 +255,7 @@ QString outlineButtonStyleSheet()
         .arg(p.text.name(), p.border.name(), p.hoverBg.name(), p.accent.name());
 }
 
-QString filledButtonStyleSheet()
+QString filled_button_style_sheet()
 {
     const Palette& p = palette();
     // Same :focus/:default/outline reasoning as outlineButtonStyleSheet()
@@ -285,7 +285,7 @@ QString filledButtonStyleSheet()
              p.navSelectedBg.name());
 }
 
-QString sliderStyleSheet()
+QString slider_style_sheet()
 {
     const Palette& p = palette();
     // Same 4px groove / 14px round handle proportions as

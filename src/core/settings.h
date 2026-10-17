@@ -2,6 +2,7 @@
 #define SETTINGS_H
 
 #include <functional>
+#include <optional>
 #include <QMap>
 #include <QObject>
 #include <QStringList>
@@ -16,8 +17,19 @@ class CommandlineArgs
 public:
     static CommandlineArgs& instance();
 
-    // Call once from main() after constructing QApplication, before anything else.
-    void process(const QCoreApplication& app);
+    // Call once from main() after constructing QApplication, before anything
+    // else. Returns the exit code main() should return for the "print and
+    // quit" arguments (--help/--version/a parse error), or nullopt to carry
+    // on starting up.
+    //
+    // Deliberately NOT std::exit() from in here, which is what this used to
+    // do: exit() skips every local destructor in main(), including the
+    // single-instance QSharedMemory guard's. Measured, not theoretical -
+    // every --help/--version left a System V segment behind (`ipcs -m`,
+    // nattch 0 and no `dest` flag, so not even marked for destruction). One
+    // at a time: the next launch's attach()-then-detach() does clear the
+    // previous one (see acquire_single_instance_lock() in main.cpp).
+    [[nodiscard]] std::optional<int> process(const QCoreApplication& app);
 
     // For unit tests: parse without exiting on unknown args.
     void parse(const QStringList& args);
@@ -26,11 +38,11 @@ public:
     // JSON settings file to read/write instead of the default location
     // (QStandardPaths::AppConfigLocation + "settings.json") - see
     // SettingsHandler::SettingsHandler() (core/settingshandler.cpp).
-    QString settingsFile() const { return settingsFile_; }
+    QString settings_file() const { return settingsFile_; }
     QString loglevel() const { return loglevel_; }
-    bool debugBoundingRects() const { return debugBoundingRects_; }
-    bool debugShapes() const { return debugShapes_; }
-    bool debugHandles() const { return debugHandles_; }
+    bool debug_bounding_rects() const { return debugBoundingRects_; }
+    bool debug_shapes() const { return debugShapes_; }
+    bool debug_handles() const { return debugHandles_; }
 
 private:
     CommandlineArgs() = default;
@@ -54,15 +66,15 @@ public:
     static SettingsEvents& instance();
 
 signals:
-    void restoreDefaults();
-    void restoreKeyboardDefaults();
+    void restore_defaults();
+    void restore_keyboard_defaults();
     // Fired from both Save/autosave_enabled's and
     // Save/autosave_interval_seconds' postSaveCallback so MainWindow's
     // autosave QTimer can pick up either change live, instead of only on
     // next launch (see FamSettings::setValue()). No payload - the
     // listener just re-reads both settings fresh, since either one alone
     // doesn't have the other's current value.
-    void autosaveSettingsChanged();
+    void autosave_settings_changed();
 
 private:
     SettingsEvents() = default;
@@ -93,33 +105,32 @@ public:
     static const QMap<QString, FieldConfig>& fields();
 
     // Returns stored value with cast + validation applied; falls back to default.
-    QVariant valueOrDefault(const QString& key) const;
+    static QVariant value_or_default(const QString& key);
 
     // Returns true if stored value differs from FIELDS default.
-    bool valueChanged(const QString& key) const;
+    static bool value_changed(const QString& key);
 
     // Remove all FIELDS keys from storage and emit SettingsEvents::restoreDefaults.
-    void restoreDefaults();
+    static void restore_defaults();
 
     // Apply startup-time settings (e.g. image allocation limit).
-    void onStartup();
+    static void on_startup();
 
     // Fires postSaveCallback when defined for `key`.
-    void setValue(const QString& key, const QVariant& value);
+    static void set_value(const QString& key, const QVariant& value);
 
     // Raw read for keys that aren't in fields() (e.g. Action::settingsKey's
     // ad-hoc checkbox state, written via setValue() above) - same
     // "Group/subkey" splitting as valueOrDefault(), just without the
     // fields()-driven cast/validate/default.
-    QVariant value(const QString& key, const QVariant& defaultValue) const;
+    static QVariant value(const QString& key, const QVariant& defaultValue);
 
     // Fires postSaveCallback when defined for `key`.
-    void remove(const QString& key);
+    static void remove(const QString& key);
 
-    void updateRecentFiles(const QString& filename);
-    QStringList getRecentFiles(bool existingOnly = false) const;
-
-    QString fileName() const;
+    static void update_recent_files(const QString& filename);
+    static QStringList get_recent_files(bool existingOnly = false);
+    static QString file_name();
 };
 
 #endif // SETTINGS_H

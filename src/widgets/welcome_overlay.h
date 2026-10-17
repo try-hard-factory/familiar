@@ -29,6 +29,9 @@ public:
                           std::optional<QPoint> = std::nullopt)
     {}
 
+// moc requires the access level to be spelled out on a slots
+// section, even when it repeats the enclosing one.
+// NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     void on_context_menu(const QPoint& point);
 
@@ -40,7 +43,7 @@ protected:
     void dropEvent(QDropEvent* event) override;
 
 private:
-    static constexpr char txt[] = R"(
+    static constexpr char ktxt[] = R"(
         <p>Paste or drop images here.</p>
         <p>Right-click for more options.</p>
     )";

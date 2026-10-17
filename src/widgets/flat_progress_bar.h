@@ -33,7 +33,7 @@ public:
                     const QColor& accent,
                     QWidget* parent = nullptr);
 
-    bool isIndeterminate() const { return minimum() == 0 && maximum() == 0; }
+    bool is_indeterminate() const { return minimum() == 0 && maximum() == 0; }
 
 protected:
     void paintEvent(QPaintEvent* event) override;

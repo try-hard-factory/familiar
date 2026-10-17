@@ -16,10 +16,11 @@ namespace familiar::log {
 
 // Full definition: log.h - forward-declared here only, since log.h itself
 // includes this header (for RingSink) before it defines Level. A
-// forward-declared scoped enum is a complete-enough type (fixed, implicit
-// int underlying type) to use by value/as a struct member below - just
-// not by enumerator name - so this doesn't need the full definition.
-enum class Level;
+// forward-declared scoped enum is a complete-enough type to use by
+// value/as a struct member below - just not by enumerator name - so this
+// doesn't need the full definition. The underlying type must be repeated
+// here exactly as log.h spells it, or the two declarations conflict.
+enum class Level : std::uint8_t;
 
 // In-memory ring buffer of the most recent formatted log lines, each
 // paired with its actual level (mapped down from quill::LogLevel - see
@@ -27,6 +28,15 @@ enum class Level;
 // without re-parsing the formatted text. Feeds DebugLogDialog's live tail
 // (including its per-level filter checkboxes) and gives a crash handler
 // something to dump even when the file sink hasn't flushed yet.
+// Both bases carry their own state, so this is real multiple
+// implementation inheritance rather than "one class + pure interfaces" -
+// quill::Sink has only two pure virtuals and seven data members of its
+// own (filters, a spinlock, two atomics). Unavoidable here: quill
+// requires deriving from Sink, and entry_added() requires QObject. The
+// alternative is splitting this into a sink plus a separate QObject
+// emitter it holds a pointer to, i.e. an extra indirection for the
+// linter's sake.
+// NOLINTNEXTLINE(fuchsia-multiple-inheritance)
 class RingSink final : public QObject, public quill::Sink
 {
     Q_OBJECT
@@ -60,7 +70,7 @@ public:
     QList<Entry> entries() const;
 
 signals:
-    void entryAdded(Level level, const QString& line);
+    void entry_added(Level level, const QString& line);
 
 private:
     mutable QMutex mutex_;

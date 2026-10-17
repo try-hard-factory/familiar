@@ -25,20 +25,20 @@ namespace familiar::dialog_style {
 // (CustomMessageBox does; still needs applyRoundedMask() skipped too at
 // its own call site, or the window's actual clipped shape stays rounded
 // regardless of what this QSS paints).
-QString panelStyleSheet(const char* className,
-                        const QColor& background,
-                        const QColor& border,
-                        const QColor& text,
-                        int radiusPx = 10);
+QString panel_style_sheet(const char* className,
+                          const QColor& background,
+                          const QColor& border,
+                          const QColor& text,
+                          int radiusPx = 10);
 
 // Accent-filled pill button - the single "primary" action in a dialog
 // (rightmost/most prominent by this app's convention).
-void stylePrimaryButton(QPushButton* button, const QColor& accent);
+void style_primary_button(QPushButton* button, const QColor& accent);
 
 // Outline pill button - every other action.
-void styleSecondaryButton(QPushButton* button,
-                          const QColor& text,
-                          const QColor& border);
+void style_secondary_button(QPushButton* button,
+                            const QColor& text,
+                            const QColor& border);
 
 // QSS for the small round "×" close glyph every custom dialog puts in
 // its own top-right corner (there's no native title bar/X to provide
@@ -47,9 +47,9 @@ void styleSecondaryButton(QPushButton* button,
 // selection outline uses) at the same alpha this app's other hover
 // states already use (MainWindow::updateWindowControlsStyle_()) - was
 // a flat white tint before, changed to match the accent instead.
-QString closeButtonStyleSheet(const char* objectName,
-                              const QColor& text,
-                              const QColor& accent);
+QString close_button_style_sheet(const char* objectName,
+                                 const QColor& text,
+                                 const QColor& accent);
 
 // The fixed amber/red/blue severity colors severityIcon() below paints
 // with - exposed on its own (not just baked into severityIcon()) so
@@ -58,7 +58,7 @@ QString closeButtonStyleSheet(const char* objectName,
 // reuse the exact same colors instead of re-guessing their own. `accent`
 // is only used for QMessageBox::Question (and any other icon value),
 // which has no real "severity" of its own.
-QColor severityColor(QMessageBox::Icon icon, const QColor& accent);
+QColor severity_color(QMessageBox::Icon icon, const QColor& accent);
 
 // Same drawn-icon approach as every other icon in this app
 // (group_toolbar.cpp, gif_playback_toolbar.cpp) - no external asset,
@@ -69,7 +69,7 @@ QColor severityColor(QMessageBox::Icon icon, const QColor& accent);
 // preset - they read as universally recognizable regardless of theme.
 // `accent` is only used for QMessageBox::Question, which has no real
 // "severity" of its own.
-QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr);
+QPixmap severity_icon(QMessageBox::Icon icon, const QColor& accent, qreal dpr);
 
 // Clips `widget`'s actual OS-level window shape to a rounded rect
 // matching its current size - QSS border-radius alone only PAINTS
@@ -82,6 +82,6 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr);
 // - call from the dialog's own resizeEvent() override so the mask
 // tracks its actual size (word-wrap/content can change it after
 // construction).
-void applyRoundedMask(QWidget* widget, int radiusPx);
+void apply_rounded_mask(QWidget* widget, int radiusPx);
 
 } // namespace familiar::dialog_style

@@ -22,7 +22,7 @@ public:
     // Overrides the severity glyph `icon` would otherwise draw - for
     // MainWindow::on_action_about()'s app-logo icon, the one case that
     // isn't really a severity at all (icon == QMessageBox::NoIcon).
-    void setIconPixmap(const QPixmap& pixmap);
+    void set_icon_pixmap(const QPixmap& pixmap);
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;
@@ -45,7 +45,7 @@ private:
 // chance to apply per-instance fixes first. Modal; returns the button
 // clicked, or its escape button (see CustomMessageBox::reject()) if
 // dismissed via Escape/the corner close glyph instead.
-QMessageBox::StandardButton showMessageBox(
+QMessageBox::StandardButton show_message_box(
     QMessageBox::Icon icon,
     QWidget* parent,
     const QString& title,

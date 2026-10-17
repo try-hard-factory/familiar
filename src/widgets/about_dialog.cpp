@@ -17,7 +17,7 @@
 #include "utils/utils.h"
 
 namespace {
-constexpr int kIconSize = 72;
+constexpr int kiconSize = 72;
 }
 
 AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
@@ -37,11 +37,12 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     shadow->setColor(QColor(0, 0, 0, 150));
     setGraphicsEffect(shadow);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
     QColor dimText = textColor;
     dimText.setAlpha(180);
 
@@ -65,7 +66,7 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     // QWidget::windowIcon()'s own app-wide fallback, not a raw file
     // path of its own.
     auto* iconLabel = new QLabel(this);
-    iconLabel->setPixmap(wm->windowIcon().pixmap(kIconSize, kIconSize));
+    iconLabel->setPixmap(wm->windowIcon().pixmap(kiconSize, kiconSize));
     iconLabel->setAlignment(Qt::AlignCenter);
     outer->addWidget(iconLabel);
     outer->addSpacing(4);
@@ -117,14 +118,15 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
         QStringLiteral("color: %1;").arg(dimText.name(QColor::HexArgb)));
     outer->addWidget(copyrightLabel);
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("AboutDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("adCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("AboutDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("adCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(wm, this);
     show();
