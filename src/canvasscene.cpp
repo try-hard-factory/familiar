@@ -1995,7 +1995,7 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 // Handle flip
                 const int flip = data.value("flip", 1).toInt();
                 if (flip == -1) {
-                    baseItem->do_flip();
+                    baseItem->do_flip(false, {});
                 }
 
                 addItem(item);

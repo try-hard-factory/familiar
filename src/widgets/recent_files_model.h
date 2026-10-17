@@ -13,7 +13,7 @@ public:
         , files_(files)
     {}
 
-    int rowCount(const QModelIndex& parent = QModelIndex()) const override
+    int rowCount(const QModelIndex& parent) const override
     {
         Q_UNUSED(parent);
         return static_cast<int>(files_.size());

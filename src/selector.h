@@ -67,13 +67,15 @@ public:
     virtual QVector<QPointF> corners_scene_coords() const = 0;
     virtual void bring_to_front() = 0;
     virtual void set_z_value(qreal value) = 0;
-    virtual void do_flip(bool vertical = false,
-                         const QPointF& anchor = QPointF(0, 0))
-        = 0;
-    virtual void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0))
-        = 0;
-    virtual void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0))
-        = 0;
+    // No default arguments on these: a default on a virtual is resolved
+    // STATICALLY, from the type at the call site, while the body called is
+    // picked dynamically - so a derived class disagreeing about the default
+    // silently changes what the same call does through a base reference,
+    // with no warning. Every override below repeats the signature, so the
+    // defaults all have to be dropped together; call sites pass the values.
+    virtual void do_flip(bool vertical, const QPointF& anchor) = 0;
+    virtual void set_scale(qreal value, const QPointF& anchor) = 0;
+    virtual void set_rotation(qreal value, const QPointF& anchor) = 0;
     virtual QPointF center() const = 0;
     virtual qreal flip() const = 0;
     virtual QUuid uid() const = 0;
@@ -147,7 +149,7 @@ public:
         : T(parent)
     {}
 
-    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_scale(qreal value, const QPointF& anchor) override
     {
         if (value <= 0) {
             return;
@@ -188,8 +190,7 @@ public:
         }
     }
 
-    void set_rotation(qreal value,
-                      const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value, const QPointF& anchor) override
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
         const QPointF prev = this->mapToScene(anchor);
@@ -205,8 +206,7 @@ public:
         return this->transform().m11();
     }
 
-    void do_flip(bool vertical = false,
-                 const QPointF& anchor = QPointF(0, 0)) override
+    void do_flip(bool vertical, const QPointF& anchor) override
     {
         const QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
@@ -1217,7 +1217,7 @@ protected:
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         paint_selectable(painter, option, widget);
     }
@@ -1282,7 +1282,7 @@ public:
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         this->paint_selectable(painter, option, widget);
     }

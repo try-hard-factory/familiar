@@ -424,7 +424,7 @@ public:
         item->setOpacity(opacity());
         item->set_grayscale(grayscale_);
         if (flip() == -1) {
-            item->do_flip();
+            item->do_flip(false, {});
         }
         item->set_crop(crop_);
         // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
@@ -910,8 +910,7 @@ public:
     // (above), which would otherwise still nudge them by the anchor-
     // compensating setPos() BaseItemMixin's default set_rotation() does
     // internally.
-    void set_rotation(qreal value,
-                      const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value, const QPointF& anchor) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
@@ -930,8 +929,7 @@ public:
     // final anchor-compensating setPos() unconditionally (horizontal
     // flip included), which needs its own suppression here too, or
     // attached items would still get nudged by that.
-    void do_flip(bool vertical = false,
-                 const QPointF& anchor = QPointF(0, 0)) override
+    void do_flip(bool vertical, const QPointF& anchor) override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
@@ -957,7 +955,7 @@ public:
     // would otherwise suppress itemChange()'s position cascade entirely
     // and leave attached items completely frozen in place mid-resize
     // instead of tracking along.
-    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_scale(qreal value, const QPointF& anchor) override
     {
         if (value <= 0) {
             return; // same validation BaseItemMixin::set_scale() itself does
@@ -1247,7 +1245,7 @@ public:
         item->setRotation(rotation());
         item->setOpacity(opacity());
         if (this->flip() == -1) {
-            item->do_flip();
+            item->do_flip(false, {});
         }
         item->set_crop(crop());
         item->set_speed_percent(speed_percent());
@@ -1654,7 +1652,7 @@ public:
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         // TEMPORARY debug logging (fill-color
         // investigation) - remove once the BG/H no-op bug is confirmed
@@ -1724,7 +1722,7 @@ public:
         newItem->setScale(this->scale());
         newItem->setRotation(this->rotation());
         if (this->flip() == -1) {
-            newItem->do_flip();
+            newItem->do_flip(false, {});
         }
         // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
         // CanvasScene::paste_from_internal_clipboard() remaps this to
@@ -1954,23 +1952,21 @@ public:
     // takes this nested path - the group visibly drifted from its own
     // members). Restoring to whatever it was before (not unconditionally
     // false) makes this safe to nest.
-    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_scale(qreal value, const QPointF& anchor) override
     {
         const bool wasFlagged = scalingOrRotating_;
         scalingOrRotating_ = true;
         BaseItemMixin<QGraphicsRectItem>::set_scale(value, anchor);
         scalingOrRotating_ = wasFlagged;
     }
-    void set_rotation(qreal value,
-                      const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value, const QPointF& anchor) override
     {
         const bool wasFlagged = scalingOrRotating_;
         scalingOrRotating_ = true;
         BaseItemMixin<QGraphicsRectItem>::set_rotation(value, anchor);
         scalingOrRotating_ = wasFlagged;
     }
-    void do_flip(bool vertical = false,
-                 const QPointF& anchor = QPointF(0, 0)) override
+    void do_flip(bool vertical, const QPointF& anchor) override
     {
         const bool wasFlagged = scalingOrRotating_;
         scalingOrRotating_ = true;
@@ -1999,7 +1995,7 @@ public:
         newItem->setScale(this->scale());
         newItem->setRotation(this->rotation());
         if (this->flip() == -1) {
-            newItem->do_flip();
+            newItem->do_flip(false, {});
         }
         return newItem;
     }
@@ -2561,7 +2557,7 @@ public:
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         painter->setPen(Qt::NoPen);
         painter->setBrush(QBrush(fillColor_));
@@ -2806,7 +2802,7 @@ public:
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         painter->setPen(Qt::NoPen);
         painter->setBrush(QBrush(QColor(200, 0, 0)));
@@ -2840,8 +2836,7 @@ public:
     qreal flip() const override { return 1; }
 
     // Never flip error messages.
-    void do_flip(bool vertical = false,
-                 const QPointF& anchor = QPointF(0, 0)) override
+    void do_flip(bool vertical, const QPointF& anchor) override
     {
         Q_UNUSED(vertical);
         Q_UNUSED(anchor);

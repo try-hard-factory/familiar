@@ -56,7 +56,7 @@ public:
     // Asks the user for whatever this export type still needs (e.g. a
     // target pixel size); returns false if the user canceled.
     virtual bool get_user_input(QWidget* parent) = 0;
-    virtual void export_to(const QString& filename, ThreadedIO* worker = nullptr)
+    virtual void export_to(const QString& filename, ThreadedIO* worker)
         = 0;
 
 protected:
@@ -81,7 +81,7 @@ public:
 
     bool get_user_input(QWidget* parent) override;
     void export_to(const QString& filename,
-                   ThreadedIO* worker = nullptr) override;
+                   ThreadedIO* worker) override;
 
 private:
     QImage render_to_image() const;
@@ -97,7 +97,7 @@ public:
     // No dialog - always exports at defaultSize_.
     bool get_user_input(QWidget* parent) override;
     void export_to(const QString& filename,
-                   ThreadedIO* worker = nullptr) override;
+                   ThreadedIO* worker) override;
 
 private:
     QString render_to_svg(ThreadedIO* worker) const;
