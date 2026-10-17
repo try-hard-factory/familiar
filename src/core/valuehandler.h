@@ -52,6 +52,21 @@ public:
     // e.g. ColorList/OpacityList's QMap members were never destructed.
     virtual ~ValueHandler() = default;
 
+    // Protected rather than public: this is a polymorphic base held as
+    // QSharedPointer<ValueHandler>, and copying one as a base would slice
+    // off whichever concrete handler it actually is. Defaulted rather
+    // than deleted so subclasses stay copyable if they ever need to be.
+protected:
+    // Declaring the copy/move operations below suppresses the
+    // implicit default constructor, which derived classes rely on.
+    ValueHandler() = default;
+    ValueHandler(const ValueHandler&) = default;
+    ValueHandler& operator=(const ValueHandler&) = default;
+    ValueHandler(ValueHandler&&) = default;
+    ValueHandler& operator=(ValueHandler&&) = default;
+
+public:
+
     /**
      * @brief Check the value semantically.
      * @param val The value that was read from the config file

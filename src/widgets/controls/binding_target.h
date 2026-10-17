@@ -24,6 +24,19 @@ class BindingTarget
 public:
     virtual ~BindingTarget() = default;
 
+    // Same reasoning as ValueHandler (core/valuehandler.h); every holder
+    // here is a QList<BindingTarget*>, never a list of values.
+protected:
+    // Declaring the copy/move operations below suppresses the
+    // implicit default constructor, which derived classes rely on.
+    BindingTarget() = default;
+    BindingTarget(const BindingTarget&) = default;
+    BindingTarget& operator=(const BindingTarget&) = default;
+    BindingTarget(BindingTarget&&) = default;
+    BindingTarget& operator=(BindingTarget&&) = default;
+
+public:
+
     virtual QString id() const = 0;
     virtual QString text() const = 0;
     virtual BindingTargetKind kind() const = 0;

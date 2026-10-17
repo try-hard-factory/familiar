@@ -268,6 +268,8 @@ public:
                    "~ProgressDialog() this={}",
                    static_cast<void*>(this));
     }
+    // See CanvasScene's own Q_DISABLE_COPY_MOVE comment - same reason.
+    Q_DISABLE_COPY_MOVE(ProgressDialog)
 
 signals:
     // QProgressDialog's own signal of the same name, reimplemented -
@@ -1163,6 +1165,8 @@ public:
     }
 
     ~ChangeOpacityDialog() override { delete command_; }
+    // See CanvasScene's own Q_DISABLE_COPY_MOVE comment - same reason.
+    Q_DISABLE_COPY_MOVE(ChangeOpacityDialog)
 
 // moc requires the access level to be spelled out on a slots
 // section, even when it repeats the enclosing one.

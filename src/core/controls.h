@@ -109,6 +109,19 @@ class MouseConfigBase
 public:
     virtual ~MouseConfigBase() = default;
 
+    // MouseConfig/MouseWheelConfig live in QList<MouseConfig> BY VALUE
+    // (KeyboardSettings::mouse_actions(), core/controls.cpp), so these
+    // must stay usable - protected and defaulted, not deleted. Derived
+    // classes reach a protected base copy constructor fine; outside code
+    // can no longer slice a MouseConfigBase off one.
+protected:
+    MouseConfigBase(const MouseConfigBase&) = default;
+    MouseConfigBase& operator=(const MouseConfigBase&) = default;
+    MouseConfigBase(MouseConfigBase&&) = default;
+    MouseConfigBase& operator=(MouseConfigBase&&) = default;
+
+public:
+
     virtual const QString& id() const = 0;
     virtual const QString& group() const = 0;
     virtual const QString& text() const = 0;

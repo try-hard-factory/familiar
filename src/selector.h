@@ -27,6 +27,20 @@ class IBaseItem : public std::enable_shared_from_this<IBaseItem>
 public:
     virtual ~IBaseItem() = default;
 
+    // Same reasoning as ValueHandler (core/valuehandler.h). Derived items
+    // are QGraphicsItems, which Qt already made non-copyable, so this
+    // changes nothing in practice - it just says so.
+protected:
+    // Declaring the copy/move operations below suppresses the
+    // implicit default constructor, which derived classes rely on.
+    IBaseItem() = default;
+    IBaseItem(const IBaseItem&) = default;
+    IBaseItem& operator=(const IBaseItem&) = default;
+    IBaseItem(IBaseItem&&) = default;
+    IBaseItem& operator=(IBaseItem&&) = default;
+
+public:
+
     // Multiple independent owners can end up referencing the same item
     // across its lifetime - e.g. the InsertItemsCommand that created it
     // and, later, a DeleteItemsCommand for the same item are both alive

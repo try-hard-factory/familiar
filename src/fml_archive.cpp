@@ -259,6 +259,8 @@ public:
 
     ZipWriter(const ZipWriter&) = delete;
     ZipWriter& operator=(const ZipWriter&) = delete;
+    ZipWriter(ZipWriter&&) = delete;
+    ZipWriter& operator=(ZipWriter&&) = delete;
 
     bool init_heap() { return mz_zip_writer_init_heap(&archive_, 0, 0); }
     mz_zip_archive* get() { return &archive_; }
@@ -275,6 +277,8 @@ public:
 
     ZipReader(const ZipReader&) = delete;
     ZipReader& operator=(const ZipReader&) = delete;
+    ZipReader(ZipReader&&) = delete;
+    ZipReader& operator=(ZipReader&&) = delete;
 
     bool init_mem(const void* mem, size_t size)
     {

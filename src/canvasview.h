@@ -57,6 +57,11 @@ public:
 
     CanvasView(MainWindow& mw, QWidget* parent = nullptr);
     ~CanvasView() override;
+    // QObject identity is not copyable - QObject itself declares
+    // Q_DISABLE_COPY, so copies were already impossible; this states it
+    // on the class that has the destructor, which is what the rule of
+    // five (and cppcoreguidelines-special-member-functions) asks for.
+    Q_DISABLE_COPY_MOVE(CanvasView)
 
     void set_project_settings(ProjectSettings* ps);
     void do_insert_images(const QList<QUrl>& urls,

@@ -51,6 +51,11 @@ public:
      */
     MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override;
+    // QObject identity is not copyable - QObject itself declares
+    // Q_DISABLE_COPY, so copies were already impossible; this states it
+    // on the class that has the destructor, which is what the rule of
+    // five (and cppcoreguidelines-special-member-functions) asks for.
+    Q_DISABLE_COPY_MOVE(MainWindow)
 
     void quit_project();
     void save_all_window_save_cb(SaveAllDialog* w,

@@ -1199,6 +1199,15 @@ public:
         delete gifBuffer_;
     }
 
+    // Owns movie_/gifBuffer_ by raw pointer and deletes them above, so a
+    // copy would double-delete. Already impossible - QGraphicsItem is
+    // non-copyable - but the destructor above is what makes the rule of
+    // five apply, so say it rather than leave it implied.
+    GifItem(const GifItem&) = delete;
+    GifItem& operator=(const GifItem&) = delete;
+    GifItem(GifItem&&) = delete;
+    GifItem& operator=(GifItem&&) = delete;
+
     std::string get_type() const override { return type; }
 
     // See PixmapItem::caches_downscaled_render()'s own comment: this

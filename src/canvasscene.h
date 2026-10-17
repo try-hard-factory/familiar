@@ -41,6 +41,11 @@ public:
                 QUndoStack* undoStack,
                 QGraphicsScene* scene = nullptr);
     ~CanvasScene() override;
+    // QObject identity is not copyable - QObject itself declares
+    // Q_DISABLE_COPY, so copies were already impossible; this states it
+    // on the class that has the destructor, which is what the rule of
+    // five (and cppcoreguidelines-special-member-functions) asks for.
+    Q_DISABLE_COPY_MOVE(CanvasScene)
 
     // TextItem is not in a position to emit our signals itself (signals
     // are protected in Qt) - it calls this instead.

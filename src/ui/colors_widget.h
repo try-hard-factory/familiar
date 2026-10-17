@@ -18,6 +18,11 @@ class ColorsWidget : public QWidget
 public:
     explicit ColorsWidget(QWidget* parent = nullptr);
     ~ColorsWidget() override;
+    // QObject identity is not copyable - QObject itself declares
+    // Q_DISABLE_COPY, so copies were already impossible; this states it
+    // on the class that has the destructor, which is what the rule of
+    // five (and cppcoreguidelines-special-member-functions) asks for.
+    Q_DISABLE_COPY_MOVE(ColorsWidget)
 
 private:
     void labels_init();

@@ -116,6 +116,8 @@ public:
 
     ScopeTimer(const ScopeTimer&) = delete;
     ScopeTimer& operator=(const ScopeTimer&) = delete;
+    ScopeTimer(ScopeTimer&&) = delete;
+    ScopeTimer& operator=(ScopeTimer&&) = delete;
 
 private:
     quill::Logger* logger_;

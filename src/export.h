@@ -23,6 +23,18 @@ class ExporterBase
 public:
     virtual ~ExporterBase() = default;
 
+    // Same reasoning as ValueHandler (core/valuehandler.h).
+protected:
+    // Declaring the copy/move operations below suppresses the
+    // implicit default constructor, which derived classes rely on.
+    ExporterBase() = default;
+    ExporterBase(const ExporterBase&) = default;
+    ExporterBase& operator=(const ExporterBase&) = default;
+    ExporterBase(ExporterBase&&) = default;
+    ExporterBase& operator=(ExporterBase&&) = default;
+
+public:
+
 protected:
     static void emit_begin_processing(ThreadedIO* worker, int total);
     static void emit_progress(ThreadedIO* worker, int value);

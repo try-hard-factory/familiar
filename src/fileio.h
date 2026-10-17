@@ -54,6 +54,11 @@ public:
     // exists right now to log this object's address at destruction time,
     // for correlation against a crash backtrace's `this=` pointer.
     ~ThreadedIO() override;
+    // QObject identity is not copyable - QObject itself declares
+    // Q_DISABLE_COPY, so copies were already impossible; this states it
+    // on the class that has the destructor, which is what the rule of
+    // five (and cppcoreguidelines-special-member-functions) asks for.
+    Q_DISABLE_COPY_MOVE(ThreadedIO)
 
     // Polled from the worker function (a free function, not a member),
     // hence public - set only by on_canceled().

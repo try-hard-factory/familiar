@@ -643,7 +643,7 @@ void ImageImportSession::run(ThreadedIO* worker)
             case ImageLoadFailure::TooLarge:
                 FLOG_WARN(Ch::IO,
                           "Image exceeds the {} MB allocation limit: {}",
-                          allocationLimitBytes / (1024 * 1024),
+                          allocationLimitBytes / (static_cast<qint64>(1024 * 1024)),
                           label);
                 tooLargeErrors_.append(label);
                 break;
