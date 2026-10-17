@@ -286,10 +286,12 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     connect(cancelBtn, &QPushButton::clicked, this, &FileBrowserDialog::reject);
     buttonRow->addWidget(cancelBtn);
 
-    const QString actionLabel = mode_ == Mode::Save ? tr("Save")
-                                : mode_ == Mode::SelectFolder
-                                    ? tr("Select Folder")
-                                    : tr("Open");
+    QString actionLabel = tr("Open");
+    if (mode_ == Mode::Save) {
+        actionLabel = tr("Save");
+    } else if (mode_ == Mode::SelectFolder) {
+        actionLabel = tr("Select Folder");
+    }
     actionBtn_ = new QPushButton(actionLabel, this);
     familiar::dialog_style::style_primary_button(actionBtn_, accent);
     actionBtn_->setDefault(true);

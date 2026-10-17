@@ -62,6 +62,20 @@ std::string short_function_name(std::string_view prettyName)
     return std::string(prettyName.substr(begin, parenPos - begin));
 }
 
+// Three-way: Qt gave us no function name at all, the verbose setting is on
+// (log the full signature as-is), or the default - just Class::method, via
+// short_function_name() above.
+std::string function_name_for(const QMessageLogContext& context)
+{
+    if (!context.function) {
+        return std::string("unknown");
+    }
+    if (gVerboseFunctions.load(std::memory_order_relaxed)) {
+        return std::string(context.function);
+    }
+    return short_function_name(context.function);
+}
+
 void qt_message_handler(QtMsgType type,
                         const QMessageLogContext& context,
                         const QString& msg)
@@ -70,11 +84,7 @@ void qt_message_handler(QtMsgType type,
     const quill::LogLevel level = to_quill_level(level_from_qt(type));
     const char* file = context.file ? context.file : "unknown";
 
-    const std::string function = !context.function ? std::string("unknown")
-                                 : gVerboseFunctions.load(
-                                       std::memory_order_relaxed)
-                                     ? std::string(context.function)
-                                     : short_function_name(context.function);
+    const std::string function = function_name_for(context);
     const std::string text = msg.toStdString();
 
     QUILL_LOG_RUNTIME_METADATA(logger,
