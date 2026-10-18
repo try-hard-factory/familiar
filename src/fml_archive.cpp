@@ -461,6 +461,70 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
 //
 // A child id no manifest item claims is left alone: it cannot resolve,
 // cannot close a cycle, and resolve_children() already ignores it.
+namespace {
+
+// Upper bounds on what a single archive entry is allowed to expand to.
+//
+// mz_zip_reader_extract_to_heap() takes the uncompressed size straight
+// out of the zip's own central directory and allocates that much before
+// inflating anything, so an entry that merely CLAIMS to be enormous is
+// enough: deflate reaches roughly 1032:1 on uniform data, which turns a
+// 1.5MB .fml into ~1.8GB of RSS and a ten-second hang (measured). The
+// size has to be checked BEFORE the allocation, which means asking
+// mz_zip_reader_file_stat() first - extract_to_heap() itself offers no
+// ceiling parameter.
+//
+// Items/image_allocation_limit deliberately NOT reused here: that one
+// caps the DECODED image inside Qt's own decoder
+// (QImageReader::setAllocationLimit(), core/settings.cpp), which this
+// path never reaches - the memory is gone while the bytes are still
+// compressed input.
+//
+// Both limits are also what makes the size_t -> int narrowing below safe
+// by construction: 1GiB and 64MiB are each well under INT_MAX, so
+// QByteArray's and QImage::loadFromData()'s int lengths cannot overflow.
+constexpr mz_uint64 kmaxImageEntryBytes = 1024ULL * 1024 * 1024;
+// A manifest is JSON text; 64MiB is hundreds of thousands of items.
+constexpr mz_uint64 kmaxManifestBytes = 64ULL * 1024 * 1024;
+
+// How far an image entry is allowed to expand relative to its stored
+// size. This catches what the absolute limit above cannot: a bomb sized
+// just under kMaxImageEntryBytes passes the size check, but it still
+// needs an enormous ratio to exist at all.
+//
+// Safe to keep tight because save() stores images with
+// MZ_NO_COMPRESSION (ratio 1:1), and the formats involved - JPEG, PNG,
+// GIF - are already compressed, so deflate over them wins percent, not
+// multiples. 10:1 leaves room for a third-party writer that does
+// compress its entries while still being orders of magnitude below what
+// a bomb needs.
+//
+// Deliberately NOT applied to manifest.json: write_manifest()'s output
+// goes in with MZ_DEFAULT_LEVEL, and JSON text legitimately compresses
+// five- to fifteen-fold. The absolute limit is the only usable check
+// there.
+constexpr mz_uint64 kmaxImageEntryRatio = 10;
+
+// What the archive itself declares about entry `index`, or std::nullopt
+// if its header cannot be read. Nothing is allocated.
+struct EntrySizes
+{
+    mz_uint64 uncompressed = 0;
+    mz_uint64 compressed = 0;
+};
+
+std::optional<EntrySizes> entry_sizes(mz_zip_archive* zip, int index)
+{
+    mz_zip_archive_file_stat stat;
+    if (!mz_zip_reader_file_stat(zip, static_cast<mz_uint>(index), &stat)) {
+        return std::nullopt;
+    }
+    return EntrySizes{.uncompressed = stat.m_uncomp_size,
+                      .compressed = stat.m_comp_size};
+}
+
+} // namespace
+
 QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
 {
     const QString childIdsKey = QStringLiteral("child_ids");
@@ -468,7 +532,7 @@ QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
     const QString dataKey = QStringLiteral("data");
 
     QStringList reports;
-    const auto report = [&reports](const QString& what, const QString& id) {
+    const auto reportDrop = [&reports](const QString& what, const QString& id) {
         const QString message = QStringLiteral("%1 for item %2").arg(what, id);
         reports.append(message);
         FLOG_WARN(Ch::IO, "FmlArchive::load: {}", message);
@@ -477,7 +541,7 @@ QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
     // Walk up from `from`; reaching `target` means the new edge
     // target -> from would close a loop. Both maps below are kept acyclic
     // at every insertion, so this always terminates.
-    const auto closes_cycle = [](const QHash<QString, QString>& edges,
+    const auto closesCycle = [](const QHash<QString, QString>& edges,
                                  const QString& from,
                                  const QString& target) {
         QString cursor = from;
@@ -513,18 +577,18 @@ QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
                 continue; // apply_extra_save_data() drops these anyway
             }
             if (child == groupId) {
-                report(QStringLiteral("Dropped a group that contained itself"),
+                reportDrop(QStringLiteral("Dropped a group that contained itself"),
                        groupId);
                 continue;
             }
             if (ownerOf.contains(child)) {
-                report(QStringLiteral("Dropped a second group membership "
+                reportDrop(QStringLiteral("Dropped a second group membership "
                                       "(already owned elsewhere)"),
                        child);
                 continue;
             }
-            if (closes_cycle(ownerOf, groupId, child)) {
-                report(QStringLiteral(
+            if (closesCycle(ownerOf, groupId, child)) {
+                reportDrop(QStringLiteral(
                            "Dropped a group membership that formed a cycle"),
                        child);
                 continue;
@@ -550,8 +614,8 @@ QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
         }
         const QString id = item.value(QStringLiteral("id")).toString();
         const bool selfAttached = target == id;
-        if (selfAttached || closes_cycle(attachedTo, target, id)) {
-            report(selfAttached
+        if (selfAttached || closesCycle(attachedTo, target, id)) {
+            reportDrop(selfAttached
                        ? QStringLiteral("Dropped an item attached to itself")
                        : QStringLiteral(
                              "Dropped an attachment that formed a cycle"),
@@ -785,6 +849,25 @@ FmlResult FmlArchive::load(const QString& filename,
         return result;
     }
 
+    const std::optional<EntrySizes> manifestDeclared
+        = entry_sizes(zip.get(), manifestIndex);
+    if (!manifestDeclared) {
+        result.error = QStringLiteral("Could not read manifest.json from %1")
+                           .arg(filename);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
+        return result;
+    }
+    if (manifestDeclared->uncompressed > kmaxManifestBytes) {
+        result.error = QStringLiteral(
+                           "manifest.json in %1 claims to be %2 bytes, over "
+                           "the %3 byte limit")
+                           .arg(filename)
+                           .arg(manifestDeclared->uncompressed)
+                           .arg(kmaxManifestBytes);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
+        return result;
+    }
+
     size_t manifestSize = 0;
     void* manifestBuf = mz_zip_reader_extract_to_heap(zip.get(),
                                                       static_cast<mz_uint>(
@@ -850,7 +933,33 @@ FmlResult FmlArchive::load(const QString& filename,
                                             0);
 
             bool ok = false;
-            if (imageIndex >= 0) {
+            // Checked before extract_to_heap() allocates anything - see
+            // kMaxImageEntryBytes. An over-limit entry is treated like any
+            // other unreadable image: this one item is reported and
+            // skipped, the rest of the project still loads.
+            const std::optional<EntrySizes> declaredSize
+                = imageIndex >= 0 ? entry_sizes(zip.get(), imageIndex)
+                                  : std::nullopt;
+            const bool withinSize = declaredSize
+                                    && declaredSize->uncompressed
+                                           <= kmaxImageEntryBytes;
+            const bool withinRatio = declaredSize
+                                     && declaredSize->uncompressed
+                                            <= declaredSize->compressed
+                                                   * kmaxImageEntryRatio;
+            const bool withinLimit = withinSize && withinRatio;
+            if (declaredSize && !withinLimit) {
+                FLOG_WARN(Ch::IO,
+                          "FmlArchive::load: {} claims {} bytes from {} "
+                          "stored ({} byte limit, {}:1 ratio limit) - "
+                          "skipping",
+                          mi.image.toStdString(),
+                          declaredSize->uncompressed,
+                          declaredSize->compressed,
+                          kmaxImageEntryBytes,
+                          kmaxImageEntryRatio);
+            }
+            if (withinLimit) {
                 size_t imgSize = 0;
                 void* imgBuf
                     = mz_zip_reader_extract_to_heap(zip.get(),
