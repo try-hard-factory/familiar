@@ -1,6 +1,8 @@
 #ifndef FILEACTIONS_H
 #define FILEACTIONS_H
 
+#include <cstdint>
+
 #include <QString>
 #include <QUuid>
 
@@ -25,6 +27,17 @@ public:
     FileActions& operator=(const FileActions&) = delete;
     FileActions(FileActions&&) = delete;
     FileActions& operator=(FileActions&&) = delete;
+
+    // Who the tab a load went into belongs to, i.e. what should happen
+    // to it when that load fails outright. process_open_file() reuses an
+    // already-blank tab when there is one instead of stacking a second
+    // empty tab beside it, and that one is the user's - it gets reverted
+    // to untitled rather than closed.
+    enum class TabOwnership : std::uint8_t
+    {
+        CreatedForThisLoad,
+        ExistedBefore,
+    };
 
     void new_file();
     void open_file();
@@ -99,9 +112,17 @@ private:
     // previously-shipped bug: deleting it immediately raced the
     // background read and intermittently produced a "No such file or
     // directory" error).
-    void load_fml_into_current_tab(const QString& path,
-                                   bool markModifiedAfterLoad = false,
-                                   const QUuid& recoveryIdToClear = QUuid());
+    void load_fml_into_current_tab(
+        const QString& path,
+        bool markModifiedAfterLoad = false,
+        const QUuid& recoveryIdToClear = QUuid(),
+        TabOwnership tabOwnership = TabOwnership::CreatedForThisLoad);
+
+    // Undoes the tab side of a load that failed outright: closes it if it
+    // only ever existed for that file, or puts it back to untitled if it
+    // was an existing blank tab this load borrowed. Per-item errors do
+    // NOT come here - whatever loaded is real content and stays.
+    void discard_failed_tab(CanvasView* canvasView, TabOwnership tabOwnership);
 
     MainWindow& mainwindow_;
 };
