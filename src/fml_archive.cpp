@@ -11,6 +11,7 @@
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QHashFunctions>
 #include <QImage>
 #include <QJsonArray>
@@ -164,7 +165,9 @@ QByteArray write_manifest(const Manifest& manifest)
 // or from a formatVersion we don't understand yet) with `error` set.
 // A manifest item with a missing/duplicate id is not fatal - see the
 // per-item warning below (docs/fml_format_design.md §5.1).
-std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
+std::optional<Manifest> parse_manifest(const QByteArray& json,
+                                       QString& error,
+                                       QStringList& itemErrors)
 {
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
@@ -205,6 +208,11 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     if (formatVersion < kformatVersion) {
         apply_format_migrations(root, formatVersion);
     }
+
+    // Before anything reads the item list: a cycle in the group graph is
+    // an infinite loop in GroupItem's ancestor walks, not a cosmetic
+    // problem - see sanitize_item_graph()'s own comment.
+    itemErrors += FmlArchive::sanitize_item_graph(root);
 
     Manifest manifest;
     manifest.formatVersion = kformatVersion;
@@ -427,6 +435,141 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
 }
 
 } // namespace
+
+// A .fml's group-membership graph has to be a forest. GroupItem climbs it
+// with plain unguarded walks - `for (a = this; a; a = find_owning_group(a))`
+// in fit_to_contain_children() and paint(), the same shape in
+// apply_lock_to_children() (moveitem.h) - so a cycle there is not a wrong
+// picture, it is an infinite loop: a group containing itself, or A
+// containing B while B contains A, hangs the application on load (a repro
+// had to be killed on a 25s timeout). Nothing in the UI can build such a
+// graph - every grouping path goes through CanvasScene, which keeps a
+// single owner per item - but a truncated, corrupted or deliberately
+// crafted file can, and the loader otherwise only ever checked ids for
+// duplicates.
+//
+// Deliberately operating on the raw manifest JSON rather than on the
+// parsed Manifest: this is the untrusted shape, straight out of the
+// archive, and it is what a test can hand over verbatim.
+//
+// The offending MEMBERSHIPS are dropped, not the items: the file still
+// opens, the affected pictures simply end up ungrouped, and every drop is
+// reported through FmlResult::itemErrors like any other per-item problem.
+// Same treatment for "attached_to", whose chain is walked the same way
+// (CanvasScene::would_create_attach_cycle() guards its own walk, but
+// nothing ever validated the stored value).
+//
+// A child id no manifest item claims is left alone: it cannot resolve,
+// cannot close a cycle, and resolve_children() already ignores it.
+QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
+{
+    const QString childIdsKey = QStringLiteral("child_ids");
+    const QString attachedToKey = QStringLiteral("attached_to");
+    const QString dataKey = QStringLiteral("data");
+
+    QStringList reports;
+    const auto report = [&reports](const QString& what, const QString& id) {
+        const QString message = QStringLiteral("%1 for item %2").arg(what, id);
+        reports.append(message);
+        FLOG_WARN(Ch::IO, "FmlArchive::load: {}", message);
+    };
+
+    // Walk up from `from`; reaching `target` means the new edge
+    // target -> from would close a loop. Both maps below are kept acyclic
+    // at every insertion, so this always terminates.
+    const auto closes_cycle = [](const QHash<QString, QString>& edges,
+                                 const QString& from,
+                                 const QString& target) {
+        QString cursor = from;
+        while (!cursor.isEmpty()) {
+            if (cursor == target) {
+                return true;
+            }
+            cursor = edges.value(cursor);
+        }
+        return false;
+    };
+
+    // Not const: the QJsonValueRef loops below write back through it.
+    // NOLINTNEXTLINE(misc-const-correctness)
+    QJsonArray items = root.value(QStringLiteral("items")).toArray();
+
+    // child id -> the group that owns it, built claim by claim so the
+    // first claim wins and every later one is corruption.
+    QHash<QString, QString> ownerOf;
+    for (QJsonValueRef itemRef : items) {
+        QJsonObject item = itemRef.toObject();
+        if (item.value(QStringLiteral("type")).toString()
+            != QStringLiteral("group")) {
+            continue;
+        }
+        const QString groupId = item.value(QStringLiteral("id")).toString();
+        QJsonObject data = item.value(dataKey).toObject();
+        const QJsonArray stored = data.value(childIdsKey).toArray();
+        QJsonArray kept;
+        for (const auto& v : stored) {
+            const QString child = v.toString();
+            if (child.isEmpty()) {
+                continue; // apply_extra_save_data() drops these anyway
+            }
+            if (child == groupId) {
+                report(QStringLiteral("Dropped a group that contained itself"),
+                       groupId);
+                continue;
+            }
+            if (ownerOf.contains(child)) {
+                report(QStringLiteral("Dropped a second group membership "
+                                      "(already owned elsewhere)"),
+                       child);
+                continue;
+            }
+            if (closes_cycle(ownerOf, groupId, child)) {
+                report(QStringLiteral(
+                           "Dropped a group membership that formed a cycle"),
+                       child);
+                continue;
+            }
+            ownerOf.insert(child, groupId);
+            kept.append(v);
+        }
+        if (kept.size() != stored.size()) {
+            data[childIdsKey] = kept;
+            item[dataKey] = data;
+            itemRef = item;
+        }
+    }
+
+    // attachee id -> what it is attached to, same invariant.
+    QHash<QString, QString> attachedTo;
+    for (QJsonValueRef itemRef : items) {
+        QJsonObject item = itemRef.toObject();
+        QJsonObject data = item.value(dataKey).toObject();
+        const QString target = data.value(attachedToKey).toString();
+        if (target.isEmpty()) {
+            continue;
+        }
+        const QString id = item.value(QStringLiteral("id")).toString();
+        const bool selfAttached = target == id;
+        if (selfAttached || closes_cycle(attachedTo, target, id)) {
+            report(selfAttached
+                       ? QStringLiteral("Dropped an item attached to itself")
+                       : QStringLiteral(
+                             "Dropped an attachment that formed a cycle"),
+                   id);
+            data.remove(attachedToKey);
+            item[dataKey] = data;
+            itemRef = item;
+            continue;
+        }
+        attachedTo.insert(id, target);
+    }
+
+    if (!reports.isEmpty()) {
+        root[QStringLiteral("items")] = items;
+    }
+    return reports;
+}
+
 
 // ============================================================================
 // FmlArchive
@@ -659,7 +802,9 @@ FmlResult FmlArchive::load(const QString& filename,
     mz_free(manifestBuf);
 
     QString parseError;
-    std::optional<Manifest> manifest = parse_manifest(manifestJson, parseError);
+    std::optional<Manifest> manifest = parse_manifest(manifestJson,
+                                                      parseError,
+                                                      result.itemErrors);
     if (!manifest) {
         result.error = parseError;
         return result;
