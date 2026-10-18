@@ -130,13 +130,18 @@ QString TabPane::get_current_tab_path()
 void TabPane::on_tab_closed(int index)
 {
     CanvasView* canvasview = widget_at(index);
-    // This tab's fate (saved or explicitly discarded) is being decided
-    // right now by the branches below - whatever they choose, a stale
-    // recovery snapshot from earlier in this session shouldn't linger
-    // and falsely offer to "recover" an already-closed tab after some
-    // later crash in the same run (see recovery.h).
-    familiar::recovery::remove(canvasview->recovery_id());
     if (canvasview->is_modified()) {
+        // Activated BEFORE the prompt, for correctness rather than
+        // cosmetics: FileActions::save_file() saves current_widget(), and
+        // so does save_file_as() for an untitled tab (see its own comment
+        // in file_actions.h). Closing a BACKGROUND tab therefore used to
+        // write whichever document happened to be in front, then delete
+        // the one the user had just agreed to save - its changes gone,
+        // and the active tab silently overwritten on top. Showing the tab
+        // being asked about is also the honest thing to do: the prompt
+        // says "you have unsaved documents" without naming which.
+        set_current_index(index);
+
         const QMessageBox::StandardButton resBtn = show_message_box(
             QMessageBox::Warning,
             this,
@@ -146,23 +151,26 @@ void TabPane::on_tab_closed(int index)
             QMessageBox::No);
 
         if (resBtn == QMessageBox::Yes) {
-            if (mainwindow_.file_actions().save_file() == QDialog::Accepted) {
-                delete canvasview;
-                if (tabs_->count() == 0) {
-                    add_new_untitled_tab();
-                }
+            if (mainwindow_.file_actions().save_file() != QDialog::Accepted) {
+                return; // save failed, or its Save As dialog was cancelled
             }
-        } else if (resBtn == QMessageBox::No) {
-            delete canvasview;
-            if (tabs_->count() == 0) {
-                add_new_untitled_tab();
-            }
+        } else if (resBtn != QMessageBox::No) {
+            return; // Cancel, or the prompt dismissed outright
         }
-    } else {
-        delete canvasview;
-        if (tabs_->count() == 0) {
-            add_new_untitled_tab();
-        }
+    }
+
+    // Only here is this tab's fate actually settled - saved, or
+    // explicitly discarded. Removing the recovery snapshot any earlier
+    // (it used to happen before the prompt) threw away the only copy of
+    // the unsaved work in exactly the cases where it still mattered: the
+    // user pressing Cancel, or the save failing and the tab staying open.
+    // Once the tab really is going, the snapshot has to go with it, or a
+    // later crash in this same session would offer to "recover" a tab
+    // that was deliberately closed (see recovery.h).
+    familiar::recovery::remove(canvasview->recovery_id());
+    delete canvasview;
+    if (tabs_->count() == 0) {
+        add_new_untitled_tab();
     }
 }
 

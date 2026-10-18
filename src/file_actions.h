@@ -87,9 +87,8 @@ private:
     int write_to_path(CanvasView* canvasView, const QString& path);
 
     // Loads `path` into whatever tab is currently active, in the
-    // background (see fml_archive.h). Shared by processOpenFile(),
-    // saveFileAs()'s "reload the previous file into a fresh tab" branch,
-    // and restoreFromRecovery(). `markModifiedAfterLoad` is only true for
+    // background (see fml_archive.h). Shared by processOpenFile() and
+    // restoreFromRecovery(). `markModifiedAfterLoad` is only true for
     // the last of those - every other caller wants the normal "freshly
     // opened = clean" behavior. `recoveryIdToClear` (non-null only for
     // restoreFromRecovery()) is removed from the recovery folder from

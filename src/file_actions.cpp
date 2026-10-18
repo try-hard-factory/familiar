@@ -268,14 +268,22 @@ int FileActions::save_file_as()
                                                        "Familiar (*.fml)"));
 
     if (!selected.isEmpty()) {
-        if (!mainwindow_.tab_pane().current_widget()->is_untitled()
-            && mainwindow_.tab_pane().get_current_tab_project_name()
-                   != QFileInfo(selected).fileName()) {
-            auto* canvasView = mainwindow_.tab_pane().current_widget();
-            mainwindow_.tab_pane().add_new_tab(selected);
-            load_fml_into_current_tab(canvasView->path());
-        }
-
+        // Standard Save As semantics, and nothing more: THIS tab starts
+        // living under the new path, the file it came from stays on disk
+        // untouched and is not reopened.
+        //
+        // There used to be a branch here that, for an already-saved
+        // document being saved under a different name, opened a SECOND
+        // tab on the chosen path and started a background load of the
+        // OLD file into it. Since TabPane::add_new_tab() makes the new
+        // tab current, every current_widget() below then referred to
+        // that new tab - so write_to_path() wrote out a scene the
+        // background load had not populated yet (it is delivered through
+        // ThreadedIO::finished, i.e. the event loop, which does not run
+        // inside this call; ProgressDialog show()s rather than exec()s).
+        // The chosen file got an EMPTY project written to it, with no
+        // error, while the user's actual changes stayed behind in the
+        // original tab, still unsaved.
         mainwindow_.tab_pane().set_current_tab_path(selected);
         mainwindow_.tab_pane().set_current_tab_title(
             QFileInfo(selected).fileName());
