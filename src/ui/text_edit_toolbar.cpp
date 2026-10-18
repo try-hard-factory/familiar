@@ -10,11 +10,16 @@
 using namespace familiar::log;
 
 #include <QComboBox>
+#include <QDialog>
 #include <QFontComboBox>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QHashFunctions>
+#include <QKeySequence>
 #include <QLineEdit>
+#include <QList>
 #include <QMargins>
+#include <QObject>
 #include <QPainter>
 #include <QPixmap>
 #include <QShortcut>
@@ -26,6 +31,9 @@ using namespace familiar::log;
 #include <QTimer>
 #include <QToolButton>
 #include <QUrl>
+#include <Qt>
+#include <QtMinMax>
+#include <QtTypes>
 
 #include <algorithm>
 

@@ -7,16 +7,26 @@
 #include <moveitem.h>
 
 #include <QGridLayout>
-#include <QMargins>
 #include <QHBoxLayout>
 #include <QIcon>
+#include <QKeySequence>
+#include <QLayoutItem>
+#include <QList>
+#include <QMargins>
 #include <QMovie>
+#include <QObject>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPixmap>
+#include <QPolygon>
 #include <QResizeEvent>
 #include <QShortcut>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <Qt>
+#include <QtMinMax>
+#include <QtPreprocessorSupport>
+#include <QtTypes>
 
 namespace {
 
@@ -108,10 +118,7 @@ QIcon make_step_icon(const QColor& glyphColor, qreal dpr, bool prev)
         tri << QPointF(baseX, kglyphInsetY)
             << QPointF(baseX, kiconSize - kglyphInsetY)
             << QPointF(kstepTriangleTip, iconMidY);
-        bar = QRectF(kfilmstripInset,
-                     kglyphInsetY,
-                     kstepBarWidth,
-                     glyphHeight);
+        bar = QRectF(kfilmstripInset, kglyphInsetY, kstepBarWidth, glyphHeight);
     } else {
         tri << QPointF(kstepTriangleInset, kglyphInsetY)
             << QPointF(kstepTriangleInset, kiconSize - kglyphInsetY)
@@ -167,7 +174,8 @@ QIcon make_filmstrip_icon(const QColor& glyphColor, qreal dpr)
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
 
-    const qreal cellW = (kiconSize - (2 * kfilmstripInset)) / qreal(kfilmstripCells);
+    const qreal cellW = (kiconSize - (2 * kfilmstripInset))
+                        / qreal(kfilmstripCells);
     const qreal cellH = kiconSize - (2 * kfilmstripTop);
     for (int i = 0; i < kfilmstripCells; ++i) {
         p.drawRect(QRectF(kfilmstripInset + (i * cellW),

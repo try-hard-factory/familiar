@@ -34,7 +34,6 @@ protected:
     ExporterBase& operator=(ExporterBase&&) = default;
 
 public:
-
 protected:
     static void emit_begin_processing(ThreadedIO* worker, int total);
     static void emit_progress(ThreadedIO* worker, int value);
@@ -56,8 +55,7 @@ public:
     // Asks the user for whatever this export type still needs (e.g. a
     // target pixel size); returns false if the user canceled.
     virtual bool get_user_input(QWidget* parent) = 0;
-    virtual void export_to(const QString& filename, ThreadedIO* worker)
-        = 0;
+    virtual void export_to(const QString& filename, ThreadedIO* worker) = 0;
 
 protected:
     CanvasScene* scene() const { return scene_; }
@@ -80,8 +78,7 @@ public:
     using SceneExporterBase::SceneExporterBase;
 
     bool get_user_input(QWidget* parent) override;
-    void export_to(const QString& filename,
-                   ThreadedIO* worker) override;
+    void export_to(const QString& filename, ThreadedIO* worker) override;
 
 private:
     QImage render_to_image() const;
@@ -96,8 +93,7 @@ public:
 
     // No dialog - always exports at defaultSize_.
     bool get_user_input(QWidget* parent) override;
-    void export_to(const QString& filename,
-                   ThreadedIO* worker) override;
+    void export_to(const QString& filename, ThreadedIO* worker) override;
 
 private:
     QString render_to_svg(ThreadedIO* worker) const;

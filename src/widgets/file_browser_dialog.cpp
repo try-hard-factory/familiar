@@ -7,31 +7,39 @@
 #include <QAction>
 #include <QColor>
 #include <QComboBox>
+#include <QConstOverload>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QFileSystemModel>
 #include <QFont>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QList>
 #include <QListWidget>
 #include <QMargins>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
+#include <QPoint>
 #include <QPushButton>
 #include <QShortcut>
 #include <QStandardPaths>
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
+#include <QtContainerFwd>
+#include <QtPreprocessorSupport>
 
-#include "utils/utils.h"
 
 namespace {
 
@@ -151,9 +159,8 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     titleLabel->setFont(titleFont);
     topRow->addWidget(titleLabel, 1);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "fbdCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "fbdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &FileBrowserDialog::reject);
     topRow->addWidget(closeBtn);
     outer->addLayout(topRow);

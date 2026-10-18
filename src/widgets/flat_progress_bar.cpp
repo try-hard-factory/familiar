@@ -1,10 +1,17 @@
 #include "flat_progress_bar.h"
+#include <cmath>
 
+#include <QColor>
 #include <QHideEvent>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPainterPath>
+#include <QProgressBar>
 #include <QShowEvent>
 #include <QTimer>
+#include <QWidget>
+#include <QtMinMax>
+#include <QtTypes>
 
 namespace {
 

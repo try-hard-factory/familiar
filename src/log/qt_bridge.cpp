@@ -4,7 +4,11 @@
 #include <cstdlib>
 #include <string>
 #include <string_view>
+#include <quill/LogMacros.h>
+#include <quill/Logger.h>
+#include <quill/core/LogLevel.h>
 
+#include <QHashFunctions>
 #include <QMessageLogContext>
 #include <QtGlobal>
 

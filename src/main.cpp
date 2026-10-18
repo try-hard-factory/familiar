@@ -1,3 +1,5 @@
+#include "core/settingshandler.h"
+#include "file_actions.h"
 #include "mainwindow.h"
 
 #include <optional>
@@ -7,6 +9,8 @@
 #include <QMessageBox>
 #include <QMetaType>
 #include <QSharedMemory>
+#include <QString>
+#include <QtEnvironmentVariables>
 
 #include "core/settings.h"
 #include "log/log.h"
@@ -126,8 +130,8 @@ int main(int argc, char* argv[])
 
     // Must run before anything below reads a CommandlineArgs getter (log
     // level, filename to open, ...) - see CommandlineArgs::process().
-    if (const std::optional<int> exitCode
-        = CommandlineArgs::instance().process(a)) {
+    if (const std::optional<int> exitCode = CommandlineArgs::instance().process(
+            a)) {
         return *exitCode;
     }
 

@@ -1,6 +1,7 @@
 #include "recent_files_view.h"
 
 #include "mainwindow.h"
+#include <QAbstractItemModel>
 
 void RecentFilesView::on_clicked(const QModelIndex& index)
 {

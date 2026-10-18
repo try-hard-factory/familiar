@@ -1,10 +1,24 @@
 #include "log.h"
 
+#include "log/ring_sink.h"
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdio>
 #include <memory>
+#include <ratio>
+#include <string>
+#include <utility>
 #include <vector>
+#include <quill/LogMacros.h>
+#include <quill/Logger.h>
+#include <quill/backend/BackendOptions.h>
+#include <quill/backend/SignalHandler.h>
+#include <quill/core/Common.h>
+#include <quill/core/FrontendOptions.h>
+#include <quill/core/LogLevel.h>
+#include <quill/core/PatternFormatterOptions.h>
+#include <quill/sinks/Sink.h>
 
 #ifdef _WIN32
 // NOMINMAX: without it, <Windows.h> #defines min/max as raw text-
@@ -40,9 +54,13 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
+#include <QHashFunctions>
+#include <QList>
 #include <QScreen>
 #include <QStandardPaths>
 #include <QSysInfo>
+#include <QtVersion>
 
 #include "quill/Backend.h"
 #include "quill/Frontend.h"
@@ -264,6 +282,9 @@ bool stdout_is_tty()
 #ifdef _WIN32
     return _isatty(_fileno(stdout)) != 0;
 #else
+    // fileno() is POSIX, declared in <stdio.h>; <cstdio> is the only
+    // spelling modernize-deprecated-headers allows here.
+    // NOLINTNEXTLINE(misc-include-cleaner)
     return isatty(fileno(stdout)) != 0;
 #endif
 }
@@ -453,15 +474,13 @@ void init(const Options& options)
     // transform rather than an indexed loop: gLoggers and kchannelNames
     // are parallel std::arrays of the same length, so there is no index to
     // get wrong here at all.
-    std::ranges::transform(kchannelNames,
-                           gLoggers.begin(),
-                           [&](const char* name) {
-                               quill::Logger* logger
-                                   = quill::Frontend::create_or_get_logger(
-                                       name, sinks, pattern);
-                               logger->set_log_level(loggerLevel);
-                               return logger;
-                           });
+    std::ranges::transform(kchannelNames, gLoggers.begin(), [&](const char* name) {
+        quill::Logger* logger = quill::Frontend::create_or_get_logger(name,
+                                                                      sinks,
+                                                                      pattern);
+        logger->set_log_level(loggerLevel);
+        return logger;
+    });
 
     log_session_header(filePath);
     detail::install_qt_message_bridge();

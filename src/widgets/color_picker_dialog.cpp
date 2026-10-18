@@ -4,20 +4,30 @@
 #include <core/settingshandler.h>
 
 #include <QApplication>
+#include <QBrush>
 #include <QClipboard>
+#include <QDialog>
 #include <QFont>
 #include <QHBoxLayout>
+#include <QHashFunctions>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMargins>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPoint>
 #include <QPushButton>
 #include <QRegion>
 #include <QToolTip>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
+#include <QtMinMax>
+#include <QtNumeric>
+#include <QtPreprocessorSupport>
+#include <QtTypes>
 
 #include "utils/utils.h"
 
@@ -278,9 +288,7 @@ void AlphaSlider::paintEvent(QPaintEvent* event)
 
 void AlphaSlider::pick(const QPoint& pos)
 {
-    alpha_ = qBound(0,
-                    int(pos.x() / qreal(width()) * kmaxChannel),
-                    kmaxChannel);
+    alpha_ = qBound(0, int(pos.x() / qreal(width()) * kmaxChannel), kmaxChannel);
     update();
     emit alpha_changed(alpha_);
 }
@@ -476,9 +484,8 @@ ColorPickerDialog::ColorPickerDialog(QWidget* parent,
     titleLabel->setFont(titleFont);
     topRow->addWidget(titleLabel, 1);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "cpdCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "cpdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &ColorPickerDialog::reject);
     topRow->addWidget(closeBtn);
     outer->addLayout(topRow);
@@ -657,8 +664,7 @@ void ColorPickerDialog::set_color(const QColor& color, QObject* source)
     }
     if (percentEdit_ && source != percentEdit_) {
         percentEdit_->setText(
-            QString::number(
-                qRound(color.alpha() * kpercentMax / kmaxChannelF))
+            QString::number(qRound(color.alpha() * kpercentMax / kmaxChannelF))
             + QStringLiteral("%"));
     }
 

@@ -16,6 +16,7 @@
 #include "tabpane.h"
 #include <actions/action_mixin.h>
 #include <canvasview.h>
+#include <utility>
 #include <utils/utils.h>
 #include <QApplication>
 #include <QCursor>
@@ -23,7 +24,6 @@
 #include <QMessageBox>
 #include <QPointer>
 #include <QWindow>
-#include <utility>
 class ProjectSettings;
 class QFileDialog;
 class SaveAllDialog;
@@ -58,8 +58,7 @@ public:
     Q_DISABLE_COPY_MOVE(MainWindow)
 
     void quit_project();
-    void save_all_window_save_cb(SaveAllDialog* w,
-                                 const std::map<int, bool>& m);
+    void save_all_window_save_cb(SaveAllDialog* w, const std::map<int, bool>& m);
     void cleanup_workplace();
     static void exit_project();
     TabPane& tab_pane();
@@ -105,9 +104,9 @@ public:
     }
     void clear_clipboard_items() { clipboardItems_.clear(); }
 
-// moc requires the access level to be spelled out on a slots
-// section, even when it repeats the enclosing one.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // moc requires the access level to be spelled out on a slots
+    // section, even when it repeats the enclosing one.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     // Window-level actions: MainWindow owns the single, app-wide QAction
     // set (via ActionsMixin) since the menu bar/shortcuts are shared
@@ -358,9 +357,9 @@ private slots:
     void open_file();
     void save_file_as();
 
-// moc requires the access level to be spelled out on a slots
-// section, even when it repeats the enclosing one.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // moc requires the access level to be spelled out on a slots
+    // section, even when it repeats the enclosing one.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     // Resync the shared action enabled-state to whichever tab is now
     // active (connected to TabPane::currentTabChanged). Everything else
@@ -372,9 +371,9 @@ private slots:
     void on_active_can_undo_changed(bool canUndo);
     void on_active_can_redo_changed(bool canRedo);
 
-// Closes the slots/signals section above - moc needs it, even
-// though to the compiler it repeats the enclosing access level.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // Closes the slots/signals section above - moc needs it, even
+    // though to the compiler it repeats the enclosing access level.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     // (Re)connects scene_/undoStack_ signals from `cv` to the slots
     // above, disconnecting the previously-hooked tab first, then

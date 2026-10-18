@@ -1,4 +1,5 @@
 #include "menu_structure.h"
+#include <QList>
 
 const QList<MenuNode>& menu_structure()
 {

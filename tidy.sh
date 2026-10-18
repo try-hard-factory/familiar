@@ -117,7 +117,17 @@ for arg in "$@"; do
     esac
 done
 
-run-clang-tidy -p "$ROOT" -j"$(nproc)" -quiet \
+# PYTHONUNBUFFERED: run-clang-tidy is a python script, so its stdout is
+# block-buffered the moment it is a pipe instead of a terminal - and it is
+# a pipe here (grep | tee). Nothing reaches the screen or the log until
+# ~8KB has piled up, including its own "Running clang-tidy for N files"
+# header and the per-file progress lines. In fast mode a file takes
+# seconds and the buffer fills quickly, so it was never noticeable; in
+# full mode a single file can take 2-3 minutes, so the run looks dead for
+# a long time - and a Ctrl-C there throws the whole buffer away, leaving a
+# 0-byte log behind. Line-buffered output costs nothing and keeps the run
+# watchable, which is the entire reason for the tee above.
+PYTHONUNBUFFERED=1 run-clang-tidy -p "$ROOT" -j"$(nproc)" -quiet \
     -extra-arg=-Wno-unknown-warning-option \
     "${CHECKS[@]}" "${ARGS[@]}" "$FILE_RE" 2>&1 |
     grep --line-buffered -vE '^[0-9]+ warnings? generated\.$' |
@@ -154,7 +164,12 @@ fi
 echo "distinct findings in our own sources: $(echo "$UNIQ" | wc -l)"
 echo
 echo "by check:"
-echo "$UNIQ" | grep -oE '\[[a-z][a-z0-9.,-]+\]$' | sort | uniq -c | sort -rn | head -25
+# [A-Za-z] inside the class, not [a-z0-9.,-]: clang-analyzer check names
+# carry the analyzer's own CamelCase package path
+# (clang-analyzer-optin.cplusplus.VirtualCall), so a lower-case-only
+# pattern silently dropped every clang-analyzer finding from this table -
+# the one family that only a full run produces.
+echo "$UNIQ" | grep -oE '\[[A-Za-z][A-Za-z0-9.,-]+\]$' | sort | uniq -c | sort -rn | head -25
 echo
 echo "by file (top 15):"
 echo "$UNIQ" | cut -d: -f1 | sort | uniq -c | sort -rn | head -15

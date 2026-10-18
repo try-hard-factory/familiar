@@ -3,7 +3,6 @@
 
 #include "log/log.h"
 using namespace familiar::log;
-#include "widgets/dialogs.h"
 #include <ui/extendedslider.h>
 #include <ui/presetsave_window.h>
 #include <utils/utils.h>
@@ -12,12 +11,21 @@ using namespace familiar::log;
 
 #include <QAbstractButton>
 #include <QButtonGroup>
+#include <QColor>
+#include <QDialog>
+#include <QHashFunctions>
 #include <QIcon>
 #include <QLabel>
+#include <QList>
+#include <QMap>
 #include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWidget>
+#include <Qt>
+#include <QtTypes>
 
 namespace {
 
@@ -58,11 +66,10 @@ QIcon make_swatch_icon(const QColor& color, qreal dpr)
     border.setWidthF(kswatchBorderStroke);
     p.setPen(border);
     p.setBrush(color);
-    p.drawEllipse(
-        QRectF(kswatchInset,
-               kswatchInset,
-               kswatchDiameter - (2 * kswatchInset),
-               kswatchDiameter - (2 * kswatchInset)));
+    p.drawEllipse(QRectF(kswatchInset,
+                         kswatchInset,
+                         kswatchDiameter - (2 * kswatchInset),
+                         kswatchDiameter - (2 * kswatchInset)));
     p.end();
 
     QIcon icon;

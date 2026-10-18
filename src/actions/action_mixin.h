@@ -112,8 +112,7 @@ private:
     {
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
-        const QColor background
-            = colorPreset[EPresetsColorIdx::BackgroundColor];
+        const QColor background = colorPreset[EPresetsColorIdx::BackgroundColor];
         const QColor text = colorPreset[EPresetsColorIdx::TextColor];
         const QColor border = colorPreset[EPresetsColorIdx::BorderColor];
         const QColor selection = colorPreset[EPresetsColorIdx::SelectionColor];
@@ -162,8 +161,7 @@ private:
                               "  background: %3;"
                               "  margin: 4px 8px;"
                               "}")
-            .arg(rgba(background,
-                      action_mixin_consts::kmenuBackgroundAlpha),
+            .arg(rgba(background, action_mixin_consts::kmenuBackgroundAlpha),
                  text.name(),
                  border.name(),
                  rgba(text, action_mixin_consts::kdisabledTextAlpha),

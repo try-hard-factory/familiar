@@ -7,11 +7,23 @@
 #include <widgets/setting_descriptions.h>
 #include <widgets/settings_style.h>
 
+#include <QChildEvent>
+#include <QConstOverload>
+#include <QFont>
 #include <QGraphicsDropShadowEffect>
+#include <QHashFunctions>
+#include <QLabel>
+#include <QList>
 #include <QMargins>
 #include <QMouseEvent>
+#include <QPoint>
 #include <QScreen>
 #include <QVBoxLayout>
+#include <QVariant>
+#include <QWidget>
+#include <Qt>
+#include <QtMinMax>
+#include <QtVersionChecks>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -322,7 +334,7 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     // setValue() (via setCurrentIndex) happens before this connect(), so
     // it can't fire onValueChanged() with nothing listening yet - no
     // ignoreValueChanged_ guard needed.
-    set_value(FamSettings::value_or_default(settings_key()));
+    ComboSettingRow::set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
     set_ignore_value_changed(false);
 
@@ -390,7 +402,7 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     // real filename). Pin an explicit size instead of trusting it.
     input_->setFixedSize(kcheckboxSide, kcheckboxSide);
 
-    set_value(FamSettings::value_or_default(settings_key()));
+    CheckboxSettingRow::set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
     set_ignore_value_changed(false);
 
@@ -458,7 +470,7 @@ IntegerSettingRow::IntegerSettingRow(
 {
     input_->setRange(min, max);
     input_->setFixedWidth(kcontrolWidth);
-    set_value(FamSettings::value_or_default(settings_key()));
+    IntegerSettingRow::set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
     set_ignore_value_changed(false);
 

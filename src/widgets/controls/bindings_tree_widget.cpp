@@ -1,18 +1,26 @@
 #include "bindings_tree_widget.h"
 #include "binding_dialogs.h"
+#include "core/controls.h"
 #include "search_highlight.h"
 
+#include "widgets/controls/binding_target.h"
+#include <utility>
 #include <widgets/setting_descriptions.h>
 #include <widgets/setting_row.h>
 #include <widgets/settings_style.h>
 
+#include <QDialog>
 #include <QHBoxLayout>
+#include <QHashFunctions>
 #include <QLayoutItem>
+#include <QList>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <Qt>
+#include <QtContainerFwd>
 
 #include <functional>
 

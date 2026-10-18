@@ -4,12 +4,24 @@
 #include <algorithm>
 #include <widgets/dialog_style.h>
 #include <widgets/settings_style.h>
+#include <QAbstractItemModel>
 #include <QAbstractItemView>
+#include <QColor>
+#include <QComboBox>
 #include <QEvent>
 #include <QFrame>
+#include <QHashFunctions>
+#include <QObject>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPainterPath>
+#include <QSize>
+#include <QStyle>
 #include <QStyleOptionComboBox>
+#include <QStyledItemDelegate>
+#include <QWidget>
+#include <Qt>
+#include <QtTypes>
 #include <qtimer.h>
 using namespace familiar::log;
 
@@ -57,13 +69,13 @@ void FlatComboItemDelegate::paint(QPainter* painter,
     if (highlighted) {
         painter->setPen(Qt::NoPen);
         painter->setBrush(highlightBackground_);
-        painter->drawRoundedRect(
-            QRectF(option.rect).adjusted(khighlightInsetX,
-                                         khighlightInsetY,
-                                         -khighlightInsetX,
-                                         -khighlightInsetY),
-            khighlightRadius,
-            khighlightRadius);
+        painter->drawRoundedRect(QRectF(option.rect)
+                                     .adjusted(khighlightInsetX,
+                                               khighlightInsetY,
+                                               -khighlightInsetX,
+                                               -khighlightInsetY),
+                                 khighlightRadius,
+                                 khighlightRadius);
     }
 
     painter->setPen(text_);

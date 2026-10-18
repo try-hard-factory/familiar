@@ -1,6 +1,10 @@
 #include "binding_target.h"
 
+#include "core/controls.h"
 #include <actions/actions.h>
+#include <QHashFunctions>
+#include <QLatin1String>
+#include <QList>
 
 QString ActionBindingTarget::id() const
 {

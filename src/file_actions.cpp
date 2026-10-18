@@ -7,10 +7,18 @@
 #include "tabpane.h"
 #include "widgets/dialogs.h"
 #include "widgets/file_browser_dialog.h"
+#include "widgets/message_box.h"
 #include <canvasview.h>
 #include <core/settingshandler.h>
+#include <QDialog>
+#include <QDir>
+#include <QFileInfo>
 #include <QMessageBox>
+#include <QObject>
 #include <QString>
+#include <QThread>
+#include <QUuid>
+#include <QtContainerFwd>
 
 FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)

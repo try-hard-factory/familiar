@@ -121,7 +121,6 @@ protected:
     MouseConfigBase& operator=(MouseConfigBase&&) = default;
 
 public:
-
     virtual const QString& id() const = 0;
     virtual const QString& group() const = 0;
     virtual const QString& text() const = 0;

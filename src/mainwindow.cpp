@@ -1,9 +1,16 @@
 #include "mainwindow.h"
+
+#include "actions/action_mixin.h"
+#include "actions/actions.h"
+#include "file_actions.h"
+#include <QApplication>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QGraphicsOpacityEffect>
 #include <QLabel>
 #include <QLayout>
+#include <QList>
+#include <QMainWindow>
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QMouseEvent>
@@ -23,6 +30,7 @@
 #include "project_settings.h"
 #include "recovery.h"
 #include "tabpane.h"
+#include "utils/utils.h"
 #include "widgets/about_dialog.h"
 #include "widgets/dialog_style.h"
 #include "widgets/dialogs.h"
@@ -36,6 +44,8 @@
 #include <ui/hierarchy_panel.h>
 #include <ui/settings_window.h>
 #include <QUndoStack>
+#include <Qt>
+#include <QtTypes>
 
 #include "log/log.h"
 using namespace familiar::log;
@@ -113,8 +123,7 @@ public:
         topRow->addWidget(titleLabel, 1);
 
         auto* closeBtn = familiar::dialog_style::make_close_button(
-            this,
-            "transparentConfirmCloseBtn");
+            this, "transparentConfirmCloseBtn");
         connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
@@ -479,8 +488,7 @@ void MainWindow::settings_changed_slot()
     // same 2px border in a transparent color rather than no border at
     // all, so the box model stays identical and tabs don't resize when
     // the selection changes.
-    const QColor& selectionColor
-        = colorPreset[EPresetsColorIdx::SelectionColor];
+    const QColor& selectionColor = colorPreset[EPresetsColorIdx::SelectionColor];
     const QColor& borderColor = colorPreset[EPresetsColorIdx::BorderColor];
     auto rgb = [](const QColor& c) {
         return QString("rgb(%1, %2, %3)")

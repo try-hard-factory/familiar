@@ -1,13 +1,18 @@
 #include "dialog_style.h"
 
+#include <QColor>
 #include <QFont>
-#include <QLayout>
 #include <QGraphicsDropShadowEffect>
+#include <QHashFunctions>
+#include <QLayout>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
 #include <QRegion>
 #include <QWidget>
+#include <Qt>
+#include <QtTypes>
 
 namespace familiar::dialog_style {
 

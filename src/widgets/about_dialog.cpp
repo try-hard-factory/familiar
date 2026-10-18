@@ -6,14 +6,17 @@
 
 #include <QColor>
 #include <QDate>
+#include <QDialog>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMargins>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 #include "utils/utils.h"
 
@@ -58,9 +61,8 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     outer->setContentsMargins(kouterMargins);
     outer->setSpacing(4);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "adCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "adCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &AboutDialog::close);
     auto* closeRow = new QHBoxLayout();
     closeRow->addStretch();

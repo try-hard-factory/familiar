@@ -66,7 +66,6 @@ protected:
     ValueHandler& operator=(ValueHandler&&) = default;
 
 public:
-
     /**
      * @brief Check the value semantically.
      * @param val The value that was read from the config file

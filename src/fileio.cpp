@@ -9,15 +9,26 @@
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
+#include <QHashFunctions>
+#include <QImage>
 #include <QImageReader>
+#include <QLatin1String>
+#include <QList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QPoint>
 #include <QSet>
+#include <QThread>
 #include <QTimer>
 #include <QUrlQuery>
+#include <Qt>
+#include <QtContainerFwd>
+#include <QtPreprocessorSupport>
+#include <QtTypes>
 
-#include <cstddef>
+#include <libraw/libraw_const.h>
+#include <libraw/libraw_types.h>
 #include <optional>
 
 namespace {
@@ -33,6 +44,7 @@ constexpr int krawChoicePollMs = 10;
 #include <libraw/libraw.h>
 
 #include "log/log.h"
+#include <utility>
 using namespace familiar::log;
 
 namespace {
@@ -653,7 +665,8 @@ void ImageImportSession::run(ThreadedIO* worker)
             case ImageLoadFailure::TooLarge:
                 FLOG_WARN(Ch::IO,
                           "Image exceeds the {} MB allocation limit: {}",
-                          allocationLimitBytes / (static_cast<qint64>(1024 * 1024)),
+                          allocationLimitBytes
+                              / (static_cast<qint64>(1024 * 1024)),
                           label);
                 tooLargeErrors_.append(label);
                 break;

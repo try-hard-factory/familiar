@@ -7,25 +7,33 @@
 #include "miniz.h"
 #include "miniz_zip.h"
 
+#include <QAbstractGraphicsShapeItem>
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QHashFunctions>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QJsonValue>
+#include <QList>
 #include <QMap>
 #include <QPointF>
 #include <QRectF>
 #include <QSaveFile>
 #include <QSet>
+#include <QStringView>
 #include <QUuid>
 #include <QVariantMap>
+#include <QtAssert>
+#include <QtContainerFwd>
+#include <QtTypes>
 
 #include <cstring>
 #include <functional>
+#include <miniz_common.h>
 #include <optional>
 
 #include "log/log.h"

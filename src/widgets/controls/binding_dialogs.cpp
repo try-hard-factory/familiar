@@ -1,19 +1,30 @@
 #include "binding_dialogs.h"
 
+#include "core/controls.h"
+#include "widgets/controls/binding_target.h"
+#include "widgets/message_box.h"
 #include <actions/actions.h>
-#include <widgets/dialogs.h>
+#include <utility>
 
 #include <QCheckBox>
+#include <QDialog>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
+#include <QHashFunctions>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QLatin1String>
+#include <QLineEdit>
+#include <QList>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QSet>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <QWidget>
+#include <Qt>
+#include <QtContainerFwd>
 
 namespace {
 

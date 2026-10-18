@@ -17,7 +17,11 @@ constexpr int khexRgbaLength = 9;
 
 } // namespace
 
+#include <QHashFunctions>
+#include <QMap>
 #include <QVariant>
+#include <Qt>
+#include <QtContainerFwd>
 
 QVariant ValueHandler::value(const QVariant& val)
 {

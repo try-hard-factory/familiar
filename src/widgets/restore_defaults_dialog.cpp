@@ -4,18 +4,25 @@
 
 #include <core/settings.h>
 #include <core/settingshandler.h>
+#include <utility>
 
 #include <QCheckBox>
 #include <QColor>
+#include <QDialog>
 #include <QFont>
-#include <QMargins>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QList>
+#include <QMargins>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
+#include <QtContainerFwd>
+#include <QtVersionChecks>
 
 using familiar::SettingsCategory;
 
@@ -250,9 +257,8 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "rddCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "rddCloseBtn");
     connect(closeBtn,
             &QPushButton::clicked,
             this,

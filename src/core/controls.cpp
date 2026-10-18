@@ -2,16 +2,22 @@
 #include "settings.h"
 #include "settingshandler.h"
 #include <actions/actions.h>
+#include <optional>
 #include <QAction>
 #include <QDir>
 #include <QFileInfo>
+#include <QHashFunctions>
 #include <QJsonArray>
 #include <QJsonValue>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QLatin1String>
+#include <QList>
 #include <QMouseEvent>
 #include <QSet>
 #include <QWheelEvent>
+#include <Qt>
+#include <QtContainerFwd>
 
 QString key_event_to_sequence_string(const QKeyEvent* event)
 {

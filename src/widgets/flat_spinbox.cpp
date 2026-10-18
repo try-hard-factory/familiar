@@ -1,10 +1,17 @@
 #include "flat_spinbox.h"
 
+#include <QColor>
+#include <QDoubleSpinBox>
 #include <QEvent>
+#include <QHashFunctions>
 #include <QLineEdit>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPainterPath>
 #include <QStyleOptionSpinBox>
+#include <QWidget>
+#include <Qt>
+#include <QtTypes>
 
 namespace {
 

@@ -5,10 +5,14 @@
 #include <commands.h>
 #include <core/settingshandler.h>
 #include <moveitem.h>
+#include <utility>
 #include <widgets/dialog_style.h>
 
+#include <QAbstractItemView>
 #include <QAction>
+#include <QArgument>
 #include <QDialog>
+#include <QDockWidget>
 #include <QDropEvent>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -16,19 +20,27 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QList>
 #include <QMargins>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QMovie>
+#include <QMutableSetIterator>
+#include <QObject>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPalette>
+#include <QPoint>
 #include <QPushButton>
 #include <QShortcut>
 #include <QShowEvent>
 #include <QTimer>
 #include <QTreeWidget>
+#include <QUuid>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
+#include <QtTypes>
 
 #include <functional>
 
@@ -635,8 +647,7 @@ QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
         icon = make_picture_icon(picture->pixmap(), text);
     } else if (auto* txt = dynamic_cast<TextItem*>(item)) {
         const QString plain = txt->toPlainText().trimmed();
-        label = plain.isEmpty() ? QObject::tr("Text")
-                                : plain.left(klabelChars);
+        label = plain.isEmpty() ? QObject::tr("Text") : plain.left(klabelChars);
         icon = make_text_icon(text);
     } else {
         label = QObject::tr("Item");

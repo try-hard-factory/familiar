@@ -1,7 +1,10 @@
 #include "presetsave_window.h"
 #include <core/settingshandler.h>
+#include <QActionEvent>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QWidget>
+#include <Qt>
 
 PresetSaveWindow::PresetSaveWindow(QWidget* parent)
     : QWidget(parent)

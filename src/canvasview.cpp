@@ -1,6 +1,7 @@
 #include "canvasview.h"
 #include "canvasscene.h"
 #include "commands.h"
+#include "core/controls.h"
 #include "core/settings.h"
 #include "export.h"
 #include "fileio.h"
@@ -13,28 +14,57 @@
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
 #include "widgets/file_browser_dialog.h"
+#include "widgets/message_box.h"
 #include "widgets/raw_import_dialog.h"
+#include "widgets/welcome_overlay.h"
+#include <algorithm>
 #include <cmath>
+#include <QAbstractAnimation>
 #include <QApplication>
+#include <QChildEvent>
 #include <QClipboard>
 #include <QContextMenuEvent>
+#include <QCoreApplication>
+#include <QCursor>
 #include <QDesktopServices>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
+#include <QFrame>
+#include <QGraphicsView>
 #include <QImage>
 #include <QImageReader>
 #include <QKeyEvent>
+#include <QLatin1String>
+#include <QList>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPaintDevice>
 #include <QPainter>
+#include <QPoint>
 #include <QRegularExpression>
+#include <QScrollBar>
+#include <QStringView>
+#include <QTextCursor>
+#include <QThread>
 #include <QUndoStack>
 #include <QUrl>
+#include <QUuid>
+#include <QVariant>
 #include <QVariantAnimation>
+#include <Qt>
+#include <QtContainerFwd>
+#include <QtMinMax>
+#include <QtNumeric>
+#include <QtPreprocessorSupport>
+#include <QtTypes>
 
 #include <core/settingshandler.h>
 
 #include "log/log.h"
+#include <functional>
+#include <memory>
+#include <optional>
 using namespace familiar::log;
 
 namespace {
@@ -869,8 +899,7 @@ bool CanvasView::try_control_key_nudge(QKeyEvent* event)
             if (b.key_sequence() != pressed) {
                 continue;
             }
-            const double delta = b.is_inverted() ? -kwheelNotch
-                                                 : kwheelNotch;
+            const double delta = b.is_inverted() ? -kwheelNotch : kwheelNotch;
             if (cfg.group() == QLatin1String("pan_horizontal")) {
                 pan(QPointF(0.0, kpanPerAngleUnit * delta));
                 return true;

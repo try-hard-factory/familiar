@@ -2,6 +2,7 @@
 
 #include <QEvent>
 #include <QMouseEvent>
+#include <QWidget>
 
 HeldButtonsTracker& HeldButtonsTracker::instance()
 {

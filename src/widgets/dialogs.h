@@ -147,9 +147,9 @@ public:
         titleLabel->setFont(titleFont);
         topRow->addWidget(titleLabel, 1);
 
-        auto* closeBtn = familiar::dialog_style::make_close_button(
-            this,
-            "progressCloseBtn");
+        auto* closeBtn
+            = familiar::dialog_style::make_close_button(this,
+                                                        "progressCloseBtn");
         // Same funnel as the Cancel button below - see reject().
         connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
         topRow->addWidget(closeBtn, 0, Qt::AlignTop);
@@ -319,8 +319,7 @@ protected:
     {
         QDialog::resizeEvent(event);
         familiar::dialog_style::apply_rounded_mask(
-            this,
-            familiar::dialog_style::kdialogCornerRadius);
+            this, familiar::dialog_style::kdialogCornerRadius);
     }
 
 private:
@@ -421,9 +420,9 @@ private:
         percentLabel_->setText(QStringLiteral("%1%").arg(percent));
     }
 
-// moc requires the access level to be spelled out on a slots
-// section, even when it repeats the enclosing one.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // moc requires the access level to be spelled out on a slots
+    // section, even when it repeats the enclosing one.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     void on_current_item_changed(const QString& name)
     {
@@ -469,8 +468,7 @@ private slots:
             return;
         }
         if (decoding) {
-            set_range(dialog_consts::kpercentMin,
-                      dialog_consts::kpercentMax);
+            set_range(dialog_consts::kpercentMin, dialog_consts::kpercentMax);
             set_value(0);
         } else {
             set_range(0, knownMaximum_);
@@ -559,9 +557,9 @@ private slots:
         }
     }
 
-// Closes the slots/signals section above - moc needs it, even
-// though to the compiler it repeats the enclosing access level.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // Closes the slots/signals section above - moc needs it, even
+    // though to the compiler it repeats the enclosing access level.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     FlatProgressBar* bar_ = nullptr;
     QLabel* percentLabel_ = nullptr;
@@ -769,9 +767,9 @@ private:
     QList<familiar::log::RingSink::Entry> allEntries_;
     QMap<familiar::log::Level, bool> visibleLevels_;
 
-// moc requires the access level to be spelled out on a slots
-// section, even when it repeats the enclosing one.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // moc requires the access level to be spelled out on a slots
+    // section, even when it repeats the enclosing one.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     // A single new line: cheap append instead of a full rebuild (the
     // common case - most log lines arrive with every filter already
@@ -883,9 +881,9 @@ private:
     QList<familiar::recovery::Entry> entries_;
     QListWidget* list_ = nullptr;
 
-// moc requires the access level to be spelled out on a slots
-// section, even when it repeats the enclosing one.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // moc requires the access level to be spelled out on a slots
+    // section, even when it repeats the enclosing one.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private slots:
     void restore_and_discard_unchecked()
     {
@@ -1028,9 +1026,9 @@ private slots:
         }
     }
 
-// Closes the slots/signals section above - moc needs it, even
-// though to the compiler it repeats the enclosing access level.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // Closes the slots/signals section above - moc needs it, even
+    // though to the compiler it repeats the enclosing access level.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QSize defaultSize_;
     bool ignoreChange_ = false;
@@ -1102,8 +1100,7 @@ public:
         topRow->addWidget(titleLabel, 1);
 
         auto* closeBtn = familiar::dialog_style::make_close_button(
-            this,
-            "changeOpacityCloseBtn");
+            this, "changeOpacityCloseBtn");
         connect(closeBtn,
                 &QPushButton::clicked,
                 this,
@@ -1116,8 +1113,7 @@ public:
 
 
         input_->setObjectName(QStringLiteral("changeOpacitySlider"));
-        input_->setRange(dialog_consts::kpercentMin,
-                         dialog_consts::kpercentMax);
+        input_->setRange(dialog_consts::kpercentMin, dialog_consts::kpercentMax);
         connect(input_,
                 &QSlider::valueChanged,
                 this,
@@ -1185,9 +1181,9 @@ public:
     // See CanvasScene's own Q_DISABLE_COPY_MOVE comment - same reason.
     Q_DISABLE_COPY_MOVE(ChangeOpacityDialog)
 
-// moc requires the access level to be spelled out on a slots
-// section, even when it repeats the enclosing one.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // moc requires the access level to be spelled out on a slots
+    // section, even when it repeats the enclosing one.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 public slots:
     void accept() override
     {
@@ -1224,8 +1220,7 @@ protected:
     {
         QDialog::resizeEvent(event);
         familiar::dialog_style::apply_rounded_mask(
-            this,
-            familiar::dialog_style::kdialogCornerRadius);
+            this, familiar::dialog_style::kdialogCornerRadius);
     }
 
 private slots:
@@ -1236,9 +1231,9 @@ private slots:
         command_->redo();
     }
 
-// Closes the slots/signals section above - moc needs it, even
-// though to the compiler it repeats the enclosing access level.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // Closes the slots/signals section above - moc needs it, even
+    // though to the compiler it repeats the enclosing access level.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     QList<QGraphicsItem*> items_;
     QUndoStack* undoStack_;
@@ -1372,9 +1367,9 @@ public:
         titleLabel->setFont(titleFont);
         topRow->addWidget(titleLabel, 1);
 
-        auto* closeBtn = familiar::dialog_style::make_close_button(
-            this,
-            "exportExistsCloseBtn");
+        auto* closeBtn
+            = familiar::dialog_style::make_close_button(this,
+                                                        "exportExistsCloseBtn");
         connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
@@ -1468,8 +1463,7 @@ protected:
     {
         QDialog::resizeEvent(event);
         familiar::dialog_style::apply_rounded_mask(
-            this,
-            familiar::dialog_style::kdialogCornerRadius);
+            this, familiar::dialog_style::kdialogCornerRadius);
     }
 
 private:

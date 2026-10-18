@@ -86,7 +86,6 @@ protected:
     IBaseItem& operator=(IBaseItem&&) = default;
 
 public:
-
     // Multiple independent owners can end up referencing the same item
     // across its lifetime - e.g. the InsertItemsCommand that created it
     // and, later, a DeleteItemsCommand for the same item are both alive
@@ -240,7 +239,8 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
         const QPointF prev = this->mapToScene(anchor);
-        QGraphicsItem::setRotation(std::fmod(value, selector_consts::kfullTurnDegrees));
+        QGraphicsItem::setRotation(
+            std::fmod(value, selector_consts::kfullTurnDegrees));
         const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
@@ -257,7 +257,8 @@ public:
         const QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
         if (vertical) {
-            this->set_rotation(this->rotation() + selector_consts::khalfTurnDegrees,
+            this->set_rotation(this->rotation()
+                                   + selector_consts::khalfTurnDegrees,
                                anchor);
         }
         const QPointF diff = this->mapToScene(anchor) - prev;
@@ -482,7 +483,8 @@ public:
 
     QRectF select_handle_free_center() const
     {
-        const qreal size = fixed_length_for_viewport(selector_consts::kselectFreeCenter);
+        const qreal size = fixed_length_for_viewport(
+            selector_consts::kselectFreeCenter);
         const qreal x = this->center().x() - size / 2;
         const qreal y = this->center().y() - size / 2;
         return {x, y, size, size};
@@ -668,7 +670,10 @@ public:
     }
 
     // Whether this item is currently mid scale/rotate/flip drag.
-    bool is_action_active() const override { return activeMode_ != EItemMode::NoneMode; }
+    bool is_action_active() const override
+    {
+        return activeMode_ != EItemMode::NoneMode;
+    }
 
     qreal scale_orig_factor() const override { return scaleOrigFactor_; }
     void set_scale_orig_factor(qreal value) override
@@ -709,7 +714,8 @@ public:
 
         path.addRect(get_rect_from_points(p1, p2));
 
-        return path - get_scale_bounds(corner, selector_consts::khandleCarveEpsilon);
+        return path
+               - get_scale_bounds(corner, selector_consts::khandleCarveEpsilon);
     }
 
 
@@ -1053,7 +1059,8 @@ protected:
     qreal get_rotate_angle(const QPointF& pos) const
     {
         const QPointF diff = pos - eventAnchor_;
-        return -std::atan2(diff.x(), diff.y()) * selector_consts::khalfTurnDegrees / M_PI;
+        return -std::atan2(diff.x(), diff.y())
+               * selector_consts::khalfTurnDegrees / M_PI;
     }
 
     qreal get_rotate_delta(const QPointF& pos, bool snap = false) const
@@ -1078,28 +1085,35 @@ protected:
 
     Qt::CursorShape get_diag_cursor(bool isTopLeftOrBottomRight)
     {
-        auto rotation = std::fmod(this->rotation(), selector_consts::khalfTurnDegrees);
+        auto rotation = std::fmod(this->rotation(),
+                                  selector_consts::khalfTurnDegrees);
         const bool flipped = (this->flip() == -1);
 
         if (isTopLeftOrBottomRight) {
-            if ((selector_consts::kcursorSector1 < rotation) && (rotation < selector_consts::kcursorSector2)) {
+            if ((selector_consts::kcursorSector1 < rotation)
+                && (rotation < selector_consts::kcursorSector2)) {
                 return Qt::SizeVerCursor;
             }
-            if ((selector_consts::kcursorSector2 < rotation) && (rotation < selector_consts::kcursorSector3)) {
+            if ((selector_consts::kcursorSector2 < rotation)
+                && (rotation < selector_consts::kcursorSector3)) {
                 return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
             }
-            if ((selector_consts::kcursorSector3 < rotation) && (rotation < selector_consts::kcursorSector4)) {
+            if ((selector_consts::kcursorSector3 < rotation)
+                && (rotation < selector_consts::kcursorSector4)) {
                 return Qt::SizeHorCursor;
             }
             return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
         }
-        if ((selector_consts::kcursorSector1 < rotation) && (rotation < selector_consts::kcursorSector2)) {
+        if ((selector_consts::kcursorSector1 < rotation)
+            && (rotation < selector_consts::kcursorSector2)) {
             return Qt::SizeHorCursor;
         }
-        if ((selector_consts::kcursorSector2 < rotation) && (rotation < selector_consts::kcursorSector3)) {
+        if ((selector_consts::kcursorSector2 < rotation)
+            && (rotation < selector_consts::kcursorSector3)) {
             return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
         }
-        if ((selector_consts::kcursorSector3 < rotation) && (rotation < selector_consts::kcursorSector4)) {
+        if ((selector_consts::kcursorSector3 < rotation)
+            && (rotation < selector_consts::kcursorSector4)) {
             return Qt::SizeVerCursor;
         }
         return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
@@ -1112,7 +1126,8 @@ protected:
     bool is_edge_vertical(const EdgeBounds& edge) const
     {
         const qreal rotation = this->rotation();
-        if (((rotation > selector_consts::ksidewaysFrom) && (rotation < selector_consts::ksidewaysTo))
+        if (((rotation > selector_consts::ksidewaysFrom)
+             && (rotation < selector_consts::ksidewaysTo))
             || ((rotation > selector_consts::ksidewaysFromFlipped)
                 && (rotation < selector_consts::ksidewaysToFlipped))) {
             return !edge.vertical;
@@ -1123,7 +1138,8 @@ protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
         const QPointF pos = event->scenePos();
-        if ((pos - eventStart_).manhattanLength() > selector_consts::kdragThreshold) {
+        if ((pos - eventStart_).manhattanLength()
+            > selector_consts::kdragThreshold) {
             // Reset previous transform when movement exceeds threshold
             auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
             view->reset_previous_transform(nullptr);

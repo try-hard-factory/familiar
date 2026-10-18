@@ -17,16 +17,32 @@ constexpr qreal kmarginRatio = 0.03;
 
 } // namespace
 
+#include <QAbstractGraphicsShapeItem>
+#include <QColor>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
+#include <QFileDevice>
 #include <QFont>
+#include <QHashFunctions>
+#include <QImage>
+#include <QList>
 #include <QMap>
 #include <QMargins>
+#include <QPaintDevice>
 #include <QPainter>
+#include <QPoint>
+#include <QSize>
+#include <QStringView>
 #include <QXmlStreamWriter>
+#include <Qt>
+#include <QtContainerFwd>
+#include <QtNumeric>
+#include <QtTypes>
 
 #include <algorithm>
-#include <cmath>
+#include <memory>
+#include <string>
 
 // ============================================================================
 // ExporterBase
@@ -360,6 +376,10 @@ void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
             bytes = gifItem->gif_bytes();
             filename = gifItem->get_filename_for_export(QStringLiteral("gif"));
         } else {
+            // items_ only ever gets non-null pointers (the constructor's
+            // dynamic_cast guard); the analyzer reaches here by assuming
+            // the dynamic_cast above failed BECAUSE item was null.
+            // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
             const auto [pixBytes, imgformat] = item->pixmap_to_bytes();
             bytes = pixBytes;
             filename = item->get_filename_for_export(imgformat);

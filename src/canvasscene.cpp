@@ -1,14 +1,18 @@
 #include "canvasscene.h"
-#include "debug_macros.h"
 #include "mainwindow.h"
 #include "moveitem.h"
 
 #include <QApplication>
 #include <QClipboard>
+#include <QColor>
 #include <QGraphicsItem>
+#include <QHash>
 #include <QKeyEvent>
+#include <QLatin1String>
+#include <QList>
 #include <QMimeData>
 #include <QMutexLocker>
+#include <QObject>
 #include <QPainter>
 #include <QPen>
 #include <QSet>
@@ -21,12 +25,25 @@ using namespace familiar::log;
 #include <core/settingshandler.h>
 
 #include "commands.h"
+#include <QStringView>
 #include <QUndoStack>
+#include <QUuid>
+#include <Qt>
+#include <QtAssert>
+#include <QtContainerFwd>
+#include <QtTypes>
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
+#include <iterator>
 #include <limits>
+#include <memory>
+#include <numeric>
+#include <string>
+#include <vector>
 
 namespace {
 

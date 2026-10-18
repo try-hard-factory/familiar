@@ -2,6 +2,10 @@
 // SPDX-FileCopyrightText: 2017-2019 Alejandro Sirgo Rica & Contributors
 
 #include "extendedslider.h"
+#include <QObject>
+#include <QSlider>
+#include <QWidget>
+#include <QtTypes>
 
 ExtendedSlider::ExtendedSlider(QWidget* parent)
     : QSlider(parent)

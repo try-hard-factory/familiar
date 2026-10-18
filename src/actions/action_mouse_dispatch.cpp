@@ -9,14 +9,20 @@
 #include <tabpane.h>
 
 #include <QApplication>
+#include <QArgument>
+#include <QChildEvent>
 #include <QCursor>
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPlainTextEdit>
+#include <QPoint>
 #include <QSet>
 #include <QTextEdit>
 #include <QWidget>
+#include <Qt>
+#include <QtPreprocessorSupport>
 
 namespace {
 

@@ -1,4 +1,7 @@
 #include "group_toolbar.h"
+
+#include "canvasscene.h"
+#include "commands.h"
 #include "widgets/color_picker_dialog.h"
 #include "widgets/dialog_style.h"
 
@@ -6,9 +9,10 @@
 #include <moveitem.h>
 
 #include <QCheckBox>
+#include <QDialog>
 #include <QHBoxLayout>
-#include <QMargins>
 #include <QIcon>
+#include <QMargins>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
@@ -17,6 +21,8 @@
 #include <QSignalBlocker>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <Qt>
+#include <QtTypes>
 
 namespace {
 
@@ -119,10 +125,7 @@ QIcon make_fill_color_icon(const QColor& fillColor,
     p.setPen(border);
     p.setBrush(fillColor);
     const qreal swatchSide = kiconSize - (2 * kswatchInset);
-    p.drawRoundedRect(QRectF(kswatchInset,
-                             kswatchInset,
-                             swatchSide,
-                             swatchSide),
+    p.drawRoundedRect(QRectF(kswatchInset, kswatchInset, swatchSide, swatchSide),
                       kswatchRadius,
                       kswatchRadius);
 

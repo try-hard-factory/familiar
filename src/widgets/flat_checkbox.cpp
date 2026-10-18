@@ -1,8 +1,17 @@
 #include "flat_checkbox.h"
 
+#include <QCheckBox>
+#include <QColor>
+#include <QConstOverload>
 #include <QEvent>
+#include <QHashFunctions>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPainterPath>
+#include <QWidget>
+#include <Qt>
+#include <QtPreprocessorSupport>
+#include <QtTypes>
 
 namespace {
 constexpr int kindicatorSize = 15;
@@ -59,9 +68,8 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
     // visually - alpha tweaks on the border color did
     // nothing because the BRUSH, not the pen, was the real culprit).
     if (isChecked()) {
-        const QColor fill = underMouse()
-                                ? accent_.lighter(khoverLightenPercent)
-                                : accent_;
+        const QColor fill = underMouse() ? accent_.lighter(khoverLightenPercent)
+                                         : accent_;
         p.setPen(QPen(fill, kboxStroke));
         p.setBrush(fill);
     } else {

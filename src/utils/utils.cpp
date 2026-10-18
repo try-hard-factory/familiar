@@ -1,4 +1,9 @@
 #include "utils.h"
+#include <algorithm>
+#include <cmath>
+
+#include <QPoint>
+#include <QString>
 
 #ifdef RUN_IN_PLACE
 #include <QCoreApplication>

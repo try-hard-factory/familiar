@@ -7,17 +7,23 @@
 
 #include <QCheckBox>
 #include <QColor>
+#include <QDialog>
 #include <QFont>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 #include "log/log.h"
 #include "utils/utils.h"
+#include <map>
 using namespace familiar::log;
 
 namespace {
@@ -93,9 +99,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "sadCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "sadCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &SaveAllDialog::close);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 

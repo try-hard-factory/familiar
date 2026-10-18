@@ -1,12 +1,26 @@
 #include "color_gamut.h"
 
+#include <QActionEvent>
+#include <QBoxLayout>
 #include <QBrush>
 #include <QColor>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QImage>
+#include <QLabel>
+#include <QObject>
 #include <QPainter>
+#include <QPoint>
 #include <QRectF>
+#include <QSlider>
+#include <QThread>
+#include <QWidget>
+#include <Qt>
 
+#include "moveitem.h"
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace {
 
@@ -54,7 +68,7 @@ void GamutPainterThread::run()
         const int hue = it.key().first;
         const int saturation = it.key().second;
         const double hypotenuse = saturation / 255.0 * kradius;
-        const double angle = M_PI / 180.0 * (-90.0 - hue);
+        const double angle = std::numbers::pi / 180.0 * (-90.0 - hue);
         const int x = int(std::sin(angle) * hypotenuse) + center.x();
         const int y = int(std::cos(angle) * hypotenuse) + center.y();
         QColor color;
@@ -111,9 +125,7 @@ void GamutWidget::paintEvent(QPaintEvent*)
         const double y = std::max((height() - size) / 2.0, 0.0);
         painter.drawImage(QRectF(x, y, size, size), mImage_);
     } else {
-        painter.drawText(kplaceholderX,
-                         kplaceholderY,
-                         "Counting pixels...");
+        painter.drawText(kplaceholderX, kplaceholderY, "Counting pixels...");
     }
 }
 

@@ -4,8 +4,15 @@
 #include "project_settings.h"
 #include "recovery.h"
 #include "widgets/message_box.h"
+#include <QArgument>
+#include <QBoxLayout>
+#include <QDialog>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QObject>
+#include <QTabWidget>
+#include <QWidget>
+#include <Qt>
 
 
 TabPane::TabPane(QWidget* parent, MainWindow& mw)

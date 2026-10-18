@@ -36,7 +36,6 @@ protected:
     BindingTarget& operator=(BindingTarget&&) = default;
 
 public:
-
     virtual QString id() const = 0;
     virtual QString text() const = 0;
     virtual BindingTargetKind kind() const = 0;

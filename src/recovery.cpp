@@ -1,16 +1,20 @@
 #include "recovery.h"
 
-#include "canvasscene.h"
 #include "canvasview.h"
 #include "fml_archive.h"
 
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
+#include <QFileDevice>
 #include <QFileInfo>
+#include <QHashFunctions>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QList>
 #include <QStandardPaths>
+#include <QUuid>
+#include <QtContainerFwd>
 
 #include "log/log.h"
 #include "utils/utils.h"

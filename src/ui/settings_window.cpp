@@ -1,5 +1,6 @@
 #include "settings_window.h"
 #include "mainwindow.h"
+#include "widgets/message_box.h"
 #include <core/controls.h>
 #include <core/settings.h>
 #include <core/settingshandler.h>
@@ -7,28 +8,35 @@
 #include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/controls/search_highlight.h>
 #include <widgets/dialog_style.h>
-#include <widgets/dialogs.h>
 #include <widgets/file_browser_dialog.h>
 #include <widgets/restore_defaults_dialog.h>
 #include <widgets/setting_row.h>
 #include <widgets/settings_style.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
+#include <QColor>
+#include <QDialog>
 #include <QFont>
 #include <QHBoxLayout>
+#include <QHashFunctions>
 #include <QKeyEvent>
 #include <QLabel>
-#include <QMargins>
 #include <QLineEdit>
+#include <QList>
+#include <QMargins>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QStyleOptionButton>
 #include <QStylePainter>
 #include <QTextDocument>
 #include <QVBoxLayout>
+#include <QWidget>
 #include <QWindow>
+#include <Qt>
 
 namespace {
 
@@ -234,9 +242,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     titleLabel->setFont(titleFont);
     titleBarLayout->addWidget(titleLabel);
     titleBarLayout->addStretch(1);
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        titleBar,
-        "settingsCloseBtn");
+    auto* closeBtn
+        = familiar::dialog_style::make_close_button(titleBar,
+                                                    "settingsCloseBtn");
     const familiar::settings_style::Palette& sp
         = familiar::settings_style::palette();
     closeBtn->setStyleSheet(

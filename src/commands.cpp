@@ -3,9 +3,17 @@
 #include "moveitem.h"
 #include "selector.h"
 
+#include <QColor>
 #include <QGraphicsScene>
+#include <QHashFunctions>
+#include <QList>
+#include <QObject>
+#include <QUndoCommand>
+#include <QtMinMax>
+#include <QtTypes>
 
 #include "log/log.h"
+#include <optional>
 using namespace familiar::log;
 
 // ============================================================================

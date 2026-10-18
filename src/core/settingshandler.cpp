@@ -1,23 +1,31 @@
 #include "settingshandler.h"
+#include "core/controls.h"
 #include <cmath>
 #include <functional>
 #include <limits>
 
+#include <QColor>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileDevice>
 #include <QFileInfo>
+#include <QHashFunctions>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLatin1String>
 #include <QMap>
 #include <QSharedPointer>
 #include <QStandardPaths>
+#include <QtContainerFwd>
+#include <QtTypes>
 
 #include <core/settings.h>
 #include <core/valuehandler.h>
 
 #include "log/log.h"
 #include "utils/utils.h"
+#include <optional>
 using namespace familiar::log;
 
 #define OPTION(KEY, TYPE) \
@@ -41,37 +49,44 @@ QMap<EPresets, int> opacityListDef = {
 };
 
 QMap<EPresetsColorIdx, QColor> darkColorPresetDef
-    = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},   // BackgroundColor
-       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},       // CanvasColor
-       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},       // BorderColor
-       {EPresetsColorIdx::TextColor, QColor({255, 255, 255})},      // TextColor - white
-       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}}; // SelectionColor
+    = {{EPresetsColorIdx::BackgroundColor,
+        QColor({32, 32, 32})},                                // BackgroundColor
+       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})}, // CanvasColor
+       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})}, // BorderColor
+       {EPresetsColorIdx::TextColor,
+        QColor({255, 255, 255})}, // TextColor - white
+       {EPresetsColorIdx::SelectionColor,
+        QColor({22, 142, 153})}}; // SelectionColor
 QMap<EPresetsColorIdx, QColor> lightColorPresetDef
     = {{EPresetsColorIdx::BackgroundColor, QColor({224, 224, 224})},
        {EPresetsColorIdx::CanvasColor, QColor({234, 234, 234})},
        {EPresetsColorIdx::BorderColor, QColor({200, 200, 200})},
        {EPresetsColorIdx::TextColor, QColor({111, 111, 111})},
        {EPresetsColorIdx::SelectionColor, QColor({255, 0, 0})}};
-QMap<EPresetsColorIdx, QColor> customPreset1Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
-                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
-                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
-                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
-                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
-QMap<EPresetsColorIdx, QColor> customPreset2Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
-                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
-                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
-                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
-                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
-QMap<EPresetsColorIdx, QColor> customPreset3Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
-                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
-                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
-                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
-                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
-QMap<EPresetsColorIdx, QColor> customPreset4Def = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
-                                      {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
-                                      {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
-                                      {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
-                                      {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset1Def
+    = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+       {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset2Def
+    = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+       {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset3Def
+    = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+       {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+QMap<EPresetsColorIdx, QColor> customPreset4Def
+    = {{EPresetsColorIdx::BackgroundColor, QColor({32, 32, 32})},
+       {EPresetsColorIdx::CanvasColor, QColor({42, 42, 42})},
+       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
+       {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
+       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
 // NOLINTEND(readability-magic-numbers)
 
 QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions = {

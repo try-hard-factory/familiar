@@ -1,4 +1,5 @@
 #include "settings_style.h"
+#include <QHashFunctions>
 
 namespace familiar::settings_style {
 

@@ -5,7 +5,15 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QHashFunctions>
 #include <QImageReader>
+#include <QJsonValue>
+#include <QLatin1String>
+#include <QMap>
+#include <QStringView>
+#include <QVariant>
+#include <QtAssert>
+#include <QtEnvironmentVariables>
 
 #include <algorithm>
 #include <cstdio>
@@ -115,10 +123,9 @@ std::optional<int> CommandlineArgs::process(const QCoreApplication& app)
         return EXIT_FAILURE;
     }
     if (parser.isSet(versionOption)) {
-        const QString version
-            = QStringLiteral("%1 %2\n")
-                  .arg(QCoreApplication::applicationName(),
-                       QCoreApplication::applicationVersion());
+        const QString version = QStringLiteral("%1 %2\n")
+                                    .arg(QCoreApplication::applicationName(),
+                                         QCoreApplication::applicationVersion());
         (void) std::fputs(qPrintable(version), stdout);
         return EXIT_SUCCESS;
     }
@@ -231,8 +238,7 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              .validate =
                  [](const QVariant& v) {
                      const int n = v.toInt();
-                     return n >= 0
-                            && n <= setting_limits::kmaxArrangeGap;
+                     return n >= 0 && n <= setting_limits::kmaxArrangeGap;
                  },
              /*postSaveCallback*/
              .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
@@ -279,8 +285,7 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              .validate =
                  [](const QVariant& v) {
                      const int n = v.toInt();
-                     return n >= 0
-                            && n <= setting_limits::kmaxImageSizeMb;
+                     return n >= 0 && n <= setting_limits::kmaxImageSizeMb;
                  },
              /*postSaveCallback*/
              .postSaveCallback =
@@ -363,9 +368,7 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
                  [](const QVariant& v) {
                      const int n = v.toInt();
                      return n >= 1
-                            && n
-                                   <= setting_limits::
-                                          kmaxAutosaveIntervalSeconds;
+                            && n <= setting_limits::kmaxAutosaveIntervalSeconds;
                  },
              /*postSaveCallback*/
              .postSaveCallback =

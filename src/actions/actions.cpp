@@ -1,7 +1,14 @@
 #include "actions.h"
+#include "core/controls.h"
 #include <core/settingshandler.h>
+#include <utility>
 #include <QAction>
+#include <QHashFunctions>
+#include <QKeySequence>
+#include <QLatin1String>
+#include <QList>
 #include <QSet>
+#include <QtContainerFwd>
 
 namespace {
 

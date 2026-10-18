@@ -2,9 +2,18 @@
 #include "canvasview.h"
 #include "log/log.h"
 #include "mainwindow.h"
+#include "widgets/main_controls.h"
+#include "widgets/recent_files_view.h"
 #include <core/settingshandler.h>
+#include <QActionEvent>
+#include <QCoreApplication>
 #include <QLabel>
+#include <QObject>
+#include <QPoint>
 #include <QVBoxLayout>
+#include <QWidget>
+#include <Qt>
+#include <QtNumeric>
 using namespace familiar::log;
 
 namespace {

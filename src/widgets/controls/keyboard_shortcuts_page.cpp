@@ -7,9 +7,13 @@
 #include <core/settings.h>
 
 #include <QFrame>
+#include <QHashFunctions>
+#include <QLatin1String>
 #include <QScrollArea>
 #include <QSet>
 #include <QVBoxLayout>
+#include <QWidget>
+#include <QtAlgorithms>
 
 KeyboardShortcutsPage::KeyboardShortcutsPage(QWidget* parent)
     : QWidget(parent)

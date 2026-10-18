@@ -62,9 +62,9 @@ protected:
 private slots:
     void on_image_ready(const QImage& image);
 
-// Closes the slots/signals section above - moc needs it, even
-// though to the compiler it repeats the enclosing access level.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // Closes the slots/signals section above - moc needs it, even
+    // though to the compiler it repeats the enclosing access level.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     GamutPainterThread* mWorker_;
     QImage mImage_;
@@ -83,9 +83,9 @@ public:
 private slots:
     void on_value_changed(int value);
 
-// Closes the slots/signals section above - moc needs it, even
-// though to the compiler it repeats the enclosing access level.
-// NOLINTNEXTLINE(readability-redundant-access-specifiers)
+    // Closes the slots/signals section above - moc needs it, even
+    // though to the compiler it repeats the enclosing access level.
+    // NOLINTNEXTLINE(readability-redundant-access-specifiers)
 private:
     GamutWidget* mGamutWidget_;
     QSlider* mThresholdInput_;

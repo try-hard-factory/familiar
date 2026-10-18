@@ -4,14 +4,19 @@
 #include <core/settingshandler.h>
 
 #include <QColor>
+#include <QDialog>
 #include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QList>
+#include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPixmap>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 namespace {
 
@@ -108,9 +113,8 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "cmbCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "cmbCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &CustomMessageBox::reject);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 

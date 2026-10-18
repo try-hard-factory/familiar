@@ -1,10 +1,20 @@
 #include "ring_sink.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <quill/core/LogLevel.h>
+#include <quill/core/MacroMetadata.h>
 
+#include <QHashFunctions>
+#include <QList>
 #include <QMutexLocker>
+#include <QObject>
 
 #include "log.h" // for the real Level enum - only forward-declared in ring_sink.h
+#include <vector>
 
 namespace familiar::log {
 

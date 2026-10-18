@@ -1,18 +1,25 @@
 #include "raw_import_dialog.h"
+
 #include "dialog_style.h"
+#include "fileio.h"
 #include "flat_checkbox.h"
 
 #include <core/settingshandler.h>
 
 #include <QColor>
+#include <QDialog>
 #include <QFileInfo>
+#include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLatin1String>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 namespace {
 constexpr int kiconSize = 40;
@@ -104,9 +111,8 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "ridCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "ridCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &RawImportDialog::reject);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 

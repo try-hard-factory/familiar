@@ -4,16 +4,21 @@
 
 #include <core/settingshandler.h>
 
+#include <QColor>
+#include <QDialog>
 #include <QFont>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QList>
 #include <QMargins>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 #include "utils/utils.h"
 
@@ -124,9 +129,8 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     outer->setContentsMargins(kouterMargins);
     outer->setSpacing(kouterSpacing);
 
-    auto* closeBtn = familiar::dialog_style::make_close_button(
-        this,
-        "hdCloseBtn");
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "hdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &HelpDialog::close);
 
     QFont headingFont = font();
