@@ -35,7 +35,10 @@ TabPane::TabPane(QWidget* parent, MainWindow& mw)
     add_new_untitled_tab();
 
     // // setStyleSheet("background: transparent; background-color: rgba(0, 0, 0, 128);");
-    connect(tabs_, SIGNAL(tabCloseRequested(int)), this, SLOT(onTabClosed(int)));
+    connect(tabs_,
+            &QTabWidget::tabCloseRequested,
+            this,
+            &TabPane::on_tab_closed);
     connect(tabs_,
             &QTabWidget::currentChanged,
             this,
