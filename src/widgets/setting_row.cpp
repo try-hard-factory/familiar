@@ -7,24 +7,54 @@
 #include <widgets/setting_descriptions.h>
 #include <widgets/settings_style.h>
 
+#include <QChildEvent>
+#include <QConstOverload>
+#include <QFont>
 #include <QGraphicsDropShadowEffect>
+#include <QHashFunctions>
+#include <QLabel>
+#include <QList>
+#include <QMargins>
 #include <QMouseEvent>
+#include <QPoint>
 #include <QScreen>
 #include <QVBoxLayout>
+#include <QVariant>
+#include <QWidget>
+#include <Qt>
+#include <QtMinMax>
+#include <QtVersionChecks>
 
 #include "log/log.h"
 using namespace familiar::log;
 namespace {
-constexpr char CHANGED_SYMBOL[] = "✎";
+constexpr char kchangedSymbol[] = "✎";
 
-constexpr int kControlWidth = 200;
-constexpr int kInfoPopupWidth = 320;
+constexpr int kcontrolWidth = 200;
+constexpr int kinfoPopupWidth = 320;
+
+// Rows are laid out tighter than a dialog - several stack vertically.
+constexpr int krowSpacing = 8;
+// How far the spin box's border is darkened against its own background.
+constexpr int kborderDarkenPercent = 112;
+// Upper bounds come from core/settings.h, NOT from local copies: the same
+// numbers are what that file's validate() lambdas check against, and the
+// two must not drift.
+using setting_limits::kmaxArrangeGap;
+using setting_limits::kmaxAutosaveIntervalSeconds;
+using setting_limits::kmaxImageSizeMb;
+using setting_limits::kmaxUndoHistory;
+// The in-row checkbox, matching FlatCheckBox's own minimum height.
+constexpr int kcheckboxSide = 22;
 } // namespace
 
 // ─── SettingInfoPopup ───────────────────────────────────────────────────────
 
 SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     : QWidget(parent)
+    , titleLabel_(new QLabel(this))
+    , bodyLabel_(new QLabel(this))
+    , defaultLabel_(new QLabel(this))
 {
     setWindowFlags(Qt::ToolTip | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_ShowWithoutActivating);
@@ -40,7 +70,7 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     // (ChangeOpacityDialog etc., widgets/dialogs.h) - missed here at
     // first.
     setAttribute(Qt::WA_StyledBackground);
-    setFixedWidth(kInfoPopupWidth);
+    setFixedWidth(kinfoPopupWidth);
 
     // Square, not dialog_style::panelStyleSheet()'s usual rounded panel
     // (border-radius baked into that shared helper, paired with
@@ -59,28 +89,35 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
                        "QLabel { background: transparent; color: %3; }")
             .arg(sp.background.name(), sp.border.name(), sp.text.name()));
 
+    // Its own, lighter alpha - NOT dialog_style::apply_dialog_shadow()'s
+    // 150. This popup floats over the settings list rather than over the
+    // whole window, and 150 reads as too heavy there.
+    constexpr int kshadowBlurRadius = 24;
+    constexpr int kshadowYOffset = 4;
+    constexpr int kshadowAlpha = 110;
     auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 110));
+    shadow->setBlurRadius(kshadowBlurRadius);
+    shadow->setOffset(0, kshadowYOffset);
+    shadow->setColor(QColor(0, 0, 0, kshadowAlpha));
     setGraphicsEffect(shadow);
 
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(16, 12, 16, 10);
-    layout->setSpacing(8);
+    constexpr QMargins kpopupMargins{16, 12, 16, 10};
+    layout->setContentsMargins(kpopupMargins);
+    layout->setSpacing(krowSpacing);
 
-    titleLabel_ = new QLabel(this);
+
     QFont titleFont = titleLabel_->font();
     titleFont.setBold(true);
     titleLabel_->setFont(titleFont);
     layout->addWidget(titleLabel_);
 
-    bodyLabel_ = new QLabel(this);
+
     bodyLabel_->setWordWrap(true);
     bodyLabel_->setTextFormat(Qt::RichText);
     layout->addWidget(bodyLabel_);
 
-    defaultLabel_ = new QLabel(this);
+
     defaultLabel_->setStyleSheet(
         QStringLiteral("color: %1;").arg(sp.mutedText.name()));
     layout->addWidget(defaultLabel_);
@@ -95,10 +132,10 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
     layout->addWidget(hintLabel_);
 }
 
-void SettingInfoPopup::setContent(const QString& title,
-                                  const QString& bodyHtml,
-                                  const QString& defaultText,
-                                  bool showResetHint)
+void SettingInfoPopup::set_content(const QString& title,
+                                   const QString& bodyHtml,
+                                   const QString& defaultText,
+                                   bool showResetHint)
 {
     titleLabel_->setText(title);
     bodyLabel_->setText(bodyHtml);
@@ -120,7 +157,7 @@ HoverInfoLabel::HoverInfoLabel(const QString& text, QWidget* parent)
     setCursor(Qt::WhatsThisCursor);
 }
 
-void HoverInfoLabel::setInfoText(const QString& html)
+void HoverInfoLabel::set_info_text(const QString& html)
 {
     infoHtml_ = html;
     // Kept in sync even though the native tooltip never actually
@@ -130,12 +167,12 @@ void HoverInfoLabel::setInfoText(const QString& html)
     setToolTip(html);
 }
 
-void HoverInfoLabel::setDefaultText(const QString& text)
+void HoverInfoLabel::set_default_text(const QString& text)
 {
     defaultText_ = text;
 }
 
-void HoverInfoLabel::setShowResetHint(bool show)
+void HoverInfoLabel::set_show_reset_hint(bool show)
 {
     showResetHint_ = show;
 }
@@ -147,14 +184,14 @@ bool HoverInfoLabel::event(QEvent* event)
             if (!popup_) {
                 popup_ = new SettingInfoPopup(window());
             }
-            popup_->setContent(title_, infoHtml_, defaultText_, showResetHint_);
+            popup_->set_content(title_, infoHtml_, defaultText_, showResetHint_);
 
             QPoint pos = mapToGlobal(QPoint(0, height() + 4));
             // Clamp to the screen this label is actually on, same idea
             // as any other popup that can open near a screen edge - a
             // 320px-wide panel opened from a row near the right edge of
             // a narrow Settings window would otherwise run off-screen.
-            if (QScreen* screen = this->screen()) {
+            if (const QScreen* screen = this->screen()) {
                 const QRect avail = screen->availableGeometry();
                 popup_->adjustSize();
                 pos.setX(qBound(avail.left(),
@@ -195,66 +232,63 @@ SettingRowBase::SettingRowBase(const QString& label,
     // settings_window.cpp) - raw label, no "✎" changed-marker.
     setObjectName(label);
     hbox_->setContentsMargins(0, 4, 0, 4);
-    label_->setInfoText(familiar::setting_descriptions::forSettingsKey(key));
+    label_->set_info_text(familiar::setting_descriptions::for_settings_key(key));
     hbox_->addWidget(label_);
     hbox_->addStretch(1);
 
     connect(&SettingsEvents::instance(),
-            &SettingsEvents::restoreDefaults,
+            &SettingsEvents::restore_defaults,
             this,
-            &SettingRowBase::onRestoreDefaults);
+            &SettingRowBase::on_restore_defaults);
 
-    updateLabel();
+    update_label();
 }
 
-void SettingRowBase::updateLabel()
+void SettingRowBase::update_label()
 {
-    FamSettings settings;
     QString text = baseLabel_;
-    if (settings.valueChanged(key_)) {
-        text += QStringLiteral(" ") + QString::fromUtf8(CHANGED_SYMBOL);
+    if (FamSettings::value_changed(key_)) {
+        text += QStringLiteral(" ") + QString::fromUtf8(kchangedSymbol);
     }
     label_->setText(text);
 }
 
-void SettingRowBase::onValueChanged(const QVariant& value)
+void SettingRowBase::on_value_changed(const QVariant& value)
 {
     if (ignoreValueChanged_) {
         return;
     }
 
-    FamSettings settings;
-    const QVariant converted = convertValueFromQt(value);
-    if (converted != settings.valueOrDefault(key_)) {
-        settings.setValue(key_, converted);
-        updateLabel();
+    const QVariant converted = convert_value_from_qt(value);
+    if (converted != FamSettings::value_or_default(key_)) {
+        FamSettings::set_value(key_, converted);
+        update_label();
     }
 }
 
-void SettingRowBase::onRestoreDefaults()
+void SettingRowBase::on_restore_defaults()
 {
-    FamSettings settings;
     ignoreValueChanged_ = true;
-    setValue(settings.valueOrDefault(key_));
+    set_value(FamSettings::value_or_default(key_));
     ignoreValueChanged_ = false;
-    updateLabel();
+    update_label();
 }
 
-QString SettingRowBase::defaultValueDisplayText() const
+QString SettingRowBase::default_value_display_text() const
 {
-    return FamSettings().valueOrDefault(key_).toString();
+    return FamSettings::value_or_default(key_).toString();
 }
 
-void SettingRowBase::refreshInfoPopup()
+void SettingRowBase::refresh_info_popup()
 {
-    label_->setDefaultText(tr("Default: %1").arg(defaultValueDisplayText()));
-    label_->setShowResetHint(true);
+    label_->set_default_text(
+        tr("Default: %1").arg(default_value_display_text()));
+    label_->set_show_reset_hint(true);
 }
 
 void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
 {
     if (event->modifiers().testFlag(Qt::ControlModifier)) {
-        FamSettings settings;
         // Unlike onRestoreDefaults() above (the page-wide button already
         // cleared the whole JSON group before emitting
         // SettingsEvents::restoreDefaults(), so that path only needs to
@@ -264,11 +298,11 @@ void SettingRowBase::mouseDoubleClickEvent(QMouseEvent* event)
         // resulting default, so real runtime effects (e.g.
         // QImageReader::setAllocationLimit() for Maximum Image Size)
         // re-apply immediately too, not just the display.
-        settings.remove(key_);
+        FamSettings::remove(key_);
         ignoreValueChanged_ = true;
-        setValue(settings.valueOrDefault(key_));
+        set_value(FamSettings::value_or_default(key_));
         ignoreValueChanged_ = false;
-        updateLabel();
+        update_label();
         event->accept();
         return;
     }
@@ -293,34 +327,33 @@ ComboSettingRow::ComboSettingRow(const QString& label,
     }())
     , options_(options)
 {
-    FamSettings settings;
     for (const ComboOption& opt : options_) {
         input_->addItem(opt.label);
     }
-    input_->setFixedWidth(kControlWidth);
+    input_->setFixedWidth(kcontrolWidth);
     // setValue() (via setCurrentIndex) happens before this connect(), so
     // it can't fire onValueChanged() with nothing listening yet - no
     // ignoreValueChanged_ guard needed.
-    setValue(settings.valueOrDefault(key_));
-    hbox_->addWidget(input_);
-    ignoreValueChanged_ = false;
+    ComboSettingRow::set_value(FamSettings::value_or_default(settings_key()));
+    hbox()->addWidget(input_);
+    set_ignore_value_changed(false);
 
     connect(input_,
             QOverload<int>::of(&QComboBox::currentIndexChanged),
             this,
             [this](int index) {
                 if (index >= 0 && index < options_.size()) {
-                    onValueChanged(options_[index].value);
+                    on_value_changed(options_[index].value);
                 }
             });
 
     // options_ (used by defaultValueDisplayText() below) is fully set by
     // now - see that method's own comment for why this can't happen from
     // SettingRowBase's constructor instead.
-    refreshInfoPopup();
+    refresh_info_popup();
 }
 
-void ComboSettingRow::setValue(const QVariant& value)
+void ComboSettingRow::set_value(const QVariant& value)
 {
     const QString str = value.toString();
     for (int i = 0; i < options_.size(); ++i) {
@@ -331,9 +364,9 @@ void ComboSettingRow::setValue(const QVariant& value)
     }
 }
 
-QString ComboSettingRow::defaultValueDisplayText() const
+QString ComboSettingRow::default_value_display_text() const
 {
-    const QString def = FamSettings().valueOrDefault(key_).toString();
+    QString def = FamSettings::value_or_default(settings_key()).toString();
     for (const ComboOption& opt : options_) {
         if (opt.value == def) {
             return opt.label;
@@ -342,7 +375,7 @@ QString ComboSettingRow::defaultValueDisplayText() const
     return def;
 }
 
-void ComboSettingRow::setControlEnabled(bool enabled)
+void ComboSettingRow::set_control_enabled(bool enabled)
 {
     input_->setEnabled(enabled);
 }
@@ -367,12 +400,11 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     // does apparently doesn't cope with zero-length text the way it
     // does with save_all_dialog.cpp's FlatCheckBox usage (always has a
     // real filename). Pin an explicit size instead of trusting it.
-    input_->setFixedSize(22, 22);
+    input_->setFixedSize(kcheckboxSide, kcheckboxSide);
 
-    FamSettings settings;
-    setValue(settings.valueOrDefault(key_));
-    hbox_->addWidget(input_);
-    ignoreValueChanged_ = false;
+    CheckboxSettingRow::set_value(FamSettings::value_or_default(settings_key()));
+    hbox()->addWidget(input_);
+    set_ignore_value_changed(false);
 
     // checkStateChanged(Qt::CheckState) only exists from Qt 6.9 on;
     // stateChanged(int) is deprecated there but still present. This
@@ -387,40 +419,38 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
             &QCheckBox::checkStateChanged,
             this,
             [this](Qt::CheckState state) {
-                onValueChanged(QVariant::fromValue(state));
+                on_value_changed(QVariant::fromValue(state));
                 emit toggled(state == Qt::Checked);
             });
 #else
-    connect(input_,
-            &QCheckBox::stateChanged,
-            this,
-            [this](int stateInt) {
-                const Qt::CheckState state = Qt::CheckState(stateInt);
-                onValueChanged(QVariant::fromValue(state));
-                emit toggled(state == Qt::Checked);
-            });
+    connect(input_, &QCheckBox::stateChanged, this, [this](int stateInt) {
+        const Qt::CheckState state = Qt::CheckState(stateInt);
+        onValueChanged(QVariant::fromValue(state));
+        emit toggled(state == Qt::Checked);
+    });
 #endif
 
-    refreshInfoPopup();
+    refresh_info_popup();
 }
 
-void CheckboxSettingRow::setValue(const QVariant& value)
+void CheckboxSettingRow::set_value(const QVariant& value)
 {
     input_->setChecked(value.toBool());
 }
 
-QVariant CheckboxSettingRow::convertValueFromQt(const QVariant& value)
+QVariant CheckboxSettingRow::convert_value_from_qt(const QVariant& value)
 {
     return value.value<Qt::CheckState>() == Qt::Checked;
 }
 
-QString CheckboxSettingRow::defaultValueDisplayText() const
+QString CheckboxSettingRow::default_value_display_text() const
 {
-    return FamSettings().valueOrDefault(key_).toBool() ? tr("Checked")
-                                                       : tr("Unchecked");
+    return FamSettings::value_or_default(settings_key()).toBool()
+               ? tr("Checked")
+               : tr("Unchecked");
 }
 
-void CheckboxSettingRow::setControlEnabled(bool enabled)
+void CheckboxSettingRow::set_control_enabled(bool enabled)
 {
     input_->setEnabled(enabled);
 }
@@ -434,30 +464,29 @@ IntegerSettingRow::IntegerSettingRow(
         const auto& sp = familiar::settings_style::palette();
         return new FlatSpinBox(sp.chipBackground,
                                sp.text,
-                               sp.chipBackground.darker(112),
+                               sp.chipBackground.darker(kborderDarkenPercent),
                                this);
     }())
 {
-    FamSettings settings;
     input_->setRange(min, max);
-    input_->setFixedWidth(kControlWidth);
-    setValue(settings.valueOrDefault(key_));
-    hbox_->addWidget(input_);
-    ignoreValueChanged_ = false;
+    input_->setFixedWidth(kcontrolWidth);
+    IntegerSettingRow::set_value(FamSettings::value_or_default(settings_key()));
+    hbox()->addWidget(input_);
+    set_ignore_value_changed(false);
 
     connect(input_, &QSpinBox::valueChanged, this, [this](int v) {
-        onValueChanged(v);
+        on_value_changed(v);
     });
 
-    refreshInfoPopup();
+    refresh_info_popup();
 }
 
-void IntegerSettingRow::setValue(const QVariant& value)
+void IntegerSettingRow::set_value(const QVariant& value)
 {
     input_->setValue(value.toInt());
 }
 
-void IntegerSettingRow::setControlEnabled(bool enabled)
+void IntegerSettingRow::set_control_enabled(bool enabled)
 {
     input_->setEnabled(enabled);
 }
@@ -468,7 +497,7 @@ UndoHistorySizeRow::UndoHistorySizeRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Undo History Size"),
                         QStringLiteral("Items/undo_history_size"),
                         0,
-                        10000,
+                        kmaxUndoHistory,
                         parent)
 {}
 
@@ -476,11 +505,12 @@ AutoOptimizeImportedImagesRow::AutoOptimizeImportedImagesRow(QWidget* parent)
     : ComboSettingRow(QStringLiteral("Auto Optimize Imported Images"),
                       QStringLiteral("Items/auto_optimize_imported_images"),
                       {
-                          {QStringLiteral("off"), QStringLiteral("Off")},
-                          {QStringLiteral("warn"),
-                           QStringLiteral("Large image warning")},
-                          {QStringLiteral("optimize_large"),
-                           QStringLiteral("Optimize large images")},
+                          {.value = QStringLiteral("off"),
+                           .label = QStringLiteral("Off")},
+                          {.value = QStringLiteral("warn"),
+                           .label = QStringLiteral("Large image warning")},
+                          {.value = QStringLiteral("optimize_large"),
+                           .label = QStringLiteral("Optimize large images")},
                       },
                       parent)
 {}
@@ -489,12 +519,12 @@ RawImportChoiceRow::RawImportChoiceRow(QWidget* parent)
     : ComboSettingRow(QStringLiteral("RAW Import"),
                       QStringLiteral("Items/raw_import_choice"),
                       {
-                          {QStringLiteral("ask"),
-                           QStringLiteral("Ask every time")},
-                          {QStringLiteral("always_optimize"),
-                           QStringLiteral("Always optimize")},
-                          {QStringLiteral("always_keep_original"),
-                           QStringLiteral("Always keep original")},
+                          {.value = QStringLiteral("ask"),
+                           .label = QStringLiteral("Ask every time")},
+                          {.value = QStringLiteral("always_optimize"),
+                           .label = QStringLiteral("Always optimize")},
+                          {.value = QStringLiteral("always_keep_original"),
+                           .label = QStringLiteral("Always keep original")},
                       },
                       parent)
 {}
@@ -509,7 +539,7 @@ AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Autosave Interval (seconds)"),
                         QStringLiteral("Save/autosave_interval_seconds"),
                         1,
-                        3600,
+                        kmaxAutosaveIntervalSeconds,
                         parent)
 {}
 
@@ -519,7 +549,7 @@ ArrangeGapRow::ArrangeGapRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Arrange Gap"),
                         QStringLiteral("Items/arrange_gap"),
                         0,
-                        200,
+                        kmaxArrangeGap,
                         parent)
 {}
 
@@ -527,7 +557,7 @@ MaximumImageSizeRow::MaximumImageSizeRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Maximum Image Size (MB)"),
                         QStringLiteral("Items/image_allocation_limit"),
                         0,
-                        1024,
+                        kmaxImageSizeMb,
                         parent)
 {}
 
@@ -535,13 +565,14 @@ ArrangeDefaultRow::ArrangeDefaultRow(QWidget* parent)
     : ComboSettingRow(QStringLiteral("Default Arrange Method"),
                       QStringLiteral("Items/arrange_default"),
                       {
-                          {QStringLiteral("optimal"), QStringLiteral("Optimal")},
-                          {QStringLiteral("horizontal"),
-                           QStringLiteral("Horizontal (by filename)")},
-                          {QStringLiteral("vertical"),
-                           QStringLiteral("Vertical (by filename)")},
-                          {QStringLiteral("square"),
-                           QStringLiteral("Square (by filename)")},
+                          {.value = QStringLiteral("optimal"),
+                           .label = QStringLiteral("Optimal")},
+                          {.value = QStringLiteral("horizontal"),
+                           .label = QStringLiteral("Horizontal (by filename)")},
+                          {.value = QStringLiteral("vertical"),
+                           .label = QStringLiteral("Vertical (by filename)")},
+                          {.value = QStringLiteral("square"),
+                           .label = QStringLiteral("Square (by filename)")},
                       },
                       parent)
 {}

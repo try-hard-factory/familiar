@@ -18,7 +18,7 @@ public:
                        QWidget* content,
                        QWidget* parent = nullptr);
 
-    void setExpanded(bool expanded);
+    void set_expanded(bool expanded);
 
 private:
     QToolButton* headerBtn_ = nullptr;
@@ -48,14 +48,14 @@ public:
     // Defaults, which changes bindings out from under this widget without
     // going through its own Add/Remove/Rebind dialogs (those already call
     // refreshTarget() themselves).
-    void refreshAll();
+    void refresh_all();
 
     // Hides rows whose target name doesn't contain `text` (case
     // insensitive) and bolds the matched substring in the ones that
     // remain; empty text shows everything unfiltered. Returns whether
     // any row is left visible, so the owner can hide/collapse an empty
     // section entirely.
-    bool applySearchFilter(const QString& text);
+    bool apply_search_filter(const QString& text);
 
 signals:
     // A binding was added/removed/rebound (including a conflict getting
@@ -64,16 +64,16 @@ signals:
     // Control conflicting over the same mouse chord). The owner
     // (KeyboardShortcutsPage) uses this to refresh every tree, since this
     // one only knows how to refresh its own rows.
-    void bindingsChanged();
+    void bindings_changed();
 
 private:
-    void refreshTarget(BindingTarget* target);
-    QWidget* buildRow(BindingTarget* target,
-                      const QString& label,
-                      int bindingIndex,
-                      bool showAdd,
-                      bool indent,
-                      QWidget* toggleTarget = nullptr);
+    void refresh_target(BindingTarget* target);
+    QWidget* build_row(BindingTarget* target,
+                       const QString& label,
+                       int bindingIndex,
+                       bool showAdd,
+                       bool indent,
+                       QWidget* toggleTarget = nullptr);
 
     QList<BindingTarget*> targets_;
     QMap<BindingTarget*, QWidget*> rowContainers_;

@@ -38,7 +38,8 @@ TEST(FlatSpinBoxTest, ArrowKeysStepValueAndEmitValueChanged)
     box.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&box));
 
-    QSignalSpy valueChangedSpy(&box, QOverload<int>::of(&QSpinBox::valueChanged));
+    QSignalSpy valueChangedSpy(&box,
+                               QOverload<int>::of(&QSpinBox::valueChanged));
 
     QTest::keyClick(&box, Qt::Key_Up);
     EXPECT_EQ(box.value(), 6);

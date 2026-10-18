@@ -4,24 +4,28 @@
 #include <cstdlib>
 #include <string>
 #include <string_view>
+#include <quill/LogMacros.h>
+#include <quill/Logger.h>
+#include <quill/core/LogLevel.h>
 
+#include <QHashFunctions>
 #include <QMessageLogContext>
 #include <QtGlobal>
 
 namespace familiar::log {
 namespace {
-std::atomic<bool> g_verboseFunctions{false};
+std::atomic<bool> gVerboseFunctions{false};
 } // namespace
 
-void setQtBridgeVerboseFunctions(bool verbose)
+void set_qt_bridge_verbose_functions(bool verbose)
 {
-    g_verboseFunctions.store(verbose, std::memory_order_relaxed);
+    gVerboseFunctions.store(verbose, std::memory_order_relaxed);
 }
 
 namespace detail {
 namespace {
 
-Level levelFromQt(QtMsgType type)
+Level level_from_qt(QtMsgType type)
 {
     switch (type) {
     case QtDebugMsg:
@@ -34,8 +38,9 @@ Level levelFromQt(QtMsgType type)
         return Level::Error;
     case QtFatalMsg:
         return Level::Critical;
+    default:
+        return Level::Debug;
     }
-    return Level::Debug;
 }
 
 // Qt's Q_FUNC_INFO (what QMessageLogContext::function holds) is the
@@ -43,7 +48,7 @@ Level levelFromQt(QtMsgType type)
 // parameter type. Collapse it to "Class::method", the way the old
 // Logger::stripFunctionName() did, unless verbose mode is on. The pattern
 // formatter appends the trailing "()" itself, so this returns the name bare.
-std::string shortFunctionName(std::string_view prettyName)
+std::string short_function_name(std::string_view prettyName)
 {
     const size_t parenPos = prettyName.find('(');
     if (parenPos == std::string_view::npos) {
@@ -61,19 +66,29 @@ std::string shortFunctionName(std::string_view prettyName)
     return std::string(prettyName.substr(begin, parenPos - begin));
 }
 
-void qtMessageHandler(QtMsgType type,
-                      const QMessageLogContext& context,
-                      const QString& msg)
+// Three-way: Qt gave us no function name at all, the verbose setting is on
+// (log the full signature as-is), or the default - just Class::method, via
+// short_function_name() above.
+std::string function_name_for(const QMessageLogContext& context)
 {
-    quill::Logger* logger = channelLogger(Ch::Qt);
-    const quill::LogLevel level = toQuillLevel(levelFromQt(type));
+    if (!context.function) {
+        return {"unknown"};
+    }
+    if (gVerboseFunctions.load(std::memory_order_relaxed)) {
+        return {context.function};
+    }
+    return short_function_name(context.function);
+}
+
+void qt_message_handler(QtMsgType type,
+                        const QMessageLogContext& context,
+                        const QString& msg)
+{
+    quill::Logger* logger = channel_logger(Ch::Qt);
+    const quill::LogLevel level = to_quill_level(level_from_qt(type));
     const char* file = context.file ? context.file : "unknown";
 
-    const std::string function = !context.function ? std::string("unknown")
-                                 : g_verboseFunctions.load(
-                                       std::memory_order_relaxed)
-                                     ? std::string(context.function)
-                                     : shortFunctionName(context.function);
+    const std::string function = function_name_for(context);
     const std::string text = msg.toStdString();
 
     QUILL_LOG_RUNTIME_METADATA(logger,
@@ -92,9 +107,9 @@ void qtMessageHandler(QtMsgType type,
 
 } // namespace
 
-void installQtMessageBridge()
+void install_qt_message_bridge()
 {
-    qInstallMessageHandler(qtMessageHandler);
+    qInstallMessageHandler(qt_message_handler);
 }
 
 } // namespace detail

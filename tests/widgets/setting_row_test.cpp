@@ -28,7 +28,7 @@
 TEST(AutosaveEnabledRowTest, ConstructedStateReflectsStoredValue)
 {
     FamSettings settings;
-    settings.setValue(QStringLiteral("Save/autosave_enabled"), true);
+    settings.set_value(QStringLiteral("Save/autosave_enabled"), true);
 
     AutosaveEnabledRow row;
     QCheckBox* checkbox = row.findChild<QCheckBox*>();
@@ -58,7 +58,7 @@ TEST(AutosaveEnabledRowTest, TogglingCheckboxPersistsToSettingsAndEmitsToggled)
 
     EXPECT_TRUE(checkbox->isChecked());
     EXPECT_TRUE(
-        settings.valueOrDefault(QStringLiteral("Save/autosave_enabled"))
+        settings.value_or_default(QStringLiteral("Save/autosave_enabled"))
             .toBool());
     ASSERT_EQ(toggledSpy.count(), 1);
     EXPECT_TRUE(toggledSpy.takeFirst().at(0).toBool());
@@ -69,13 +69,14 @@ TEST(AutosaveEnabledRowTest, TogglingCheckboxPersistsToSettingsAndEmitsToggled)
 TEST(AutosaveEnabledRowTest, CtrlDoubleClickOnRowResetsToDefault)
 {
     FamSettings settings;
-    settings.setValue(QStringLiteral("Save/autosave_enabled"), true); // non-default
+    settings.set_value(QStringLiteral("Save/autosave_enabled"),
+                       true); // non-default
 
     AutosaveEnabledRow row;
     row.resize(300, 30); // label + stretch + checkbox - center lands on the
-                        // stretch, not the checkbox, per SettingRowBase::
-                        // mouseDoubleClickEvent()'s own "not already
-                        // consumed by a child widget" comment
+                         // stretch, not the checkbox, per SettingRowBase::
+                         // mouseDoubleClickEvent()'s own "not already
+                         // consumed by a child widget" comment
     row.show();
     ASSERT_TRUE(QTest::qWaitForWindowExposed(&row));
 
@@ -87,14 +88,14 @@ TEST(AutosaveEnabledRowTest, CtrlDoubleClickOnRowResetsToDefault)
 
     EXPECT_FALSE(checkbox->isChecked());
     EXPECT_FALSE(
-        settings.valueOrDefault(QStringLiteral("Save/autosave_enabled"))
+        settings.value_or_default(QStringLiteral("Save/autosave_enabled"))
             .toBool());
 }
 
 TEST(UndoHistorySizeRowTest, ConstructedFromStoredValueAndPersistsChanges)
 {
     FamSettings settings;
-    settings.setValue(QStringLiteral("Items/undo_history_size"), 250);
+    settings.set_value(QStringLiteral("Items/undo_history_size"), 250);
 
     UndoHistorySizeRow row;
     row.resize(300, 30);
@@ -108,10 +109,10 @@ TEST(UndoHistorySizeRowTest, ConstructedFromStoredValueAndPersistsChanges)
     QTest::keyClick(spin, Qt::Key_Up);
 
     EXPECT_EQ(spin->value(), 251);
-    EXPECT_EQ(
-        settings.valueOrDefault(QStringLiteral("Items/undo_history_size"))
-            .toInt(),
-        251);
+    EXPECT_EQ(settings
+                  .value_or_default(QStringLiteral("Items/undo_history_size"))
+                  .toInt(),
+              251);
 
     settings.remove(QStringLiteral("Items/undo_history_size"));
 }
@@ -122,22 +123,22 @@ TEST(IntegerSettingRowTest, SetControlEnabledDisablesOnlyTheInputNotTheRow)
     QSpinBox* spin = row.findChild<QSpinBox*>();
     ASSERT_NE(spin, nullptr);
 
-    row.setControlEnabled(false);
+    row.set_control_enabled(false);
     EXPECT_FALSE(spin->isEnabled());
     // The row itself (and its label) deliberately stay enabled - see
     // SettingRowBase::setControlEnabled()'s own comment: a fully-
     // disabled row loses its hover cursor along with the input.
     EXPECT_TRUE(row.isEnabled());
 
-    row.setControlEnabled(true);
+    row.set_control_enabled(true);
     EXPECT_TRUE(spin->isEnabled());
 }
 
 TEST(AutoOptimizeImportedImagesRowTest, SelectingOptionPersistsItsValueString)
 {
     FamSettings settings;
-    settings.remove(
-        QStringLiteral("Items/auto_optimize_imported_images")); // default: "warn"
+    settings.remove(QStringLiteral(
+        "Items/auto_optimize_imported_images")); // default: "warn"
 
     AutoOptimizeImportedImagesRow row;
     QComboBox* combo = row.findChild<QComboBox*>();
@@ -147,10 +148,10 @@ TEST(AutoOptimizeImportedImagesRowTest, SelectingOptionPersistsItsValueString)
     combo->setCurrentIndex(2);
 
     EXPECT_EQ(settings
-                 .valueOrDefault(
-                     QStringLiteral("Items/auto_optimize_imported_images"))
-                 .toString(),
-             QStringLiteral("optimize_large"));
+                  .value_or_default(
+                      QStringLiteral("Items/auto_optimize_imported_images"))
+                  .toString(),
+              QStringLiteral("optimize_large"));
 
     settings.remove(QStringLiteral("Items/auto_optimize_imported_images"));
 }

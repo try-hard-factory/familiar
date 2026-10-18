@@ -1,40 +1,80 @@
 #include "dialog_style.h"
 
+#include <QColor>
 #include <QFont>
+#include <QGraphicsDropShadowEffect>
+#include <QHashFunctions>
+#include <QLayout>
+#include <QMessageBox>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
 #include <QRegion>
 #include <QWidget>
+#include <Qt>
+#include <QtTypes>
 
 namespace familiar::dialog_style {
 
-QColor severityColor(QMessageBox::Icon icon, const QColor& accent)
+namespace {
+
+// Minimum hit area for the dialog buttons, so a one-word label like "OK"
+// does not shrink to a target that is awkward to click.
+constexpr int kbuttonMinWidth = 76;
+constexpr int kbuttonMinHeight = 30;
+// How far the accent colour is pushed for the hover and pressed states.
+constexpr int kaccentShiftPercent = 115;
+// Alpha of the close button's hover tint.
+constexpr int kcloseHoverAlpha = 90;
+
+// The severity glyph is laid out as fractions of kiconSize so it scales
+// with the icon rather than being pinned to one pixel size: a triangle
+// for Warning, a circle for the rest, with the letter inside.
+constexpr qreal ktriApexX = 0.5;
+constexpr qreal ktriApexY = 0.05;
+constexpr qreal ktriRightX = 0.96;
+constexpr qreal ktriBaseY = 0.92;
+constexpr qreal ktriLeftX = 0.04;
+constexpr qreal kcircleInset = 0.05;
+constexpr qreal kcircleSize = 0.9;
+// The "!" inside the triangle needs to be smaller than the "i"/"?" inside
+// the circle, which has more room.
+constexpr qreal kglyphScaleTriangle = 0.38;
+constexpr qreal kglyphScaleCircle = 0.48;
+
+} // namespace
+
+QColor severity_color(QMessageBox::Icon icon, const QColor& accent)
 {
+    // Amber / red / blue, as data - the literals are RGB channels of three
+    // chosen colours, same call as the palette tables in
+    // core/settingshandler.cpp.
+    // NOLINTBEGIN(readability-magic-numbers)
     switch (icon) {
     case QMessageBox::Warning:
-        return QColor(0xf5, 0xa6, 0x23);
+        return {0xf5, 0xa6, 0x23};
     case QMessageBox::Critical:
-        return QColor(0xe5, 0x48, 0x4d);
+        return {0xe5, 0x48, 0x4d};
     case QMessageBox::Information:
-        return QColor(0x4a, 0x90, 0xd9);
+        return {0x4a, 0x90, 0xd9};
     case QMessageBox::Question:
     default:
         return accent;
     }
+    // NOLINTEND(readability-magic-numbers)
 }
 
 namespace {
 
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
 
 } // namespace
 
-QString panelStyleSheet(const char* className,
-                        const QColor& background,
-                        const QColor& border,
-                        const QColor& text,
-                        int radiusPx)
+QString panel_style_sheet(const char* className,
+                          const QColor& background,
+                          const QColor& border,
+                          const QColor& text,
+                          int radiusPx)
 {
     // The QToolTip rule is here for the same reason every other
     // tooltip-capable control in this app needs one explicitly
@@ -60,11 +100,11 @@ QString panelStyleSheet(const char* className,
         .arg(radiusPx);
 }
 
-void stylePrimaryButton(QPushButton* button, const QColor& accent)
+void style_primary_button(QPushButton* button, const QColor& accent)
 {
     button->setCursor(Qt::PointingHandCursor);
-    button->setMinimumWidth(76);
-    button->setMinimumHeight(30);
+    button->setMinimumWidth(kbuttonMinWidth);
+    button->setMinimumHeight(kbuttonMinHeight);
     button->setStyleSheet(
         QStringLiteral("QPushButton {"
                        "  background-color: %1;"
@@ -77,17 +117,17 @@ void stylePrimaryButton(QPushButton* button, const QColor& accent)
                        "QPushButton:hover { background-color: %2; }"
                        "QPushButton:pressed { background-color: %3; }")
             .arg(accent.name(),
-                 accent.lighter(115).name(),
-                 accent.darker(115).name()));
+                 accent.lighter(kaccentShiftPercent).name(),
+                 accent.darker(kaccentShiftPercent).name()));
 }
 
-void styleSecondaryButton(QPushButton* button,
-                          const QColor& text,
-                          const QColor& border)
+void style_secondary_button(QPushButton* button,
+                            const QColor& text,
+                            const QColor& border)
 {
     button->setCursor(Qt::PointingHandCursor);
-    button->setMinimumWidth(76);
-    button->setMinimumHeight(30);
+    button->setMinimumWidth(kbuttonMinWidth);
+    button->setMinimumHeight(kbuttonMinHeight);
     button->setStyleSheet(
         QStringLiteral(
             "QPushButton {"
@@ -102,12 +142,12 @@ void styleSecondaryButton(QPushButton* button,
             .arg(text.name(), border.name()));
 }
 
-QString closeButtonStyleSheet(const char* objectName,
-                              const QColor& text,
-                              const QColor& accent)
+QString close_button_style_sheet(const char* objectName,
+                                 const QColor& text,
+                                 const QColor& accent)
 {
     QColor hover = accent;
-    hover.setAlpha(90);
+    hover.setAlpha(kcloseHoverAlpha);
     return QStringLiteral(
                "#%1 {"
                "  background: transparent;"
@@ -125,9 +165,9 @@ QString closeButtonStyleSheet(const char* objectName,
              QString::number(hover.alpha()));
 }
 
-QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
+QPixmap severity_icon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
@@ -135,21 +175,21 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::TextAntialiasing);
 
-    const QColor bg = severityColor(icon, accent);
+    const QColor bg = severity_color(icon, accent);
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
     if (icon == QMessageBox::Warning) {
         QPainterPath tri;
-        tri.moveTo(kIconSize * 0.5, kIconSize * 0.05);
-        tri.lineTo(kIconSize * 0.96, kIconSize * 0.92);
-        tri.lineTo(kIconSize * 0.04, kIconSize * 0.92);
+        tri.moveTo(kiconSize * ktriApexX, kiconSize * ktriApexY);
+        tri.lineTo(kiconSize * ktriRightX, kiconSize * ktriBaseY);
+        tri.lineTo(kiconSize * ktriLeftX, kiconSize * ktriBaseY);
         tri.closeSubpath();
         p.drawPath(tri);
     } else {
-        p.drawEllipse(QRectF(kIconSize * 0.05,
-                             kIconSize * 0.05,
-                             kIconSize * 0.9,
-                             kIconSize * 0.9));
+        p.drawEllipse(QRectF(kiconSize * kcircleInset,
+                             kiconSize * kcircleInset,
+                             kiconSize * kcircleSize,
+                             kiconSize * kcircleSize));
     }
 
     QString glyph;
@@ -171,14 +211,16 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
         QFont font = p.font();
         font.setBold(true);
         font.setPixelSize(
-            int(kIconSize * (icon == QMessageBox::Warning ? 0.38 : 0.48)));
+            int(kiconSize
+                * (icon == QMessageBox::Warning ? kglyphScaleTriangle
+                                                : kglyphScaleCircle)));
         p.setFont(font);
         p.setPen(Qt::white);
         const QRectF textRect(0,
-                              icon == QMessageBox::Warning ? kIconSize * 0.12
+                              icon == QMessageBox::Warning ? kiconSize * 0.12
                                                            : 0,
-                              kIconSize,
-                              kIconSize);
+                              kiconSize,
+                              kiconSize);
         p.drawText(textRect, Qt::AlignHCenter | Qt::AlignVCenter, glyph);
     }
 
@@ -186,11 +228,61 @@ QPixmap severityIcon(QMessageBox::Icon icon, const QColor& accent, qreal dpr)
     return pm;
 }
 
-void applyRoundedMask(QWidget* widget, int radiusPx)
+void apply_rounded_mask(QWidget* widget, int radiusPx)
 {
     QPainterPath path;
     path.addRoundedRect(widget->rect(), radiusPx, radiusPx);
     widget->setMask(QRegion(path.toFillPolygon().toPolygon()));
+}
+
+namespace {
+
+void apply_shadow(QWidget* widget, int blurRadius, int yOffset, int alpha)
+{
+    auto* shadow = new QGraphicsDropShadowEffect(widget);
+    shadow->setBlurRadius(blurRadius);
+    shadow->setOffset(0, yOffset);
+    shadow->setColor(QColor(0, 0, 0, alpha));
+    widget->setGraphicsEffect(shadow);
+}
+
+} // namespace
+
+void apply_dialog_shadow(QWidget* widget)
+{
+    constexpr int kblurRadius = 24;
+    constexpr int kyOffset = 4;
+    constexpr int kalpha = 150;
+    apply_shadow(widget, kblurRadius, kyOffset, kalpha);
+}
+
+void apply_toolbar_shadow(QWidget* widget)
+{
+    constexpr int kblurRadius = 18;
+    constexpr int kyOffset = 3;
+    constexpr int kalpha = 140;
+    apply_shadow(widget, kblurRadius, kyOffset, kalpha);
+}
+
+QPushButton* make_close_button(QWidget* parent, const char* objectName)
+{
+    constexpr int kbuttonSize = 22;
+
+    auto* button = new QPushButton(QStringLiteral("×"), parent);
+    button->setFixedSize(kbuttonSize, kbuttonSize);
+    button->setCursor(Qt::PointingHandCursor);
+    button->setFocusPolicy(Qt::NoFocus);
+    button->setObjectName(QString::fromLatin1(objectName));
+    return button;
+}
+
+void apply_dialog_margins(QLayout* outer)
+{
+    constexpr int kleft = 20;
+    constexpr int ktop = 14;
+    constexpr int kright = 20;
+    constexpr int kbottom = 16;
+    outer->setContentsMargins(kleft, ktop, kright, kbottom);
 }
 
 } // namespace familiar::dialog_style

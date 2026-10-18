@@ -1,14 +1,34 @@
 #include "valuehandler.h"
 
+#include <utility>
+
+namespace {
+
+// QColor accepts several "#..." spellings; these are their string lengths
+// including the '#'. The three-, nine- and twelve-digit forms (#RGB,
+// #RRRGGGBBB, #RRRRGGGGBBBB) are deliberately rejected - see
+// Color::check().
+constexpr int khexRgbLength = 4;
+constexpr int khexRrrgggbbbLength = 10;
+constexpr int khexRrrrggggbbbbLength = 13;
+// #RRGGBBAA: the flameshot-era spelling this still reads and writes,
+// which QColor itself treats as #AARRGGBB.
+constexpr int khexRgbaLength = 9;
+
+} // namespace
+
+#include <QHashFunctions>
+#include <QMap>
 #include <QVariant>
+#include <Qt>
+#include <QtContainerFwd>
 
 QVariant ValueHandler::value(const QVariant& val)
 {
     if (!val.isValid() || !check(val)) {
         return fallback();
-    } else {
-        return process(val);
     }
+    return process(val);
 }
 
 QVariant ValueHandler::fallback()
@@ -39,11 +59,8 @@ Bool::Bool(bool def)
 
 bool Bool::check(const QVariant& val)
 {
-    QString str = val.toString();
-    if (str != "true" && str != "false") {
-        return false;
-    }
-    return true;
+    const QString str = val.toString();
+    return ((str == "true") || (str == "false"));
 }
 
 QVariant Bool::fallback()
@@ -64,11 +81,8 @@ KeySequence::KeySequence(const QKeySequence& fallback)
 
 bool KeySequence::check(const QVariant& val)
 {
-    QString str = val.toString();
-    if (!str.isEmpty() && QKeySequence(str).toString().isEmpty()) {
-        return false;
-    }
-    return true;
+    const QString str = val.toString();
+    return str.isEmpty() || !QKeySequence(str).toString().isEmpty();
 }
 
 QVariant KeySequence::fallback()
@@ -83,7 +97,7 @@ QString KeySequence::expected()
 
 QVariant KeySequence::representation(const QVariant& val)
 {
-    QString str(val.toString());
+    const QString str = val.toString();
     if (QKeySequence(str) == QKeySequence(Qt::Key_Return)) {
         return QStringLiteral("Enter");
     }
@@ -92,7 +106,7 @@ QVariant KeySequence::representation(const QVariant& val)
 
 QVariant KeySequence::process(const QVariant& val)
 {
-    QString str(val.toString());
+    const QString str = val.toString();
     if (str == "Enter") {
         return QKeySequence(Qt::Key_Return).toString();
     }
@@ -103,34 +117,34 @@ QVariant KeySequence::process(const QVariant& val)
 // BOUNDED INT
 
 BoundedInt::BoundedInt(int min, int max, int def)
-    : m_min(min)
-    , m_max(max)
-    , m_def(def)
+    : mMin_(min)
+    , mMax_(max)
+    , mDef_(def)
 {}
 
 bool BoundedInt::check(const QVariant& val)
 {
-    QString str = val.toString();
-    bool conversionOk;
-    int num = str.toInt(&conversionOk);
-    return conversionOk && m_min <= num && num <= m_max;
+    const QString str = val.toString();
+    bool conversionOk = false;
+    const int num = str.toInt(&conversionOk);
+    return conversionOk && mMin_ <= num && num <= mMax_;
 }
 
 QVariant BoundedInt::fallback()
 {
-    return m_def;
+    return mDef_;
 }
 
 QString BoundedInt::expected()
 {
-    return QStringLiteral("number between %1 and %2").arg(m_min).arg(m_max);
+    return QStringLiteral("number between %1 and %2").arg(mMin_).arg(mMax_);
 }
 
 
 // COLOR
 
 Color::Color(QColor def)
-    : m_def(std::move(def))
+    : mDef_(std::move(def))
 {}
 
 bool Color::check(const QVariant& val)
@@ -139,17 +153,18 @@ bool Color::check(const QVariant& val)
     // Disable #RGB, #RRRGGGBBB and #RRRRGGGGBBBB formats that QColor supports
     return QColor::isValidColorName(str)
            && (str[0] != '#'
-               || (str.length() != 4 && str.length() != 10
-                   && str.length() != 13));
+               || (str.length() != khexRgbLength
+                   && str.length() != khexRrrgggbbbLength
+                   && str.length() != khexRrrrggggbbbbLength));
 }
 
 QVariant Color::process(const QVariant& val)
 {
     QString str = val.toString();
     QColor color(str);
-    if (str.length() == 9 && str[0] == '#') {
+    if (str.length() == khexRgbaLength && str[0] == '#') {
         // Convert #RRGGBBAA (flameshot) to #AARRGGBB (QColor)
-        int blue = color.blue();
+        const int blue = color.blue();
         color.setBlue(color.green());
         color.setGreen(color.red());
         color.setRed(color.alpha());
@@ -160,16 +175,16 @@ QVariant Color::process(const QVariant& val)
 
 QVariant Color::fallback()
 {
-    return m_def;
+    return mDef_;
 }
 
 QVariant Color::representation(const QVariant& val)
 {
     QString str = val.toString();
     QColor color(str);
-    if (str.length() == 9 && str[0] == '#') {
+    if (str.length() == khexRgbaLength && str[0] == '#') {
         // Convert #AARRGGBB (QColor) to #RRGGBBAA (flameshot)
-        int alpha = color.alpha();
+        const int alpha = color.alpha();
         color.setAlpha(color.red());
         color.setRed(color.green());
         color.setGreen(color.blue());
@@ -186,44 +201,45 @@ QString Color::expected()
 
 // COLOR LIST
 
-ColorList::ColorList(QMap<int, QColor> def)
-    : m_def(def)
+ColorList::ColorList(QMap<EPresetsColorIdx, QColor> def)
+    : mDef_(std::move(def))
 {}
 
-bool ColorList::check(const QVariant& val)
+bool ColorList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
 
 // Stored as a JSON array of hex color strings, index = map key - not the
-// QMap<int,QColor> itself, which only round-tripped through QSettings by
+// QMap itself, which only round-tripped through QSettings by
 // accident (IniFormat base64-encodes unknown QVariant types via
 // QDataStream, i.e. the "ini" file held opaque blobs for this key). The
 // value handled internally (process()'s return, what callers actually
-// get back from SettingsHandler::value()) is still QMap<int,QColor> -
+// get back from SettingsHandler::value()) is still the QMap -
 // only the storage-facing shape (representation()/the input to process())
 // changed.
 QVariant ColorList::process(const QVariant& val)
 {
-    QMap<int, QColor> out;
+    QMap<EPresetsColorIdx, QColor> out;
     const QVariantList list = val.toList();
     for (int i = 0; i < list.size(); ++i) {
-        out[i] = QColor(list[i].toString());
+        out[static_cast<EPresetsColorIdx>(i)] = QColor(list[i].toString());
     }
     return QVariant::fromValue(out);
 }
 
 QVariant ColorList::fallback()
 {
-    return QVariant::fromValue(m_def);
+    return QVariant::fromValue(mDef_);
 }
 
 QVariant ColorList::representation(const QVariant& val)
 {
-    const auto map = val.value<QMap<int, QColor>>();
+    const auto map = val.value<QMap<EPresetsColorIdx, QColor>>();
     QVariantList out;
     for (int i = 0; i < map.size(); ++i) {
-        out.append(map.value(i).name(QColor::HexArgb));
+        out.append(
+            map.value(static_cast<EPresetsColorIdx>(i)).name(QColor::HexArgb));
     }
     return out;
 }
@@ -236,11 +252,11 @@ QString ColorList::expected()
 
 // OPACITY LIST
 
-OpacityList::OpacityList(QMap<int, int> def)
-    : m_def(def)
+OpacityList::OpacityList(QMap<EPresets, int> def)
+    : mDef_(std::move(def))
 {}
 
-bool OpacityList::check(const QVariant& val)
+bool OpacityList::check([[maybe_unused]] const QVariant& val)
 {
     return true;
 }
@@ -248,25 +264,25 @@ bool OpacityList::check(const QVariant& val)
 // Same reasoning as ColorList above - JSON array of ints, index = map key.
 QVariant OpacityList::process(const QVariant& val)
 {
-    QMap<int, int> out;
+    QMap<EPresets, int> out;
     const QVariantList list = val.toList();
     for (int i = 0; i < list.size(); ++i) {
-        out[i] = list[i].toInt();
+        out[static_cast<EPresets>(i)] = list[i].toInt();
     }
     return QVariant::fromValue(out);
 }
 
 QVariant OpacityList::fallback()
 {
-    return QVariant::fromValue(m_def);
+    return QVariant::fromValue(mDef_);
 }
 
 QVariant OpacityList::representation(const QVariant& val)
 {
-    const auto map = val.value<QMap<int, int>>();
+    const auto map = val.value<QMap<EPresets, int>>();
     QVariantList out;
     for (int i = 0; i < map.size(); ++i) {
-        out.append(map.value(i));
+        out.append(map.value(static_cast<EPresets>(i)));
     }
     return out;
 }

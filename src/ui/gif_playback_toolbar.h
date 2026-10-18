@@ -30,7 +30,7 @@ public:
 
     // Re-derive the QSS from the current color preset (called on attach
     // and whenever settings change).
-    void restyleFromPreset();
+    void restyle_from_preset();
 
     // Positions the control row at `desiredCenterX` (toolbar-local
     // x-coordinate), clamped so it never leaves the toolbar's own bounds.
@@ -42,7 +42,7 @@ public:
     // longer lines up with the item's center, and a layout-centered row
     // would drift off toward the middle of the (now off-center) filmstrip
     // instead of staying above the item.
-    void positionControlsRow(int desiredCenterX);
+    void position_controls_row(int desiredCenterX);
 
 signals:
     // Fired whenever the widget's own size changes (e.g. the frames
@@ -51,18 +51,18 @@ signals:
     // because the layout grew/shrank the widget, so without this the
     // toolbar stays anchored at its old top-left corner and visibly
     // drifts off its centered/clamped spot.
-    void geometryChanged();
+    void geometry_changed();
 
 protected:
     void resizeEvent(QResizeEvent* event) override;
 
 private:
-    void showSpeedPopup_();
-    void toggleFilmstrip_();
-    void rebuildFilmstrip_();
-    void onFrameChanged_(int frame);
-    void updatePlayPauseIcon_();
-    void updateSpeedLabel_();
+    void show_speed_popup();
+    void toggle_filmstrip();
+    void rebuild_filmstrip();
+    void on_frame_changed(int frame);
+    void update_play_pause_icon();
+    void update_speed_label();
 
     GifItem* item_ = nullptr;
     QToolButton* prevBtn_ = nullptr;

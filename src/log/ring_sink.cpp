@@ -1,8 +1,20 @@
 #include "ring_sink.h"
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <quill/core/LogLevel.h>
+#include <quill/core/MacroMetadata.h>
+
+#include <QHashFunctions>
+#include <QList>
 #include <QMutexLocker>
+#include <QObject>
 
 #include "log.h" // for the real Level enum - only forward-declared in ring_sink.h
+#include <vector>
 
 namespace familiar::log {
 
@@ -14,7 +26,7 @@ namespace {
 // for (this app never logs at those). Collapsed onto the closest real
 // severity rather than dropped, so a stray one still shows up somewhere
 // sensible instead of vanishing from the ring entirely.
-Level fromQuillLevel(quill::LogLevel level)
+Level from_quill_level(quill::LogLevel level)
 {
     switch (level) {
     case quill::LogLevel::TraceL3:
@@ -36,6 +48,9 @@ Level fromQuillLevel(quill::LogLevel level)
     case quill::LogLevel::None:
     case quill::LogLevel::Dynamic:
         break;
+    default:
+        // TODOLATER: unreachable?
+        return Level::Info;
     }
     return Level::Info;
 }
@@ -62,28 +77,28 @@ void RingSink::write_log(
     std::string_view logStatement)
 {
     // logStatement is newline-terminated; strip it for QPlainTextEdit-style consumers.
-    const size_t len = !logStatement.empty() && logStatement.back() == '\n'
-                           ? logStatement.size() - 1
-                           : logStatement.size();
-    const QString line = QString::fromUtf8(logStatement.data(), int(len));
-    const Level level = fromQuillLevel(logLevel);
+    if (!logStatement.empty() && logStatement.back() == '\n') {
+        logStatement.remove_suffix(1);
+    }
+    const QString line = QString::fromUtf8(logStatement);
+    const Level level = from_quill_level(logLevel);
 
     {
-        QMutexLocker locker(&mutex_);
-        ring_.append({level, line});
-        while (size_t(ring_.size()) > capacity_) {
+        const QMutexLocker locker(&mutex_);
+        ring_.append({.level = level, .line = line});
+        while (std::cmp_greater(ring_.size(), capacity_)) {
             ring_.removeFirst();
         }
     }
 
-    emit entryAdded(level, line);
+    emit entry_added(level, line);
 }
 
 void RingSink::flush_sink() noexcept {}
 
 QList<RingSink::Entry> RingSink::entries() const
 {
-    QMutexLocker locker(&mutex_);
+    const QMutexLocker locker(&mutex_);
     return ring_;
 }
 

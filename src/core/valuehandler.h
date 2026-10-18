@@ -1,6 +1,8 @@
 #ifndef VALUEHANDLER_H
 #define VALUEHANDLER_H
 
+#include <cstdint>
+
 #include <QColor>
 #include <QKeySequence>
 #include <QList>
@@ -8,6 +10,14 @@
 #include <QString>
 
 class QVariant;
+
+// Full definitions: core/settingshandler.h. Opaque declarations with the
+// underlying type spelled out, which makes these complete types - enough
+// for the QMap keys below without this header pulling the whole settings
+// header in (the dependency runs the other way round). The underlying type
+// must match settingshandler.h exactly or the declarations conflict.
+enum class EPresets : std::uint8_t;
+enum class EPresetsColorIdx : std::uint8_t;
 
 /**
  * @brief Handles the value of a configuration option (abstract class).
@@ -42,6 +52,20 @@ public:
     // e.g. ColorList/OpacityList's QMap members were never destructed.
     virtual ~ValueHandler() = default;
 
+    // Protected rather than public: this is a polymorphic base held as
+    // QSharedPointer<ValueHandler>, and copying one as a base would slice
+    // off whichever concrete handler it actually is. Defaulted rather
+    // than deleted so subclasses stay copyable if they ever need to be.
+protected:
+    // Declaring the copy/move operations below suppresses the
+    // implicit default constructor, which derived classes rely on.
+    ValueHandler() = default;
+    ValueHandler(const ValueHandler&) = default;
+    ValueHandler& operator=(const ValueHandler&) = default;
+    ValueHandler(ValueHandler&&) = default;
+    ValueHandler& operator=(ValueHandler&&) = default;
+
+public:
     /**
      * @brief Check the value semantically.
      * @param val The value that was read from the config file
@@ -111,7 +135,7 @@ public:
     QString expected() override;
 
 private:
-    int m_min, m_max, m_def;
+    int mMin_, mMax_, mDef_;
 };
 
 class KeySequence : public ValueHandler
@@ -140,13 +164,13 @@ public:
     QString expected() override;
 
 private:
-    QColor m_def;
+    QColor mDef_;
 };
 
 class ColorList : public ValueHandler
 {
 public:
-    ColorList(QMap<int, QColor> def);
+    ColorList(QMap<EPresetsColorIdx, QColor> def);
     bool check(const QVariant& val) override;
     QVariant process(const QVariant& val) override;
     QVariant fallback() override;
@@ -154,13 +178,13 @@ public:
     QString expected() override;
 
 private:
-    QMap<int, QColor> m_def;
+    QMap<EPresetsColorIdx, QColor> mDef_;
 };
 
 class OpacityList : public ValueHandler
 {
 public:
-    OpacityList(QMap<int, int> def);
+    OpacityList(QMap<EPresets, int> def);
     bool check(const QVariant& val) override;
     QVariant process(const QVariant& val) override;
     QVariant fallback() override;
@@ -168,7 +192,7 @@ public:
     QString expected() override;
 
 private:
-    QMap<int, int> m_def;
+    QMap<EPresets, int> mDef_;
 };
 
 #endif // VALUEHANDLER_H

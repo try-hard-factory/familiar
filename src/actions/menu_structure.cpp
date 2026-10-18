@@ -1,6 +1,7 @@
 #include "menu_structure.h"
+#include <QList>
 
-const QList<MenuNode>& menuStructure()
+const QList<MenuNode>& menu_structure()
 {
     static const QList<MenuNode> s = {
         MenuNode::submenu("File",

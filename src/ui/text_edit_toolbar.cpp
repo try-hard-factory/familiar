@@ -1,5 +1,6 @@
 #include "text_edit_toolbar.h"
 #include "widgets/color_picker_dialog.h"
+#include "widgets/dialog_style.h"
 #include "widgets/file_browser_dialog.h"
 
 #include <core/settingshandler.h>
@@ -9,12 +10,18 @@
 using namespace familiar::log;
 
 #include <QComboBox>
+#include <QDialog>
 #include <QFontComboBox>
 #include <QFrame>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
+#include <QHashFunctions>
+#include <QKeySequence>
 #include <QLineEdit>
+#include <QList>
+#include <QMargins>
+#include <QObject>
 #include <QPainter>
+#include <QPixmap>
 #include <QShortcut>
 #include <QTextBlock>
 #include <QTextBlockFormat>
@@ -24,6 +31,9 @@ using namespace familiar::log;
 #include <QTimer>
 #include <QToolButton>
 #include <QUrl>
+#include <Qt>
+#include <QtMinMax>
+#include <QtTypes>
 
 #include <algorithm>
 
@@ -32,39 +42,72 @@ namespace {
 // Square, uniform for every icon-only button on the bar - the plain-text
 // glyphs used to size themselves off the text ("BG" wider than "B"),
 // which looked ragged sitting side by side.
-constexpr int kButtonSize = 30;
-constexpr int kIconSize = 20;
+constexpr int kbuttonSize = 30;
+constexpr int kiconSize = 20;
+
+// Stroke width every hand-drawn glyph on this bar uses, so they read as
+// one icon set rather than each its own weight.
+constexpr qreal kglyphStroke = 2.0;
+// Alpha/colour floor for the swatch bar under A/H/BG - see
+// make_color_glyph_icon() below for why an unset highlight still has to
+// show something.
+constexpr int kswatchMinAlpha = 60;
+constexpr int kneutralGray = 128;
+
+// Alphas for the popup's own QSS: an almost-opaque panel, and two
+// progressively stronger tints of the selection colour for hover and
+// pressed states.
+constexpr int kpopupBgAlpha = 245;
+constexpr int khoverAlpha = 90;
+constexpr int kpressedAlpha = 170;
 
 // A/H/BG's icon: the letter plus a small rounded color-swatch bar along
 // the bottom, so the button shows what color it currently represents
 // instead of being a plain, identical-looking letter every time.
-QIcon makeColorGlyphIcon(const QString& glyph,
-                         const QColor& swatch,
-                         const QColor& glyphColor,
-                         qreal dpr)
+QIcon make_color_glyph_icon(const QString& glyph,
+                            const QColor& swatch,
+                            const QColor& glyphColor,
+                            qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
 
+    // Letter slightly up-sized, and shifted up by leaving room for the
+    // swatch bar at the bottom.
+    constexpr qreal kglyphScale = 1.05;
+    constexpr int kswatchBand = 5;
     QFont f = p.font();
-    f.setPointSizeF(f.pointSizeF() * 1.05);
+    f.setPointSizeF(f.pointSizeF() * kglyphScale);
     f.setBold(true);
     p.setFont(f);
     p.setPen(glyphColor);
-    p.drawText(QRect(0, 0, kIconSize, kIconSize - 5), Qt::AlignCenter, glyph);
+    p.drawText(QRect(0, 0, kiconSize, kiconSize - kswatchBand),
+               Qt::AlignCenter,
+               glyph);
 
     // An unset highlight (background().color() invalid, alpha 0) still
     // gets a visible neutral bar - an invisible bar would look identical
     // to a plain letter and defeat the point of the swatch.
-    QColor bar = swatch.isValid() ? swatch : QColor(128, 128, 128);
-    bar.setAlpha(qMax(bar.alpha(), 60));
+    constexpr qreal kbarInset = 3;
+    constexpr qreal kbarHeight = 3;
+    constexpr qreal kbarBottomGap = 4;
+    constexpr qreal kbarRadius = 1.5;
+    QColor bar = swatch.isValid()
+                     ? swatch
+                     : QColor(kneutralGray, kneutralGray, kneutralGray);
+    bar.setAlpha(qMax(bar.alpha(), kswatchMinAlpha));
     p.setPen(Qt::NoPen);
     p.setBrush(bar);
-    p.drawRoundedRect(QRectF(3, kIconSize - 4, kIconSize - 6, 3), 1.5, 1.5);
+    p.drawRoundedRect(QRectF(kbarInset,
+                             kiconSize - kbarBottomGap,
+                             kiconSize - (2 * kbarInset),
+                             kbarHeight),
+                      kbarRadius,
+                      kbarRadius);
 
     p.end();
     QIcon icon;
@@ -76,27 +119,28 @@ QIcon makeColorGlyphIcon(const QString& glyph,
 // digit) followed by a stand-in text bar - reads as "list" at a glance
 // without needing an external asset, same drawn-icon approach as
 // makeColorGlyphIcon() above.
-QIcon makeListIcon(bool numbered, const QColor& glyphColor, qreal dpr)
+QIcon make_list_icon(bool numbered, const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
 
-    constexpr int rows = 3;
-    const qreal rowH = kIconSize / qreal(rows);
+    constexpr int krows = 3;
+    const qreal rowH = kiconSize / qreal(krows);
     const qreal markerW = numbered ? 8.0 : 4.0;
 
     QFont f = p.font();
-    f.setPointSizeF(rowH * 0.62);
+    constexpr qreal krowFontScale = 0.62;
+    f.setPointSizeF(rowH * krowFontScale);
     f.setBold(true);
     p.setFont(f);
 
-    for (int i = 0; i < rows; ++i) {
+    for (int i = 0; i < krows; ++i) {
         const qreal top = rowH * i;
-        const qreal cy = top + rowH / 2.0;
+        const qreal cy = top + (rowH / 2.0);
 
         p.setPen(Qt::NoPen);
         p.setBrush(glyphColor);
@@ -107,9 +151,13 @@ QIcon makeListIcon(bool numbered, const QColor& glyphColor, qreal dpr)
                        QString::number(i + 1));
             p.setPen(Qt::NoPen);
         } else {
-            p.drawEllipse(QPointF(markerW / 2.0, cy), 1.6, 1.6);
+            constexpr qreal kbulletRadius = 1.6;
+            const qreal markerCenterX = markerW / 2.0;
+            p.drawEllipse(QPointF(markerCenterX, cy),
+                          kbulletRadius,
+                          kbulletRadius);
         }
-        p.drawRoundedRect(QRectF(markerW + 2, cy - 1, kIconSize - markerW - 4, 2),
+        p.drawRoundedRect(QRectF(markerW + 2, cy - 1, kiconSize - markerW - 4, 2),
                           1,
                           1);
     }
@@ -120,7 +168,7 @@ QIcon makeListIcon(bool numbered, const QColor& glyphColor, qreal dpr)
     return icon;
 }
 
-QFrame* makeSeparator(QWidget* parent)
+QFrame* make_separator(QWidget* parent)
 {
     auto* line = new QFrame(parent);
     line->setFrameShape(QFrame::VLine);
@@ -132,23 +180,34 @@ QFrame* makeSeparator(QWidget* parent)
 // rather than filled (unlike the other icons here), since a solid chain
 // link reads as a blob at this size; the outline is what actually makes
 // the shape recognizable.
-QIcon makeLinkIcon(const QColor& glyphColor, qreal dpr)
+QIcon make_link_icon(const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     QPen pen(glyphColor);
-    pen.setWidthF(2.0);
+    pen.setWidthF(kglyphStroke);
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
 
-    p.translate(kIconSize / 2.0, kIconSize / 2.0);
-    p.rotate(-40);
-    p.drawRoundedRect(QRectF(-7, -3, 7, 6), 3, 3);
-    p.drawRoundedRect(QRectF(0, -3, 7, 6), 3, 3);
+    // Two rounded links meeting at the centre, tilted so the shape reads
+    // as a chain rather than two stacked pills.
+    constexpr qreal ktiltDegrees = -40;
+    constexpr qreal klinkW = 7;
+    constexpr qreal klinkH = 6;
+    constexpr qreal klinkRadius = 3;
+    const qreal iconCenter = kiconSize / 2.0;
+    p.translate(iconCenter, iconCenter);
+    p.rotate(ktiltDegrees);
+    p.drawRoundedRect(QRectF(-klinkW, -klinkH / 2, klinkW, klinkH),
+                      klinkRadius,
+                      klinkRadius);
+    p.drawRoundedRect(QRectF(0, -klinkH / 2, klinkW, klinkH),
+                      klinkRadius,
+                      klinkRadius);
 
     p.end();
     QIcon icon;
@@ -159,16 +218,16 @@ QIcon makeLinkIcon(const QColor& glyphColor, qreal dpr)
 // "Fit to content" glyph: four inward-pointing corner brackets around a
 // shrunken center square - viewfinder-style, the common visual shorthand
 // for "snap to size" across most creative-tool toolbars.
-QIcon makeAutosizeIcon(const QColor& glyphColor, qreal dpr)
+QIcon make_autosize_icon(const QColor& glyphColor, qreal dpr)
 {
-    QPixmap pm(QSize(kIconSize, kIconSize) * dpr);
+    QPixmap pm(QSize(kiconSize, kiconSize) * dpr);
     pm.setDevicePixelRatio(dpr);
     pm.fill(Qt::transparent);
 
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     QPen pen(glyphColor);
-    pen.setWidthF(2.0);
+    pen.setWidthF(kglyphStroke);
     pen.setCapStyle(Qt::RoundCap);
     p.setPen(pen);
 
@@ -183,10 +242,16 @@ QIcon makeAutosizeIcon(const QColor& glyphColor, qreal dpr)
         QPointF vert;
     };
     const Corner corners[4]
-        = {{{inner, inner}, {armLen, 0}, {0, armLen}},
-           {{kIconSize - inner, inner}, {-armLen, 0}, {0, armLen}},
-           {{inner, kIconSize - inner}, {armLen, 0}, {0, -armLen}},
-           {{kIconSize - inner, kIconSize - inner}, {-armLen, 0}, {0, -armLen}}};
+        = {{.at = {inner, inner}, .horiz = {armLen, 0}, .vert = {0, armLen}},
+           {.at = {kiconSize - inner, inner},
+            .horiz = {-armLen, 0},
+            .vert = {0, armLen}},
+           {.at = {inner, kiconSize - inner},
+            .horiz = {armLen, 0},
+            .vert = {0, -armLen}},
+           {.at = {kiconSize - inner, kiconSize - inner},
+            .horiz = {-armLen, 0},
+            .vert = {0, -armLen}}};
     for (const Corner& c : corners) {
         p.drawLine(c.at, c.at + c.horiz);
         p.drawLine(c.at, c.at + c.vert);
@@ -203,6 +268,9 @@ QIcon makeAutosizeIcon(const QColor& glyphColor, qreal dpr)
 
 TextEditToolbar::TextEditToolbar(QWidget* parent)
     : QWidget(parent)
+    , sizeBox_(new QComboBox(this))
+    , fontBox_(new QFontComboBox(this))
+    , syncTimer_(new QTimer(this))
 {
     // A plain QWidget with a stylesheet background needs this to
     // actually paint it (otherwise it stays transparent over the canvas).
@@ -210,14 +278,11 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
 
     // Floating-card feel, separating the bar from the canvas underneath
     // it more clearly than the border alone.
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(18);
-    shadow->setOffset(0, 3);
-    shadow->setColor(QColor(0, 0, 0, 140));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_toolbar_shadow(this);
 
     auto* lay = new QHBoxLayout(this);
-    lay->setContentsMargins(8, 5, 8, 5);
+    constexpr QMargins kbarMargins{8, 5, 8, 5};
+    lay->setContentsMargins(kbarMargins);
     lay->setSpacing(2);
 
     auto makeButton = [this, lay](const QString& glyph,
@@ -228,7 +293,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         b->setToolTip(tooltip);
         b->setCheckable(checkable);
         b->setAutoRaise(true);
-        b->setFixedSize(kButtonSize, kButtonSize);
+        b->setFixedSize(kbuttonSize, kbuttonSize);
         // Don't steal focus from the text item being edited - its cursor/
         // selection is what the buttons operate on.
         b->setFocusPolicy(Qt::NoFocus);
@@ -245,10 +310,10 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
                                     false);
     fillColorBtn_ = makeButton(QString(), tr("Note fill color"), false);
     for (QToolButton* b : {textColorBtn_, highlightColorBtn_, fillColorBtn_}) {
-        b->setIconSize(QSize(kIconSize, kIconSize));
+        b->setIconSize(QSize(kiconSize, kiconSize));
     }
 
-    lay->addWidget(makeSeparator(this));
+    lay->addWidget(make_separator(this));
 
     boldBtn_ = makeButton(QStringLiteral("B"), tr("Bold"), true);
     italicBtn_ = makeButton(QStringLiteral("I"), tr("Italic"), true);
@@ -267,42 +332,44 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     }
 
     linkBtn_ = makeButton(QString(), tr("Insert link"), false);
-    linkBtn_->setIconSize(QSize(kIconSize, kIconSize));
+    linkBtn_->setIconSize(QSize(kiconSize, kiconSize));
 
-    lay->addWidget(makeSeparator(this));
+    lay->addWidget(make_separator(this));
 
     bulletListBtn_ = makeButton(QString(), tr("Bulleted list"), true);
     numberedListBtn_ = makeButton(QString(), tr("Numbered list"), true);
     for (QToolButton* b : {bulletListBtn_, numberedListBtn_}) {
-        b->setIconSize(QSize(kIconSize, kIconSize));
+        b->setIconSize(QSize(kiconSize, kiconSize));
     }
 
-    lay->addWidget(makeSeparator(this));
+    lay->addWidget(make_separator(this));
 
-    sizeBox_ = new QComboBox(this);
+
     sizeBox_->setEditable(true);
     sizeBox_->setInsertPolicy(QComboBox::NoInsert);
-    for (int s :
+    for (const int s :
          {8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 72}) {
         sizeBox_->addItem(QString::number(s));
     }
     sizeBox_->setToolTip(tr("Font size"));
+    // Room for three digits plus the combo box's own arrow and padding.
+    constexpr int ksizeBoxPadding = 30;
     sizeBox_->setFixedWidth(sizeBox_->fontMetrics().horizontalAdvance("000")
-                            + 30);
-    sizeBox_->setFixedHeight(kButtonSize);
+                            + ksizeBoxPadding);
+    sizeBox_->setFixedHeight(kbuttonSize);
     lay->addWidget(sizeBox_);
 
-    fontBox_ = new QFontComboBox(this);
+
     fontBox_->setToolTip(tr("Font"));
-    fontBox_->setFixedHeight(kButtonSize);
+    fontBox_->setFixedHeight(kbuttonSize);
     lay->addWidget(fontBox_);
 
-    lay->addWidget(makeSeparator(this));
+    lay->addWidget(make_separator(this));
 
     autosizeBtn_ = makeButton(QString(),
                               tr("Autosize (fit field to content)"),
                               false);
-    autosizeBtn_->setIconSize(QSize(kIconSize, kIconSize));
+    autosizeBtn_->setIconSize(QSize(kiconSize, kiconSize));
 
     connect(autosizeBtn_, &QToolButton::clicked, this, [this] {
         if (item_) {
@@ -319,8 +386,8 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         auto applyForeground = [this](const QColor& c) {
             QTextCharFormat format;
             format.setForeground(c);
-            applyCharFormat(format);
-            updateColorButtonIcons();
+            apply_char_format(format);
+            update_color_button_icons();
         };
 
         ColorPickerDialog dialog(this,
@@ -328,7 +395,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
                                  tr("Text color"),
                                  /*withAlpha=*/false);
         connect(&dialog,
-                &ColorPickerDialog::colorChanged,
+                &ColorPickerDialog::color_changed,
                 this,
                 applyForeground);
         if (dialog.exec() != QDialog::Accepted) {
@@ -350,19 +417,19 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         // starting point (e.g. an unset highlight, alpha 0) makes the
         // newly picked hue invisible until the user separately remembers
         // to also raise the alpha slider.
-        initial.setAlpha(255);
+        initial.setAlpha(kfullOpacity);
         auto applyBackground = [this](const QColor& c) {
             QTextCharFormat format;
             format.setBackground(c);
-            applyCharFormat(format);
-            updateColorButtonIcons();
+            apply_char_format(format);
+            update_color_button_icons();
         };
         ColorPickerDialog dialog(this,
                                  initial,
                                  tr("Text highlight color"),
                                  /*withAlpha=*/true);
         connect(&dialog,
-                &ColorPickerDialog::colorChanged,
+                &ColorPickerDialog::color_changed,
                 this,
                 applyBackground);
         if (dialog.exec() != QDialog::Accepted) {
@@ -383,46 +450,46 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         // slider to fully opaque rather than whatever low/zero alpha the
         // note's current fill happens to have.
         QColor initial = original;
-        initial.setAlpha(255);
+        initial.setAlpha(kfullOpacity);
         ColorPickerDialog dialog(this,
                                  initial,
                                  tr("Note fill color"),
                                  /*withAlpha=*/true);
         connect(&dialog,
-                &ColorPickerDialog::colorChanged,
+                &ColorPickerDialog::color_changed,
                 this,
                 [this](const QColor& c) {
                     if (item_) {
                         item_->set_fill_color(c);
-                        updateColorButtonIcons();
+                        update_color_button_icons();
                     }
                 });
         if (dialog.exec() != QDialog::Accepted && item_) {
             item_->set_fill_color(original);
-            updateColorButtonIcons();
+            update_color_button_icons();
         }
     });
 
     connect(boldBtn_, &QToolButton::toggled, this, [this](bool checked) {
         QTextCharFormat format;
         format.setFontWeight(checked ? QFont::Bold : QFont::Normal);
-        applyCharFormat(format);
+        apply_char_format(format);
     });
     connect(italicBtn_, &QToolButton::toggled, this, [this](bool checked) {
         QTextCharFormat format;
         format.setFontItalic(checked);
-        applyCharFormat(format);
+        apply_char_format(format);
     });
     connect(underlineBtn_, &QToolButton::toggled, this, [this](bool checked) {
         QTextCharFormat format;
         format.setFontUnderline(checked);
-        applyCharFormat(format);
+        apply_char_format(format);
     });
 
     connect(linkBtn_,
             &QToolButton::clicked,
             this,
-            &TextEditToolbar::showLinkPopup);
+            &TextEditToolbar::show_link_popup);
 
     // clicked, not toggled: whether the block ends up listed (and which
     // style) depends on the CURRENT document state, not a simple bool
@@ -430,12 +497,12 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
     // syncFromCursor() corrects whatever checked state Qt's own
     // checkable-button click already applied to reflect the real result.
     connect(bulletListBtn_, &QToolButton::clicked, this, [this] {
-        toggleListStyle(QTextListFormat::ListDisc);
-        syncFromCursor();
+        toggle_list_style(QTextListFormat::ListDisc);
+        sync_from_cursor();
     });
     connect(numberedListBtn_, &QToolButton::clicked, this, [this] {
-        toggleListStyle(QTextListFormat::ListDecimal);
-        syncFromCursor();
+        toggle_list_style(QTextListFormat::ListDecimal);
+        sync_from_cursor();
     });
 
     auto applySize = [this](const QString& text) {
@@ -446,7 +513,7 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
         }
         QTextCharFormat format;
         format.setFontPointSize(size);
-        applyCharFormat(format);
+        apply_char_format(format);
     };
     connect(sizeBox_, &QComboBox::textActivated, this, applySize);
     connect(sizeBox_->lineEdit(),
@@ -460,28 +527,29 @@ TextEditToolbar::TextEditToolbar(QWidget* parent)
             [this](const QFont& font) {
                 QTextCharFormat format;
                 format.setFontFamilies(QStringList{font.family()});
-                applyCharFormat(format);
+                apply_char_format(format);
             });
 
     // QGraphicsTextItem exposes no cursorPositionChanged - poll while
     // visible so B/I/U/size/font track the cursor through mixed
     // formatting. Cheap: a handful of format reads 4x a second.
-    syncTimer_ = new QTimer(this);
-    syncTimer_->setInterval(250);
+
+    constexpr int ksyncIntervalMs = 250;
+    syncTimer_->setInterval(ksyncIntervalMs);
     connect(syncTimer_,
             &QTimer::timeout,
             this,
-            &TextEditToolbar::syncFromCursor);
+            &TextEditToolbar::sync_from_cursor);
 
-    restyleFromPreset();
+    restyle_from_preset();
 }
 
 void TextEditToolbar::attach(TextItem* item)
 {
     item_ = item;
     if (item_) {
-        restyleFromPreset();
-        syncFromCursor();
+        restyle_from_preset();
+        sync_from_cursor();
         adjustSize();
         syncTimer_->start();
     } else {
@@ -489,7 +557,7 @@ void TextEditToolbar::attach(TextItem* item)
     }
 }
 
-void TextEditToolbar::applyCharFormat(const QTextCharFormat& format)
+void TextEditToolbar::apply_char_format(const QTextCharFormat& format)
 {
     if (!item_) {
         return;
@@ -503,7 +571,7 @@ void TextEditToolbar::applyCharFormat(const QTextCharFormat& format)
     cursor.mergeCharFormat(format);
 }
 
-void TextEditToolbar::applyLink(const QString& href)
+void TextEditToolbar::apply_link(const QString& href)
 {
     if (!item_ || href.isEmpty()) {
         return;
@@ -515,8 +583,8 @@ void TextEditToolbar::applyLink(const QString& href)
     // theme's accent color is what actually makes it read as a link.
     format.setFontUnderline(true);
     format.setForeground(
-        SettingsHandler::getInstance()
-            ->getCurrentColorPreset()[EPresetsColorIdx::kSelectionColor]);
+        SettingsHandler::get_instance()
+            ->get_current_color_preset()[EPresetsColorIdx::SelectionColor]);
 
     // Inserts href AS the visible link text rather than
     // formatting whatever's currently selected - a selection is replaced
@@ -535,7 +603,7 @@ void TextEditToolbar::applyLink(const QString& href)
     item_->setTextCursor(cursor);
 }
 
-void TextEditToolbar::showLinkPopup()
+void TextEditToolbar::show_link_popup()
 {
     if (!item_) {
         return;
@@ -559,10 +627,11 @@ void TextEditToolbar::showLinkPopup()
     // paints solid black.
     popup->setAttribute(Qt::WA_TranslucentBackground, false);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
     popup->setStyleSheet(
         QStringLiteral("QWidget {"
                        "  background-color: %1;"
@@ -585,7 +654,8 @@ void TextEditToolbar::showLinkPopup()
             .arg(background.name(), text.name(), border.name()));
 
     auto* lay = new QHBoxLayout(popup);
-    lay->setContentsMargins(6, 6, 6, 6);
+    constexpr QMargins kpopupMargins{6, 6, 6, 6};
+    lay->setContentsMargins(kpopupMargins);
     lay->setSpacing(4);
 
     auto* browseBtn = new QToolButton(popup);
@@ -596,7 +666,8 @@ void TextEditToolbar::showLinkPopup()
 
     auto* edit = new QLineEdit(popup);
     edit->setPlaceholderText(tr("URL or file path"));
-    edit->setMinimumWidth(220);
+    constexpr int kurlFieldMinWidth = 220;
+    edit->setMinimumWidth(kurlFieldMinWidth);
     // Editing an existing link (cursor already inside one) starts from
     // its current target instead of empty.
     const QString existingHref = item_->textCursor().charFormat().anchorHref();
@@ -612,19 +683,19 @@ void TextEditToolbar::showLinkPopup()
     lay->addWidget(applyBtn);
 
     connect(browseBtn, &QToolButton::clicked, popup, [popup, edit] {
-        const QString file = showOpenFileDialog(popup,
-                                                tr("Select a file to link to"));
+        const QString file
+            = show_open_file_dialog(popup, tr("Select a file to link to"));
         if (!file.isEmpty()) {
             edit->setText(QUrl::fromLocalFile(file).toString());
         }
     });
 
     connect(applyBtn, &QToolButton::clicked, this, [this, edit, popup] {
-        applyLink(edit->text().trimmed());
+        apply_link(edit->text().trimmed());
         popup->close();
     });
     connect(edit, &QLineEdit::returnPressed, this, [this, edit, popup] {
-        applyLink(edit->text().trimmed());
+        apply_link(edit->text().trimmed());
         popup->close();
     });
 
@@ -636,7 +707,7 @@ void TextEditToolbar::showLinkPopup()
     edit->setFocus();
 }
 
-void TextEditToolbar::toggleListStyle(int style)
+void TextEditToolbar::toggle_list_style(int style)
 {
     if (!item_) {
         return;
@@ -697,7 +768,7 @@ void TextEditToolbar::toggleListStyle(int style)
     // separator, which the *last* block in the document doesn't
     // necessarily have one of), so a selection running to the end of the
     // text silently dropped its last line.
-    QTextDocument* doc = item_->document();
+    const QTextDocument* doc = item_->document();
     const QTextBlock endBlock = doc->findBlock(cursor.selectionEnd());
     QList<QTextBlock> blocks;
     for (QTextBlock block = doc->findBlock(cursor.selectionStart());
@@ -709,21 +780,21 @@ void TextEditToolbar::toggleListStyle(int style)
         }
     }
 
-    const bool anyListed
-        = std::any_of(blocks.begin(), blocks.end(), [](const QTextBlock& b) {
-              return QTextCursor(b).currentList() != nullptr;
-          });
+    const bool anyListed = std::ranges::any_of(blocks, [](const QTextBlock& b) {
+        return QTextCursor(b).currentList() != nullptr;
+    });
     // Only a uniform "every line already has this exact style" selection
     // toggles off; anything else (nothing listed, or a mixed selection)
     // is treated as "make it this style".
     const bool turningOff
         = anyListed
-          && std::all_of(blocks.begin(),
-                         blocks.end(),
-                         [wanted](const QTextBlock& b) {
-                             QTextList* l = QTextCursor(b).currentList();
-                             return l && l->format().style() == wanted;
-                         });
+          && std::ranges::all_of(blocks,
+
+                                 [wanted](const QTextBlock& b) {
+                                     const QTextList* l
+                                         = QTextCursor(b).currentList();
+                                     return l && l->format().style() == wanted;
+                                 });
 
     cursor.beginEditBlock();
     if (!anyListed) {
@@ -755,7 +826,7 @@ void TextEditToolbar::toggleListStyle(int style)
     cursor.endEditBlock();
 }
 
-void TextEditToolbar::syncFromCursor()
+void TextEditToolbar::sync_from_cursor()
 {
     if (!item_) {
         return;
@@ -763,14 +834,17 @@ void TextEditToolbar::syncFromCursor()
     const QTextCharFormat format = item_->textCursor().charFormat();
 
     {
-        QSignalBlocker b1(boldBtn_), b2(italicBtn_), b3(underlineBtn_);
+        const QSignalBlocker b1(boldBtn_);
+        const QSignalBlocker b2(italicBtn_);
+        const QSignalBlocker b3(underlineBtn_);
         boldBtn_->setChecked(format.fontWeight() >= QFont::Bold);
         italicBtn_->setChecked(format.fontItalic());
         underlineBtn_->setChecked(format.fontUnderline());
     }
     {
-        QSignalBlocker b1(bulletListBtn_), b2(numberedListBtn_);
-        QTextList* list = item_->textCursor().currentList();
+        const QSignalBlocker b1(bulletListBtn_);
+        const QSignalBlocker b2(numberedListBtn_);
+        const QTextList* list = item_->textCursor().currentList();
         const QTextListFormat::Style style
             = list ? list->format().style()
                    : QTextListFormat::ListStyleUndefined;
@@ -778,7 +852,7 @@ void TextEditToolbar::syncFromCursor()
         numberedListBtn_->setChecked(style == QTextListFormat::ListDecimal);
     }
     {
-        QSignalBlocker b(sizeBox_);
+        const QSignalBlocker b(sizeBox_);
         qreal size = format.fontPointSize();
         if (size <= 0) {
             size = item_->font().pointSizeF(); // unset -> item default
@@ -786,14 +860,14 @@ void TextEditToolbar::syncFromCursor()
         sizeBox_->setCurrentText(QString::number(size));
     }
     {
-        QSignalBlocker b(fontBox_);
+        const QSignalBlocker b(fontBox_);
         fontBox_->setCurrentFont(format.font());
     }
 
-    updateColorButtonIcons();
+    update_color_button_icons();
 }
 
-void TextEditToolbar::updateColorButtonIcons()
+void TextEditToolbar::update_color_button_icons()
 {
     if (!item_) {
         return;
@@ -806,30 +880,32 @@ void TextEditToolbar::updateColorButtonIcons()
         textC = item_->defaultTextColor();
     }
     textColorBtn_->setIcon(
-        makeColorGlyphIcon(QStringLiteral("A"), textC, iconGlyphColor_, dpr));
+        make_color_glyph_icon(QStringLiteral("A"), textC, iconGlyphColor_, dpr));
 
     // format.background() comes back as an invalid QColor when no
     // highlight is set - makeColorGlyphIcon() already renders that as a
     // neutral gray bar, so no substitution needed here (unlike the color
     // picker's "initial" value, which needs a real starting hue/alpha).
-    highlightColorBtn_->setIcon(makeColorGlyphIcon(QStringLiteral("H"),
-                                                   format.background().color(),
-                                                   iconGlyphColor_,
-                                                   dpr));
+    highlightColorBtn_->setIcon(
+        make_color_glyph_icon(QStringLiteral("H"),
+                              format.background().color(),
+                              iconGlyphColor_,
+                              dpr));
 
-    fillColorBtn_->setIcon(makeColorGlyphIcon(QStringLiteral("BG"),
-                                              item_->fill_color(),
-                                              iconGlyphColor_,
-                                              dpr));
+    fillColorBtn_->setIcon(make_color_glyph_icon(QStringLiteral("BG"),
+                                                 item_->fill_color(),
+                                                 iconGlyphColor_,
+                                                 dpr));
 }
 
-void TextEditToolbar::restyleFromPreset()
+void TextEditToolbar::restyle_from_preset()
 {
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& text = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& selection = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& text = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& selection = colorPreset[EPresetsColorIdx::SelectionColor];
     iconGlyphColor_ = text;
     auto rgba = [](const QColor& c, int alpha) {
         return QStringLiteral("rgba(%1, %2, %3, %4)")
@@ -878,21 +954,21 @@ void TextEditToolbar::restyleFromPreset()
                                  "  color: %3;"
                                  "  border: 1px solid %2;"
                                  "}")
-                      .arg(rgba(background, 245),
+                      .arg(rgba(background, kpopupBgAlpha),
                            border.name(),
                            text.name(),
-                           rgba(selection, 90),
-                           rgba(selection, 170),
+                           rgba(selection, khoverAlpha),
+                           rgba(selection, kpressedAlpha),
                            background.name(),
                            selection.name()));
 
     // Static glyphs (don't depend on item_/cursor state, just the theme
     // color), unlike the three color-swatch icons below.
     const qreal dpr = devicePixelRatioF();
-    bulletListBtn_->setIcon(makeListIcon(false, iconGlyphColor_, dpr));
-    numberedListBtn_->setIcon(makeListIcon(true, iconGlyphColor_, dpr));
-    linkBtn_->setIcon(makeLinkIcon(iconGlyphColor_, dpr));
-    autosizeBtn_->setIcon(makeAutosizeIcon(iconGlyphColor_, dpr));
+    bulletListBtn_->setIcon(make_list_icon(false, iconGlyphColor_, dpr));
+    numberedListBtn_->setIcon(make_list_icon(true, iconGlyphColor_, dpr));
+    linkBtn_->setIcon(make_link_icon(iconGlyphColor_, dpr));
+    autosizeBtn_->setIcon(make_autosize_icon(iconGlyphColor_, dpr));
 
-    updateColorButtonIcons();
+    update_color_button_icons();
 }

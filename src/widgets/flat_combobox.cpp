@@ -4,14 +4,42 @@
 #include <algorithm>
 #include <widgets/dialog_style.h>
 #include <widgets/settings_style.h>
+#include <QAbstractItemModel>
 #include <QAbstractItemView>
+#include <QColor>
+#include <QComboBox>
 #include <QEvent>
 #include <QFrame>
+#include <QHashFunctions>
+#include <QObject>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPainterPath>
+#include <QSize>
+#include <QStyle>
 #include <QStyleOptionComboBox>
+#include <QStyledItemDelegate>
+#include <QWidget>
+#include <Qt>
+#include <QtTypes>
 #include <qtimer.h>
 using namespace familiar::log;
+
+namespace {
+
+// The highlight behind a hovered item, inset so it does not touch the
+// popup's own edge.
+constexpr int khighlightInsetX = 2;
+constexpr int khighlightInsetY = 1;
+constexpr qreal khighlightRadius = 5;
+// Minimum row height, so a one-line label still has a comfortable target.
+constexpr int kminRowHeight = 32;
+// The closed combo box's own rounded frame.
+constexpr qreal kframeRadius = 6;
+// Disabled text is dimmed rather than given its own preset colour.
+constexpr int kdisabledTextAlpha = 110;
+
+} // namespace
 // ─── FlatComboItemDelegate ──────────────────────────────────────────────────
 
 FlatComboItemDelegate::FlatComboItemDelegate(const QColor& text,
@@ -41,9 +69,13 @@ void FlatComboItemDelegate::paint(QPainter* painter,
     if (highlighted) {
         painter->setPen(Qt::NoPen);
         painter->setBrush(highlightBackground_);
-        painter->drawRoundedRect(QRectF(option.rect).adjusted(2, 1, -2, -1),
-                                 5,
-                                 5);
+        painter->drawRoundedRect(QRectF(option.rect)
+                                     .adjusted(khighlightInsetX,
+                                               khighlightInsetY,
+                                               -khighlightInsetX,
+                                               -khighlightInsetY),
+                                 khighlightRadius,
+                                 khighlightRadius);
     }
 
     painter->setPen(text_);
@@ -59,7 +91,7 @@ QSize FlatComboItemDelegate::sizeHint(const QStyleOptionViewItem& option,
                                       const QModelIndex& index) const
 {
     QSize s = QStyledItemDelegate::sizeHint(option, index);
-    s.setHeight(std::max(s.height(), 32));
+    s.setHeight(std::max(s.height(), kminRowHeight));
     return s;
 }
 
@@ -68,7 +100,7 @@ QSize FlatComboItemDelegate::sizeHint(const QStyleOptionViewItem& option,
 FlatComboBox::FlatComboBox(const QColor& background,
                            const QColor& text,
                            const QColor& hoverBackground,
-                           const QColor& itemHighlight,
+                           [[maybe_unused]] const QColor& itemHighlight,
                            QWidget* parent)
     : QComboBox(parent)
     , background_(background)
@@ -148,7 +180,11 @@ void FlatComboBox::showPopup()
 
     // Маску ставим после геометрии
     QTimer::singleShot(0, container, [container]() {
-        familiar::dialog_style::applyRoundedMask(container, 6);
+        // Tighter than a dialog's own corner - this is a dropdown
+        // hanging off a field, not a window.
+        constexpr int kpopupCornerRadius = 6;
+        familiar::dialog_style::apply_rounded_mask(container,
+                                                   kpopupCornerRadius);
     });
 }
 
@@ -162,7 +198,7 @@ void FlatComboBox::paintEvent(QPaintEvent*)
                                                 : background_;
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
-    p.drawRoundedRect(rect(), 6, 6);
+    p.drawRoundedRect(rect(), kframeRadius, kframeRadius);
 
     QStyleOptionComboBox opt;
     initStyleOption(&opt);
@@ -177,7 +213,7 @@ void FlatComboBox::paintEvent(QPaintEvent*)
 
     QColor fg = text_;
     if (!enabled) {
-        fg.setAlpha(110);
+        fg.setAlpha(kdisabledTextAlpha);
     }
 
     p.setPen(fg);
@@ -190,12 +226,12 @@ void FlatComboBox::paintEvent(QPaintEvent*)
 
     const qreal cx = arrowRect.center().x();
     const qreal cy = arrowRect.center().y();
-    constexpr qreal halfW = 4.0;
-    constexpr qreal halfH = 2.5;
+    constexpr qreal khalfW = 4.0;
+    constexpr qreal khalfH = 2.5;
     QPainterPath arrow;
-    arrow.moveTo(cx - halfW, cy - halfH);
-    arrow.lineTo(cx + halfW, cy - halfH);
-    arrow.lineTo(cx, cy + halfH);
+    arrow.moveTo(cx - khalfW, cy - khalfH);
+    arrow.lineTo(cx + khalfW, cy - khalfH);
+    arrow.lineTo(cx, cy + khalfH);
     arrow.closeSubpath();
     p.setPen(Qt::NoPen);
     p.setBrush(fg);

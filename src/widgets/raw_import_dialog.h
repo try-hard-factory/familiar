@@ -34,8 +34,8 @@ public:
     RawImportDialog(QWidget* parent, const QString& filename);
 
     RawImportChoice choice() const { return choice_; }
-    bool applyToQueue() const;
-    bool rememberChoice() const;
+    bool apply_to_queue() const;
+    bool remember_choice() const;
 
 protected:
     void mousePressEvent(QMouseEvent* event) override;

@@ -19,8 +19,7 @@ TEST(DialogStyleTest, PanelStyleSheetIncludesClassNameAndColors)
     const QColor border(0x44, 0x55, 0x66);
     const QColor text(0x77, 0x88, 0x99);
 
-    const QString qss
-        = panelStyleSheet("MyDialog", background, border, text);
+    const QString qss = panel_style_sheet("MyDialog", background, border, text);
 
     EXPECT_TRUE(qss.contains(QStringLiteral("MyDialog")));
     EXPECT_TRUE(qss.contains(background.name()));
@@ -33,11 +32,11 @@ TEST(DialogStyleTest, PanelStyleSheetIncludesClassNameAndColors)
 
 TEST(DialogStyleTest, PanelStyleSheetRadiusPxOverridesTheDefault)
 {
-    const QString qss = panelStyleSheet("MyDialog",
-                                        QColor(Qt::black),
-                                        QColor(Qt::black),
-                                        QColor(Qt::black),
-                                        /*radiusPx=*/0);
+    const QString qss = panel_style_sheet("MyDialog",
+                                          QColor(Qt::black),
+                                          QColor(Qt::black),
+                                          QColor(Qt::black),
+                                          /*radiusPx=*/0);
 
     EXPECT_TRUE(qss.contains(QStringLiteral("border-radius: 0px")));
     EXPECT_FALSE(qss.contains(QStringLiteral("border-radius: 10px")));
@@ -48,7 +47,7 @@ TEST(DialogStyleTest, CloseButtonStyleSheetIncludesObjectNameAndTextColor)
     const QColor text(0x11, 0x22, 0x33);
     const QColor accent(0x44, 0x55, 0x66);
 
-    const QString qss = closeButtonStyleSheet("closeBtn", text, accent);
+    const QString qss = close_button_style_sheet("closeBtn", text, accent);
 
     EXPECT_TRUE(qss.contains(QStringLiteral("closeBtn")));
     EXPECT_TRUE(qss.contains(text.name()));
@@ -58,7 +57,7 @@ TEST(DialogStyleTest, StylePrimaryButtonAppliesAccentColor)
 {
     QPushButton button;
     const QColor accent(0xAA, 0xBB, 0xCC);
-    stylePrimaryButton(&button, accent);
+    style_primary_button(&button, accent);
     EXPECT_TRUE(button.styleSheet().contains(accent.name()));
 }
 
@@ -67,17 +66,19 @@ TEST(DialogStyleTest, StyleSecondaryButtonAppliesTextAndBorderColors)
     QPushButton button;
     const QColor text(0x11, 0x22, 0x33);
     const QColor border(0x44, 0x55, 0x66);
-    styleSecondaryButton(&button, text, border);
+    style_secondary_button(&button, text, border);
     EXPECT_TRUE(button.styleSheet().contains(text.name()));
     EXPECT_TRUE(button.styleSheet().contains(border.name()));
 }
 
 TEST(DialogStyleTest, SeverityIconScalesWithDevicePixelRatio)
 {
-    const QPixmap icon1x
-        = severityIcon(QMessageBox::Warning, QColor(Qt::blue), 1.0);
-    const QPixmap icon2x
-        = severityIcon(QMessageBox::Warning, QColor(Qt::blue), 2.0);
+    const QPixmap icon1x = severity_icon(QMessageBox::Warning,
+                                         QColor(Qt::blue),
+                                         1.0);
+    const QPixmap icon2x = severity_icon(QMessageBox::Warning,
+                                         QColor(Qt::blue),
+                                         2.0);
 
     ASSERT_FALSE(icon1x.isNull());
     ASSERT_FALSE(icon2x.isNull());
@@ -92,6 +93,6 @@ TEST(DialogStyleTest, ApplyRoundedMaskSetsNonEmptyMask)
 {
     QWidget widget;
     widget.resize(100, 60);
-    applyRoundedMask(&widget, 8);
+    apply_rounded_mask(&widget, 8);
     EXPECT_FALSE(widget.mask().isEmpty());
 }

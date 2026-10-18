@@ -1,10 +1,27 @@
 #include "flat_spinbox.h"
 
+#include <QColor>
+#include <QDoubleSpinBox>
 #include <QEvent>
+#include <QHashFunctions>
 #include <QLineEdit>
+#include <QPaintDevice>
 #include <QPainter>
 #include <QPainterPath>
 #include <QStyleOptionSpinBox>
+#include <QWidget>
+#include <Qt>
+#include <QtTypes>
+
+namespace {
+
+// Minimum row height, matching FlatComboBox so the two line up when they
+// sit in the same settings column.
+constexpr int kminRowHeight = 26;
+constexpr qreal kframeRadius = 6;
+constexpr int kdisabledTextAlpha = 110;
+
+} // namespace
 
 FlatSpinBox::FlatSpinBox(const QColor& background,
                          const QColor& text,
@@ -17,10 +34,10 @@ FlatSpinBox::FlatSpinBox(const QColor& background,
 {
     setFrame(false);
     setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    setMinimumHeight(26);
+    setMinimumHeight(kminRowHeight);
 
     QColor disabledText = text_;
-    disabledText.setAlpha(110);
+    disabledText.setAlpha(kdisabledTextAlpha);
     lineEdit()->setStyleSheet(
         QStringLiteral("QLineEdit {"
                        "  background: transparent;"
@@ -68,7 +85,7 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
                           : background_;
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
-    p.drawRoundedRect(rect(), 6, 6);
+    p.drawRoundedRect(rect(), kframeRadius, kframeRadius);
 
     QStyleOptionSpinBox opt;
     initStyleOption(&opt);
@@ -86,7 +103,7 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
     // are custom-painted.
     QColor fg = text_;
     if (!enabled) {
-        fg.setAlpha(110);
+        fg.setAlpha(kdisabledTextAlpha);
     }
     p.setPen(Qt::NoPen);
     p.setBrush(fg);
@@ -94,17 +111,17 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
     auto drawArrow = [&p](const QRect& r, bool up) {
         const qreal cx = r.center().x();
         const qreal cy = r.center().y();
-        constexpr qreal halfW = 3.0;
-        constexpr qreal halfH = 2.0;
+        constexpr qreal khalfW = 3.0;
+        constexpr qreal khalfH = 2.0;
         QPainterPath path;
         if (up) {
-            path.moveTo(cx - halfW, cy + halfH);
-            path.lineTo(cx + halfW, cy + halfH);
-            path.lineTo(cx, cy - halfH);
+            path.moveTo(cx - khalfW, cy + khalfH);
+            path.lineTo(cx + khalfW, cy + khalfH);
+            path.lineTo(cx, cy - khalfH);
         } else {
-            path.moveTo(cx - halfW, cy - halfH);
-            path.lineTo(cx + halfW, cy - halfH);
-            path.lineTo(cx, cy + halfH);
+            path.moveTo(cx - khalfW, cy - khalfH);
+            path.lineTo(cx + khalfW, cy - khalfH);
+            path.lineTo(cx, cy + khalfH);
         }
         path.closeSubpath();
         p.drawPath(path);

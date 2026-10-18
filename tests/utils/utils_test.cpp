@@ -56,12 +56,12 @@ TEST(GetRectFromPointsTest, ZeroSizeWhenPointsCoincide)
 
 TEST(RoundToTest, RoundsToNearestMultiple)
 {
-    EXPECT_DOUBLE_EQ(roundTo(23.0, 10.0), 20.0);
-    EXPECT_DOUBLE_EQ(roundTo(27.0, 10.0), 30.0);
-    EXPECT_DOUBLE_EQ(roundTo(0.0, 10.0), 0.0);
+    EXPECT_DOUBLE_EQ(round_to(23.0, 10.0), 20.0);
+    EXPECT_DOUBLE_EQ(round_to(27.0, 10.0), 30.0);
+    EXPECT_DOUBLE_EQ(round_to(0.0, 10.0), 0.0);
 }
 
 TEST(RoundToTest, NegativeNumbers)
 {
-    EXPECT_DOUBLE_EQ(roundTo(-23.0, 10.0), -20.0);
+    EXPECT_DOUBLE_EQ(round_to(-23.0, 10.0), -20.0);
 }

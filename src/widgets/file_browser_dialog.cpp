@@ -5,34 +5,56 @@
 #include <core/settingshandler.h>
 
 #include <QAction>
+#include <QColor>
 #include <QComboBox>
+#include <QConstOverload>
+#include <QDialog>
 #include <QDir>
 #include <QFile>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QFileSystemModel>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QList>
 #include <QListWidget>
+#include <QMargins>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
+#include <QPoint>
 #include <QPushButton>
 #include <QShortcut>
 #include <QStandardPaths>
 #include <QTreeView>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
+#include <QtContainerFwd>
+#include <QtPreprocessorSupport>
 
-#include "utils/utils.h"
 
 namespace {
+
+// Large enough to show a useful slice of a directory listing without
+// being resizable (this dialog is fixed-size).
+constexpr int kdialogWidth = 700;
+constexpr int kdialogHeight = 460;
+constexpr int kouterSpacing = 8;
+constexpr int kcontentSpacing = 10;
+constexpr int kbuttonRowSpacing = 8;
+// Square nav button, matching the close button's own size.
+constexpr int knavButtonSize = 28;
+// Initial width of the Name column, and of the places sidebar.
+constexpr int knameColumnWidth = 300;
+constexpr int ksidebarWidth = 130;
 
 // Same reasoning as FileActions' own (private, file_actions.cpp)
 // FmlIconProvider - no OS-level icon association for .fml is
@@ -55,7 +77,8 @@ public:
     }
 };
 
-QList<FileBrowserDialog::FilterEntry> parseNameFilter(const QString& filterString)
+QList<FileBrowserDialog::FilterEntry> parse_name_filter(
+    const QString& filterString)
 {
     QList<FileBrowserDialog::FilterEntry> entries;
     const QStringList parts = filterString.isEmpty()
@@ -66,8 +89,10 @@ QList<FileBrowserDialog::FilterEntry> parseNameFilter(const QString& filterStrin
     for (const QString& part : parts) {
         FileBrowserDialog::FilterEntry entry;
         const QString trimmed = part.trimmed();
-        const int openParen = trimmed.indexOf(QLatin1Char('('));
-        const int closeParen = trimmed.lastIndexOf(QLatin1Char(')'));
+        const int openParen = static_cast<int>(
+            trimmed.indexOf(QLatin1Char('(')));
+        const int closeParen = static_cast<int>(
+            trimmed.lastIndexOf(QLatin1Char(')')));
         if (openParen >= 0 && closeParen > openParen) {
             entry.label = trimmed;
             const QString patternsStr = trimmed.mid(openParen + 1,
@@ -99,31 +124,32 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
                                      const QString& defaultFileName)
     : QDialog(parent)
     , mode_(mode)
+    , model_(new QFileSystemModel(this))
+    , pathEdit_(new QLineEdit(this))
 {
-    filters_ = parseNameFilter(nameFilter);
+    filters_ = parse_name_filter(nameFilter);
 
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground, false);
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(title);
-    setFixedSize(700, 460);
+    setFixedSize(kdialogWidth, kdialogHeight);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(16, 12, 16, 16);
-    outer->setSpacing(8);
+    // Same tighter padding as ColorPickerDialog - dense tool dialog.
+    constexpr QMargins kouterMargins{16, 12, 16, 16};
+    outer->setContentsMargins(kouterMargins);
+    outer->setSpacing(kouterSpacing);
 
     // ── Title row ────────────────────────────────────────────────────
     auto* topRow = new QHBoxLayout();
@@ -133,11 +159,8 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     titleLabel->setFont(titleFont);
     topRow->addWidget(titleLabel, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("fbdCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "fbdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &FileBrowserDialog::reject);
     topRow->addWidget(closeBtn);
     outer->addLayout(topRow);
@@ -145,18 +168,18 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     // ── Address bar ──────────────────────────────────────────────────
     auto* navRow = new QHBoxLayout();
     upBtn_ = new QPushButton(QStringLiteral("↑"), this);
-    upBtn_->setFixedSize(28, 28);
+    upBtn_->setFixedSize(knavButtonSize, knavButtonSize);
     upBtn_->setCursor(Qt::PointingHandCursor);
     upBtn_->setToolTip(tr("Up one level"));
     connect(upBtn_,
             &QPushButton::clicked,
             this,
-            &FileBrowserDialog::navigateUp_);
+            &FileBrowserDialog::navigate_up);
     navRow->addWidget(upBtn_);
 
-    pathEdit_ = new QLineEdit(this);
+
     connect(pathEdit_, &QLineEdit::editingFinished, this, [this] {
-        setDirectory_(pathEdit_->text());
+        set_directory(pathEdit_->text());
     });
     navRow->addWidget(pathEdit_, 1);
 
@@ -165,18 +188,18 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     connect(newFolderBtn_,
             &QPushButton::clicked,
             this,
-            &FileBrowserDialog::createFolder_);
+            &FileBrowserDialog::create_folder);
     navRow->addWidget(newFolderBtn_);
     outer->addLayout(navRow);
 
     // ── Sidebar + tree ───────────────────────────────────────────────
     auto* contentRow = new QHBoxLayout();
-    contentRow->setSpacing(10);
+    contentRow->setSpacing(kcontentSpacing);
 
-    buildSidebar_(accent);
+    build_sidebar(accent);
     contentRow->addWidget(sidebar_);
 
-    model_ = new QFileSystemModel(this);
+
     model_->setRootPath(QDir::rootPath());
     static FmlIconProvider iconProvider;
     model_->setIconProvider(&iconProvider);
@@ -201,7 +224,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     tree_ = new QTreeView(this);
     tree_->setModel(model_);
     tree_->setColumnHidden(2, true); // Type - Name/Size/Date Modified is plenty
-    tree_->setColumnWidth(0, 300);
+    tree_->setColumnWidth(0, knameColumnWidth);
     tree_->setRootIsDecorated(false);
     tree_->setSortingEnabled(true);
     tree_->sortByColumn(0, Qt::AscendingOrder);
@@ -213,16 +236,16 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     connect(tree_,
             &QTreeView::doubleClicked,
             this,
-            &FileBrowserDialog::onDoubleClicked_);
+            &FileBrowserDialog::on_double_clicked);
     connect(tree_->selectionModel(),
             &QItemSelectionModel::selectionChanged,
             this,
-            &FileBrowserDialog::onSelectionChanged_);
+            &FileBrowserDialog::on_selection_changed);
     tree_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(tree_,
             &QTreeView::customContextMenuRequested,
             this,
-            &FileBrowserDialog::showContextMenu_);
+            &FileBrowserDialog::show_context_menu);
     // Scoped to tree_ (WidgetWithChildrenShortcut) rather than the whole
     // dialog, so these don't fire while e.g. typing in nameEdit_ (Save
     // mode's filename field) or pathEdit_. Delete doesn't need a guard
@@ -236,13 +259,13 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     connect(deleteShortcut,
             &QShortcut::activated,
             this,
-            &FileBrowserDialog::deleteSelected_);
+            &FileBrowserDialog::delete_selected);
     auto* renameShortcut = new QShortcut(QKeySequence(Qt::Key_F2), tree_);
     renameShortcut->setContext(Qt::WidgetWithChildrenShortcut);
     connect(renameShortcut,
             &QShortcut::activated,
             this,
-            &FileBrowserDialog::renameSelected_);
+            &FileBrowserDialog::rename_selected);
     contentRow->addWidget(tree_, 1);
     outer->addLayout(contentRow, 1);
 
@@ -255,7 +278,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
         connect(nameEdit_,
                 &QLineEdit::returnPressed,
                 this,
-                &FileBrowserDialog::tryAccept_);
+                &FileBrowserDialog::try_accept);
         outer->addWidget(nameEdit_);
     }
 
@@ -267,103 +290,104 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
         connect(filterCombo_,
                 qOverload<int>(&QComboBox::currentIndexChanged),
                 this,
-                &FileBrowserDialog::onFilterChanged_);
+                &FileBrowserDialog::on_filter_changed);
         outer->addWidget(filterCombo_);
     }
 
     // ── Buttons ──────────────────────────────────────────────────────
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
     buttonRow->addStretch();
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-    familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
     connect(cancelBtn, &QPushButton::clicked, this, &FileBrowserDialog::reject);
     buttonRow->addWidget(cancelBtn);
 
-    const QString actionLabel = mode_ == Mode::Save ? tr("Save")
-                                : mode_ == Mode::SelectFolder
-                                    ? tr("Select Folder")
-                                    : tr("Open");
+    QString actionLabel = tr("Open");
+    if (mode_ == Mode::Save) {
+        actionLabel = tr("Save");
+    } else if (mode_ == Mode::SelectFolder) {
+        actionLabel = tr("Select Folder");
+    }
     actionBtn_ = new QPushButton(actionLabel, this);
-    familiar::dialog_style::stylePrimaryButton(actionBtn_, accent);
+    familiar::dialog_style::style_primary_button(actionBtn_, accent);
     actionBtn_->setDefault(true);
     connect(actionBtn_,
             &QPushButton::clicked,
             this,
-            &FileBrowserDialog::tryAccept_);
+            &FileBrowserDialog::try_accept);
     buttonRow->addWidget(actionBtn_);
     outer->addLayout(buttonRow);
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("FileBrowserDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("fbdCloseBtn",
-                                                                  textColor,
-                                                                  accent)
-                  + QStringLiteral(
-                        "QLineEdit, QComboBox {"
-                        "  background-color: rgba(0,0,0,20);"
-                        "  color: %1;"
-                        "  border: 1px solid %2;"
-                        "  border-radius: 4px;"
-                        "  padding: 4px 6px;"
-                        "}"
-                        "QTreeView, QListWidget {"
-                        "  background-color: rgba(0,0,0,12);"
-                        "  color: %1;"
-                        "  border: 1px solid %2;"
-                        "  border-radius: 4px;"
-                        "}"
-                        "QTreeView::item:selected, QListWidget::item:selected {"
-                        "  background-color: %3;"
-                        "  color: white;"
-                        "}"
-                        "QHeaderView::section {"
-                        "  background-color: transparent;"
-                        "  color: %1;"
-                        "  border: none;"
-                        "  border-bottom: 1px solid %2;"
-                        "  padding: 4px;"
-                        "}"
-                        // createFolder_()'s inline-rename editor is a
-                        // QLineEdit sitting directly on top of the
-                        // still-selected (red-highlighted) row - the
-                        // generic QLineEdit rule above is deliberately
-                        // near-transparent (rgba alpha 20) to read as a
-                        // recessed field over the dialog's own plain
-                        // background, but layered over an already-
-                        // painted row it barely masked the OLD text
-                        // underneath, showing both at once. This more
-                        // specific selector (QTreeView descendant) wins
-                        // over the generic one and forces a fully opaque
-                        // backing just for this editor.
-                        "QTreeView QLineEdit {"
-                        "  background-color: %4;"
-                        "  color: %1;"
-                        "  border: 1px solid %3;"
-                        "  border-radius: 2px;"
-                        "  padding: 0px 2px;"
-                        "  selection-background-color: %3;"
-                        "  selection-color: white;"
-                        "}")
-                        .arg(textColor.name(),
-                             border.name(),
-                             accent.name(),
-                             QColor(background.red(),
-                                    background.green(),
-                                    background.blue())
-                                 .name()));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("FileBrowserDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("fbdCloseBtn",
+                                                           textColor,
+                                                           accent)
+        + QStringLiteral(
+              "QLineEdit, QComboBox {"
+              "  background-color: rgba(0,0,0,20);"
+              "  color: %1;"
+              "  border: 1px solid %2;"
+              "  border-radius: 4px;"
+              "  padding: 4px 6px;"
+              "}"
+              "QTreeView, QListWidget {"
+              "  background-color: rgba(0,0,0,12);"
+              "  color: %1;"
+              "  border: 1px solid %2;"
+              "  border-radius: 4px;"
+              "}"
+              "QTreeView::item:selected, QListWidget::item:selected {"
+              "  background-color: %3;"
+              "  color: white;"
+              "}"
+              "QHeaderView::section {"
+              "  background-color: transparent;"
+              "  color: %1;"
+              "  border: none;"
+              "  border-bottom: 1px solid %2;"
+              "  padding: 4px;"
+              "}"
+              // createFolder_()'s inline-rename editor is a
+              // QLineEdit sitting directly on top of the
+              // still-selected (red-highlighted) row - the
+              // generic QLineEdit rule above is deliberately
+              // near-transparent (rgba alpha 20) to read as a
+              // recessed field over the dialog's own plain
+              // background, but layered over an already-
+              // painted row it barely masked the OLD text
+              // underneath, showing both at once. This more
+              // specific selector (QTreeView descendant) wins
+              // over the generic one and forces a fully opaque
+              // backing just for this editor.
+              "QTreeView QLineEdit {"
+              "  background-color: %4;"
+              "  color: %1;"
+              "  border: 1px solid %3;"
+              "  border-radius: 2px;"
+              "  padding: 0px 2px;"
+              "  selection-background-color: %3;"
+              "  selection-color: white;"
+              "}")
+              .arg(textColor.name(),
+                   border.name(),
+                   accent.name(),
+                   QColor(background.red(), background.green(), background.blue())
+                       .name()));
 
-    setDirectory_(startDir.isEmpty() ? QDir::homePath() : startDir);
+    set_directory(startDir.isEmpty() ? QDir::homePath() : startDir);
 }
 
-void FileBrowserDialog::buildSidebar_(const QColor& accent)
+void FileBrowserDialog::build_sidebar(const QColor& accent)
 {
     Q_UNUSED(accent);
     sidebar_ = new QListWidget(this);
-    sidebar_->setFixedWidth(130);
+    sidebar_->setFixedWidth(ksidebarWidth);
     sidebar_->setFrameShape(QFrame::NoFrame);
 
     auto addEntry = [this](const QString& label, const QString& path) {
@@ -386,16 +410,16 @@ void FileBrowserDialog::buildSidebar_(const QColor& accent)
             &QListWidget::itemClicked,
             this,
             [this](QListWidgetItem* item) {
-                setDirectory_(item->data(Qt::UserRole).toString());
+                set_directory(item->data(Qt::UserRole).toString());
             });
 }
 
-void FileBrowserDialog::setDirectory_(const QString& path)
+void FileBrowserDialog::set_directory(const QString& path)
 {
-    QFileInfo info(path);
+    const QFileInfo info(path);
     const QString dirPath = info.isDir() ? info.absoluteFilePath()
                                          : info.absolutePath();
-    QDir dir(dirPath);
+    const QDir dir(dirPath);
     if (!dir.exists()) {
         return;
     }
@@ -406,17 +430,17 @@ void FileBrowserDialog::setDirectory_(const QString& path)
     upBtn_->setEnabled(parentCheck.cdUp());
 }
 
-void FileBrowserDialog::navigateUp_()
+void FileBrowserDialog::navigate_up()
 {
     QDir dir(currentDir_);
     if (dir.cdUp()) {
-        setDirectory_(dir.absolutePath());
+        set_directory(dir.absolutePath());
     }
 }
 
-void FileBrowserDialog::createFolder_()
+void FileBrowserDialog::create_folder()
 {
-    QDir dir(currentDir_);
+    const QDir dir(currentDir_);
     QString name = tr("New Folder");
     for (int suffix = 2; dir.exists(name); ++suffix) {
         name = tr("New Folder (%1)").arg(suffix);
@@ -444,7 +468,7 @@ void FileBrowserDialog::createFolder_()
     tree_->edit(idx);
 }
 
-void FileBrowserDialog::renameSelected_()
+void FileBrowserDialog::rename_selected()
 {
     const auto rows = tree_->selectionModel()->selectedRows();
     if (rows.size() != 1) {
@@ -453,7 +477,7 @@ void FileBrowserDialog::renameSelected_()
     tree_->edit(rows.first());
 }
 
-void FileBrowserDialog::deleteSelected_()
+void FileBrowserDialog::delete_selected()
 {
     const auto rows = tree_->selectionModel()->selectedRows();
     if (rows.isEmpty()) {
@@ -474,12 +498,12 @@ void FileBrowserDialog::deleteSelected_()
               ? tr("Permanently delete \"%1\"?")
                     .arg(QFileInfo(paths.first()).fileName())
               : tr("Permanently delete %1 items?").arg(paths.size());
-    const auto reply = showMessageBox(QMessageBox::Warning,
-                                      this,
-                                      tr("Delete?"),
-                                      message,
-                                      QMessageBox::Yes | QMessageBox::No,
-                                      QMessageBox::No);
+    const auto reply = show_message_box(QMessageBox::Warning,
+                                        this,
+                                        tr("Delete?"),
+                                        message,
+                                        QMessageBox::Yes | QMessageBox::No,
+                                        QMessageBox::No);
     if (reply != QMessageBox::Yes) {
         return;
     }
@@ -494,7 +518,7 @@ void FileBrowserDialog::deleteSelected_()
     }
 }
 
-void FileBrowserDialog::showContextMenu_(const QPoint& pos)
+void FileBrowserDialog::show_context_menu(const QPoint& pos)
 {
     const QModelIndex idx = tree_->indexAt(pos);
     if (!idx.isValid()) {
@@ -521,11 +545,11 @@ void FileBrowserDialog::showContextMenu_(const QPoint& pos)
     // dialog_style::panelStyleSheet()'s QToolTip rule, just for a widget
     // type that rule doesn't cover.
     const auto colorPreset
-        = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& menuBg = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& menuBorder = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& menuText = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& menuAccent = colorPreset[EPresetsColorIdx::kSelectionColor];
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& menuBg = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& menuBorder = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& menuText = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& menuAccent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     QMenu menu(this);
     menu.setStyleSheet(QStringLiteral("QMenu {"
@@ -555,29 +579,29 @@ void FileBrowserDialog::showContextMenu_(const QPoint& pos)
                                 menuText.name(),
                                 menuBorder.name(),
                                 menuAccent.name()));
-    menu.addAction(tr("New Folder"), this, &FileBrowserDialog::createFolder_);
+    menu.addAction(tr("New Folder"), this, &FileBrowserDialog::create_folder);
     menu.addSeparator();
     QAction* renameAction = menu.addAction(tr("Rename"),
                                            this,
-                                           &FileBrowserDialog::renameSelected_);
+                                           &FileBrowserDialog::rename_selected);
     renameAction->setShortcut(QKeySequence(Qt::Key_F2));
     renameAction->setEnabled(rows.size() == 1);
     QAction* deleteAction = menu.addAction(tr("Delete"),
                                            this,
-                                           &FileBrowserDialog::deleteSelected_);
+                                           &FileBrowserDialog::delete_selected);
     deleteAction->setShortcut(QKeySequence::Delete);
     deleteAction->setEnabled(!rows.isEmpty());
     menu.exec(tree_->viewport()->mapToGlobal(pos));
 }
 
-void FileBrowserDialog::onDoubleClicked_(const QModelIndex& index)
+void FileBrowserDialog::on_double_clicked(const QModelIndex& index)
 {
     if (!index.isValid()) {
         return;
     }
     const QString path = model_->filePath(index);
     if (model_->isDir(index)) {
-        setDirectory_(path);
+        set_directory(path);
         return;
     }
     if (mode_ == Mode::OpenFile || mode_ == Mode::OpenFiles) {
@@ -586,7 +610,7 @@ void FileBrowserDialog::onDoubleClicked_(const QModelIndex& index)
     }
 }
 
-void FileBrowserDialog::onSelectionChanged_()
+void FileBrowserDialog::on_selection_changed()
 {
     if (mode_ != Mode::Save || !nameEdit_) {
         return;
@@ -597,7 +621,7 @@ void FileBrowserDialog::onSelectionChanged_()
     }
 }
 
-void FileBrowserDialog::onFilterChanged_(int index)
+void FileBrowserDialog::on_filter_changed(int index)
 {
     if (index < 0 || index >= filters_.size()) {
         return;
@@ -605,7 +629,7 @@ void FileBrowserDialog::onFilterChanged_(int index)
     model_->setNameFilters(filters_[index].patterns);
 }
 
-void FileBrowserDialog::tryAccept_()
+void FileBrowserDialog::try_accept()
 {
     const auto rows = tree_->selectionModel()->selectedRows();
 
@@ -647,13 +671,13 @@ void FileBrowserDialog::tryAccept_()
         }
         if (QFileInfo::exists(fullPath)) {
             const auto reply
-                = showMessageBox(QMessageBox::Question,
-                                 this,
-                                 tr("Overwrite file?"),
-                                 tr("%1 already exists. Overwrite it?")
-                                     .arg(QFileInfo(fullPath).fileName()),
-                                 QMessageBox::Yes | QMessageBox::No,
-                                 QMessageBox::No);
+                = show_message_box(QMessageBox::Question,
+                                   this,
+                                   tr("Overwrite file?"),
+                                   tr("%1 already exists. Overwrite it?")
+                                       .arg(QFileInfo(fullPath).fileName()),
+                                   QMessageBox::Yes | QMessageBox::No,
+                                   QMessageBox::No);
             if (reply != QMessageBox::Yes) {
                 return;
             }
@@ -674,6 +698,8 @@ void FileBrowserDialog::tryAccept_()
         accept();
         break;
     }
+    default:
+        break;
     }
 }
 
@@ -690,26 +716,26 @@ void FileBrowserDialog::mousePressEvent(QMouseEvent* event)
 // ============================================================================
 // Free-function convenience wrappers
 // ============================================================================
-QString showOpenFileDialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir,
-                           const QString& nameFilter)
+QString show_open_file_dialog(QWidget* parent,
+                              const QString& title,
+                              const QString& startDir,
+                              const QString& nameFilter)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::OpenFile,
                           title,
                           startDir,
                           nameFilter);
-    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty()) {
-        return QString();
+    if (dlg.exec() != QDialog::Accepted || dlg.selected_files().isEmpty()) {
+        return {};
     }
-    return dlg.selectedFiles().first();
+    return dlg.selected_files().first();
 }
 
-QStringList showOpenFilesDialog(QWidget* parent,
-                                const QString& title,
-                                const QString& startDir,
-                                const QString& nameFilter)
+QStringList show_open_files_dialog(QWidget* parent,
+                                   const QString& title,
+                                   const QString& startDir,
+                                   const QString& nameFilter)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::OpenFiles,
@@ -719,14 +745,14 @@ QStringList showOpenFilesDialog(QWidget* parent,
     if (dlg.exec() != QDialog::Accepted) {
         return {};
     }
-    return dlg.selectedFiles();
+    return dlg.selected_files();
 }
 
-QString showSaveFileDialog(QWidget* parent,
-                           const QString& title,
-                           const QString& startDir,
-                           const QString& nameFilter,
-                           const QString& defaultFileName)
+QString show_save_file_dialog(QWidget* parent,
+                              const QString& title,
+                              const QString& startDir,
+                              const QString& nameFilter,
+                              const QString& defaultFileName)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::Save,
@@ -734,22 +760,22 @@ QString showSaveFileDialog(QWidget* parent,
                           startDir,
                           nameFilter,
                           defaultFileName);
-    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty()) {
-        return QString();
+    if (dlg.exec() != QDialog::Accepted || dlg.selected_files().isEmpty()) {
+        return {};
     }
-    return dlg.selectedFiles().first();
+    return dlg.selected_files().first();
 }
 
-QString showSelectFolderDialog(QWidget* parent,
-                               const QString& title,
-                               const QString& startDir)
+QString show_select_folder_dialog(QWidget* parent,
+                                  const QString& title,
+                                  const QString& startDir)
 {
     FileBrowserDialog dlg(parent,
                           FileBrowserDialog::Mode::SelectFolder,
                           title,
                           startDir);
-    if (dlg.exec() != QDialog::Accepted || dlg.selectedFiles().isEmpty()) {
-        return QString();
+    if (dlg.exec() != QDialog::Accepted || dlg.selected_files().isEmpty()) {
+        return {};
     }
-    return dlg.selectedFiles().first();
+    return dlg.selected_files().first();
 }

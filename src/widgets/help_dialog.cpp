@@ -4,20 +4,38 @@
 
 #include <core/settingshandler.h>
 
+#include <QColor>
+#include <QDialog>
 #include <QFont>
 #include <QFrame>
-#include <QGraphicsDropShadowEffect>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QList>
+#include <QMargins>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 #include "utils/utils.h"
 
 namespace {
+
+// Wide enough for the longest gesture description without wrapping.
+constexpr int kdialogWidth = 400;
+// Secondary text ("Esc to close" and friends) is dimmed rather than given
+// its own preset colour.
+constexpr int kdimTextAlpha = 180;
+constexpr int kouterSpacing = 10;
+// The shortcut grid: generous horizontal gap between action and gesture,
+// tight vertical one so rows read as a list.
+constexpr int kgridHorizontalSpacing = 18;
+constexpr int kgridVerticalSpacing = 6;
+// Gap before the closing hint at the bottom.
+constexpr int kfooterSpacing = 8;
 
 struct ControlRow
 {
@@ -35,14 +53,19 @@ struct ControlRow
 // its window via a right-click drag; familiar's are Alt+Left drag and
 // an empty-chrome left-drag respectively, and right-click is currently
 // unused on this app's canvas (no context menu here at all).
-const QList<ControlRow>& defaultControlRows()
+const QList<ControlRow>& default_control_rows()
 {
     static const QList<ControlRow> rows = {
-        {QObject::tr("Select images"), QObject::tr("Left click / drag")},
-        {QObject::tr("Focus image"), QObject::tr("Double left click")},
-        {QObject::tr("Zoom to pointer"), QObject::tr("Scroll wheel")},
-        {QObject::tr("Pan"), QObject::tr("Alt + Left drag, or Middle drag")},
-        {QObject::tr("Move window"), QObject::tr("Drag menu/tab bar")},
+        {.action = QObject::tr("Select images"),
+         .gesture = QObject::tr("Left click / drag")},
+        {.action = QObject::tr("Focus image"),
+         .gesture = QObject::tr("Double left click")},
+        {.action = QObject::tr("Zoom to pointer"),
+         .gesture = QObject::tr("Scroll wheel")},
+        {.action = QObject::tr("Pan"),
+         .gesture = QObject::tr("Alt + Left drag, or Middle drag")},
+        {.action = QObject::tr("Move window"),
+         .gesture = QObject::tr("Drag menu/tab bar")},
     };
     return rows;
 }
@@ -56,11 +79,11 @@ const QList<ControlRow>& defaultControlRows()
 // width the text just ran past the edge and got clipped instead of
 // flowing to a second line. A single wrapping label reflows the WHOLE
 // sentence together, link included, exactly like a real paragraph.
-QLabel* makeInlineLinkParagraph(const QString& before,
-                                const QString& linkText,
-                                const QString& after,
-                                QWidget* parent,
-                                const QColor& accent)
+QLabel* make_inline_link_paragraph(const QString& before,
+                                   const QString& linkText,
+                                   const QString& after,
+                                   QWidget* parent,
+                                   const QColor& accent)
 {
     const QString prefix = before.isEmpty() ? QString() : before + QChar(' ');
     auto* label = new QLabel(QStringLiteral("%1<a href=\"#\" style=\"color:%2; "
@@ -86,31 +109,28 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Help"));
-    setFixedWidth(400);
+    setFixedWidth(kdialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
     QColor dimText = textColor;
-    dimText.setAlpha(180);
+    dimText.setAlpha(kdimTextAlpha);
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(22, 14, 22, 20);
-    outer->setSpacing(10);
+    // Wider than apply_dialog_margins() on purpose - this dialog is wall-to-
+    // wall text and needs the breathing room.
+    constexpr QMargins kouterMargins{22, 14, 22, 20};
+    outer->setContentsMargins(kouterMargins);
+    outer->setSpacing(kouterSpacing);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("hdCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "hdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &HelpDialog::close);
 
     QFont headingFont = font();
@@ -140,11 +160,12 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
                                       "border-radius: 6px; }")
                            .arg(border.name()));
     auto* grid = new QGridLayout(box);
-    grid->setContentsMargins(14, 10, 14, 10);
-    grid->setHorizontalSpacing(18);
-    grid->setVerticalSpacing(6);
+    constexpr QMargins kgridMargins{14, 10, 14, 10};
+    grid->setContentsMargins(kgridMargins);
+    grid->setHorizontalSpacing(kgridHorizontalSpacing);
+    grid->setVerticalSpacing(kgridVerticalSpacing);
     int row = 0;
-    for (const ControlRow& item : defaultControlRows()) {
+    for (const ControlRow& item : default_control_rows()) {
         auto* actionLabel = new QLabel(item.action, box);
         auto* gestureLabel = new QLabel(item.gesture, box);
         gestureLabel->setStyleSheet(
@@ -155,19 +176,19 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     }
     outer->addWidget(box);
 
-    auto* shortcutsLabel
-        = makeInlineLinkParagraph(tr("To see or change every shortcut, open"),
-                                  tr("Keyboard Shortcuts"),
-                                  QString(),
-                                  this,
-                                  accent);
+    auto* shortcutsLabel = make_inline_link_paragraph(
+        tr("To see or change every shortcut, open"),
+        tr("Keyboard Shortcuts"),
+        QString(),
+        this,
+        accent);
     // Opens the settings window already on that specific category
     // (SettingsWindow::selectCategory()), not just wherever
     // settingsWindow() would otherwise land by default.
     connect(shortcutsLabel,
             &QLabel::linkActivated,
             window_,
-            &MainWindow::openKeyboardShortcutsSettings);
+            &MainWindow::open_keyboard_shortcuts_settings);
     outer->addWidget(shortcutsLabel);
 
     outer->addSpacing(4);
@@ -176,7 +197,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     supportHeading->setFont(headingFont);
     outer->addWidget(supportHeading);
 
-    auto* supportLabel = makeInlineLinkParagraph(
+    auto* supportLabel = make_inline_link_paragraph(
         tr("Something not working right? Write me to discord:"),
         tr("?????"),
         QStringLiteral("."),
@@ -185,13 +206,13 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
 
     outer->addWidget(supportLabel);
 
-    outer->addSpacing(8);
+    outer->addSpacing(kfooterSpacing);
 
-    auto* aboutLabel = makeInlineLinkParagraph(QString(),
-                                               tr("About Familiar"),
-                                               QString(),
-                                               this,
-                                               accent);
+    auto* aboutLabel = make_inline_link_paragraph(QString(),
+                                                  tr("About Familiar"),
+                                                  QString(),
+                                                  this,
+                                                  accent);
     aboutLabel->setAlignment(Qt::AlignHCenter);
     connect(aboutLabel,
             &QLabel::linkActivated,
@@ -199,14 +220,15 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
             &MainWindow::on_action_about);
     outer->addWidget(aboutLabel);
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("HelpDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("hdCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("HelpDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("hdCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(window_, this);
     show();

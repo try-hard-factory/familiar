@@ -33,7 +33,7 @@ public:
     // (CanvasView::canvasRect()) - passed in explicitly rather than
     // stashed on CanvasScene, since CanvasView is the only thing that
     // keeps it continuously up to date and nothing else should be
-    // writing to CanvasScene::rememberedBoundingRect() while a load might
+    // writing to CanvasScene::remembered_bounding_rect() while a load might
     // be using it as a one-shot transport slot (see load() below).
     // Synchronous; `worker`, if given, is only used to report progress
     // (beginProcessing/progress) and to check for cancellation - callers

@@ -19,15 +19,16 @@
 
 TEST(BindingsTreeWidgetTest, EmptyFilterShowsEveryRow)
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
-    const MouseConfig& zoomCfg = KeyboardSettings::mouseActions()[0]; // "Zoom"
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1]; // "Pan"
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
+    const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0]; // "Zoom"
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];  // "Pan"
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
     MouseConfigBindingTarget pan(&panCfg, BindingTargetKind::MouseControl);
 
     BindingsTreeWidget tree({&zoom, &pan});
 
-    EXPECT_TRUE(tree.applySearchFilter(QString()));
+    EXPECT_TRUE(tree.apply_search_filter(QString()));
     ASSERT_EQ(tree.layout()->count(), 2);
     EXPECT_FALSE(tree.layout()->itemAt(0)->widget()->isHidden());
     EXPECT_FALSE(tree.layout()->itemAt(1)->widget()->isHidden());
@@ -35,28 +36,30 @@ TEST(BindingsTreeWidgetTest, EmptyFilterShowsEveryRow)
 
 TEST(BindingsTreeWidgetTest, FilterHidesNonMatchingRows)
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
-    const MouseConfig& zoomCfg = KeyboardSettings::mouseActions()[0]; // "Zoom"
-    const MouseConfig& panCfg = KeyboardSettings::mouseActions()[1]; // "Pan"
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
+    const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0]; // "Zoom"
+    const MouseConfig& panCfg = KeyboardSettings::mouse_actions()[1];  // "Pan"
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
     MouseConfigBindingTarget pan(&panCfg, BindingTargetKind::MouseControl);
 
     BindingsTreeWidget tree({&zoom, &pan});
 
-    EXPECT_TRUE(tree.applySearchFilter(QStringLiteral("zoom")));
+    EXPECT_TRUE(tree.apply_search_filter(QStringLiteral("zoom")));
     EXPECT_FALSE(tree.layout()->itemAt(0)->widget()->isHidden()); // Zoom matches
-    EXPECT_TRUE(tree.layout()->itemAt(1)->widget()->isHidden()); // Pan doesn't
+    EXPECT_TRUE(tree.layout()->itemAt(1)->widget()->isHidden());  // Pan doesn't
 }
 
 TEST(BindingsTreeWidgetTest, NoMatchReturnsFalseAndHidesEverything)
 {
-    SettingsHandler::getInstance()->removeJsonGroup(QStringLiteral("Controls"));
-    const MouseConfig& zoomCfg = KeyboardSettings::mouseActions()[0];
+    SettingsHandler::get_instance()->remove_json_group(
+        QStringLiteral("Controls"));
+    const MouseConfig& zoomCfg = KeyboardSettings::mouse_actions()[0];
     MouseConfigBindingTarget zoom(&zoomCfg, BindingTargetKind::MouseControl);
 
     BindingsTreeWidget tree({&zoom});
 
-    EXPECT_FALSE(tree.applySearchFilter(QStringLiteral("nonexistent")));
+    EXPECT_FALSE(tree.apply_search_filter(QStringLiteral("nonexistent")));
     EXPECT_TRUE(tree.layout()->itemAt(0)->widget()->isHidden());
 }
 
@@ -71,12 +74,12 @@ TEST(CollapsibleSectionTest, SetExpandedTogglesContentVisibilityAndArrow)
     EXPECT_EQ(header->arrowType(), Qt::DownArrow);
     EXPECT_FALSE(content->isHidden());
 
-    section.setExpanded(false);
+    section.set_expanded(false);
     EXPECT_FALSE(header->isChecked());
     EXPECT_EQ(header->arrowType(), Qt::RightArrow);
     EXPECT_TRUE(content->isHidden());
 
-    section.setExpanded(true);
+    section.set_expanded(true);
     EXPECT_TRUE(header->isChecked());
     EXPECT_EQ(header->arrowType(), Qt::DownArrow);
     EXPECT_FALSE(content->isHidden());

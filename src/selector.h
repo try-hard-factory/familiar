@@ -8,6 +8,7 @@
 #include <utils/utils.h>
 
 #include "log/log.h"
+#include <cstdint>
 #include <memory>
 #include <QBrush>
 #include <QCursor>
@@ -21,11 +22,70 @@
 #include <QVariantMap>
 #include <qnamespace.h>
 
+namespace selector_consts {
+
+// ─── Selection-handle geometry ────────────────────────────────────────────
+// Were six per-object members with a "TODOLATER: constexpor?" next to
+// them; nothing ever wrote to any of them, so this is that TODO answered.
+// All are in scene units at scale 1 - fixed_length_for_viewport() below
+// converts them so a handle keeps its on-screen size as the view zooms.
+constexpr int kselectLineWidth = 2;
+constexpr int kselectHandleSize = 9;
+constexpr int kselectEdgeHandleSize = 6;
+constexpr qreal kselectResizeSize = 20;
+constexpr qreal kselectRotateSize = 10;
+constexpr qreal kselectFreeCenter = 20;
+
+// ─── Angles ───────────────────────────────────────────────────────────────
+constexpr qreal kfullTurnDegrees = 360.0;
+constexpr qreal khalfTurnDegrees = 180.0;
+// Shift/Ctrl-constrained rotation snaps to multiples of this.
+constexpr qreal krotateSnapDegrees = 15;
+// Quadrant boundaries for picking the resize cursor as an item rotates:
+// each 45-degree sector takes the cursor of the axis it now points along,
+// with the boundaries halfway between.
+constexpr qreal kcursorSector1 = 22.5;
+constexpr qreal kcursorSector2 = 67.5;
+constexpr qreal kcursorSector3 = 112.5;
+constexpr qreal kcursorSector4 = 157.5;
+// is_edge_vertical(): a rotation inside either range has swapped the
+// item's visual width and height, so a "top" edge now behaves like a side.
+constexpr qreal ksidewaysFrom = 45;
+constexpr qreal ksidewaysTo = 135;
+constexpr qreal ksidewaysFromFlipped = 225;
+constexpr qreal ksidewaysToFlipped = 315;
+
+// Nudge subtracted when carving the rotate handle out of the scale handle,
+// so the two shapes do not share an exact edge (which left a hairline the
+// hit test fell through).
+constexpr qreal khandleCarveEpsilon = 0.001;
+// Pointer travel, in scene units, before a press counts as a drag.
+constexpr int kdragThreshold = 5;
+// Alpha of the translucent fill inside the selection/rubber-band rect.
+constexpr int kselectionFillAlpha = 40;
+// Alpha of the debug overlays paint_debug() draws.
+constexpr int kdebugOverlayAlpha = 50;
+
+} // namespace selector_consts
+
 class IBaseItem : public std::enable_shared_from_this<IBaseItem>
 {
 public:
     virtual ~IBaseItem() = default;
 
+    // Same reasoning as ValueHandler (core/valuehandler.h). Derived items
+    // are QGraphicsItems, which Qt already made non-copyable, so this
+    // changes nothing in practice - it just says so.
+protected:
+    // Declaring the copy/move operations below suppresses the
+    // implicit default constructor, which derived classes rely on.
+    IBaseItem() = default;
+    IBaseItem(const IBaseItem&) = default;
+    IBaseItem& operator=(const IBaseItem&) = default;
+    IBaseItem(IBaseItem&&) = default;
+    IBaseItem& operator=(IBaseItem&&) = default;
+
+public:
     // Multiple independent owners can end up referencing the same item
     // across its lifetime - e.g. the InsertItemsCommand that created it
     // and, later, a DeleteItemsCommand for the same item are both alive
@@ -36,7 +96,7 @@ public:
     // than each thinking it's the sole owner (which would double-free).
     // The first call for a given object creates the control block; every
     // later call (from anyone) just shares it.
-    std::shared_ptr<IBaseItem> acquireShared()
+    std::shared_ptr<IBaseItem> acquire_shared()
     {
         if (auto existing = weak_from_this().lock()) {
             return existing;
@@ -52,13 +112,15 @@ public:
     virtual QVector<QPointF> corners_scene_coords() const = 0;
     virtual void bring_to_front() = 0;
     virtual void set_z_value(qreal value) = 0;
-    virtual void do_flip(bool vertical = false,
-                         const QPointF& anchor = QPointF(0, 0))
-        = 0;
-    virtual void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0))
-        = 0;
-    virtual void set_rotation(qreal value, const QPointF& anchor = QPointF(0, 0))
-        = 0;
+    // No default arguments on these: a default on a virtual is resolved
+    // STATICALLY, from the type at the call site, while the body called is
+    // picked dynamically - so a derived class disagreeing about the default
+    // silently changes what the same call does through a base reference,
+    // with no warning. Every override below repeats the signature, so the
+    // defaults all have to be dropped together; call sites pass the values.
+    virtual void do_flip(bool vertical, const QPointF& anchor) = 0;
+    virtual void set_scale(qreal value, const QPointF& anchor) = 0;
+    virtual void set_rotation(qreal value, const QPointF& anchor) = 0;
     virtual QPointF center() const = 0;
     virtual qreal flip() const = 0;
     virtual QUuid uid() const = 0;
@@ -109,11 +171,19 @@ public:
     // TextItem/PixmapItem actually store anything; a type that can never
     // be attached (GroupItem, ErrorItem, MultiSelectItem) just keeps
     // returning a null uid.
-    virtual QUuid attachedToUid() const { return QUuid(); }
+    virtual QUuid attached_to_uid() const { return {}; }
     virtual void set_attached_to(const QUuid& uid) { Q_UNUSED(uid); }
 };
 
+// T is a heavyweight Qt item (QGraphicsPixmapItem/TextItem/RectItem) and
+// IBaseItem is an interface in spirit - ~30 pure virtuals - but not
+// formally: it inherits std::enable_shared_from_this (state: the weak_ptr
+// to the control block, which acquire_shared() above needs) and keeps
+// three virtuals with bodies as defaults for subclasses that don't need
+// them. Making it formally pure would mean dropping acquire_shared() and
+// repeating those three bodies in every subclass.
 template<typename T>
+// NOLINTNEXTLINE(fuchsia-multiple-inheritance)
 class BaseItemMixin : public T, public IBaseItem
 {
     // See uid()/set_uid() below.
@@ -124,7 +194,7 @@ public:
         : T(parent)
     {}
 
-    void set_scale(qreal value, const QPointF& anchor = QPointF(0, 0)) override
+    void set_scale(qreal value, const QPointF& anchor) override
     {
         if (value <= 0) {
             return;
@@ -132,9 +202,9 @@ public:
 
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting scale to {}", value);
         this->prepareGeometryChange();
-        QPointF prev = this->mapToScene(anchor);
+        const QPointF prev = this->mapToScene(anchor);
         QGraphicsItem::setScale(value);
-        QPointF diff = this->mapToScene(anchor) - prev;
+        const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
 
@@ -146,51 +216,52 @@ public:
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
 
         if (scene) {
-            scene->max_z = qMax(scene->max_z, value);
-            scene->min_z = qMin(scene->min_z, value);
+            scene->set_max_z(qMax(scene->max_z(), value));
+            scene->set_min_z(qMin(scene->min_z(), value));
         } else {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "BaseItemMixin::setZValue Scene not found");
         }
     }
 
-    virtual void bring_to_front() override
+    void bring_to_front() override
     {
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
         if (scene) {
-            set_z_value(scene->max_z + scene->Z_STEP);
+            set_z_value(scene->max_z() + scene->z_step());
         } else {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "BaseItemMixin::bring_to_front Scene not found");
         }
     }
 
-    void set_rotation(qreal value,
-                      const QPointF& anchor = QPointF(0, 0)) override
+    void set_rotation(qreal value, const QPointF& anchor) override
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
-        QPointF prev = this->mapToScene(anchor);
-        QGraphicsItem::setRotation(std::fmod(value, 360.0));
-        QPointF diff = this->mapToScene(anchor) - prev;
+        const QPointF prev = this->mapToScene(anchor);
+        QGraphicsItem::setRotation(
+            std::fmod(value, selector_consts::kfullTurnDegrees));
+        const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
 
-    virtual qreal flip() const override
+    qreal flip() const override
     {
         // We use the transformation matrix only for flipping, so checking
         // the x scale is enough
         return this->transform().m11();
     }
 
-    void do_flip(bool vertical = false,
-                 const QPointF& anchor = QPointF(0, 0)) override
+    void do_flip(bool vertical, const QPointF& anchor) override
     {
-        QPointF prev = this->mapToScene(anchor);
+        const QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
         if (vertical) {
-            this->set_rotation(this->rotation() + 180, anchor);
+            this->set_rotation(this->rotation()
+                                   + selector_consts::khalfTurnDegrees,
+                               anchor);
         }
-        QPointF diff = this->mapToScene(anchor) - prev;
+        const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
 
@@ -267,7 +338,7 @@ public:
                    "Should not be called");
     }
 
-    void set_cursor(Qt::CursorShape c)
+    void set_cursor([[maybe_unused]] Qt::CursorShape c)
     {
         Q_ASSERT_X(false, "BaseItemMixin::set_cursor", "Should not be called");
     }
@@ -276,11 +347,14 @@ public:
     {
         Q_ASSERT_X(false, "BaseItemMixin::unset_cursor", "Should not be called");
     }
-    QColor sample_color_at(const QPointF& pos)
+    QColor sample_color_at([[maybe_unused]] const QPointF& pos)
     {
+        // TODO: put a proper assert here - Q_ASSERT_X compiles out in
+        // release, and falling off the end without a return is UB.
         Q_ASSERT_X(false,
                    "BaseItemMixin::sample_color_at",
                    "Should not be called");
+        return {};
     }
     // void on_selected_change() {}
 };
@@ -289,13 +363,6 @@ public:
 template<typename Mixin, typename T>
 class SelectableMixin : public BaseItemMixin<T>
 {
-    qreal selectLineWidth_{2};
-    qreal selectHandleSize_{9};
-    qreal selectEdgeHandleSize_{6};
-    qreal selectResizeSize_{20};
-    qreal selectRotateSize_{10};
-    qreal selectFreeCenter_{20};
-
     QPointF eventStart_;
     QPointF eventDirection_;
     // Distance from the fixed anchor (the opposite corner/edge-midpoint,
@@ -305,14 +372,14 @@ class SelectableMixin : public BaseItemMixin<T>
     // comment for why this must differ between a corner drag (the
     // diagonal) and an edge drag (just that edge's own dimension).
     qreal scaleRefLength_{0};
-    qreal scaleOrigFactor_;
-    qreal rotateOrigDegrees_;
+    qreal scaleOrigFactor_{0};
+    qreal rotateOrigDegrees_{0};
     QPointF eventAnchor_;
-    qreal rotateStartAngle_;
-    int viewport_scale_{1};
-    bool is_editable_{false};
+    qreal rotateStartAngle_{0};
+    int viewportScale_{1};
+    bool isEditable_{false};
 
-    // kFieldResizeMode drag state (edit-mode square handles only - see
+    // FieldResizeMode drag state (edit-mode square handles only - see
     // ItemMixin::resize_field(), moveitem.h). eventAnchor_ above holds
     // the SCENE position of the fixed corner/edge, captured once at
     // press - re-mapped into LOCAL coordinates fresh on every
@@ -334,11 +401,11 @@ class SelectableMixin : public BaseItemMixin<T>
     QSizeF fieldResizeOrigSize_;
 
     //QVector<QPointF> corners;
-    QVector<QRectF> flipBounds;
+    QVector<QRectF> flipBounds_;
 
 public:
     // Was FlipBounds/flip_v - these edge zones used to trigger a flip on
-    // click; they now trigger the same uniform kScaleMode drag as the
+    // click; they now trigger the same uniform ScaleMode drag as the
     // corner handles (see mousePressEvent()), just anchored on the
     // opposite edge instead of the opposite corner. `vertical` still
     // marks whether this is a top/bottom edge (true) or left/right
@@ -346,20 +413,36 @@ public:
     struct EdgeBounds
     {
         QRectF rect;
-        bool vertical;
+        bool vertical = false;
     };
 
-    enum EItemMode {
-        kNone = 0,
-        kScaleMode = 1,
-        kRotateMode = 2,
+    enum class EItemMode : std::uint8_t {
+        NoneMode = 0,
+        ScaleMode = 1,
+        RotateMode = 2,
         // Edit-mode (square handle) drag - resizes the field itself
         // (ItemMixin::resize_field()) instead of uniformly scaling.
-        kFieldResizeMode = 3,
+        FieldResizeMode = 3,
     };
 
-    EItemMode active_mode_{kNone};
+private:
+    EItemMode activeMode_{EItemMode::NoneMode};
 
+protected:
+    // Subclasses (GroupItem::itemChange()) need the exact mode, not just
+    // is_action_active()'s boolean.
+    EItemMode active_mode() const { return activeMode_; }
+
+public:
+    // Not gated the way ItemMixin/MainControlsMixin are: this
+    // constructor is called by the INTERMEDIATE ItemMixin<Mixin, T>
+    // (moveitem.h), not by Mixin itself, so `friend Mixin` alone would
+    // reject the very hierarchy it exists to describe. Gating it
+    // properly needs `friend ItemMixin<Mixin, T>` as well, and ItemMixin
+    // lives in a header that includes this one - the dependency would
+    // have to run backwards. MultiSelectItem below derives straight from
+    // here too, so there would be two different friends to name.
+    // NOLINTNEXTLINE(bugprone-crtp-constructor-accessibility)
     explicit SelectableMixin(T* parent = nullptr)
         : BaseItemMixin<T>(parent)
     {}
@@ -369,8 +452,8 @@ public:
         this->setAcceptHoverEvents(true);
         this->setFlag(QGraphicsItem::ItemIsMovable, true);
         this->setFlag(QGraphicsItem::ItemIsSelectable, true);
-        viewport_scale_ = 1;
-        is_editable_ = false;
+        viewportScale_ = 1;
+        isEditable_ = false;
     }
 
     qreal fixed_length_for_viewport(qreal value) const
@@ -378,9 +461,9 @@ public:
         qreal viewScale = 1.0;
 
         if (this->scene()) {
-            QList<QGraphicsView*> views = this->scene()->views();
+            const QList<QGraphicsView*> views = this->scene()->views();
             if (!views.isEmpty()) {
-                CanvasView* view = dynamic_cast<CanvasView*>(views.at(0));
+                const CanvasView* view = dynamic_cast<CanvasView*>(views.at(0));
                 viewScale = view->get_scale();
             }
         }
@@ -390,33 +473,34 @@ public:
 
     qreal select_resize_size() const
     {
-        return fixed_length_for_viewport(selectResizeSize_);
+        return fixed_length_for_viewport(selector_consts::kselectResizeSize);
     }
 
     qreal select_rotate_size() const
     {
-        return fixed_length_for_viewport(selectRotateSize_);
+        return fixed_length_for_viewport(selector_consts::kselectRotateSize);
     }
 
     QRectF select_handle_free_center() const
     {
-        qreal size = fixed_length_for_viewport(selectFreeCenter_);
-        qreal x = this->center().x() - size / 2;
-        qreal y = this->center().y() - size / 2;
-        return QRectF(x, y, size, size);
+        const qreal size = fixed_length_for_viewport(
+            selector_consts::kselectFreeCenter);
+        const qreal x = this->center().x() - size / 2;
+        const qreal y = this->center().y() - size / 2;
+        return {x, y, size, size};
     }
 
     void draw_debug_shape(
         QPainter* painter, const QRectF& shape, int r, int g, int b) const
     {
-        QColor color(r, g, b, 50);
+        const QColor color(r, g, b, selector_consts::kdebugOverlayAlpha);
         painter->fillRect(shape, color);
     }
 
     void draw_debug_shape(
         QPainter* painter, const QPainterPath& shape, int r, int g, int b) const
     {
-        QColor color(r, g, b, 50);
+        const QColor color(r, g, b, selector_consts::kdebugOverlayAlpha);
         painter->fillPath(shape, color);
     }
 
@@ -429,13 +513,17 @@ public:
 
         const auto& args = CommandlineArgs::instance();
 
-        if (args.debugShapes()) {
+        // One flat colour per overlay so they can be told apart when
+        // several are on at once; the literals are RGB channels picked for
+        // contrast, nothing more.
+        // NOLINTBEGIN(readability-magic-numbers)
+        if (args.debug_shapes()) {
             draw_debug_shape(painter, this->shape(), 255, 0, 0);
         }
-        if (args.debugBoundingRects()) {
+        if (args.debug_bounding_rects()) {
             draw_debug_shape(painter, this->boundingRect(), 0, 255, 0);
         }
-        if (args.debugHandles()
+        if (args.debug_handles()
             && static_cast<Mixin*>(this)->has_selection_handles()) {
             for (const QPointF& corner : corners()) {
                 draw_debug_shape(painter, get_scale_bounds(corner), 0, 0, 255);
@@ -446,6 +534,7 @@ public:
             }
             draw_debug_shape(painter, select_handle_free_center(), 255, 0, 255);
         }
+        // NOLINTEND(readability-magic-numbers)
     }
 
     void paint_selectable(QPainter* painter,
@@ -467,10 +556,11 @@ public:
         qreal outlineOpacity = 1.0;
         if (static_cast<Mixin*>(this)->fades_with_window_focus()
             && this->scene()) {
-            QList<QGraphicsView*> views = this->scene()->views();
+            const QList<QGraphicsView*> views = this->scene()->views();
             if (!views.isEmpty()) {
-                if (CanvasView* view = dynamic_cast<CanvasView*>(views.at(0))) {
-                    outlineOpacity = view->selectionOutlineOpacity();
+                if (const CanvasView* view = dynamic_cast<CanvasView*>(
+                        views.at(0))) {
+                    outlineOpacity = view->selection_outline_opacity();
                 }
             }
         }
@@ -491,12 +581,13 @@ public:
         painter->setOpacity(1.0);
 
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
-        QColor selectColor = colorPreset[EPresetsColorIdx::kSelectionColor];
-        selectColor.setAlphaF(selectColor.alphaF() * outlineOpacity);
+            = SettingsHandler::get_instance()->get_current_color_preset();
+        QColor selectColor = colorPreset[EPresetsColorIdx::SelectionColor];
+        selectColor.setAlphaF(selectColor.alphaF()
+                              * static_cast<float>(outlineOpacity));
 
         QPen pen(selectColor);
-        pen.setWidth(selectLineWidth_);
+        pen.setWidth(selector_consts::kselectLineWidth);
         pen.setCosmetic(true);
         painter->setPen(pen);
         painter->setBrush(QBrush());
@@ -507,20 +598,20 @@ public:
         // Hide the handle dots (not the outline itself) while this item
         // is actively being scaled/rotated via one of its OWN handles,
         // or moved as a plain body drag - they read as distracting
-        // mid-operation. active_mode_ covers the scale/rotate case
+        // mid-operation. activeMode_ covers the scale/rotate case
         // directly; a plain body drag doesn't set THIS item's own
-        // active_mode_ (see GroupItem::itemChange()'s own comment on
-        // why - kNone is what lets the position cascade run), so that
+        // activeMode_ (see GroupItem::itemChange()'s own comment on
+        // why - NoneMode is what lets the position cascade run), so that
         // case is instead read off the SCENE's active_mode() - true for
         // every currently-selected item during a drag, not just whichever
         // one Qt happens to be dragging directly.
-        bool suppressHandles = active_mode_ == kScaleMode
-                               || active_mode_ == kRotateMode
-                               || active_mode_ == kFieldResizeMode;
+        bool suppressHandles = activeMode_ == EItemMode::ScaleMode
+                               || activeMode_ == EItemMode::RotateMode
+                               || activeMode_ == EItemMode::FieldResizeMode;
         if (!suppressHandles && this->isSelected() && this->scene()) {
             if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
                 suppressHandles = scene->active_mode()
-                                  == CanvasScene::ESceneMode::kMoveMode;
+                                  == CanvasScene::ESceneMode::MoveMode;
             }
         }
 
@@ -532,7 +623,7 @@ public:
             // won't rotate (see hoverMoveEvent()/mousePressEvent() below).
             const bool resizeOnly
                 = static_cast<Mixin*>(this)->paints_edit_mode_handles();
-            pen.setWidth(selectHandleSize_);
+            pen.setWidth(selector_consts::kselectHandleSize);
             pen.setCapStyle(resizeOnly ? Qt::SquareCap : Qt::RoundCap);
             painter->setPen(pen);
             for (const QPointF& corner : corners()) {
@@ -543,7 +634,7 @@ public:
             // same way as the corners (see mousePressEvent()), just
             // anchored on the opposite edge instead of the opposite
             // corner. Same cap style as the corners.
-            pen.setWidth(selectEdgeHandleSize_);
+            pen.setWidth(selector_consts::kselectEdgeHandleSize);
             pen.setCapStyle(resizeOnly ? Qt::SquareCap : Qt::RoundCap);
             painter->setPen(pen);
             for (const auto& edge : get_edge_bounds()) {
@@ -579,7 +670,10 @@ public:
     }
 
     // Whether this item is currently mid scale/rotate/flip drag.
-    bool is_action_active() const override { return active_mode_ != kNone; }
+    bool is_action_active() const override
+    {
+        return activeMode_ != EItemMode::NoneMode;
+    }
 
     qreal scale_orig_factor() const override { return scaleOrigFactor_; }
     void set_scale_orig_factor(qreal value) override
@@ -595,10 +689,10 @@ public:
     QPainterPath get_scale_bounds(const QPointF& corner, qreal margin = 0) const
     {
         QPainterPath path;
-        qreal size = select_resize_size();
-        qreal x = corner.x() - size / 2 - margin;
-        qreal y = corner.y() - size / 2 - margin;
-        path.addRect(x, y, size + 2 * margin, size + 2 * margin);
+        const qreal size = select_resize_size();
+        const qreal x = corner.x() - (size / 2) - margin;
+        const qreal y = corner.y() - (size / 2) - margin;
+        path.addRect(x, y, size + (2 * margin), size + (2 * margin));
 
         return path;
     }
@@ -620,7 +714,8 @@ public:
 
         path.addRect(get_rect_from_points(p1, p2));
 
-        return path - get_scale_bounds(corner, 0.001);
+        return path
+               - get_scale_bounds(corner, selector_consts::khandleCarveEpsilon);
     }
 
 
@@ -637,39 +732,39 @@ public:
 
     std::vector<EdgeBounds> get_edge_bounds()
     {
-        qreal outer_margin = select_resize_size() / 2;
-        qreal inner_margin = select_resize_size() / 2;
-        QPointF origin = this->bounding_rect_unselected().topLeft();
+        const qreal outerMargin = select_resize_size() / 2;
+        const qreal innerMargin = select_resize_size() / 2;
+        const QPointF origin = this->bounding_rect_unselected().topLeft();
 
         std::vector<EdgeBounds> edgeBounds;
         edgeBounds.reserve(4);
 
         // Top
-        edgeBounds.push_back({QRectF(origin.x() + inner_margin,
-                                     origin.y() - outer_margin,
-                                     this->width() - 2 * inner_margin,
-                                     outer_margin + inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() + innerMargin,
+                                     origin.y() - outerMargin,
+                                     this->width() - 2 * innerMargin,
+                                     outerMargin + innerMargin),
                               true});
 
         // Bottom
-        edgeBounds.push_back({QRectF(origin.x() + inner_margin,
-                                     origin.y() + this->height() - inner_margin,
-                                     this->width() - 2 * inner_margin,
-                                     outer_margin + inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() + innerMargin,
+                                     origin.y() + this->height() - innerMargin,
+                                     this->width() - 2 * innerMargin,
+                                     outerMargin + innerMargin),
                               true});
 
         // Left
-        edgeBounds.push_back({QRectF(origin.x() - outer_margin,
-                                     origin.y() + inner_margin,
-                                     outer_margin + inner_margin,
-                                     this->height() - 2 * inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() - outerMargin,
+                                     origin.y() + innerMargin,
+                                     outerMargin + innerMargin,
+                                     this->height() - 2 * innerMargin),
                               false});
 
         // Right
-        edgeBounds.push_back({QRectF(origin.x() + this->width() - inner_margin,
-                                     origin.y() + inner_margin,
-                                     outer_margin + inner_margin,
-                                     this->height() - 2 * inner_margin),
+        edgeBounds.push_back({QRectF(origin.x() + this->width() - innerMargin,
+                                     origin.y() + innerMargin,
+                                     outerMargin + innerMargin,
+                                     this->height() - 2 * innerMargin),
                               false});
 
         return edgeBounds;
@@ -736,8 +831,8 @@ protected:
             return;
         }
 
-        QPointF pos = event->pos();
-        if (isInHandleFreeCenter(pos)) {
+        const QPointF pos = event->pos();
+        if (is_in_handle_free_center(pos)) {
             this->unset_cursor();
             return;
         }
@@ -747,10 +842,11 @@ protected:
         const bool resizeOnly
             = static_cast<Mixin*>(this)->paints_edit_mode_handles();
         for (const QPointF& corner : corners()) {
-            if (isInScaleHandle(corner, pos)) {
+            if (is_in_scale_handle(corner, pos)) {
                 this->set_cursor(get_corner_scale_cursor(corner));
                 return;
-            } else if (!resizeOnly && isInRotateHandle(corner, pos)) {
+            }
+            if (!resizeOnly && is_in_rotate_handle(corner, pos)) {
                 // TODOLATER: custom rotate icon
                 this->set_cursor(QCursor(Qt::SizeAllCursor));
                 return;
@@ -758,7 +854,7 @@ protected:
         }
 
         for (const auto& edge : get_edge_bounds()) {
-            if (isInEdgeHandle(edge.rect, pos)) {
+            if (is_in_edge_handle(edge.rect, pos)) {
                 if (is_edge_vertical(edge)) {
                     this->set_cursor(QCursor(Qt::SizeVerCursor));
                 } else {
@@ -771,14 +867,14 @@ protected:
         this->unset_cursor();
     }
 
-    void hoverEnterEvent(QGraphicsSceneHoverEvent* event) override
+    void hoverEnterEvent([[maybe_unused]] QGraphicsSceneHoverEvent* event) override
     {
         if (static_cast<Mixin*>(this)->has_selection_handles() == false) {
             this->unset_cursor();
         }
     }
 
-    void hoverLeaveEvent(QGraphicsSceneHoverEvent* event) override
+    void hoverLeaveEvent([[maybe_unused]] QGraphicsSceneHoverEvent* event) override
     {
         this->unset_cursor();
     }
@@ -786,10 +882,9 @@ protected:
     void mousePressEvent(QGraphicsSceneMouseEvent* event) override
     {
         eventStart_ = event->scenePos();
-        CanvasView* view = dynamic_cast<CanvasView*>(
-            this->scene()->views().at(0));
+        auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
         // TODOLATER: assert view?
-        view->resetPreviousTransform(this);
+        view->reset_previous_transform(this);
 
         if (!this->isSelected()) {
             //User has just selected this item with this click; don't
@@ -804,7 +899,7 @@ protected:
             return;
         }
 
-        if (isInHandleFreeCenter(event->pos())) {
+        if (is_in_handle_free_center(event->pos())) {
             //This area should always trigger regular move operations,
             //even if it is covered by selection scale/flip/... handles.
             //This ensures that small items can always still be moved/edited.
@@ -825,7 +920,7 @@ protected:
                     if (resizeOnly) {
                         // Edit mode: resize the field (both dimensions -
                         // it's a corner), not a uniform scale.
-                        active_mode_ = kFieldResizeMode;
+                        activeMode_ = EItemMode::FieldResizeMode;
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(corner));
                         const QPointF c = this->center();
@@ -838,7 +933,7 @@ protected:
                         event->accept();
                         return;
                     }
-                    active_mode_ = kScaleMode;
+                    activeMode_ = EItemMode::ScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(get_scale_anchor(corner));
@@ -856,8 +951,8 @@ protected:
                 }
 
                 //Check if we are in one of the corner's rotate areas
-                if (!resizeOnly && isInRotateHandle(corner, event->pos())) {
-                    active_mode_ = kRotateMode;
+                if (!resizeOnly && is_in_rotate_handle(corner, event->pos())) {
+                    activeMode_ = EItemMode::RotateMode;
                     eventAnchor_ = this->center_scene_coords();
                     rotateStartAngle_ = get_rotate_angle(event->scenePos());
                     for (auto& item :
@@ -871,16 +966,16 @@ protected:
             }
 
             //Check if we are in one of the edge's scale areas - same
-            //kScaleMode drag as a corner, just anchored on the opposite
+            //ScaleMode drag as a corner, just anchored on the opposite
             //edge (get_scale_anchor() mirrors any local point around the
             //item's center, corner or edge midpoint alike).
             for (const auto& edge : get_edge_bounds()) {
-                if (isInEdgeHandle(edge.rect, event->pos())) {
+                if (is_in_edge_handle(edge.rect, event->pos())) {
                     if (resizeOnly) {
                         // Edit mode: resize the field along whichever
                         // one axis this edge governs, leaving the other
                         // dimension untouched.
-                        active_mode_ = kFieldResizeMode;
+                        activeMode_ = EItemMode::FieldResizeMode;
                         eventAnchor_ = this->mapToScene(
                             get_scale_anchor(edge.rect.center()));
                         const QPointF c = this->center();
@@ -897,7 +992,7 @@ protected:
                         event->accept();
                         return;
                     }
-                    active_mode_ = kScaleMode;
+                    activeMode_ = EItemMode::ScaleMode;
                     eventDirection_ = get_direction_from_center(
                         event->scenePos());
                     eventAnchor_ = this->mapToScene(
@@ -933,9 +1028,9 @@ protected:
         // dimension for an edge-midpoint drag - using the diagonal for
         // both (as this used to) under-scaled edge drags, since the
         // diagonal is always longer than either side alone.
-        QPointF p = event->scenePos() - eventStart_;
-        QPointF direction = eventDirection_;
-        qreal delta = QPointF::dotProduct(direction, p) / scaleRefLength_;
+        const QPointF p = event->scenePos() - eventStart_;
+        const QPointF direction = eventDirection_;
+        const qreal delta = QPointF::dotProduct(direction, p) / scaleRefLength_;
         return (scaleOrigFactor_ + delta) / scaleOrigFactor_;
     }
 
@@ -957,21 +1052,23 @@ protected:
     QPointF get_direction_from_center(const QPointF& pos) const
     {
         auto diff = pos - this->center_scene_coords();
-        qreal length = std::sqrt(QPointF::dotProduct(diff, diff));
+        const qreal length = std::sqrt(QPointF::dotProduct(diff, diff));
         return diff / length;
     }
 
     qreal get_rotate_angle(const QPointF& pos) const
     {
-        QPointF diff = pos - eventAnchor_;
-        return -std::atan2(diff.x(), diff.y()) * 180 / M_PI;
+        const QPointF diff = pos - eventAnchor_;
+        return -std::atan2(diff.x(), diff.y())
+               * selector_consts::khalfTurnDegrees / M_PI;
     }
 
     qreal get_rotate_delta(const QPointF& pos, bool snap = false) const
     {
         auto delta = get_rotate_angle(pos) - rotateStartAngle_;
         if (snap) {
-            auto target = roundTo(rotateOrigDegrees_ + delta, 15);
+            auto target = round_to(rotateOrigDegrees_ + delta,
+                                   selector_consts::krotateSnapDegrees);
             delta = target - rotateOrigDegrees_;
         }
 
@@ -980,7 +1077,7 @@ protected:
 
     Qt::CursorShape get_corner_scale_cursor(const QPointF& corner)
     {
-        bool isTopLeftOrBottomRight
+        const bool isTopLeftOrBottomRight
             = (corner == this->bounding_rect_unselected().topLeft()
                || corner == this->bounding_rect_unselected().bottomRight());
         return get_diag_cursor(isTopLeftOrBottomRight);
@@ -988,30 +1085,38 @@ protected:
 
     Qt::CursorShape get_diag_cursor(bool isTopLeftOrBottomRight)
     {
-        auto rotation = std::fmod(this->rotation(), 180);
-        bool flipped = (this->flip() == -1);
+        auto rotation = std::fmod(this->rotation(),
+                                  selector_consts::khalfTurnDegrees);
+        const bool flipped = (this->flip() == -1);
 
         if (isTopLeftOrBottomRight) {
-            if ((22.5 < rotation) && (rotation < 67.5)) {
+            if ((selector_consts::kcursorSector1 < rotation)
+                && (rotation < selector_consts::kcursorSector2)) {
                 return Qt::SizeVerCursor;
-            } else if ((67.5 < rotation) && (rotation < 112.5)) {
-                return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
-            } else if ((112.5 < rotation) && (rotation < 157.5)) {
-                return Qt::SizeHorCursor;
-            } else {
-                return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
             }
-        } else {
-            if ((22.5 < rotation) && (rotation < 67.5)) {
-                return Qt::SizeHorCursor;
-            } else if ((67.5 < rotation) && (rotation < 112.5)) {
-                return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
-            } else if ((112.5 < rotation) && (rotation < 157.5)) {
-                return Qt::SizeVerCursor;
-            } else {
+            if ((selector_consts::kcursorSector2 < rotation)
+                && (rotation < selector_consts::kcursorSector3)) {
                 return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
             }
+            if ((selector_consts::kcursorSector3 < rotation)
+                && (rotation < selector_consts::kcursorSector4)) {
+                return Qt::SizeHorCursor;
+            }
+            return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
         }
+        if ((selector_consts::kcursorSector1 < rotation)
+            && (rotation < selector_consts::kcursorSector2)) {
+            return Qt::SizeHorCursor;
+        }
+        if ((selector_consts::kcursorSector2 < rotation)
+            && (rotation < selector_consts::kcursorSector3)) {
+            return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
+        }
+        if ((selector_consts::kcursorSector3 < rotation)
+            && (rotation < selector_consts::kcursorSector4)) {
+            return Qt::SizeVerCursor;
+        }
+        return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
     }
 
     // Whether dragging this edge visually affects the item's vertical
@@ -1020,26 +1125,28 @@ protected:
     // left/right edge instead. Used to pick the resize cursor.
     bool is_edge_vertical(const EdgeBounds& edge) const
     {
-        if (((this->rotation() > 45) && (this->rotation() < 135))
-            || ((this->rotation() > 225) && (this->rotation() < 315))) {
+        const qreal rotation = this->rotation();
+        if (((rotation > selector_consts::ksidewaysFrom)
+             && (rotation < selector_consts::ksidewaysTo))
+            || ((rotation > selector_consts::ksidewaysFromFlipped)
+                && (rotation < selector_consts::ksidewaysToFlipped))) {
             return !edge.vertical;
-        } else {
-            return edge.vertical;
         }
+        return edge.vertical;
     }
 
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
-        QPointF pos = event->scenePos();
-        if ((pos - eventStart_).manhattanLength() > 5) {
+        const QPointF pos = event->scenePos();
+        if ((pos - eventStart_).manhattanLength()
+            > selector_consts::kdragThreshold) {
             // Reset previous transform when movement exceeds threshold
-            CanvasView* view = dynamic_cast<CanvasView*>(
-                this->scene()->views().at(0));
-            view->resetPreviousTransform(nullptr);
+            auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
+            view->reset_previous_transform(nullptr);
         }
 
-        if (active_mode_ == kScaleMode) {
-            qreal factor = get_scale_factor(event);
+        if (activeMode_ == EItemMode::ScaleMode) {
+            const qreal factor = get_scale_factor(event);
             // begin/end_group_batch(): a group's own scale drags every
             // one of selection_action_items()'s flat entries
             // independently, each already correctly anchored - an
@@ -1062,14 +1169,15 @@ protected:
             }
             event->accept();
             return;
-        } else if (active_mode_ == kRotateMode) {
+        }
+        if (activeMode_ == EItemMode::RotateMode) {
             auto snap = (event->modifiers()
                              == Qt::KeyboardModifier::ShiftModifier
                          || event->modifiers()
                                 == Qt::KeyboardModifier::ControlModifier);
 
-            qreal delta = get_rotate_delta(event->scenePos(), snap);
-            // Same reasoning as kScaleMode above.
+            const qreal delta = get_rotate_delta(event->scenePos(), snap);
+            // Same reasoning as ScaleMode above.
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             if (scene) {
                 scene->begin_group_batch();
@@ -1078,7 +1186,7 @@ protected:
                  static_cast<Mixin*>(this)->selection_action_items()) {
                 auto* baseItem = dynamic_cast<IBaseItem*>(item);
                 baseItem->set_rotation(baseItem->rotate_orig_degrees()
-                                           + delta * baseItem->flip(),
+                                           + (delta * baseItem->flip()),
                                        item->mapFromScene(eventAnchor_));
             }
             if (scene) {
@@ -1086,7 +1194,8 @@ protected:
             }
             event->accept();
             return;
-        } else if (active_mode_ == kFieldResizeMode) {
+        }
+        if (activeMode_ == EItemMode::FieldResizeMode) {
             // Local coordinates throughout (not the diagonal-projection
             // math get_scale_factor() uses) - a field resize just needs
             // "how far past the anchor is the mouse now", one axis at a
@@ -1118,16 +1227,16 @@ protected:
         T::mouseMoveEvent(event); // see mousePressEvent() comment above
     }
 
-    void resetActions() { active_mode_ = kNone; }
+    void reset_actions() { activeMode_ = EItemMode::NoneMode; }
 
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
-        if (active_mode_ == kScaleMode) {
-            qreal factor = get_scale_factor(event);
+        if (activeMode_ == EItemMode::ScaleMode) {
+            const qreal factor = get_scale_factor(event);
             if (factor != 1) {
                 // TODOLATER: static or dynamic? assert?
                 auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new ScaleItemsByCommand(static_cast<Mixin*>(this)
                                                 ->selection_action_items(),
                                             factor,
@@ -1135,14 +1244,15 @@ protected:
                                             true));
             }
             event->accept();
-            resetActions();
+            reset_actions();
             return;
-        } else if (active_mode_ == kRotateMode) {
-            CanvasScene* scene = dynamic_cast<CanvasScene*>(this->scene());
+        }
+        if (activeMode_ == EItemMode::RotateMode) {
+            auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             scene->on_selection_change(); // or emit selectionChange()
-            qreal delta = get_rotate_delta(event->scenePos());
+            const qreal delta = get_rotate_delta(event->scenePos());
             if (delta != 0) {
-                scene->undo_stack_->push(
+                scene->undo_stack()->push(
                     new RotateItemsByCommand(static_cast<Mixin*>(this)
                                                  ->selection_action_items(),
                                              delta,
@@ -1150,26 +1260,27 @@ protected:
                                              true));
             }
             event->accept();
-            resetActions();
+            reset_actions();
             return;
-        } else if (active_mode_ == kFieldResizeMode) {
+        }
+        if (activeMode_ == EItemMode::FieldResizeMode) {
             static_cast<Mixin*>(this)
                 ->commit_field_resize(fieldResizeOrigSize_.width(),
                                       fieldResizeOrigSize_.height(),
                                       fieldResizeAnchorRight_,
                                       fieldResizeAnchorBottom_);
             event->accept();
-            resetActions();
+            reset_actions();
             return;
         }
 
-        resetActions();
+        reset_actions();
         T::mouseReleaseEvent(event); // see mousePressEvent() comment above
     }
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         paint_selectable(painter, option, widget);
     }
@@ -1190,24 +1301,24 @@ protected:
 
 
 public:
-    bool isInHandleFreeCenter(const QPointF& pos) const
+    bool is_in_handle_free_center(const QPointF& pos) const
     {
-        QRectF rect = select_handle_free_center();
+        const QRectF rect = select_handle_free_center();
         return rect.contains(pos);
     }
 
-    bool isInScaleHandle(const QPointF& corner, const QPointF& pos) const
+    bool is_in_scale_handle(const QPointF& corner, const QPointF& pos) const
     {
-        QPainterPath rect = get_scale_bounds(corner);
+        const QPainterPath rect = get_scale_bounds(corner);
         return rect.contains(pos);
     }
 
-    bool isInRotateHandle(const QPointF& corner, const QPointF& pos) const
+    bool is_in_rotate_handle(const QPointF& corner, const QPointF& pos) const
     {
-        QPainterPath rect = get_rotate_bounds(corner);
+        const QPainterPath rect = get_rotate_bounds(corner);
         return rect.contains(pos);
     }
-    bool isInEdgeHandle(const QRectF& rect, const QPointF& pos) const
+    bool is_in_edge_handle(const QRectF& rect, const QPointF& pos) const
     {
         return rect.contains(pos);
     }
@@ -1222,10 +1333,10 @@ public:
         : SelectableMixin<MultiSelectItem, QGraphicsRectItem>(parent)
     {
         this->init_selectable();
-        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", toString());
+        FLOG_DEBUG(familiar::log::Ch::Items, "Initialized {}", to_string());
     }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("MultiSelectItem %1 x %2")
             .arg(this->width())
@@ -1234,7 +1345,7 @@ public:
 
     void paint(QPainter* painter,
                const QStyleOptionGraphicsItem* option,
-               QWidget* widget = nullptr) override
+               QWidget* widget) override
     {
         this->paint_selectable(painter, option, widget);
     }
@@ -1299,7 +1410,7 @@ public:
         }
 
         auto* scene = dynamic_cast<CanvasScene*>(this->scene());
-        this->setZValue(minZ - scene->Z_STEP);
+        this->setZValue(minZ - scene->z_step());
     }
 
     void fit_selection_area(const QRectF& rect)
@@ -1365,7 +1476,7 @@ public:
         return false;
     }
     // Unlike is_image()/uid() etc., this genuinely gets called
-    // during unfiltered scene iteration (itemAddByUser(), items_by_type())
+    // during unfiltered scene iteration (item_add_by_user(), items_by_type())
     // since rubberband_item_/multiselect_item_ are real scene items while
     // active. Mirrors Python's getattr(i, 'TYPE', None): a safe "no type"
     // answer, not a logic error.
@@ -1374,7 +1485,7 @@ public:
     // No selection-driven bring-to-front logic for the multi-select
     // rectangle itself (Python's MultiSelectItem has no on_selected_change,
     // so BeeItemMixin's hasattr() guard silently skips it there).
-    void on_selected_change(bool value) { Q_UNUSED(value) }
+    static void on_selected_change(bool value) { Q_UNUSED(value) }
 };
 
 class RubberbandItem : public BaseItemMixin<QGraphicsRectItem>
@@ -1384,17 +1495,17 @@ public:
         : BaseItemMixin<QGraphicsRectItem>(parent)
     {
         auto colorPreset
-            = SettingsHandler::getInstance()->getCurrentColorPreset();
-        QColor fillColor = colorPreset[EPresetsColorIdx::kSelectionColor];
-        fillColor.setAlpha(40);
+            = SettingsHandler::get_instance()->get_current_color_preset();
+        QColor fillColor = colorPreset[EPresetsColorIdx::SelectionColor];
+        fillColor.setAlpha(selector_consts::kselectionFillAlpha);
         this->setBrush(QBrush(fillColor));
 
-        pen.setWidth(1);
-        pen.setCosmetic(true);
-        this->setPen(pen);
+        pen_.setWidth(1);
+        pen_.setCosmetic(true);
+        this->setPen(pen_);
     }
 
-    QString toString() const
+    QString to_string() const
     {
         return QString("RubberbandItem %1 x %2")
             .arg(this->width())
@@ -1407,7 +1518,7 @@ public:
         this->setRect(get_rect_from_points(point1, point2));
         FLOG_DEBUG(familiar::log::Ch::Items,
                    "Updated rubberband {}",
-                   toString());
+                   to_string());
     }
 
     IBaseItem* create_copy() override
@@ -1443,9 +1554,10 @@ public:
         Q_ASSERT_X(false,
                    "RubberbandItem::corners_scene_coords",
                    "Should not be called");
-        return QVector<QPointF>();
+        return {};
     }
 
-    QColor color{Qt::black};
-    QPen pen{color};
+private:
+    QColor color_{Qt::black};
+    QPen pen_{color_};
 };

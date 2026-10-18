@@ -28,7 +28,7 @@ struct Entry
 
 // AppLocalDataLocation/recovery - not guaranteed to exist yet; save()
 // creates it on first write.
-QString recoveryDir();
+QString recovery_dir();
 
 // Overwrites this tab's recovery snapshot (content + sidecar metadata).
 // Call only for a modified tab - an unmodified one has nothing new to

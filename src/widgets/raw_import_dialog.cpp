@@ -1,28 +1,43 @@
 #include "raw_import_dialog.h"
+
 #include "dialog_style.h"
+#include "fileio.h"
 #include "flat_checkbox.h"
 
 #include <core/settingshandler.h>
 
+#include <QColor>
+#include <QDialog>
 #include <QFileInfo>
-#include <QGraphicsDropShadowEffect>
+#include <QFont>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLatin1String>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 namespace {
-constexpr int kIconSize = 40;
+constexpr int kiconSize = 40;
+
+// Width band: wide enough for a file path, capped so a long one wraps
+// instead of stretching the dialog across the screen.
+constexpr int kminDialogWidth = 380;
+constexpr int kmaxDialogWidth = 460;
+constexpr int kouterSpacing = 14;
+constexpr int ktopRowSpacing = 12;
+constexpr int kbuttonRowSpacing = 8;
 
 // Items/image_storage_format's own values ("best"/"png"/"jpg" - see
 // core/settings.cpp) - this setting has no dedicated UI row of its own
 // (dropped during an earlier settings-window redesign, see
 // ui/settings_window.cpp's own comment on that), so this dialog is the
 // only place that currently surfaces it to the user at all.
-QString storageFormatLabel(const QString& format)
+QString storage_format_label(const QString& format)
 {
     if (format == QLatin1String("png")) {
         return QStringLiteral("PNG");
@@ -48,34 +63,31 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("RAW file needs converting"));
-    setMinimumWidth(380);
-    setMaximumWidth(460);
+    setMinimumWidth(kminDialogWidth);
+    setMaximumWidth(kmaxDialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(20, 16, 16, 16);
-    outer->setSpacing(14);
+    familiar::dialog_style::apply_dialog_margins(outer);
+    outer->setSpacing(kouterSpacing);
 
     auto* topRow = new QHBoxLayout();
-    topRow->setSpacing(12);
+    topRow->setSpacing(ktopRowSpacing);
 
     auto* iconLabel = new QLabel(this);
-    iconLabel->setFixedSize(kIconSize, kIconSize);
+    iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
-        familiar::dialog_style::severityIcon(QMessageBox::Information,
-                                             accent,
-                                             devicePixelRatioF()));
+        familiar::dialog_style::severity_icon(QMessageBox::Information,
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -99,11 +111,8 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("ridCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "ridCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &RawImportDialog::reject);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 
@@ -115,8 +124,8 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     // there's already a title+icon here to anchor it).
     auto* formatChip = new QLabel(this);
     const QString sourceExt = QFileInfo(filename).suffix().toUpper();
-    const QString targetFormat = storageFormatLabel(
-        SettingsHandler::getInstance()->imageStorageFormat());
+    const QString targetFormat = storage_format_label(
+        SettingsHandler::image_storage_format());
     formatChip->setText(tr("Format: %1 → %2").arg(sourceExt, targetFormat));
     formatChip->setStyleSheet(
         QStringLiteral("QLabel { background: %1; border-radius: 6px; "
@@ -148,11 +157,13 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     outer->addWidget(rememberCheckbox_);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
     buttonRow->addStretch();
 
     auto* keepOriginalBtn = new QPushButton(tr("Keep original"), this);
-    familiar::dialog_style::styleSecondaryButton(keepOriginalBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(keepOriginalBtn,
+                                                   textColor,
+                                                   border);
     connect(keepOriginalBtn, &QPushButton::clicked, this, [this]() {
         choice_ = RawImportChoice::KeepOriginal;
         accept();
@@ -160,7 +171,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     buttonRow->addWidget(keepOriginalBtn);
 
     auto* optimizeBtn = new QPushButton(tr("Optimize image"), this);
-    familiar::dialog_style::stylePrimaryButton(optimizeBtn, accent);
+    familiar::dialog_style::style_primary_button(optimizeBtn, accent);
     connect(optimizeBtn, &QPushButton::clicked, this, [this]() {
         choice_ = RawImportChoice::Optimize;
         accept();
@@ -170,22 +181,22 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     outer->addLayout(buttonRow);
 
     setStyleSheet(
-        familiar::dialog_style::panelStyleSheet("RawImportDialog",
-                                                background,
-                                                border,
-                                                textColor,
-                                                /*radiusPx=*/0)
-        + familiar::dialog_style::closeButtonStyleSheet("ridCloseBtn",
-                                                        textColor,
-                                                        accent));
+        familiar::dialog_style::panel_style_sheet("RawImportDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("ridCloseBtn",
+                                                           textColor,
+                                                           accent));
 }
 
-bool RawImportDialog::applyToQueue() const
+bool RawImportDialog::apply_to_queue() const
 {
     return applyToQueueCheckbox_->isChecked();
 }
 
-bool RawImportDialog::rememberChoice() const
+bool RawImportDialog::remember_choice() const
 {
     return rememberCheckbox_->isChecked();
 }

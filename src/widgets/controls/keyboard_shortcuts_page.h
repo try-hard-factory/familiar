@@ -18,13 +18,18 @@ class KeyboardShortcutsPage : public QWidget
 public:
     explicit KeyboardShortcutsPage(QWidget* parent = nullptr);
     ~KeyboardShortcutsPage() override;
+    // QObject identity is not copyable - QObject itself declares
+    // Q_DISABLE_COPY, so copies were already impossible; this states it
+    // on the class that has the destructor, which is what the rule of
+    // five (and cppcoreguidelines-special-member-functions) asks for.
+    Q_DISABLE_COPY_MOVE(KeyboardShortcutsPage)
 
     // Filters both sections' rows down to targets whose name contains
     // `text`; hides a section entirely once it has no match left. Returns
     // whether the page has anything visible at all, so the sidebar
     // (ui/settings_window.cpp) can decide whether to show this
     // category when searching by content rather than by category name.
-    bool applySearchFilter(const QString& text);
+    bool apply_search_filter(const QString& text);
 
 private:
     QList<BindingTarget*> actionTargets_;

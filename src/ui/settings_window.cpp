@@ -1,5 +1,6 @@
 #include "settings_window.h"
 #include "mainwindow.h"
+#include "widgets/message_box.h"
 #include <core/controls.h>
 #include <core/settings.h>
 #include <core/settingshandler.h>
@@ -7,30 +8,52 @@
 #include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/controls/search_highlight.h>
 #include <widgets/dialog_style.h>
-#include <widgets/dialogs.h>
 #include <widgets/file_browser_dialog.h>
 #include <widgets/restore_defaults_dialog.h>
 #include <widgets/setting_row.h>
 #include <widgets/settings_style.h>
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
+#include <QColor>
+#include <QDialog>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
+#include <QHashFunctions>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QList>
+#include <QMargins>
 #include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QStyleOptionButton>
 #include <QStylePainter>
 #include <QTextDocument>
 #include <QVBoxLayout>
+#include <QWidget>
 #include <QWindow>
+#include <Qt>
 
 namespace {
+
+// CategoryNavButton's own text inset: the rich-text document is laid out
+// this far in from each side, and drawn at that same offset.
+constexpr int kcategoryTextInset = 10;
+
+// The window itself, and the fixed width of its category column.
+constexpr int kwindowWidth = 760;
+constexpr int kwindowHeight = 480;
+constexpr int kcategoryColumnWidth = 200;
+// Spacing shared by the category list, the column under it and the
+// import/export row - they read as one stack.
+constexpr int kcolumnSpacing = 6;
+// Import/Export buttons are taller than a plain row so they read as
+// actions rather than settings.
+constexpr int kactionButtonHeight = 38;
 
 // Both Performance and Images & Items are a QVBoxLayout of
 // SettingRowBase-derived rows (widgets/setting_row.h), each carrying its
@@ -39,7 +62,7 @@ namespace {
 // is one monolithic custom widget), so this simply finds nothing and
 // reports no content match there - it can still be reached by matching
 // the category name itself.
-bool applyGroupFilter(QWidget* page, const QString& text)
+bool apply_group_filter(QWidget* page, const QString& text)
 {
     bool anyVisible = false;
     for (SettingRowBase* row : page->findChildren<SettingRowBase*>()) {
@@ -67,7 +90,7 @@ public:
         : QPushButton(parent)
     {}
 
-    void setLabelText(const QString& richText)
+    void set_label_text(const QString& richText)
     {
         richText_ = richText;
         update();
@@ -95,10 +118,11 @@ protected:
         doc.setDefaultStyleSheet(
             QStringLiteral("body { color: %1; }").arg(color.name()));
         doc.setHtml(QStringLiteral("<body>%1</body>").arg(richText_));
-        doc.setTextWidth(width() - 20);
+        doc.setTextWidth(width() - (2 * kcategoryTextInset));
 
         painter.save();
-        painter.translate(10, (height() - doc.size().height()) / 2);
+        painter.translate(kcategoryTextInset,
+                          (height() - doc.size().height()) / 2);
         QAbstractTextDocumentLayout::PaintContext ctx;
         ctx.palette.setColor(QPalette::Text, color);
         doc.documentLayout()->draw(&painter, ctx);
@@ -182,18 +206,14 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // either, so the window needs to actually commit to a fixed size
     // rather than merely start at one (matches the old
     // MSWindowsFixedSizeDialogHint's intent).
-    setFixedSize(760, 480);
+    setFixedSize(kwindowWidth, kwindowHeight);
 
     // Fixed white palette - always this scheme, unlike
     // the rest of the app which follows the user's chosen accent-color
     // preset (see settings_style.h's own comment).
-    setStyleSheet(familiar::settings_style::rootStyleSheet());
+    setStyleSheet(familiar::settings_style::root_style_sheet());
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -211,7 +231,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     titleBar->setAttribute(Qt::WA_StyledBackground, true);
     titleBar->setStyleSheet(QStringLiteral("background: transparent;"));
     auto* titleBarLayout = new QHBoxLayout(titleBar);
-    titleBarLayout->setContentsMargins(16, 10, 10, 6);
+    constexpr QMargins ktitleBarMargins{16, 10, 10, 6};
+    titleBarLayout->setContentsMargins(ktitleBarMargins);
     titleBarLayout->addStretch(1);
     auto* titleLabel = new QLabel(tr("Settings"), titleBar);
     titleLabel->setStyleSheet(QStringLiteral("background: transparent;"));
@@ -221,23 +242,22 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     titleLabel->setFont(titleFont);
     titleBarLayout->addWidget(titleLabel);
     titleBarLayout->addStretch(1);
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), titleBar);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("settingsCloseBtn"));
+    auto* closeBtn
+        = familiar::dialog_style::make_close_button(titleBar,
+                                                    "settingsCloseBtn");
     const familiar::settings_style::Palette& sp
         = familiar::settings_style::palette();
     closeBtn->setStyleSheet(
-        familiar::dialog_style::closeButtonStyleSheet("settingsCloseBtn",
-                                                      sp.text,
-                                                      sp.accent));
+        familiar::dialog_style::close_button_style_sheet("settingsCloseBtn",
+                                                         sp.text,
+                                                         sp.accent));
     connect(closeBtn, &QPushButton::clicked, this, &QWidget::close);
     titleBarLayout->addWidget(closeBtn);
     outer->addWidget(titleBar);
 
     auto* root = new QHBoxLayout();
-    root->setContentsMargins(16, 0, 16, 16);
+    constexpr QMargins krootMargins{16, 0, 16, 16};
+    root->setContentsMargins(krootMargins);
     outer->addLayout(root, /*stretch=*/1);
 
     // ─── Left column: search + category buttons + bottom button row ───────────
@@ -247,7 +267,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // buttons) would otherwise each demand its own natural width and the
     // column would end up as wide as the widest one anyway.
     auto* leftContainer = new QWidget(this);
-    leftContainer->setFixedWidth(200);
+    leftContainer->setFixedWidth(kcategoryColumnWidth);
     auto* leftColumn = new QVBoxLayout(leftContainer);
     leftColumn->setContentsMargins(0, 0, 0, 0);
 
@@ -267,20 +287,20 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
                                      || cat.name.contains(text,
                                                           Qt::CaseInsensitive);
             const QString contentFilter = nameMatches ? QString() : text;
-            bool contentMatches;
+            bool contentMatches = false;
             if (auto* kb = qobject_cast<KeyboardShortcutsPage*>(cat.page)) {
-                contentMatches = kb->applySearchFilter(contentFilter);
+                contentMatches = kb->apply_search_filter(contentFilter);
             } else {
-                contentMatches = applyGroupFilter(cat.page, contentFilter);
+                contentMatches = apply_group_filter(cat.page, contentFilter);
             }
 
             // Only the category's own name is a candidate for bolding here
             // - if nothing but its content matched, the name itself has
             // no matched substring to highlight.
-            static_cast<CategoryNavButton*>(cat.button)
-                ->setLabelText(
-                    highlightSearchMatch(cat.name,
-                                         nameMatches ? text : QString()));
+            dynamic_cast<CategoryNavButton*>(cat.button)
+                ->set_label_text(
+                    highlight_search_match(cat.name,
+                                           nameMatches ? text : QString()));
 
             const bool visible = nameMatches || contentMatches;
             cat.button->setVisible(visible);
@@ -305,22 +325,23 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // through this stylesheet's "color" property, since that's only
     // read by the style's own (now-unused) text drawing.
     categoryPanel_->setStyleSheet(
-        familiar::settings_style::sidebarButtonStyleSheet());
+        familiar::settings_style::sidebar_button_style_sheet());
     auto* categoryLayout = new QVBoxLayout(categoryPanel_);
     // Visible gaps between the filled boxes + a little breathing room
     // around the whole stack - not a flush edge-to-edge list, each
     // category reads as its own block.
     categoryLayout->setContentsMargins(4, 4, 4, 4);
-    categoryLayout->setSpacing(6);
+    categoryLayout->setSpacing(kcolumnSpacing);
     categoryButtons_->setExclusive(true);
     leftColumn->addWidget(categoryPanel_, /*stretch=*/1);
 
     auto* bottomColumn = new QVBoxLayout();
-    bottomColumn->setSpacing(6);
+    bottomColumn->setSpacing(kcolumnSpacing);
     auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
     resetBtn->setCursor(Qt::PointingHandCursor);
-    resetBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
+    resetBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
     connect(resetBtn, &QPushButton::clicked, this, [this]() {
         // Stack-allocated, not `new` - RestoreDefaultsDialog deliberately
         // doesn't set WA_DeleteOnClose (see its own constructor comment:
@@ -331,8 +352,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         if (dialog.exec() != QDialog::Accepted) {
             return;
         }
-        const QList<familiar::SettingsCategory> checked =
-            dialog.checkedCategories();
+        const QList<familiar::SettingsCategory> checked
+            = dialog.checked_categories();
 
         // "Performance"/"Images & Items" don't line up 1:1 with the
         // "Save"/"Items" JSON groups underneath (e.g. Items/
@@ -344,17 +365,19 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         // place that list lives - keep IT in sync with the addWidget()
         // calls above if either page's contents change, not here too.
         if (checked.contains(familiar::SettingsCategory::Performance)) {
-            FamSettings settings;
-            for (const QString& key : RestoreDefaultsDialog::famSettingsKeysFor(
+            for (const QString& key :
+                 RestoreDefaultsDialog::fam_settings_keys_for(
                      familiar::SettingsCategory::Performance)) {
-                settings.setValue(key, FamSettings::fields()[key].defaultValue);
+                FamSettings::set_value(key,
+                                       FamSettings::fields()[key].defaultValue);
             }
         }
         if (checked.contains(familiar::SettingsCategory::ImagesAndItems)) {
-            FamSettings settings;
-            for (const QString& key : RestoreDefaultsDialog::famSettingsKeysFor(
+            for (const QString& key :
+                 RestoreDefaultsDialog::fam_settings_keys_for(
                      familiar::SettingsCategory::ImagesAndItems)) {
-                settings.setValue(key, FamSettings::fields()[key].defaultValue);
+                FamSettings::set_value(key,
+                                       FamSettings::fields()[key].defaultValue);
             }
         }
         if (checked.contains(familiar::SettingsCategory::Colors)) {
@@ -365,8 +388,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             // that map, same granularity as the color values it resets
             // above it - not the whole map for every preset, which an
             // earlier version of this fix wrongly did via a blanket
-            // remove("masterOpacity")).
-            SettingsHandler::getInstance()->setDefaultCurrentPreset();
+            // remove("master_opacity")).
+            SettingsHandler::get_instance()->set_default_current_preset();
             // Neither setDefaultCurrentPreset() nor setCurrentOpacity()
             // emits this on their own - ColorsWidget::updateComponents()
             // (connected to it) is what actually repaints the color
@@ -377,17 +400,17 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
             // matches how colors_widget.cpp's own preset-switch/Import
             // handlers already emit this same signal after changing
             // anything here.
-            emit SettingsHandler::getInstance()->presetsChanged();
+            emit SettingsHandler::get_instance() -> presets_changed();
         }
         if (checked.contains(familiar::SettingsCategory::KeyboardShortcuts)) {
-            KeyboardSettings().restoreDefaults();
+            KeyboardSettings::restore_defaults();
         }
         // Every bound row already listens for this to re-read its value
         // from storage (Import above relies on the same signal) - fired
         // once regardless of which categories were picked, harmless for
         // untouched pages since they just redisplay the same value.
         if (!checked.isEmpty()) {
-            emit SettingsEvents::instance().restoreDefaults();
+            emit SettingsEvents::instance().restore_defaults();
         }
     });
     bottomColumn->addWidget(resetBtn);
@@ -396,24 +419,25 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // three sitting side by side - three buttons abreast no longer fit
     // the narrower sidebar (leftContainer above).
     auto* importExportRow = new QHBoxLayout();
-    importExportRow->setSpacing(6);
+    importExportRow->setSpacing(kcolumnSpacing);
 
     auto* importBtn = new QPushButton(tr("Import"), this);
     importBtn->setCursor(Qt::PointingHandCursor);
-    importBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
+    importBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
     connect(importBtn, &QPushButton::clicked, this, [this]() {
-        const QString path = showOpenFileDialog(this,
-                                                tr("Import Settings"),
-                                                QString(),
-                                                tr("JSON files (*.json)"));
+        const QString path = show_open_file_dialog(this,
+                                                   tr("Import Settings"),
+                                                   QString(),
+                                                   tr("JSON files (*.json)"));
         if (path.isEmpty()) {
             return;
         }
-        if (!SettingsHandler::getInstance()->importSettingsFrom(path)) {
-            showMessageBox(QMessageBox::Warning,
-                           this,
-                           tr("Import failed"),
-                           tr("Could not read settings from %1.").arg(path));
+        if (!SettingsHandler::get_instance()->import_settings_from(path)) {
+            show_message_box(QMessageBox::Warning,
+                             this,
+                             tr("Import failed"),
+                             tr("Could not read settings from %1.").arg(path));
             return;
         }
         // Not restoreDefaults() - that would wipe out what was just
@@ -422,29 +446,30 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         // (Misc/Images group boxes, Keyboard Shortcuts tree, Colors) -
         // see bindingsChanged()/refreshAll() wiring above and
         // ColorsWidget::updateComponents()'s presetsChanged connection.
-        emit SettingsEvents::instance().restoreDefaults();
-        emit SettingsEvents::instance().restoreKeyboardDefaults();
-        emit SettingsHandler::getInstance() -> presetsChanged();
+        emit SettingsEvents::instance().restore_defaults();
+        emit SettingsEvents::instance().restore_keyboard_defaults();
+        emit SettingsHandler::get_instance() -> presets_changed();
     });
 
     auto* exportBtn = new QPushButton(tr("Export"), this);
     exportBtn->setCursor(Qt::PointingHandCursor);
-    exportBtn->setStyleSheet(familiar::settings_style::filledButtonStyleSheet());
+    exportBtn->setStyleSheet(
+        familiar::settings_style::filled_button_style_sheet());
     connect(exportBtn, &QPushButton::clicked, this, [this]() {
-        const QString path = showSaveFileDialog(this,
-                                                tr("Export Settings"),
-                                                QString(),
-                                                tr("JSON files (*.json)"),
-                                                QStringLiteral(
-                                                    "familiar-settings.json"));
+        const QString path
+            = show_save_file_dialog(this,
+                                    tr("Export Settings"),
+                                    QString(),
+                                    tr("JSON files (*.json)"),
+                                    QStringLiteral("familiar-settings.json"));
         if (path.isEmpty()) {
             return;
         }
-        if (!SettingsHandler::getInstance()->exportSettingsTo(path)) {
-            showMessageBox(QMessageBox::Warning,
-                           this,
-                           tr("Export failed"),
-                           tr("Could not write settings to %1.").arg(path));
+        if (!SettingsHandler::get_instance()->export_settings_to(path)) {
+            show_message_box(QMessageBox::Warning,
+                             this,
+                             tr("Export failed"),
+                             tr("Could not write settings to %1.").arg(path));
         }
     });
     importExportRow->addWidget(importBtn);
@@ -464,12 +489,12 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         auto* btn = new CategoryNavButton(categoryPanel_);
         btn->setObjectName(QStringLiteral("categoryButton"));
         btn->setCheckable(true);
-        btn->setMinimumHeight(38);
-        btn->setLabelText(highlightSearchMatch(label, QString()));
+        btn->setMinimumHeight(kactionButtonHeight);
+        btn->set_label_text(highlight_search_match(label, QString()));
         categoryLayout->addWidget(btn);
         categoryButtons_->addButton(btn, categoryIndex);
         stack_->addWidget(page);
-        categories_.append({btn, page, label});
+        categories_.append({.button = btn, .page = page, .name = label});
         ++categoryIndex;
     };
 
@@ -490,18 +515,18 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // (it's meaningless on its own). A left margin on its own layout is
     // enough to read as "belongs to Autosave" without actual nesting.
     if (auto* intervalLayout = autosaveInterval_->layout()) {
-        intervalLayout->setContentsMargins(24, 4, 0, 4);
+        constexpr QMargins kintervalMargins{24, 4, 0, 4};
+        intervalLayout->setContentsMargins(kintervalMargins);
     }
     miscLayout->addWidget(autosaveInterval_);
     miscLayout->addStretch(1);
-    autosaveInterval_->setControlEnabled(
-        FamSettings()
-            .valueOrDefault(QStringLiteral("Save/autosave_enabled"))
+    autosaveInterval_->set_control_enabled(
+        FamSettings::value_or_default(QStringLiteral("Save/autosave_enabled"))
             .toBool());
     connect(autosaveEnabled_,
             &AutosaveEnabledRow::toggled,
             autosaveInterval_,
-            &AutosaveIntervalRow::setControlEnabled);
+            &AutosaveIntervalRow::set_control_enabled);
     addCategory(tr("Performance"), miscPage_);
 
     // Images & Items - flat column of rows, same shape as Performance
@@ -533,7 +558,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     stack_->setCurrentIndex(0);
 }
 
-void SettingsWindow::selectCategory(const QString& name)
+void SettingsWindow::select_category(const QString& name)
 {
     for (int i = 0; i < categories_.size(); ++i) {
         if (categories_[i].name != name) {

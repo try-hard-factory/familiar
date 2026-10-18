@@ -6,23 +6,42 @@
 #include <core/settingshandler.h>
 
 #include <QCheckBox>
+#include <QColor>
+#include <QDialog>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QMouseEvent>
+#include <QObject>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <Qt>
 
 #include "log/log.h"
 #include "utils/utils.h"
+#include <map>
 using namespace familiar::log;
 
 namespace {
-constexpr int kIconSize = 40;
-}
+constexpr int kiconSize = 40;
+
+// Width band: wide enough for a file path, capped so a long one wraps
+// instead of stretching the dialog across the screen.
+constexpr int kminDialogWidth = 380;
+constexpr int kmaxDialogWidth = 480;
+constexpr int kouterSpacing = 14;
+constexpr int ktopRowSpacing = 12;
+// The checkbox list itself - tighter, so entries read as one list.
+constexpr int klistSpacing = 6;
+constexpr int kbuttonRowSpacing = 8;
+// Caps the scroll area so a session with many modified tabs does not
+// produce a dialog taller than the screen.
+constexpr int kmaxListHeight = 220;
+} // namespace
 
 SaveAllDialog::SaveAllDialog(MainWindow* wm,
                              std::map<int, QString> items,
@@ -36,34 +55,31 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Unsaved changes"));
-    setMinimumWidth(380);
-    setMaximumWidth(480);
+    setMinimumWidth(kminDialogWidth);
+    setMaximumWidth(kmaxDialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
-    auto colorPreset = SettingsHandler::getInstance()->getCurrentColorPreset();
-    const QColor& textColor = colorPreset[EPresetsColorIdx::kTextColor];
-    const QColor& background = colorPreset[EPresetsColorIdx::kBackgroundColor];
-    const QColor& border = colorPreset[EPresetsColorIdx::kBorderColor];
-    const QColor& accent = colorPreset[EPresetsColorIdx::kSelectionColor];
+    auto colorPreset
+        = SettingsHandler::get_instance()->get_current_color_preset();
+    const QColor& textColor = colorPreset[EPresetsColorIdx::TextColor];
+    const QColor& background = colorPreset[EPresetsColorIdx::BackgroundColor];
+    const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
+    const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(20, 16, 16, 16);
-    outer->setSpacing(14);
+    familiar::dialog_style::apply_dialog_margins(outer);
+    outer->setSpacing(kouterSpacing);
 
     auto* topRow = new QHBoxLayout();
-    topRow->setSpacing(12);
+    topRow->setSpacing(ktopRowSpacing);
 
     auto* iconLabel = new QLabel(this);
-    iconLabel->setFixedSize(kIconSize, kIconSize);
+    iconLabel->setFixedSize(kiconSize, kiconSize);
     iconLabel->setPixmap(
-        familiar::dialog_style::severityIcon(QMessageBox::Warning,
-                                             accent,
-                                             devicePixelRatioF()));
+        familiar::dialog_style::severity_icon(QMessageBox::Warning,
+                                              accent,
+                                              devicePixelRatioF()));
     topRow->addWidget(iconLabel, 0, Qt::AlignTop);
 
     auto* textCol = new QVBoxLayout();
@@ -83,11 +99,8 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("sadCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(this,
+                                                               "sadCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &SaveAllDialog::close);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 
@@ -99,7 +112,7 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setMaximumHeight(220);
+    scroll->setMaximumHeight(kmaxListHeight);
     scroll->setStyleSheet(QStringLiteral(
         "QScrollArea { background: transparent; }"
         "QScrollArea > QWidget > QWidget { background: transparent; }"));
@@ -107,7 +120,7 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     auto* listWidget = new QWidget(scroll);
     auto* listLayout = new QVBoxLayout(listWidget);
     listLayout->setContentsMargins(0, 0, 0, 0);
-    listLayout->setSpacing(6);
+    listLayout->setSpacing(klistSpacing);
 
     for (auto& [id, path] : items) {
         auto* checkbox = new FlatCheckBox(path.isEmpty() ? tr("Untitled") : path,
@@ -124,43 +137,44 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     outer->addWidget(scroll);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
 
     auto* closeWithoutSaveBtn = new QPushButton(tr("Close without saving"),
                                                 this);
-    familiar::dialog_style::styleSecondaryButton(closeWithoutSaveBtn,
-                                                 textColor,
-                                                 border);
+    familiar::dialog_style::style_secondary_button(closeWithoutSaveBtn,
+                                                   textColor,
+                                                   border);
     connect(closeWithoutSaveBtn,
             &QPushButton::clicked,
             this,
-            &SaveAllDialog::onCloseWithoutSave_);
+            &SaveAllDialog::on_close_without_save);
     buttonRow->addWidget(closeWithoutSaveBtn);
 
     buttonRow->addStretch();
 
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
-    familiar::dialog_style::styleSecondaryButton(cancelBtn, textColor, border);
+    familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
     connect(cancelBtn, &QPushButton::clicked, this, &SaveAllDialog::close);
     buttonRow->addWidget(cancelBtn);
 
     auto* saveBtn = new QPushButton(tr("Save"), this);
-    familiar::dialog_style::stylePrimaryButton(saveBtn, accent);
+    familiar::dialog_style::style_primary_button(saveBtn, accent);
     saveBtn->setDefault(true);
-    connect(saveBtn, &QPushButton::clicked, this, &SaveAllDialog::onSave_);
+    connect(saveBtn, &QPushButton::clicked, this, &SaveAllDialog::on_save);
     buttonRow->addWidget(saveBtn);
 
     outer->addLayout(buttonRow);
     saveBtn->setFocus();
 
-    setStyleSheet(familiar::dialog_style::panelStyleSheet("SaveAllDialog",
-                                                          background,
-                                                          border,
-                                                          textColor,
-                                                          /*radiusPx=*/0)
-                  + familiar::dialog_style::closeButtonStyleSheet("sadCloseBtn",
-                                                                  textColor,
-                                                                  accent));
+    setStyleSheet(
+        familiar::dialog_style::panel_style_sheet("SaveAllDialog",
+                                                  background,
+                                                  border,
+                                                  textColor,
+                                                  /*radiusPx=*/0)
+        + familiar::dialog_style::close_button_style_sheet("sadCloseBtn",
+                                                           textColor,
+                                                           accent));
 
     centered_widget(window_, this);
     show();
@@ -179,13 +193,13 @@ void SaveAllDialog::mousePressEvent(QMouseEvent* event)
     QDialog::mousePressEvent(event);
 }
 
-void SaveAllDialog::onCloseWithoutSave_()
+void SaveAllDialog::on_close_without_save()
 {
     FLOG_DEBUG(Ch::UI, "SaveAllDialog: close without save");
-    window_->exitProject();
+    MainWindow::exit_project();
 }
 
-void SaveAllDialog::onSave_()
+void SaveAllDialog::on_save()
 {
     std::map<int, bool> m;
     for (auto it = checkboxes_.constBegin(); it != checkboxes_.constEnd();
@@ -197,5 +211,5 @@ void SaveAllDialog::onSave_()
                    it.value()->isChecked());
         m.emplace(it.key(), it.value()->isChecked());
     }
-    window_->saveAllWindowSaveCB(this, std::move(m));
+    window_->save_all_window_save_cb(this, m);
 }

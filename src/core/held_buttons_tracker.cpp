@@ -2,6 +2,7 @@
 
 #include <QEvent>
 #include <QMouseEvent>
+#include <QWidget>
 
 HeldButtonsTracker& HeldButtonsTracker::instance()
 {
@@ -13,12 +14,12 @@ bool HeldButtonsTracker::eventFilter(QObject* watched, QEvent* event)
 {
     switch (event->type()) {
     case QEvent::MouseButtonPress:
-        held_ = static_cast<QMouseEvent*>(event)->buttons();
+        held_ = dynamic_cast<QMouseEvent*>(event)->buttons();
         pressTarget_ = qobject_cast<QWidget*>(watched);
         break;
     case QEvent::MouseButtonRelease:
     case QEvent::MouseButtonDblClick:
-        held_ = static_cast<QMouseEvent*>(event)->buttons();
+        held_ = dynamic_cast<QMouseEvent*>(event)->buttons();
         break;
     default:
         break;
