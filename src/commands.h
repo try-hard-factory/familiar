@@ -93,8 +93,29 @@ private:
 class ScaleItemsByCommand : public QUndoCommand
 {
 public:
+    // Absolute scales, not the drag's factor. Two separate reasons, and
+    // the first one is a live bug:
+    //
+    // SelectableMixin::set_scale() refuses a non-positive scale outright
+    // (selector.h) - deliberately, so a picture cannot be turned
+    // inside out. But get_scale_factor() has no such floor: dragging a
+    // corner handle onto the opposite corner yields factor 0, and past
+    // it, a negative one. The live drag just stops shrinking at that
+    // point, while a factor-based undo then computed
+    // scale() / 0 -> inf (which passes the > 0 check and lands in
+    // setScale()) or scale() / -0.5 -> negative (refused, so undo
+    // silently did nothing at all and the picture stayed collapsed).
+    //
+    // And generally: an undo that recomputes the previous state from the
+    // current one can only ever be as exact as that arithmetic, so any
+    // divergence between what the drag applied and what the command
+    // recorded accumulates. Restoring a captured value cannot drift.
+    //
+    // "Before" comes from IBaseItem::scale_orig_factor(), which
+    // mousePressEvent() captured for every participating item when the
+    // drag started; "after" is simply where the drag left them. Same
+    // shape NormalizeItemsCommand already uses for its own undo.
     ScaleItemsByCommand(const QList<QGraphicsItem*>& items,
-                        qreal factor,
                         const QPointF& anchor,
                         bool ignoreFirstRedo = false);
 
@@ -103,7 +124,8 @@ public:
 
 private:
     QList<QGraphicsItem*> items_;
-    qreal factor_;
+    QList<qreal> oldScales_;
+    QList<qreal> newScales_;
     QPointF anchor_;
     bool ignoreFirstRedo_;
 };
@@ -114,8 +136,19 @@ private:
 class RotateItemsByCommand : public QUndoCommand
 {
 public:
+    // Absolute angles, not the drag's delta - see
+    // ScaleItemsByCommand above for the general argument. The bug this
+    // one fixes: Shift/Ctrl snaps the live rotation to multiples of
+    // kRotateSnapDegrees, but mouseReleaseEvent() asked
+    // get_rotate_delta() for an UNSNAPPED delta (its snap parameter
+    // defaults to false), so the stack recorded a different rotation
+    // than the one on screen. Undoing a 15-degree snapped turn whose raw
+    // delta was 13.7 left the picture at 1.3 degrees instead of 0, and
+    // every further snapped turn added its own residue.
+    //
+    // Storing the angle also drops the flip() factor from undo/redo
+    // entirely: the captured values already account for it.
     RotateItemsByCommand(const QList<QGraphicsItem*>& items,
-                         qreal delta,
                          const QPointF& anchor,
                          bool ignoreFirstRedo = false);
 
@@ -124,7 +157,8 @@ public:
 
 private:
     QList<QGraphicsItem*> items_;
-    qreal delta_;
+    QList<qreal> oldRotations_;
+    QList<qreal> newRotations_;
     QPointF anchor_;
     bool ignoreFirstRedo_;
 };

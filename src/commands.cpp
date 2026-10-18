@@ -220,15 +220,21 @@ void MoveItemsByCommand::undo()
 // ScaleItemsByCommand
 // ============================================================================
 ScaleItemsByCommand::ScaleItemsByCommand(const QList<QGraphicsItem*>& items,
-                                         qreal factor,
                                          const QPointF& anchor,
                                          bool ignoreFirstRedo)
     : QUndoCommand(QObject::tr("Scale items"))
     , items_(items)
-    , factor_(factor)
     , anchor_(anchor)
     , ignoreFirstRedo_(ignoreFirstRedo)
-{}
+{
+    oldScales_.reserve(items_.size());
+    newScales_.reserve(items_.size());
+    for (auto* item : items_) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        oldScales_.append(baseItem->scale_orig_factor());
+        newScales_.append(item->scale());
+    }
+}
 
 void ScaleItemsByCommand::redo()
 {
@@ -250,10 +256,10 @@ void ScaleItemsByCommand::redo()
     if (scene) {
         scene->begin_group_batch();
     }
-    for (auto* item : items_) {
+    for (int i = 0; i < items_.size(); ++i) {
+        auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->set_scale(item->scale() * factor_,
-                            item->mapFromScene(anchor_));
+        baseItem->set_scale(newScales_[i], item->mapFromScene(anchor_));
     }
     if (scene) {
         scene->end_group_batch();
@@ -271,10 +277,10 @@ void ScaleItemsByCommand::undo()
     if (scene) {
         scene->begin_group_batch();
     }
-    for (auto* item : items_) {
+    for (int i = 0; i < items_.size(); ++i) {
+        auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->set_scale(item->scale() / factor_,
-                            item->mapFromScene(anchor_));
+        baseItem->set_scale(oldScales_[i], item->mapFromScene(anchor_));
     }
     if (scene) {
         scene->end_group_batch();
@@ -285,15 +291,21 @@ void ScaleItemsByCommand::undo()
 // RotateItemsByCommand
 // ============================================================================
 RotateItemsByCommand::RotateItemsByCommand(const QList<QGraphicsItem*>& items,
-                                           qreal delta,
                                            const QPointF& anchor,
                                            bool ignoreFirstRedo)
     : QUndoCommand(QObject::tr("Rotate items"))
     , items_(items)
-    , delta_(delta)
     , anchor_(anchor)
     , ignoreFirstRedo_(ignoreFirstRedo)
-{}
+{
+    oldRotations_.reserve(items_.size());
+    newRotations_.reserve(items_.size());
+    for (auto* item : items_) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(item);
+        oldRotations_.append(baseItem->rotate_orig_degrees());
+        newRotations_.append(item->rotation());
+    }
+}
 
 void RotateItemsByCommand::redo()
 {
@@ -311,10 +323,10 @@ void RotateItemsByCommand::redo()
     if (scene) {
         scene->begin_group_batch();
     }
-    for (auto* item : items_) {
+    for (int i = 0; i < items_.size(); ++i) {
+        auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->set_rotation(item->rotation() + (delta_ * baseItem->flip()),
-                               item->mapFromScene(anchor_));
+        baseItem->set_rotation(newRotations_[i], item->mapFromScene(anchor_));
     }
     if (scene) {
         scene->end_group_batch();
@@ -332,10 +344,10 @@ void RotateItemsByCommand::undo()
     if (scene) {
         scene->begin_group_batch();
     }
-    for (auto* item : items_) {
+    for (int i = 0; i < items_.size(); ++i) {
+        auto* item = items_[i];
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
-        baseItem->set_rotation(item->rotation() - (delta_ * baseItem->flip()),
-                               item->mapFromScene(anchor_));
+        baseItem->set_rotation(oldRotations_[i], item->mapFromScene(anchor_));
     }
     if (scene) {
         scene->end_group_batch();

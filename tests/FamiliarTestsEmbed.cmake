@@ -38,5 +38,6 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_registry_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/pixmap_item_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/items/transform_commands_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/fml_graph_sanitize_test.cpp
 )
