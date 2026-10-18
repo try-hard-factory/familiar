@@ -6,7 +6,25 @@
 
 namespace {
 constexpr int kindicatorSize = 15;
-}
+
+// Row height, so the indicator has breathing room above and below.
+constexpr int kminRowHeight = 22;
+// Box outline and the tick drawn inside it.
+constexpr qreal kboxStroke = 1.5;
+constexpr qreal kboxRadius = 4;
+constexpr qreal ktickStroke = 2.0;
+// Hover brightens the accent fill and the unchecked outline.
+constexpr int khoverLightenPercent = 115;
+constexpr int kborderAlphaHover = 200;
+constexpr int kborderAlpha = 130;
+// The tick, as fractions of the box so it scales with kindicatorSize.
+constexpr qreal ktickStartX = 0.22;
+constexpr qreal ktickStartY = 0.52;
+constexpr qreal ktickMidX = 0.42;
+constexpr qreal ktickMidY = 0.74;
+constexpr qreal ktickEndX = 0.80;
+constexpr qreal ktickEndY = 0.26;
+} // namespace
 
 FlatCheckBox::FlatCheckBox(const QString& text,
                            const QColor& textColor,
@@ -18,7 +36,7 @@ FlatCheckBox::FlatCheckBox(const QString& text,
     , border_(border)
     , accent_(accent)
 {
-    setMinimumHeight(22);
+    setMinimumHeight(kminRowHeight);
     setAttribute(Qt::WA_NoSystemBackground, true);
     connect(this, &QCheckBox::toggled, this, qOverload<>(&QWidget::update));
 }
@@ -41,27 +59,33 @@ void FlatCheckBox::paintEvent(QPaintEvent* event)
     // visually - alpha tweaks on the border color did
     // nothing because the BRUSH, not the pen, was the real culprit).
     if (isChecked()) {
-        const QColor fill = underMouse() ? accent_.lighter(115) : accent_;
-        p.setPen(QPen(fill, 1.5));
+        const QColor fill = underMouse()
+                                ? accent_.lighter(khoverLightenPercent)
+                                : accent_;
+        p.setPen(QPen(fill, kboxStroke));
         p.setBrush(fill);
     } else {
         QColor uncheckedBorder = border_;
-        uncheckedBorder.setAlpha(underMouse() ? 200 : 130);
-        p.setPen(QPen(uncheckedBorder, 1.5));
+        uncheckedBorder.setAlpha(underMouse() ? kborderAlphaHover
+                                              : kborderAlpha);
+        p.setPen(QPen(uncheckedBorder, kboxStroke));
         p.setBrush(Qt::NoBrush);
     }
-    p.drawRoundedRect(box, 4, 4);
+    p.drawRoundedRect(box, kboxRadius, kboxRadius);
 
     if (isChecked()) {
         QPen checkPen(Qt::white);
-        checkPen.setWidthF(2.0);
+        checkPen.setWidthF(ktickStroke);
         checkPen.setCapStyle(Qt::RoundCap);
         checkPen.setJoinStyle(Qt::RoundJoin);
         p.setPen(checkPen);
         QPainterPath check;
-        check.moveTo(box.left() + (size * 0.22), box.top() + (size * 0.52));
-        check.lineTo(box.left() + (size * 0.42), box.top() + (size * 0.74));
-        check.lineTo(box.left() + (size * 0.80), box.top() + (size * 0.26));
+        check.moveTo(box.left() + (size * ktickStartX),
+                     box.top() + (size * ktickStartY));
+        check.lineTo(box.left() + (size * ktickMidX),
+                     box.top() + (size * ktickMidY));
+        check.lineTo(box.left() + (size * ktickEndX),
+                     box.top() + (size * ktickEndY));
         p.drawPath(check);
     }
 

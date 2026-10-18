@@ -43,5 +43,7 @@ void ExtendedSlider::update_tooltip()
 
 void ExtendedSlider::fire_timer()
 {
-    mTimer_.start(500);
+    // Coalesces a drag into one settings write rather than one per pixel.
+    constexpr int kcommitDelayMs = 500;
+    mTimer_.start(kcommitDelayMs);
 }

@@ -1,12 +1,13 @@
 #include "group_toolbar.h"
 #include "widgets/color_picker_dialog.h"
+#include "widgets/dialog_style.h"
 
 #include <core/settingshandler.h>
 #include <moveitem.h>
 
 #include <QCheckBox>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
+#include <QMargins>
 #include <QIcon>
 #include <QPainter>
 #include <QPainterPath>
@@ -22,6 +23,40 @@ namespace {
 constexpr int kbuttonSize = 30;
 constexpr int kiconSize = 18;
 
+// Stroke widths shared by the drawn glyphs on this bar.
+constexpr qreal kglyphStroke = 2.0;
+constexpr qreal kswatchBorderStroke = 1.2;
+// Corner radii.
+constexpr qreal klockBodyRadius = 2.0;
+constexpr qreal kswatchRadius = 3.0;
+// A half-turn, for the padlock shackle's arc.
+constexpr int khalfTurnDegrees = 180;
+
+// The padlock is laid out as fractions of kiconSize so it scales with the
+// icon rather than being pinned to 18px.
+constexpr qreal kshackleX = 0.28;
+constexpr qreal kshackleY = 0.12;
+constexpr qreal kshackleSize = 0.44;
+constexpr qreal klockBodyX = 0.18;
+constexpr qreal klockBodyY = 0.46;
+constexpr qreal klockBodyW = 0.64;
+constexpr qreal klockBodyH = 0.42;
+
+// Colour swatch: inset so its border is not clipped by the pixmap edge.
+constexpr qreal kswatchInset = 1.5;
+
+// Chevron, same fraction-of-icon idea.
+constexpr qreal kchevronLeft = 0.28;
+constexpr qreal kchevronMid = 0.5;
+constexpr qreal kchevronRight = 0.72;
+constexpr qreal kchevronTop = 0.4;
+constexpr qreal kchevronBottom = 0.62;
+
+// Alphas for the popup's own QSS - panel, hover, pressed.
+constexpr int kpopupBgAlpha = 245;
+constexpr int khoverAlpha = 90;
+constexpr int kpressedAlpha = 170;
+
 // Simple drawn padlock glyph - shackle (arc) + body (rounded rect), same
 // QPainter-drawn-icon approach as gif_playback_toolbar.cpp's makeStepIcon()
 // etc.
@@ -35,27 +70,27 @@ QIcon make_lock_icon(const QColor& glyphColor, qreal dpr)
     p.setRenderHint(QPainter::Antialiasing);
 
     QPen shacklePen(glyphColor);
-    shacklePen.setWidthF(2.0);
+    shacklePen.setWidthF(kglyphStroke);
     shacklePen.setCapStyle(Qt::RoundCap);
     p.setPen(shacklePen);
     p.setBrush(Qt::NoBrush);
     QPainterPath shackle;
-    const QRectF shackleRect(kiconSize * 0.28,
-                             kiconSize * 0.12,
-                             kiconSize * 0.44,
-                             kiconSize * 0.44);
+    const QRectF shackleRect(kiconSize * kshackleX,
+                             kiconSize * kshackleY,
+                             kiconSize * kshackleSize,
+                             kiconSize * kshackleSize);
     shackle.arcMoveTo(shackleRect, 0);
-    shackle.arcTo(shackleRect, 0, 180);
+    shackle.arcTo(shackleRect, 0, khalfTurnDegrees);
     p.drawPath(shackle);
 
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
-    p.drawRoundedRect(QRectF(kiconSize * 0.18,
-                             kiconSize * 0.46,
-                             kiconSize * 0.64,
-                             kiconSize * 0.42),
-                      2.0,
-                      2.0);
+    p.drawRoundedRect(QRectF(kiconSize * klockBodyX,
+                             kiconSize * klockBodyY,
+                             kiconSize * klockBodyW,
+                             kiconSize * klockBodyH),
+                      klockBodyRadius,
+                      klockBodyRadius);
 
     p.end();
     QIcon icon;
@@ -80,12 +115,16 @@ QIcon make_fill_color_icon(const QColor& fillColor,
     p.setRenderHint(QPainter::Antialiasing);
 
     QPen border(borderColor);
-    border.setWidthF(1.2);
+    border.setWidthF(kswatchBorderStroke);
     p.setPen(border);
     p.setBrush(fillColor);
-    p.drawRoundedRect(QRectF(1.5, 1.5, kiconSize - 3.0, kiconSize - 3.0),
-                      3.0,
-                      3.0);
+    const qreal swatchSide = kiconSize - (2 * kswatchInset);
+    p.drawRoundedRect(QRectF(kswatchInset,
+                             kswatchInset,
+                             swatchSide,
+                             swatchSide),
+                      kswatchRadius,
+                      kswatchRadius);
 
     p.end();
     QIcon icon;
@@ -105,15 +144,15 @@ QIcon make_chevron_icon(const QColor& glyphColor, qreal dpr)
     p.setRenderHint(QPainter::Antialiasing);
 
     QPen pen(glyphColor);
-    pen.setWidthF(2.0);
+    pen.setWidthF(kglyphStroke);
     pen.setCapStyle(Qt::RoundCap);
     pen.setJoinStyle(Qt::RoundJoin);
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
     QPainterPath chevron;
-    chevron.moveTo(kiconSize * 0.28, kiconSize * 0.4);
-    chevron.lineTo(kiconSize * 0.5, kiconSize * 0.62);
-    chevron.lineTo(kiconSize * 0.72, kiconSize * 0.4);
+    chevron.moveTo(kiconSize * kchevronLeft, kiconSize * kchevronTop);
+    chevron.lineTo(kiconSize * kchevronMid, kiconSize * kchevronBottom);
+    chevron.lineTo(kiconSize * kchevronRight, kiconSize * kchevronTop);
     p.drawPath(chevron);
 
     p.end();
@@ -130,18 +169,15 @@ GroupToolbar::GroupToolbar(QWidget* parent)
 {
     setAttribute(Qt::WA_StyledBackground);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(18);
-    shadow->setOffset(0, 3);
-    shadow->setColor(QColor(0, 0, 0, 140));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_toolbar_shadow(this);
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
 
     auto* row = new QWidget(this);
     auto* lay = new QHBoxLayout(row);
-    lay->setContentsMargins(8, 5, 8, 5);
+    constexpr QMargins kbarMargins{8, 5, 8, 5};
+    lay->setContentsMargins(kbarMargins);
     lay->setSpacing(2);
 
     lockBtn_ = new QToolButton(row);
@@ -178,7 +214,7 @@ GroupToolbar::GroupToolbar(QWidget* parent)
         }
         const QColor oldColor = item_->fill_color();
         QColor initial = oldColor;
-        initial.setAlpha(255);
+        initial.setAlpha(kfullOpacity);
         // Live preview while dragging - applies straight to the item,
         // bypassing the undo stack, exactly like the item
         // would look if the color really were already committed;
@@ -295,7 +331,8 @@ void GroupToolbar::show_settings_popup()
             .arg(background.name(), text.name(), border.name()));
 
     auto* lay = new QVBoxLayout(popup);
-    lay->setContentsMargins(10, 8, 10, 8);
+    constexpr QMargins kpopupMargins{10, 8, 10, 8};
+    lay->setContentsMargins(kpopupMargins);
 
     auto* dragDropCheck = new QCheckBox(tr("Drag and drop items into group"),
                                         popup);
@@ -359,11 +396,11 @@ void GroupToolbar::restyle_from_preset()
                                  "  color: %3;"
                                  "  border: 1px solid %2;"
                                  "}")
-                      .arg(rgba(background, 245),
+                      .arg(rgba(background, kpopupBgAlpha),
                            border.name(),
                            text.name(),
-                           rgba(selection, 90),
-                           rgba(selection, 170),
+                           rgba(selection, khoverAlpha),
+                           rgba(selection, kpressedAlpha),
                            background.name()));
 
     lockBtn_->setIcon(make_lock_icon(iconGlyphColor_, devicePixelRatioF()));

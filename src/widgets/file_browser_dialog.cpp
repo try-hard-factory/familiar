@@ -5,6 +5,7 @@
 #include <core/settingshandler.h>
 
 #include <QAction>
+#include <QColor>
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
@@ -12,7 +13,6 @@
 #include <QFileInfo>
 #include <QFileSystemModel>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
@@ -20,6 +20,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMargins>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
@@ -33,6 +34,19 @@
 #include "utils/utils.h"
 
 namespace {
+
+// Large enough to show a useful slice of a directory listing without
+// being resizable (this dialog is fixed-size).
+constexpr int kdialogWidth = 700;
+constexpr int kdialogHeight = 460;
+constexpr int kouterSpacing = 8;
+constexpr int kcontentSpacing = 10;
+constexpr int kbuttonRowSpacing = 8;
+// Square nav button, matching the close button's own size.
+constexpr int knavButtonSize = 28;
+// Initial width of the Name column, and of the places sidebar.
+constexpr int knameColumnWidth = 300;
+constexpr int ksidebarWidth = 130;
 
 // Same reasoning as FileActions' own (private, file_actions.cpp)
 // FmlIconProvider - no OS-level icon association for .fml is
@@ -112,13 +126,9 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(title);
-    setFixedSize(700, 460);
+    setFixedSize(kdialogWidth, kdialogHeight);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -128,8 +138,10 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(16, 12, 16, 16);
-    outer->setSpacing(8);
+    // Same tighter padding as ColorPickerDialog - dense tool dialog.
+    constexpr QMargins kouterMargins{16, 12, 16, 16};
+    outer->setContentsMargins(kouterMargins);
+    outer->setSpacing(kouterSpacing);
 
     // ── Title row ────────────────────────────────────────────────────
     auto* topRow = new QHBoxLayout();
@@ -139,11 +151,9 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     titleLabel->setFont(titleFont);
     topRow->addWidget(titleLabel, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("fbdCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "fbdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &FileBrowserDialog::reject);
     topRow->addWidget(closeBtn);
     outer->addLayout(topRow);
@@ -151,7 +161,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     // ── Address bar ──────────────────────────────────────────────────
     auto* navRow = new QHBoxLayout();
     upBtn_ = new QPushButton(QStringLiteral("↑"), this);
-    upBtn_->setFixedSize(28, 28);
+    upBtn_->setFixedSize(knavButtonSize, knavButtonSize);
     upBtn_->setCursor(Qt::PointingHandCursor);
     upBtn_->setToolTip(tr("Up one level"));
     connect(upBtn_,
@@ -177,7 +187,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
 
     // ── Sidebar + tree ───────────────────────────────────────────────
     auto* contentRow = new QHBoxLayout();
-    contentRow->setSpacing(10);
+    contentRow->setSpacing(kcontentSpacing);
 
     build_sidebar(accent);
     contentRow->addWidget(sidebar_);
@@ -207,7 +217,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
     tree_ = new QTreeView(this);
     tree_->setModel(model_);
     tree_->setColumnHidden(2, true); // Type - Name/Size/Date Modified is plenty
-    tree_->setColumnWidth(0, 300);
+    tree_->setColumnWidth(0, knameColumnWidth);
     tree_->setRootIsDecorated(false);
     tree_->setSortingEnabled(true);
     tree_->sortByColumn(0, Qt::AscendingOrder);
@@ -279,7 +289,7 @@ FileBrowserDialog::FileBrowserDialog(QWidget* parent,
 
     // ── Buttons ──────────────────────────────────────────────────────
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
     buttonRow->addStretch();
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);
     familiar::dialog_style::style_secondary_button(cancelBtn, textColor, border);
@@ -370,7 +380,7 @@ void FileBrowserDialog::build_sidebar(const QColor& accent)
 {
     Q_UNUSED(accent);
     sidebar_ = new QListWidget(this);
-    sidebar_->setFixedWidth(130);
+    sidebar_->setFixedWidth(ksidebarWidth);
     sidebar_->setFrameShape(QFrame::NoFrame);
 
     auto addEntry = [this](const QString& label, const QString& path) {

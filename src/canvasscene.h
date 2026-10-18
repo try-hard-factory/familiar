@@ -411,7 +411,10 @@ private:
     QUndoStack* undoStack_ = nullptr;
     qreal maxZ_ = 0;
     qreal minZ_ = 0;
-    qreal zStep_ = 0.001;
+    // Fine enough that tens of thousands of items can each get their own
+    // z without the values colliding after rounding.
+    static constexpr qreal kdefaultZStep = 0.001;
+    qreal zStep_ = kdefaultZStep;
     MultiSelectItem* multiselectItem_ = nullptr;
     RubberbandItem* rubberbandItem_ = nullptr;
     std::queue<QueuedItemData> itemsToAdd_;

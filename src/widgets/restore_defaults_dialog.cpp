@@ -6,8 +6,9 @@
 #include <core/settingshandler.h>
 
 #include <QCheckBox>
+#include <QColor>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
+#include <QMargins>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -20,6 +21,18 @@ using familiar::SettingsCategory;
 
 namespace {
 constexpr int kiconSize = 40;
+
+// Width band: wide enough for a file path, capped so a long one wraps
+// instead of stretching the dialog across the screen.
+constexpr int kminDialogWidth = 340;
+constexpr int kmaxDialogWidth = 420;
+constexpr int kouterSpacing = 14;
+constexpr int ktopRowSpacing = 12;
+// The checkbox list itself - tighter, so entries read as one list.
+constexpr int klistSpacing = 6;
+constexpr int kbuttonRowSpacing = 8;
+// Indent for the sub-row under a checked category.
+constexpr int ksubRowIndent = 20;
 
 // FlatCheckBox's paintEvent only ever draws checked/unchecked (see its
 // own comment on why) - no third "some but not all children checked"
@@ -116,7 +129,8 @@ bool category_has_changes(SettingsCategory category)
                     ->json_value(QStringLiteral("Colors"),
                                  current_preset_json_key())
                     .isUndefined()
-               || SettingsHandler::get_instance()->get_current_opacity() != 255;
+               || SettingsHandler::get_instance()->get_current_opacity()
+                      != kfullOpacity;
     case SettingsCategory::KeyboardShortcuts:
         // Can't use "is the Actions/Controls JSON group empty" the same
         // way Colors uses preset-key presence - KeyboardSettings::
@@ -188,14 +202,10 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Restore Defaults"));
-    setMinimumWidth(340);
-    setMaximumWidth(420);
+    setMinimumWidth(kminDialogWidth);
+    setMaximumWidth(kmaxDialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -209,11 +219,11 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     const QColor destructive(211, 47, 47);
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(20, 16, 16, 16);
-    outer->setSpacing(14);
+    familiar::dialog_style::apply_dialog_margins(outer);
+    outer->setSpacing(kouterSpacing);
 
     auto* topRow = new QHBoxLayout();
-    topRow->setSpacing(12);
+    topRow->setSpacing(ktopRowSpacing);
 
     auto* iconLabel = new QLabel(this);
     iconLabel->setFixedSize(kiconSize, kiconSize);
@@ -240,11 +250,9 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("rddCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "rddCloseBtn");
     connect(closeBtn,
             &QPushButton::clicked,
             this,
@@ -254,7 +262,7 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     outer->addLayout(topRow);
 
     auto* listLayout = new QVBoxLayout();
-    listLayout->setSpacing(6);
+    listLayout->setSpacing(klistSpacing);
 
     allCheckbox_ = new FlatCheckBox(tr("All"), textColor, border, accent, this);
     allCheckbox_->setChecked(false);
@@ -302,7 +310,8 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
         categoryCheckboxes_.insert(category, checkbox);
 
         auto* row = new QHBoxLayout();
-        row->setContentsMargins(20, 0, 0, 0);
+        const QMargins ksubRowMargins{ksubRowIndent, 0, 0, 0};
+        row->setContentsMargins(ksubRowMargins);
         row->addWidget(checkbox);
         listLayout->addLayout(row);
     }
@@ -314,7 +323,7 @@ RestoreDefaultsDialog::RestoreDefaultsDialog(QWidget* parent)
     outer->addLayout(listLayout);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
     buttonRow->addStretch();
 
     auto* cancelBtn = new QPushButton(tr("Cancel"), this);

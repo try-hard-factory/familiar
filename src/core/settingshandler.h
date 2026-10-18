@@ -39,6 +39,12 @@ enum class EPresetsColorIdx : std::uint8_t {
     AllIdx = 5
 };
 
+// Opacity is stored and handled as a 0-255 byte throughout (master_opacity
+// below, SettingsHandler::get_current_opacity(), ColorsWidget's slider),
+// so this is what "no transparency at all" means - the value a fresh
+// install starts at and the one restore-to-defaults compares against.
+constexpr int kfullOpacity = 255;
+
 // Both enums are scoped, so they have no built-in QDebug overload - and
 // Qt's generic QMap operator<< needs one for the key type before a map
 // keyed by them can go through familiar::log::debug_string() (which is

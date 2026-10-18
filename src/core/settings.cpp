@@ -231,7 +231,8 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              .validate =
                  [](const QVariant& v) {
                      const int n = v.toInt();
-                     return n >= 0 && n <= 200;
+                     return n >= 0
+                            && n <= setting_limits::kmaxArrangeGap;
                  },
              /*postSaveCallback*/
              .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
@@ -278,7 +279,8 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              .validate =
                  [](const QVariant& v) {
                      const int n = v.toInt();
-                     return n >= 0 && n <= 1024;
+                     return n >= 0
+                            && n <= setting_limits::kmaxImageSizeMb;
                  },
              /*postSaveCallback*/
              .postSaveCallback =
@@ -360,7 +362,10 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
              .validate =
                  [](const QVariant& v) {
                      const int n = v.toInt();
-                     return n >= 1 && n <= 3600;
+                     return n >= 1
+                            && n
+                                   <= setting_limits::
+                                          kmaxAutosaveIntervalSeconds;
                  },
              /*postSaveCallback*/
              .postSaveCallback =
@@ -478,8 +483,8 @@ void FamSettings::update_recent_files(const QString& filename)
     QStringList values = get_recent_files();
     values.removeAll(abs);
     values.prepend(abs);
-    if (values.size() > 10) {
-        values = values.mid(0, 10);
+    if (values.size() > setting_limits::kmaxRecentFiles) {
+        values = values.mid(0, setting_limits::kmaxRecentFiles);
     }
 
     SettingsHandler::get_instance()->set_recent_files_raw(values);

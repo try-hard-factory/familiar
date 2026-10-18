@@ -23,6 +23,19 @@ namespace {
 
 constexpr int kswatchDiameter = 30;
 
+// Swatch outline, inset by half its width so the stroke lands inside the
+// pixmap instead of being clipped at the edge.
+constexpr qreal kswatchBorderStroke = 1.5;
+constexpr qreal kswatchInset = 1.0;
+// Breathing room above and below the master-opacity slider.
+constexpr int ksliderSpacing = 50;
+// Preset buttons - wide enough for "Custom 1" without eliding.
+constexpr int kpresetButtonHeight = 22;
+constexpr int kpresetButtonWidth = 110;
+// The slider shows percent while the setting itself is a 0-255 byte.
+constexpr int kopacityPercentMin = 0;
+constexpr int kopacityPercentMax = 100;
+
 // Fixed mid-gray, not settings_style::palette().border (#D8D8D8) - that
 // value is tuned for hairlines against this window's own fixed white
 // background, too close to white to read as an outline against a swatch
@@ -42,11 +55,14 @@ QIcon make_swatch_icon(const QColor& color, qreal dpr)
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     QPen border(kswatchBorderColor);
-    border.setWidthF(1.5);
+    border.setWidthF(kswatchBorderStroke);
     p.setPen(border);
     p.setBrush(color);
     p.drawEllipse(
-        QRectF(1.0, 1.0, kswatchDiameter - 2.0, kswatchDiameter - 2.0));
+        QRectF(kswatchInset,
+               kswatchInset,
+               kswatchDiameter - (2 * kswatchInset),
+               kswatchDiameter - (2 * kswatchInset)));
     p.end();
 
     QIcon icon;
@@ -76,9 +92,9 @@ ColorsWidget::ColorsWidget(QWidget* parent)
 
     layout_->addLayout(headerLayout_);
     layout_->addLayout(bodyLayout_);
-    layout_->addSpacing(50);
+    layout_->addSpacing(ksliderSpacing);
     layout_->addLayout(sliderLayout_);
-    layout_->addSpacing(50);
+    layout_->addSpacing(ksliderSpacing);
     layout_->addLayout(bottomLayout_);
 
     setLayout(layout_);
@@ -158,8 +174,8 @@ void ColorsWidget::presets_init()
                                             "  padding: 4px 14px;"
                                             "  text-align: center;"
                                             "}"));
-        btn->setMinimumHeight(22);
-        btn->setMinimumWidth(110);
+        btn->setMinimumHeight(kpresetButtonHeight);
+        btn->setMinimumWidth(kpresetButtonWidth);
         btn->setCheckable(true);
         btn->setCursor(Qt::PointingHandCursor);
         btn->setFocusPolicy(Qt::NoFocus);
@@ -298,7 +314,7 @@ void ColorsWidget::slider_init()
     // slider init
     opacitySlider_->setFocusPolicy(Qt::NoFocus);
     opacitySlider_->setOrientation(Qt::Horizontal);
-    opacitySlider_->setRange(0, 100);
+    opacitySlider_->setRange(kopacityPercentMin, kopacityPercentMax);
     opacitySlider_->setCursor(Qt::PointingHandCursor);
     opacitySlider_->setStyleSheet(
         familiar::settings_style::slider_style_sheet());
@@ -306,14 +322,16 @@ void ColorsWidget::slider_init()
     sliderLayout_->addWidget(new QLabel(QStringLiteral("Master opacity:")));
     sliderLayout_->addWidget(opacitySlider_);
 
-    opacitySlider_->set_maped_value(0, settings->get_current_opacity(), 255);
+    opacitySlider_->set_maped_value(kopacityPercentMin,
+                                    settings->get_current_opacity(),
+                                    kfullOpacity);
     connect(opacitySlider_, &ExtendedSlider::valueChanged, [this]() {
         FLOG_DEBUG(Ch::UI,
                    "Master opacity from settings = {}",
                    debug_string(
                        SettingsHandler::get_instance()->master_opacity()));
         SettingsHandler::get_instance()->set_current_opacity(
-            opacitySlider_->mapped_value(0, 255));
+            opacitySlider_->mapped_value(kopacityPercentMin, kfullOpacity));
         //qDebug()<<"Opacity: "<<opacitySlider_->mappedValue(0, 255);
         emit SettingsHandler::get_instance() -> settings_changed();
     });
@@ -357,7 +375,9 @@ void ColorsWidget::update_components()
         refresh_swatch(static_cast<EPresetsColorIdx>(i));
     }
 
-    opacitySlider_->set_maped_value(0, settings->get_current_opacity(), 255);
+    opacitySlider_->set_maped_value(kopacityPercentMin,
+                                    settings->get_current_opacity(),
+                                    kfullOpacity);
 
     if (QAbstractButton* checked = presetButtons_->button(
             settings->current_preset())) {

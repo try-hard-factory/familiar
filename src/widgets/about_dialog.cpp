@@ -4,11 +4,12 @@
 
 #include <core/settingshandler.h>
 
+#include <QColor>
 #include <QDate>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMargins>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -17,8 +18,17 @@
 #include "utils/utils.h"
 
 namespace {
+
+// Narrow on purpose - the dialog is a short stack of centred lines.
+constexpr int kdialogWidth = 320;
+// Secondary lines (version, licence) are dimmed rather than given their
+// own preset colour.
+constexpr int kdimTextAlpha = 180;
+// Gaps around the dimmed block.
+constexpr int kblockSpacing = 12;
+constexpr int kfooterSpacing = 16;
 constexpr int kiconSize = 72;
-}
+} // namespace
 
 AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     : QDialog(parent ? parent : wm)
@@ -29,13 +39,9 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("About"));
-    setFixedWidth(320);
+    setFixedWidth(kdialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -44,17 +50,17 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
     const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
     QColor dimText = textColor;
-    dimText.setAlpha(180);
+    dimText.setAlpha(kdimTextAlpha);
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(24, 14, 24, 20);
+    // Widest of the lot, same reasoning as HelpDialog.
+    constexpr QMargins kouterMargins{24, 14, 24, 20};
+    outer->setContentsMargins(kouterMargins);
     outer->setSpacing(4);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("adCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "adCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &AboutDialog::close);
     auto* closeRow = new QHBoxLayout();
     closeRow->addStretch();
@@ -95,7 +101,7 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
         QStringLiteral("color: %1;").arg(dimText.name(QColor::HexArgb)));
     outer->addWidget(versionLabel);
 
-    outer->addSpacing(12);
+    outer->addSpacing(kblockSpacing);
 
     auto* descLabel = new QLabel(
         tr("A distraction-free reference board for organizing, arranging, "
@@ -105,7 +111,7 @@ AboutDialog::AboutDialog(MainWindow* wm, QWidget* parent)
     descLabel->setAlignment(Qt::AlignCenter);
     outer->addWidget(descLabel);
 
-    outer->addSpacing(16);
+    outer->addSpacing(kfooterSpacing);
 
     // CPACK_PACKAGE_VENDOR (CMakeLists.txt) - the one place this
     // project's own organization name is actually recorded; GPLv3 per

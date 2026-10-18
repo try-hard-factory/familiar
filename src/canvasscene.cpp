@@ -1182,7 +1182,8 @@ void CanvasScene::arrange_optimal()
         positions
             = RectPacker::pack(sizes, side, side, boundsWidth, boundsHeight);
         if (positions.isEmpty()) {
-            side = static_cast<int>(std::ceil(side * 1.2));
+            constexpr qreal kgrowthFactor = 1.2;
+            side = static_cast<int>(std::ceil(side * kgrowthFactor));
         }
     }
 

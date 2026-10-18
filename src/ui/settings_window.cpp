@@ -15,10 +15,10 @@
 #include <QAbstractTextDocumentLayout>
 #include <QButtonGroup>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QMargins>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QMouseEvent>
@@ -31,6 +31,21 @@
 #include <QWindow>
 
 namespace {
+
+// CategoryNavButton's own text inset: the rich-text document is laid out
+// this far in from each side, and drawn at that same offset.
+constexpr int kcategoryTextInset = 10;
+
+// The window itself, and the fixed width of its category column.
+constexpr int kwindowWidth = 760;
+constexpr int kwindowHeight = 480;
+constexpr int kcategoryColumnWidth = 200;
+// Spacing shared by the category list, the column under it and the
+// import/export row - they read as one stack.
+constexpr int kcolumnSpacing = 6;
+// Import/Export buttons are taller than a plain row so they read as
+// actions rather than settings.
+constexpr int kactionButtonHeight = 38;
 
 // Both Performance and Images & Items are a QVBoxLayout of
 // SettingRowBase-derived rows (widgets/setting_row.h), each carrying its
@@ -95,10 +110,11 @@ protected:
         doc.setDefaultStyleSheet(
             QStringLiteral("body { color: %1; }").arg(color.name()));
         doc.setHtml(QStringLiteral("<body>%1</body>").arg(richText_));
-        doc.setTextWidth(width() - 20);
+        doc.setTextWidth(width() - (2 * kcategoryTextInset));
 
         painter.save();
-        painter.translate(10, (height() - doc.size().height()) / 2);
+        painter.translate(kcategoryTextInset,
+                          (height() - doc.size().height()) / 2);
         QAbstractTextDocumentLayout::PaintContext ctx;
         ctx.palette.setColor(QPalette::Text, color);
         doc.documentLayout()->draw(&painter, ctx);
@@ -182,18 +198,14 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // either, so the window needs to actually commit to a fixed size
     // rather than merely start at one (matches the old
     // MSWindowsFixedSizeDialogHint's intent).
-    setFixedSize(760, 480);
+    setFixedSize(kwindowWidth, kwindowHeight);
 
     // Fixed white palette - always this scheme, unlike
     // the rest of the app which follows the user's chosen accent-color
     // preset (see settings_style.h's own comment).
     setStyleSheet(familiar::settings_style::root_style_sheet());
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(0, 0, 0, 0);
@@ -211,7 +223,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     titleBar->setAttribute(Qt::WA_StyledBackground, true);
     titleBar->setStyleSheet(QStringLiteral("background: transparent;"));
     auto* titleBarLayout = new QHBoxLayout(titleBar);
-    titleBarLayout->setContentsMargins(16, 10, 10, 6);
+    constexpr QMargins ktitleBarMargins{16, 10, 10, 6};
+    titleBarLayout->setContentsMargins(ktitleBarMargins);
     titleBarLayout->addStretch(1);
     auto* titleLabel = new QLabel(tr("Settings"), titleBar);
     titleLabel->setStyleSheet(QStringLiteral("background: transparent;"));
@@ -221,11 +234,9 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     titleLabel->setFont(titleFont);
     titleBarLayout->addWidget(titleLabel);
     titleBarLayout->addStretch(1);
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), titleBar);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("settingsCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        titleBar,
+        "settingsCloseBtn");
     const familiar::settings_style::Palette& sp
         = familiar::settings_style::palette();
     closeBtn->setStyleSheet(
@@ -237,7 +248,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     outer->addWidget(titleBar);
 
     auto* root = new QHBoxLayout();
-    root->setContentsMargins(16, 0, 16, 16);
+    constexpr QMargins krootMargins{16, 0, 16, 16};
+    root->setContentsMargins(krootMargins);
     outer->addLayout(root, /*stretch=*/1);
 
     // ─── Left column: search + category buttons + bottom button row ───────────
@@ -247,7 +259,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // buttons) would otherwise each demand its own natural width and the
     // column would end up as wide as the widest one anyway.
     auto* leftContainer = new QWidget(this);
-    leftContainer->setFixedWidth(200);
+    leftContainer->setFixedWidth(kcategoryColumnWidth);
     auto* leftColumn = new QVBoxLayout(leftContainer);
     leftColumn->setContentsMargins(0, 0, 0, 0);
 
@@ -311,12 +323,12 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // around the whole stack - not a flush edge-to-edge list, each
     // category reads as its own block.
     categoryLayout->setContentsMargins(4, 4, 4, 4);
-    categoryLayout->setSpacing(6);
+    categoryLayout->setSpacing(kcolumnSpacing);
     categoryButtons_->setExclusive(true);
     leftColumn->addWidget(categoryPanel_, /*stretch=*/1);
 
     auto* bottomColumn = new QVBoxLayout();
-    bottomColumn->setSpacing(6);
+    bottomColumn->setSpacing(kcolumnSpacing);
     auto* resetBtn = new QPushButton(tr("Restore Defaults"), this);
     resetBtn->setAutoDefault(false);
     resetBtn->setCursor(Qt::PointingHandCursor);
@@ -399,7 +411,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // three sitting side by side - three buttons abreast no longer fit
     // the narrower sidebar (leftContainer above).
     auto* importExportRow = new QHBoxLayout();
-    importExportRow->setSpacing(6);
+    importExportRow->setSpacing(kcolumnSpacing);
 
     auto* importBtn = new QPushButton(tr("Import"), this);
     importBtn->setCursor(Qt::PointingHandCursor);
@@ -469,7 +481,7 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         auto* btn = new CategoryNavButton(categoryPanel_);
         btn->setObjectName(QStringLiteral("categoryButton"));
         btn->setCheckable(true);
-        btn->setMinimumHeight(38);
+        btn->setMinimumHeight(kactionButtonHeight);
         btn->set_label_text(highlight_search_match(label, QString()));
         categoryLayout->addWidget(btn);
         categoryButtons_->addButton(btn, categoryIndex);
@@ -495,7 +507,8 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
     // (it's meaningless on its own). A left margin on its own layout is
     // enough to read as "belongs to Autosave" without actual nesting.
     if (auto* intervalLayout = autosaveInterval_->layout()) {
-        intervalLayout->setContentsMargins(24, 4, 0, 4);
+        constexpr QMargins kintervalMargins{24, 4, 0, 4};
+        intervalLayout->setContentsMargins(kintervalMargins);
     }
     miscLayout->addWidget(autosaveInterval_);
     miscLayout->addStretch(1);

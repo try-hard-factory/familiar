@@ -7,6 +7,14 @@
 #include <QVBoxLayout>
 using namespace familiar::log;
 
+namespace {
+
+// Equal stretch above and below, so the recent-files block and the help
+// text each sit centred in their own half.
+constexpr int kcenteringStretch = 50;
+
+} // namespace
+
 WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     : MainControlsMixin<WelcomeOverlay, QWidget>(parent)
     , mainWindow_(mainWindow)
@@ -21,11 +29,11 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     // Recent files widget (hidden until there are recent files)
 
     auto* filesLayout = new QVBoxLayout(filesWidget_);
-    filesLayout->addStretch(50);
+    filesLayout->addStretch(kcenteringStretch);
     filesLayout->addWidget(new QLabel(QStringLiteral("<h3>Recent Files</h3>")));
     filesView_ = new RecentFilesView(this, {}, mainWindow_);
     filesLayout->addWidget(filesView_);
-    filesLayout->addStretch(50);
+    filesLayout->addStretch(kcenteringStretch);
     filesWidget_->hide();
 
     // Help text (always visible, transparent to mouse so WelcomeOverlay stays the grabber)
@@ -33,9 +41,9 @@ WelcomeOverlay::WelcomeOverlay(QWidget* parent, MainWindow* mainWindow)
     label_->setAlignment(Qt::AlignVCenter | Qt::AlignCenter);
     label_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
-    layout_->addStretch(50);
+    layout_->addStretch(kcenteringStretch);
     layout_->addWidget(label_);
-    layout_->addStretch(50);
+    layout_->addStretch(kcenteringStretch);
 }
 
 void WelcomeOverlay::show()

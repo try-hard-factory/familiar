@@ -10,7 +10,6 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
-#include <QGraphicsDropShadowEffect>
 #include <QGraphicsItem>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -78,6 +77,26 @@
 // NOTE the ctor calls show() itself: QProgressDialog used to self-show
 // via setMinimumDuration(0), a plain QDialog does not, and every caller
 // here is "new ProgressDialog(...)" with no show() of its own.
+// Namespaced rather than loose at file scope: this is a header included
+// all over the place, and bare names like kpercentMin collided with an
+// identically named constant in ui/colors_widget.cpp's own anonymous
+// namespace the moment both were visible in one translation unit.
+namespace dialog_consts {
+
+// Percent range for the opacity slider and for the progress bar while it
+// shows decode progress rather than an item count.
+constexpr int kpercentMin = 0;
+constexpr int kpercentMax = 100;
+// Delay before a one-shot dialog deletes itself, long enough for any
+// pending signal delivery to finish first.
+constexpr int kselfDeleteDelayMs = 100;
+// How long the colour-sample toast stays up.
+constexpr int ktoastLifetimeMs = 3 * 1000;
+// Gap between the toast and the top edge of its parent.
+constexpr int ktoastTopMargin = 10;
+
+} // namespace dialog_consts
+
 class ProgressDialog : public QDialog
 {
     Q_OBJECT
@@ -113,15 +132,12 @@ public:
         const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
-        auto* shadow = new QGraphicsDropShadowEffect(this);
-        shadow->setBlurRadius(24);
-        shadow->setOffset(0, 4);
-        shadow->setColor(QColor(0, 0, 0, 150));
-        setGraphicsEffect(shadow);
+        familiar::dialog_style::apply_dialog_shadow(this);
 
         auto* outer = new QVBoxLayout(this);
-        outer->setContentsMargins(20, 14, 20, 16);
-        outer->setSpacing(10);
+        familiar::dialog_style::apply_dialog_margins(outer);
+        constexpr int kouterSpacing = 10;
+        outer->setSpacing(kouterSpacing);
 
         auto* topRow = new QHBoxLayout();
         auto* titleLabel = new QLabel(label, this);
@@ -131,11 +147,9 @@ public:
         titleLabel->setFont(titleFont);
         topRow->addWidget(titleLabel, 1);
 
-        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-        closeBtn->setFixedSize(22, 22);
-        closeBtn->setCursor(Qt::PointingHandCursor);
-        closeBtn->setFocusPolicy(Qt::NoFocus);
-        closeBtn->setObjectName(QStringLiteral("progressCloseBtn"));
+        auto* closeBtn = familiar::dialog_style::make_close_button(
+            this,
+            "progressCloseBtn");
         // Same funnel as the Cancel button below - see reject().
         connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
         topRow->addWidget(closeBtn, 0, Qt::AlignTop);
@@ -156,7 +170,8 @@ public:
         outer->addWidget(currentItemLabel_);
 
         auto* barRow = new QHBoxLayout();
-        barRow->setSpacing(10);
+        constexpr int kbarRowSpacing = 10;
+        barRow->setSpacing(kbarRowSpacing);
         bar_ = new FlatProgressBar(border, accent, this);
         barRow->addWidget(bar_, 1);
 
@@ -303,7 +318,9 @@ protected:
     void resizeEvent(QResizeEvent* event) override
     {
         QDialog::resizeEvent(event);
-        familiar::dialog_style::apply_rounded_mask(this, 10);
+        familiar::dialog_style::apply_rounded_mask(
+            this,
+            familiar::dialog_style::kdialogCornerRadius);
     }
 
 private:
@@ -452,7 +469,8 @@ private slots:
             return;
         }
         if (decoding) {
-            set_range(0, 100);
+            set_range(dialog_consts::kpercentMin,
+                      dialog_consts::kpercentMax);
             set_value(0);
         } else {
             set_range(0, knownMaximum_);
@@ -535,7 +553,9 @@ private slots:
         currentItemLabel_->clear();
         hide();
         if (!reusable_) {
-            QTimer::singleShot(100, this, &QObject::deleteLater);
+            QTimer::singleShot(dialog_consts::kselfDeleteDelayMs,
+                               this,
+                               &QObject::deleteLater);
         }
     }
 
@@ -1055,7 +1075,8 @@ public:
         setAttribute(Qt::WA_DeleteOnClose);
         setWindowTitle(tr("Change Opacity"));
         setWindowModality(Qt::WindowModal);
-        setFixedWidth(280);
+        constexpr int kdialogWidth = 280;
+        setFixedWidth(kdialogWidth);
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -1065,15 +1086,12 @@ public:
         const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
-        auto* shadow = new QGraphicsDropShadowEffect(this);
-        shadow->setBlurRadius(24);
-        shadow->setOffset(0, 4);
-        shadow->setColor(QColor(0, 0, 0, 150));
-        setGraphicsEffect(shadow);
+        familiar::dialog_style::apply_dialog_shadow(this);
 
         auto* outer = new QVBoxLayout(this);
-        outer->setContentsMargins(20, 14, 20, 16);
-        outer->setSpacing(14);
+        familiar::dialog_style::apply_dialog_margins(outer);
+        constexpr int kouterSpacing = 14;
+        outer->setSpacing(kouterSpacing);
 
         auto* topRow = new QHBoxLayout();
         auto* titleLabel = new QLabel(tr("Change Opacity"), this);
@@ -1083,11 +1101,9 @@ public:
         titleLabel->setFont(titleFont);
         topRow->addWidget(titleLabel, 1);
 
-        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-        closeBtn->setFixedSize(22, 22);
-        closeBtn->setCursor(Qt::PointingHandCursor);
-        closeBtn->setFocusPolicy(Qt::NoFocus);
-        closeBtn->setObjectName(QStringLiteral("changeOpacityCloseBtn"));
+        auto* closeBtn = familiar::dialog_style::make_close_button(
+            this,
+            "changeOpacityCloseBtn");
         connect(closeBtn,
                 &QPushButton::clicked,
                 this,
@@ -1100,7 +1116,8 @@ public:
 
 
         input_->setObjectName(QStringLiteral("changeOpacitySlider"));
-        input_->setRange(0, 100);
+        input_->setRange(dialog_consts::kpercentMin,
+                         dialog_consts::kpercentMax);
         connect(input_,
                 &QSlider::valueChanged,
                 this,
@@ -1206,7 +1223,9 @@ protected:
     void resizeEvent(QResizeEvent* event) override
     {
         QDialog::resizeEvent(event);
-        familiar::dialog_style::apply_rounded_mask(this, 10);
+        familiar::dialog_style::apply_rounded_mask(
+            this,
+            familiar::dialog_style::kdialogCornerRadius);
     }
 
 private slots:
@@ -1254,9 +1273,11 @@ public:
 
         show();
         const int x = (parent->width() - width()) / 2;
-        move(x, 10);
+        move(x, dialog_consts::ktoastTopMargin);
 
-        QTimer::singleShot(1000 * 3, this, &QObject::deleteLater);
+        QTimer::singleShot(dialog_consts::ktoastLifetimeMs,
+                           this,
+                           &QObject::deleteLater);
     }
 };
 
@@ -1325,7 +1346,8 @@ public:
         setAttribute(Qt::WA_TranslucentBackground, false);
         setAttribute(Qt::WA_StyledBackground);
         setWindowModality(Qt::ApplicationModal);
-        setFixedWidth(380);
+        constexpr int kdialogWidth = 380;
+        setFixedWidth(kdialogWidth);
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -1335,15 +1357,12 @@ public:
         const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
-        auto* shadow = new QGraphicsDropShadowEffect(this);
-        shadow->setBlurRadius(24);
-        shadow->setOffset(0, 4);
-        shadow->setColor(QColor(0, 0, 0, 150));
-        setGraphicsEffect(shadow);
+        familiar::dialog_style::apply_dialog_shadow(this);
 
         auto* outer = new QVBoxLayout(this);
-        outer->setContentsMargins(20, 14, 20, 16);
-        outer->setSpacing(12);
+        familiar::dialog_style::apply_dialog_margins(outer);
+        constexpr int kouterSpacing = 12;
+        outer->setSpacing(kouterSpacing);
 
         auto* topRow = new QHBoxLayout();
         auto* titleLabel = new QLabel(tr("File Exists"), this);
@@ -1353,11 +1372,9 @@ public:
         titleLabel->setFont(titleFont);
         topRow->addWidget(titleLabel, 1);
 
-        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-        closeBtn->setFixedSize(22, 22);
-        closeBtn->setCursor(Qt::PointingHandCursor);
-        closeBtn->setFocusPolicy(Qt::NoFocus);
-        closeBtn->setObjectName(QStringLiteral("exportExistsCloseBtn"));
+        auto* closeBtn = familiar::dialog_style::make_close_button(
+            this,
+            "exportExistsCloseBtn");
         connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
@@ -1450,7 +1467,9 @@ protected:
     void resizeEvent(QResizeEvent* event) override
     {
         QDialog::resizeEvent(event);
-        familiar::dialog_style::apply_rounded_mask(this, 10);
+        familiar::dialog_style::apply_rounded_mask(
+            this,
+            familiar::dialog_style::kdialogCornerRadius);
     }
 
 private:

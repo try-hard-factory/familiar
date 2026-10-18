@@ -5,10 +5,18 @@
 #include <QPixmap>
 #include <QString>
 
+class QLayout;
 class QPushButton;
 class QWidget;
 
 namespace familiar::dialog_style {
+
+// The rounded-panel radius every custom dialog uses, both for the QSS
+// border-radius (panel_style_sheet()'s default below) and for the real
+// setMask() shape (apply_rounded_mask()). One value so the painted
+// corner and the clipped corner can't drift apart. Smaller widgets that
+// are not dialogs - a combo box popup, say - pass their own.
+constexpr int kdialogCornerRadius = 10;
 
 // OPAQUE preset-colored panel QSS for a top-level, frameless,
 // WA_StyledBackground dialog - `className` must be the dialog's own
@@ -29,7 +37,7 @@ QString panel_style_sheet(const char* className,
                           const QColor& background,
                           const QColor& border,
                           const QColor& text,
-                          int radiusPx = 10);
+                          int radiusPx = kdialogCornerRadius);
 
 // Accent-filled pill button - the single "primary" action in a dialog
 // (rightmost/most prominent by this app's convention).
@@ -83,5 +91,35 @@ QPixmap severity_icon(QMessageBox::Icon icon, const QColor& accent, qreal dpr);
 // tracks its actual size (word-wrap/content can change it after
 // construction).
 void apply_rounded_mask(QWidget* widget, int radiusPx);
+
+// The drop shadow every frameless custom dialog puts behind itself. Was
+// copy-pasted into 14 of them verbatim (and three toolbars with their own
+// slightly tighter numbers), which meant changing how dialogs cast a
+// shadow touched 17 files and 51 literals. Two variants because that is
+// how many the UI actually has, not as a style knob: a dialog sits on top
+// of the whole window and casts further, a floating toolbar hugs the
+// canvas and casts less.
+void apply_dialog_shadow(QWidget* widget);
+void apply_toolbar_shadow(QWidget* widget);
+
+// The "x" button in the top-right corner of every frameless custom
+// dialog: fixed square, hand cursor, no focus stop. Was five identical
+// lines in 13 places. `objectName` stays a parameter because each dialog
+// passes its own to close_button_style_sheet() above - the QSS is a type
+// selector on that name, so they must not collide. The caller still wires
+// up clicked() itself: some close(), some reject().
+QPushButton* make_close_button(QWidget* parent, const char* objectName);
+
+// Inner padding for the standard custom dialog, on its top-level layout.
+// Four dialogs (message_box, save_all, raw_import, restore_defaults) used
+// to pass (20, 16, 16, 16) here - 20 on the left against 16 on the right,
+// which pushed their content 4px off centre. Every other dialog in the
+// project is left/right symmetric, so that was one typo copy-pasted four
+// times rather than a deliberate look; they now share this.
+//
+// NOT for every dialog: about/help run wider (more text), color_picker
+// and file_browser tighter (dense tool dialogs), hierarchy_panel is a
+// panel rather than a dialog. Those keep their own values on purpose.
+void apply_dialog_margins(QLayout* outer);
 
 } // namespace familiar::dialog_style

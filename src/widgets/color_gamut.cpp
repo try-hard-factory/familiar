@@ -8,6 +8,23 @@
 #include <algorithm>
 #include <cmath>
 
+namespace {
+
+// The wheel is drawn at full value - only hue and saturation vary across
+// it, so brightness is pinned to the top of the 0-255 range.
+constexpr int kfullValue = 255;
+// Radius of one plotted sample.
+constexpr int ksampleRadius = 3;
+// Default "how many pixels of a hue before it counts" threshold, and the
+// upper bound of the spin box that edits it.
+constexpr int kdefaultThreshold = 20;
+constexpr int kmaxThreshold = 500;
+// Where the "counting" placeholder text sits while the thread works.
+constexpr int kplaceholderX = 10;
+constexpr int kplaceholderY = 20;
+
+} // namespace
+
 // GamutPainterThread
 // TODOLATER:
 GamutPainterThread::GamutPainterThread(GamutWidget* parent, PixmapItem* item)
@@ -41,9 +58,9 @@ void GamutPainterThread::run()
         const int x = int(std::sin(angle) * hypotenuse) + center.x();
         const int y = int(std::cos(angle) * hypotenuse) + center.y();
         QColor color;
-        color.setHsv(hue, saturation, 255);
+        color.setHsv(hue, saturation, kfullValue);
         painter.setBrush(QBrush(color));
-        painter.drawEllipse(QPoint(x, y), 3, 3);
+        painter.drawEllipse(QPoint(x, y), ksampleRadius, ksampleRadius);
     }
 
     emit image_ready(image);
@@ -67,7 +84,7 @@ GamutWidget::GamutWidget(QWidget* parent, PixmapItem* item)
 int GamutWidget::threshold() const
 {
     auto* dialog = qobject_cast<GamutDialog*>(parentWidget());
-    return dialog ? dialog->threshold() : 20;
+    return dialog ? dialog->threshold() : kdefaultThreshold;
 }
 
 void GamutWidget::update_values()
@@ -94,7 +111,9 @@ void GamutWidget::paintEvent(QPaintEvent*)
         const double y = std::max((height() - size) / 2.0, 0.0);
         painter.drawImage(QRectF(x, y, size, size), mImage_);
     } else {
-        painter.drawText(10, 20, "Counting pixels...");
+        painter.drawText(kplaceholderX,
+                         kplaceholderY,
+                         "Counting pixels...");
     }
 }
 
@@ -121,8 +140,8 @@ GamutDialog::GamutDialog(QWidget* parent, PixmapItem* item)
     controlsLayout->addWidget(new QLabel("Threshold:", this));
 
 
-    mThresholdInput_->setRange(0, 500);
-    mThresholdInput_->setValue(20);
+    mThresholdInput_->setRange(0, kmaxThreshold);
+    mThresholdInput_->setValue(kdefaultThreshold);
     mThresholdInput_->setTracking(false);
     connect(mThresholdInput_,
             &QSlider::valueChanged,

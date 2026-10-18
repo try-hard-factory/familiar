@@ -6,10 +6,10 @@
 
 #include <QFont>
 #include <QFrame>
-#include <QGraphicsDropShadowEffect>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMargins>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QVBoxLayout>
@@ -18,6 +18,19 @@
 #include "utils/utils.h"
 
 namespace {
+
+// Wide enough for the longest gesture description without wrapping.
+constexpr int kdialogWidth = 400;
+// Secondary text ("Esc to close" and friends) is dimmed rather than given
+// its own preset colour.
+constexpr int kdimTextAlpha = 180;
+constexpr int kouterSpacing = 10;
+// The shortcut grid: generous horizontal gap between action and gesture,
+// tight vertical one so rows read as a list.
+constexpr int kgridHorizontalSpacing = 18;
+constexpr int kgridVerticalSpacing = 6;
+// Gap before the closing hint at the bottom.
+constexpr int kfooterSpacing = 8;
 
 struct ControlRow
 {
@@ -91,13 +104,9 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Help"));
-    setFixedWidth(400);
+    setFixedWidth(kdialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -106,17 +115,18 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
     const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
     QColor dimText = textColor;
-    dimText.setAlpha(180);
+    dimText.setAlpha(kdimTextAlpha);
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(22, 14, 22, 20);
-    outer->setSpacing(10);
+    // Wider than apply_dialog_margins() on purpose - this dialog is wall-to-
+    // wall text and needs the breathing room.
+    constexpr QMargins kouterMargins{22, 14, 22, 20};
+    outer->setContentsMargins(kouterMargins);
+    outer->setSpacing(kouterSpacing);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("hdCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "hdCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &HelpDialog::close);
 
     QFont headingFont = font();
@@ -146,9 +156,10 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
                                       "border-radius: 6px; }")
                            .arg(border.name()));
     auto* grid = new QGridLayout(box);
-    grid->setContentsMargins(14, 10, 14, 10);
-    grid->setHorizontalSpacing(18);
-    grid->setVerticalSpacing(6);
+    constexpr QMargins kgridMargins{14, 10, 14, 10};
+    grid->setContentsMargins(kgridMargins);
+    grid->setHorizontalSpacing(kgridHorizontalSpacing);
+    grid->setVerticalSpacing(kgridVerticalSpacing);
     int row = 0;
     for (const ControlRow& item : default_control_rows()) {
         auto* actionLabel = new QLabel(item.action, box);
@@ -191,7 +202,7 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
 
     outer->addWidget(supportLabel);
 
-    outer->addSpacing(8);
+    outer->addSpacing(kfooterSpacing);
 
     auto* aboutLabel = make_inline_link_paragraph(QString(),
                                                   tr("About Familiar"),

@@ -2,6 +2,14 @@
 
 namespace familiar::settings_style {
 
+namespace {
+
+// How far a chip's border is darkened against its own background. Same
+// value FlatSpinBox gets handed in widgets/setting_row.cpp.
+constexpr int kborderDarkenPercent = 112;
+
+} // namespace
+
 const Palette& palette()
 {
     static const Palette p{
@@ -155,7 +163,7 @@ QString root_style_sheet()
              p.accent.name(),
              p.navSelectedBg.name(),
              p.chipBackground.name(),
-             p.chipBackground.darker(112).name(),
+             p.chipBackground.darker(kborderDarkenPercent).name(),
              p.popupBackground.name(),
              p.popupItemHover.name());
 }
@@ -194,7 +202,7 @@ QString shortcut_chip_style_sheet()
         .arg(p.chipBackground.name(),
              p.border.name(),
              p.text.name(),
-             p.chipBackground.darker(112).name());
+             p.chipBackground.darker(kborderDarkenPercent).name());
 }
 
 QString mini_button_style_sheet()
@@ -220,7 +228,7 @@ QString mini_button_style_sheet()
         .arg(p.chipBackground.name(),
              p.border.name(),
              p.text.name(),
-             p.chipBackground.darker(112).name());
+             p.chipBackground.darker(kborderDarkenPercent).name());
 }
 
 QString outline_button_style_sheet()

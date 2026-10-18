@@ -3,11 +3,12 @@
 
 #include <core/settingshandler.h>
 
+#include <QColor>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
+#include <QPixmap>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QWindow>
@@ -15,6 +16,14 @@
 namespace {
 
 constexpr int kiconSize = 40;
+
+// Width band: wide enough for a file path, capped so a long one wraps
+// instead of stretching the dialog across the screen.
+constexpr int kminDialogWidth = 340;
+constexpr int kmaxDialogWidth = 460;
+constexpr int kouterSpacing = 14;
+constexpr int ktopRowSpacing = 12;
+constexpr int kbuttonRowSpacing = 8;
 
 QString button_label(QMessageBox::StandardButton id)
 {
@@ -57,14 +66,10 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(title);
-    setMinimumWidth(340);
-    setMaximumWidth(460);
+    setMinimumWidth(kminDialogWidth);
+    setMaximumWidth(kmaxDialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -74,11 +79,11 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(20, 16, 16, 16);
-    outer->setSpacing(14);
+    familiar::dialog_style::apply_dialog_margins(outer);
+    outer->setSpacing(kouterSpacing);
 
     auto* topRow = new QHBoxLayout();
-    topRow->setSpacing(12);
+    topRow->setSpacing(ktopRowSpacing);
 
 
     iconLabel_->setFixedSize(kiconSize, kiconSize);
@@ -103,18 +108,16 @@ CustomMessageBox::CustomMessageBox(QMessageBox::Icon icon,
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("cmbCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "cmbCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &CustomMessageBox::reject);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 
     outer->addLayout(topRow);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
     buttonRow->addStretch();
 
     // Fixed rendering priority (left to right) - whichever of these are

@@ -10,6 +10,13 @@
 #include "log/log.h"
 using namespace familiar::log;
 
+namespace {
+
+// Margin around the exported scene, as a fraction of its larger side.
+constexpr qreal kmarginRatio = 0.03;
+
+} // namespace
+
 #include <QDir>
 #include <QFile>
 #include <QFont>
@@ -70,7 +77,8 @@ SceneExporterBase::SceneExporterBase(CanvasScene* scene)
 
     const QRectF rect = scene_->itemsBoundingRect();
     const QSize contentSize(qRound(rect.width()), qRound(rect.height()));
-    margin_ = std::max(contentSize.width(), contentSize.height()) * 0.03;
+    margin_ = std::max(contentSize.width(), contentSize.height())
+              * kmarginRatio;
     const int marginInt = qRound(margin_);
     defaultSize_ = contentSize.grownBy(
         QMargins(marginInt, marginInt, marginInt, marginInt));
@@ -121,7 +129,10 @@ void SceneToPixmapExporter::export_to(const QString& filename,
         return;
     }
 
-    if (!image.save(filename, nullptr, 90)) {
+    // item_consts::kjpegQuality (moveitem.h) - the same quality a picture is
+    // stored at inside a .fml, so an export does not look different
+    // from what the project already holds.
+    if (!image.save(filename, nullptr, item_consts::kjpegQuality)) {
         emit_finished(worker, filename, {QStringLiteral("Error writing file")});
         return;
     }

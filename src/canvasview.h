@@ -359,7 +359,7 @@ private:
 
     QColor canvasColor_;
     QColor borderColor_;
-    int currentOpacity_ = 255;
+    int currentOpacity_ = kfullOpacity;
 
     // State for the in-flight do_insert_images() operation, read by
     // on_items_loaded()/on_insert_images_finished(). Assumes at most one

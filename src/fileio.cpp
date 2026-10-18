@@ -20,6 +20,16 @@
 #include <cstddef>
 #include <optional>
 
+namespace {
+
+// LibRaw hands back 8 bits per channel for the bitmap we ask for; anything
+// else is a format this code does not know how to wrap in a QImage.
+constexpr int kexpectedBitsPerChannel = 8;
+// Poll interval while waiting for the RAW-import dialog's answer.
+constexpr int krawChoicePollMs = 10;
+
+} // namespace
+
 #include <libraw/libraw.h>
 
 #include "log/log.h"
@@ -171,7 +181,7 @@ QImage decode_raw_via_demosaic(const QString& filename,
     }
     QImage result;
     if (image->type == LIBRAW_IMAGE_BITMAP && image->colors == 3
-        && image->bits == 8) {
+        && image->bits == kexpectedBitsPerChannel) {
         result = QImage(image->data,
                         image->width,
                         image->height,
@@ -709,7 +719,7 @@ void ImageImportSession::run(ThreadedIO* worker)
         itemData[QStringLiteral("y")] = topLeft.y();
         scene_->add_item_later(itemData, true);
 
-        ThreadedIO::sleep_ms(10);
+        ThreadedIO::sleep_ms(krawChoicePollMs);
     }
 
     delete netManager;

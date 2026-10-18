@@ -312,7 +312,13 @@ public:
     // the selection would vanish right as content faded out completely.
     // One 8-bit alpha step is visually indistinguishable from fully
     // transparent, so this costs nothing.
-    void set_opacity(qreal opacity) { opacity_ = qMax(opacity, 1.0 / 255.0); }
+    void set_opacity(qreal opacity)
+    {
+        // Never fully transparent: an item at alpha 0 cannot be clicked to
+        // be brought back, so one byte-step of alpha is the floor.
+        static constexpr qreal kminOpacity = 1.0 / 255.0;
+        opacity_ = qMax(opacity, kminOpacity);
+    }
     void set_ignore_first_redo(bool value) { ignoreFirstRedo_ = value; }
 
 private:

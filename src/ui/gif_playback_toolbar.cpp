@@ -1,12 +1,13 @@
 #include "gif_playback_toolbar.h"
+#include "widgets/dialog_style.h"
 
 #include <array>
 
 #include <core/settingshandler.h>
 #include <moveitem.h>
 
-#include <QGraphicsDropShadowEffect>
 #include <QGridLayout>
+#include <QMargins>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QMovie>
@@ -23,6 +24,33 @@ constexpr int kbuttonSize = 30;
 constexpr int kiconSize = 18;
 constexpr int kthumbSize = 48;
 
+// Every glyph on this bar is drawn inside a kiconSize square with the same
+// inset from the edges, so prev/play/next/pause line up optically.
+constexpr qreal kglyphInsetX = 4;
+constexpr qreal kglyphInsetY = 3;
+// The step glyphs (prev/next) are a triangle plus a thin bar against one
+// edge, so their triangle sits one pixel further in to leave room.
+constexpr qreal kstepTriangleInset = 5;
+constexpr qreal kstepTriangleTip = 7;
+constexpr qreal kstepBarWidth = 2;
+// Pause: two bars of this width, inset from either edge.
+constexpr qreal kpauseBarWidth = 4;
+// Filmstrip: three outlined cells across, with a gap between them.
+constexpr qreal kfilmstripStroke = 1.6;
+constexpr int kfilmstripCells = 3;
+constexpr qreal kfilmstripInset = 3;
+constexpr qreal kfilmstripTop = 4;
+constexpr qreal kfilmstripGap = 2;
+
+// Alphas for the popup's own QSS - panel, hover, pressed.
+// Layout of the bar itself.
+constexpr int kouterSpacing = 6;
+constexpr int kspeedLabelPadding = 16;
+
+constexpr int kpopupBgAlpha = 245;
+constexpr int khoverAlpha = 90;
+constexpr int kpressedAlpha = 170;
+
 // Simple filled triangle - reused (mirrored/rotated) for prev/play/next,
 // same drawn-icon approach as ui/text_edit_toolbar.cpp's makeListIcon()
 // etc: a small, theme-colored glyph that doesn't need an external asset.
@@ -37,14 +65,17 @@ QIcon make_triangle_icon(const QColor& glyphColor, qreal dpr, bool pointLeft)
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
 
+    const qreal iconMidY = kiconSize / 2.0;
+    const qreal farX = kiconSize - kglyphInsetX;
+    const qreal lowY = kiconSize - kglyphInsetY;
+
     QPolygonF tri;
     if (pointLeft) {
-        tri << QPointF(kiconSize - 4, 3)
-            << QPointF(kiconSize - 4, kiconSize - 3)
-            << QPointF(4, kiconSize / 2.0);
+        tri << QPointF(farX, kglyphInsetY) << QPointF(farX, lowY)
+            << QPointF(kglyphInsetX, iconMidY);
     } else {
-        tri << QPointF(4, 3) << QPointF(4, kiconSize - 3)
-            << QPointF(kiconSize - 4, kiconSize / 2.0);
+        tri << QPointF(kglyphInsetX, kglyphInsetY)
+            << QPointF(kglyphInsetX, lowY) << QPointF(farX, iconMidY);
     }
     p.drawPolygon(tri);
 
@@ -67,17 +98,28 @@ QIcon make_step_icon(const QColor& glyphColor, qreal dpr, bool prev)
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
 
+    const qreal iconMidY = kiconSize / 2.0;
+    const qreal glyphHeight = kiconSize - (2 * kglyphInsetY);
+
     QPolygonF tri;
     QRectF bar;
     if (prev) {
-        tri << QPointF(kiconSize - 5, 3)
-            << QPointF(kiconSize - 5, kiconSize - 3)
-            << QPointF(7, kiconSize / 2.0);
-        bar = QRectF(3, 3, 2, kiconSize - 6);
+        const qreal baseX = kiconSize - kstepTriangleInset;
+        tri << QPointF(baseX, kglyphInsetY)
+            << QPointF(baseX, kiconSize - kglyphInsetY)
+            << QPointF(kstepTriangleTip, iconMidY);
+        bar = QRectF(kfilmstripInset,
+                     kglyphInsetY,
+                     kstepBarWidth,
+                     glyphHeight);
     } else {
-        tri << QPointF(5, 3) << QPointF(5, kiconSize - 3)
-            << QPointF(kiconSize - 7, kiconSize / 2.0);
-        bar = QRectF(kiconSize - 5, 3, 2, kiconSize - 6);
+        tri << QPointF(kstepTriangleInset, kglyphInsetY)
+            << QPointF(kstepTriangleInset, kiconSize - kglyphInsetY)
+            << QPointF(kiconSize - kstepTriangleTip, iconMidY);
+        bar = QRectF(kiconSize - kstepTriangleInset,
+                     kglyphInsetY,
+                     kstepBarWidth,
+                     glyphHeight);
     }
     p.drawPolygon(tri);
     p.drawRect(bar);
@@ -98,8 +140,12 @@ QIcon make_pause_icon(const QColor& glyphColor, qreal dpr)
     p.setRenderHint(QPainter::Antialiasing);
     p.setPen(Qt::NoPen);
     p.setBrush(glyphColor);
-    p.drawRect(QRectF(4, 3, 4, kiconSize - 6));
-    p.drawRect(QRectF(kiconSize - 8, 3, 4, kiconSize - 6));
+    const qreal barHeight = kiconSize - (2 * kglyphInsetY);
+    p.drawRect(QRectF(kglyphInsetX, kglyphInsetY, kpauseBarWidth, barHeight));
+    p.drawRect(QRectF(kiconSize - kglyphInsetX - kpauseBarWidth,
+                      kglyphInsetY,
+                      kpauseBarWidth,
+                      barHeight));
 
     p.end();
     QIcon icon;
@@ -117,13 +163,17 @@ QIcon make_filmstrip_icon(const QColor& glyphColor, qreal dpr)
     QPainter p(&pm);
     p.setRenderHint(QPainter::Antialiasing);
     QPen pen(glyphColor);
-    pen.setWidthF(1.6);
+    pen.setWidthF(kfilmstripStroke);
     p.setPen(pen);
     p.setBrush(Qt::NoBrush);
 
-    const qreal w = (kiconSize - 6) / 3.0;
-    for (int i = 0; i < 3; ++i) {
-        p.drawRect(QRectF(3 + (i * w), 4, w - 2, kiconSize - 8));
+    const qreal cellW = (kiconSize - (2 * kfilmstripInset)) / qreal(kfilmstripCells);
+    const qreal cellH = kiconSize - (2 * kfilmstripTop);
+    for (int i = 0; i < kfilmstripCells; ++i) {
+        p.drawRect(QRectF(kfilmstripInset + (i * cellW),
+                          kfilmstripTop,
+                          cellW - kfilmstripGap,
+                          cellH));
     }
 
     p.end();
@@ -143,20 +193,17 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
 {
     setAttribute(Qt::WA_StyledBackground);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(18);
-    shadow->setOffset(0, 3);
-    shadow->setColor(QColor(0, 0, 0, 140));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_toolbar_shadow(this);
 
 
     outerLay_->setContentsMargins(0, 0, 0, 0);
-    outerLay_->setSpacing(6);
+    outerLay_->setSpacing(kouterSpacing);
 
 
     auto* row = controlsRow_;
     auto* lay = new QHBoxLayout(row);
-    lay->setContentsMargins(8, 5, 8, 5);
+    constexpr QMargins kbarMargins{8, 5, 8, 5};
+    lay->setContentsMargins(kbarMargins);
     lay->setSpacing(2);
 
     auto makeButton = [row, lay](const QString& tooltip, bool checkable) {
@@ -177,7 +224,7 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     // matching the row.
     speedBtn_->setFixedSize(speedBtn_->fontMetrics().horizontalAdvance(
                                 QStringLiteral("x0.25"))
-                                + 16,
+                                + kspeedLabelPadding,
                             kbuttonSize);
     speedBtn_->setText(QStringLiteral("x1"));
 
@@ -202,7 +249,8 @@ GifPlaybackToolbar::GifPlaybackToolbar(QWidget* parent)
     outerLay_->addWidget(row, 0, Qt::AlignLeft);
 
 
-    filmstripLay_->setContentsMargins(6, 4, 6, 6);
+    constexpr QMargins kfilmstripMargins{6, 4, 6, 6};
+    filmstripLay_->setContentsMargins(kfilmstripMargins);
     filmstripLay_->setSpacing(4);
     filmstrip_->hide();
     outerLay_->addWidget(filmstrip_);
@@ -341,7 +389,8 @@ void GifPlaybackToolbar::show_speed_popup()
             .arg(selection.blue()));
 
     auto* grid = new QGridLayout(popup);
-    grid->setContentsMargins(6, 6, 6, 6);
+    constexpr QMargins kspeedGridMargins{6, 6, 6, 6};
+    grid->setContentsMargins(kspeedGridMargins);
     grid->setSpacing(2);
 
     constexpr std::array<int, 8> kspeedPercents
@@ -476,11 +525,11 @@ void GifPlaybackToolbar::restyle_from_preset()
                                  "  color: %3;"
                                  "  border: 1px solid %2;"
                                  "}")
-                      .arg(rgba(background, 245),
+                      .arg(rgba(background, kpopupBgAlpha),
                            border.name(),
                            text.name(),
-                           rgba(selection, 90),
-                           rgba(selection, 170),
+                           rgba(selection, khoverAlpha),
+                           rgba(selection, kpressedAlpha),
                            background.name()));
 
     const qreal dpr = devicePixelRatioF();

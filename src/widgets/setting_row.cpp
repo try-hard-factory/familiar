@@ -8,6 +8,7 @@
 #include <widgets/settings_style.h>
 
 #include <QGraphicsDropShadowEffect>
+#include <QMargins>
 #include <QMouseEvent>
 #include <QScreen>
 #include <QVBoxLayout>
@@ -19,6 +20,20 @@ constexpr char kchangedSymbol[] = "✎";
 
 constexpr int kcontrolWidth = 200;
 constexpr int kinfoPopupWidth = 320;
+
+// Rows are laid out tighter than a dialog - several stack vertically.
+constexpr int krowSpacing = 8;
+// How far the spin box's border is darkened against its own background.
+constexpr int kborderDarkenPercent = 112;
+// Upper bounds come from core/settings.h, NOT from local copies: the same
+// numbers are what that file's validate() lambdas check against, and the
+// two must not drift.
+using setting_limits::kmaxArrangeGap;
+using setting_limits::kmaxAutosaveIntervalSeconds;
+using setting_limits::kmaxImageSizeMb;
+using setting_limits::kmaxUndoHistory;
+// The in-row checkbox, matching FlatCheckBox's own minimum height.
+constexpr int kcheckboxSide = 22;
 } // namespace
 
 // ─── SettingInfoPopup ───────────────────────────────────────────────────────
@@ -62,15 +77,22 @@ SettingInfoPopup::SettingInfoPopup(QWidget* parent)
                        "QLabel { background: transparent; color: %3; }")
             .arg(sp.background.name(), sp.border.name(), sp.text.name()));
 
+    // Its own, lighter alpha - NOT dialog_style::apply_dialog_shadow()'s
+    // 150. This popup floats over the settings list rather than over the
+    // whole window, and 150 reads as too heavy there.
+    constexpr int kshadowBlurRadius = 24;
+    constexpr int kshadowYOffset = 4;
+    constexpr int kshadowAlpha = 110;
     auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 110));
+    shadow->setBlurRadius(kshadowBlurRadius);
+    shadow->setOffset(0, kshadowYOffset);
+    shadow->setColor(QColor(0, 0, 0, kshadowAlpha));
     setGraphicsEffect(shadow);
 
     auto* layout = new QVBoxLayout(this);
-    layout->setContentsMargins(16, 12, 16, 10);
-    layout->setSpacing(8);
+    constexpr QMargins kpopupMargins{16, 12, 16, 10};
+    layout->setContentsMargins(kpopupMargins);
+    layout->setSpacing(krowSpacing);
 
 
     QFont titleFont = titleLabel_->font();
@@ -366,7 +388,7 @@ CheckboxSettingRow::CheckboxSettingRow(const QString& label,
     // does apparently doesn't cope with zero-length text the way it
     // does with save_all_dialog.cpp's FlatCheckBox usage (always has a
     // real filename). Pin an explicit size instead of trusting it.
-    input_->setFixedSize(22, 22);
+    input_->setFixedSize(kcheckboxSide, kcheckboxSide);
 
     set_value(FamSettings::value_or_default(settings_key()));
     hbox()->addWidget(input_);
@@ -430,7 +452,7 @@ IntegerSettingRow::IntegerSettingRow(
         const auto& sp = familiar::settings_style::palette();
         return new FlatSpinBox(sp.chipBackground,
                                sp.text,
-                               sp.chipBackground.darker(112),
+                               sp.chipBackground.darker(kborderDarkenPercent),
                                this);
     }())
 {
@@ -463,7 +485,7 @@ UndoHistorySizeRow::UndoHistorySizeRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Undo History Size"),
                         QStringLiteral("Items/undo_history_size"),
                         0,
-                        10000,
+                        kmaxUndoHistory,
                         parent)
 {}
 
@@ -505,7 +527,7 @@ AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Autosave Interval (seconds)"),
                         QStringLiteral("Save/autosave_interval_seconds"),
                         1,
-                        3600,
+                        kmaxAutosaveIntervalSeconds,
                         parent)
 {}
 
@@ -515,7 +537,7 @@ ArrangeGapRow::ArrangeGapRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Arrange Gap"),
                         QStringLiteral("Items/arrange_gap"),
                         0,
-                        200,
+                        kmaxArrangeGap,
                         parent)
 {}
 
@@ -523,7 +545,7 @@ MaximumImageSizeRow::MaximumImageSizeRow(QWidget* parent)
     : IntegerSettingRow(QStringLiteral("Maximum Image Size (MB)"),
                         QStringLiteral("Items/image_allocation_limit"),
                         0,
-                        1024,
+                        kmaxImageSizeMb,
                         parent)
 {}
 

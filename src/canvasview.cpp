@@ -37,6 +37,31 @@
 #include "log/log.h"
 using namespace familiar::log;
 
+namespace {
+
+// One wheel notch: QWheelEvent::angleDelta().y() is 120 per detent, and
+// the zoom actions deliberately step by the same amount so Ctrl+= and
+// scrolling to zoom move the view identically.
+constexpr double kwheelNotch = 120.0;
+// Wheel panning moves half a pixel per angle unit - a whole notch of
+// scroll shifts the canvas by kwheelNotch/2 pixels.
+constexpr double kpanPerAngleUnit = 0.5;
+// Drag-to-zoom: pointer travel in pixels times this becomes a zoom delta
+// in the same units as kwheelNotch.
+constexpr double kdragZoomPerPixel = 20.0;
+
+// Zoom clamp, measured on the items' own bounding box in view pixels: stop
+// zooming in once the content is this huge, and out once it is this tiny.
+constexpr double kmaxContentExtent = 10000000.0;
+constexpr double kminContentExtent = 10.0;
+
+// Selection outline fade when the window loses focus.
+constexpr int kselectionFadeMs = 600;
+// Gap between a floating toolbar and the item it belongs to.
+constexpr int ktoolbarGap = 8;
+
+} // namespace
+
 
 CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     : //MainControlsMixin<CanvasView, QGraphicsView>()
@@ -153,7 +178,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
 
     selectionFadeAnim_->setStartValue(1.0);
     selectionFadeAnim_->setEndValue(0.0);
-    selectionFadeAnim_->setDuration(600);
+    selectionFadeAnim_->setDuration(kselectionFadeMs);
     connect(selectionFadeAnim_,
             &QVariantAnimation::valueChanged,
             this,
@@ -359,8 +384,10 @@ QPointF CanvasView::get_view_center() const
     // Explicit QPointF(...), not a braced list: qRound() yields int, and
     // int -> qreal inside a braced-init-list is a narrowing conversion,
     // which is an error there (a constructor call allows it).
+    const qreal halfWidth = size().width() / 2.0;
+    const qreal halfHeight = size().height() / 2.0;
     // NOLINTNEXTLINE(modernize-return-braced-init-list)
-    return QPointF(qRound(size().width() / 2.0), qRound(size().height() / 2.0));
+    return QPointF(qRound(halfWidth), qRound(halfHeight));
 }
 
 void CanvasView::recalc_scene_rect()
@@ -454,7 +481,7 @@ void CanvasView::update_text_toolbar_pos()
     const QRectF itemRect = textToolbar_->item()->sceneBoundingRect();
     const QPoint top = mapFromScene(itemRect.topLeft());
     int x = top.x();
-    int y = top.y() - textToolbar_->height() - 8;
+    int y = top.y() - textToolbar_->height() - ktoolbarGap;
     // Keep it inside the viewport; when the item is at the very top the
     // toolbar drops below the top edge (over the note) rather than
     // getting clipped away.
@@ -477,7 +504,7 @@ void CanvasView::update_gif_toolbar_pos()
     const int rightView = mapFromScene(itemRect.bottomRight()).x();
     const int itemCenterView = (leftView + rightView) / 2;
     int x = itemCenterView - (gifToolbar_->width() / 2);
-    int y = mapFromScene(itemRect.bottomLeft()).y() + 8;
+    int y = mapFromScene(itemRect.bottomLeft()).y() + ktoolbarGap;
     x = qBound(0, x, qMax(0, viewport()->width() - gifToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - gifToolbar_->height()));
     gifToolbar_->move(x, y);
@@ -506,7 +533,7 @@ void CanvasView::update_group_toolbar_pos()
     const int rightView = mapFromScene(itemRect.bottomRight()).x();
     const int itemCenterView = (leftView + rightView) / 2;
     int x = itemCenterView - (groupToolbar_->width() / 2);
-    int y = mapFromScene(itemRect.bottomLeft()).y() + 8;
+    int y = mapFromScene(itemRect.bottomLeft()).y() + ktoolbarGap;
     x = qBound(0, x, qMax(0, viewport()->width() - groupToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - groupToolbar_->height()));
     groupToolbar_->move(x, y);
@@ -548,7 +575,7 @@ void CanvasView::zoom(double delta, QPointF anchor)
     if (delta > 0) {
         if (!hasItems || get_zoom_size([](double w, double h) {
                              return std::max(w, h);
-                         }) < 10000000.0) {
+                         }) < kmaxContentExtent) {
             do_scale(factor, factor);
         } else {
             return;
@@ -556,7 +583,7 @@ void CanvasView::zoom(double delta, QPointF anchor)
     } else {
         if (!hasItems || get_zoom_size([](double w, double h) {
                              return std::min(w, h);
-                         }) > 10.0) {
+                         }) > kminContentExtent) {
             do_scale(1.0 / factor, 1.0 / factor);
         } else {
             return;
@@ -608,10 +635,10 @@ void CanvasView::wheelEvent(QWheelEvent* event)
     }
 
     if (match->group == QLatin1String("pan_horizontal")) {
-        pan(QPointF(0.0, 0.5 * delta));
+        pan(QPointF(0.0, kpanPerAngleUnit * delta));
         event->accept();
     } else if (match->group == QLatin1String("pan_vertical")) {
-        pan(QPointF(0.5 * delta, 0.0));
+        pan(QPointF(kpanPerAngleUnit * delta, 0.0));
         event->accept();
     }
 }
@@ -696,7 +723,7 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
             delta *= -1;
         }
         eventStart_ = pos;
-        zoom(delta * 20.0, eventAnchor_);
+        zoom(delta * kdragZoomPerPixel, eventAnchor_);
         event->accept();
         return;
     }
@@ -831,7 +858,7 @@ bool CanvasView::try_control_key_nudge(QKeyEvent* event)
         }
         for (const Binding& b : cfg.get_bindings()) {
             if (b.key_sequence() == pressed) {
-                zoom(120.0, get_view_center());
+                zoom(kwheelNotch, get_view_center());
                 return true;
             }
         }
@@ -842,13 +869,14 @@ bool CanvasView::try_control_key_nudge(QKeyEvent* event)
             if (b.key_sequence() != pressed) {
                 continue;
             }
-            const double delta = b.is_inverted() ? -120.0 : 120.0;
+            const double delta = b.is_inverted() ? -kwheelNotch
+                                                 : kwheelNotch;
             if (cfg.group() == QLatin1String("pan_horizontal")) {
-                pan(QPointF(0.0, 0.5 * delta));
+                pan(QPointF(0.0, kpanPerAngleUnit * delta));
                 return true;
             }
             if (cfg.group() == QLatin1String("pan_vertical")) {
-                pan(QPointF(0.5 * delta, 0.0));
+                pan(QPointF(kpanPerAngleUnit * delta, 0.0));
                 return true;
             }
         }
@@ -1470,14 +1498,12 @@ void CanvasView::on_action_fit_selection()
 
 void CanvasView::on_action_zoom_in()
 {
-    // 120 matches one wheelEvent() notch (angleDelta().y() == ±120) -
-    // same visible step size as scrolling to zoom.
-    zoom(120.0, get_view_center());
+    zoom(kwheelNotch, get_view_center());
 }
 
 void CanvasView::on_action_zoom_out()
 {
-    zoom(-120.0, get_view_center());
+    zoom(-kwheelNotch, get_view_center());
 }
 
 // ─── Insert actions ───────────────────────────────────────────────────────────
@@ -1541,9 +1567,10 @@ void CanvasView::on_action_insert_text()
                                             QList<QGraphicsItem*>{picture});
             const QRectF noteRect
                 = scene_->itemsBoundingRect(false, QList<QGraphicsItem*>{item});
+            const qreal noteHalfHeight = noteRect.height() / 2.0;
             pos = QPointF(pictureRect.center().x(),
                           pictureRect.top() - (knoteGap / get_scale())
-                              - (noteRect.height() / 2.0));
+                              - noteHalfHeight);
         } else if (auto* group = dynamic_cast<GroupItem*>(selected.first())) {
             targetGroup = group;
         }

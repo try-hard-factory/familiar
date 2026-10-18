@@ -17,6 +17,14 @@
 #include <functional>
 
 namespace {
+
+// An alias row is indented under its parent binding; a parent row is not.
+constexpr int kaliasIndent = 24;
+constexpr int krowSideMargin = 4;
+constexpr int krowVerticalMargin = 2;
+// Placeholder keeping the "remove" column aligned on rows that have no
+// remove button.
+constexpr int kremoveColumnWidth = 20;
 // Every shortcut chip gets at least this width, so the column of badges
 // lines up instead of each one shrink-wrapping its own text (QPushButton
 // centers its text by default, so short labels like "Ctrl+P" just end up
@@ -222,7 +230,10 @@ QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
                                  this)
                            : new QWidget(this);
     auto* layout = new QHBoxLayout(row);
-    layout->setContentsMargins(indent ? 24 : 4, 2, 4, 2);
+    layout->setContentsMargins(indent ? kaliasIndent : krowSideMargin,
+                               krowVerticalMargin,
+                               krowSideMargin,
+                               krowVerticalMargin);
 
     // Chevron only on a primary row that actually has aliases to
     // toggle - otherwise reserve the same width so labels still line up.
@@ -246,7 +257,7 @@ QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
         layout->addWidget(chevron);
     } else if (!indent) {
         auto* spacer = new QWidget(row);
-        spacer->setFixedWidth(20);
+        spacer->setFixedWidth(kremoveColumnWidth);
         layout->addWidget(spacer);
     }
 

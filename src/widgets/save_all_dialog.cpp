@@ -6,8 +6,8 @@
 #include <core/settingshandler.h>
 
 #include <QCheckBox>
+#include <QColor>
 #include <QFont>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
@@ -22,7 +22,20 @@ using namespace familiar::log;
 
 namespace {
 constexpr int kiconSize = 40;
-}
+
+// Width band: wide enough for a file path, capped so a long one wraps
+// instead of stretching the dialog across the screen.
+constexpr int kminDialogWidth = 380;
+constexpr int kmaxDialogWidth = 480;
+constexpr int kouterSpacing = 14;
+constexpr int ktopRowSpacing = 12;
+// The checkbox list itself - tighter, so entries read as one list.
+constexpr int klistSpacing = 6;
+constexpr int kbuttonRowSpacing = 8;
+// Caps the scroll area so a session with many modified tabs does not
+// produce a dialog taller than the screen.
+constexpr int kmaxListHeight = 220;
+} // namespace
 
 SaveAllDialog::SaveAllDialog(MainWindow* wm,
                              std::map<int, QString> items,
@@ -36,14 +49,10 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("Unsaved changes"));
-    setMinimumWidth(380);
-    setMaximumWidth(480);
+    setMinimumWidth(kminDialogWidth);
+    setMaximumWidth(kmaxDialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -53,11 +62,11 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(20, 16, 16, 16);
-    outer->setSpacing(14);
+    familiar::dialog_style::apply_dialog_margins(outer);
+    outer->setSpacing(kouterSpacing);
 
     auto* topRow = new QHBoxLayout();
-    topRow->setSpacing(12);
+    topRow->setSpacing(ktopRowSpacing);
 
     auto* iconLabel = new QLabel(this);
     iconLabel->setFixedSize(kiconSize, kiconSize);
@@ -84,11 +93,9 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("sadCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "sadCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &SaveAllDialog::close);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 
@@ -100,7 +107,7 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
-    scroll->setMaximumHeight(220);
+    scroll->setMaximumHeight(kmaxListHeight);
     scroll->setStyleSheet(QStringLiteral(
         "QScrollArea { background: transparent; }"
         "QScrollArea > QWidget > QWidget { background: transparent; }"));
@@ -108,7 +115,7 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     auto* listWidget = new QWidget(scroll);
     auto* listLayout = new QVBoxLayout(listWidget);
     listLayout->setContentsMargins(0, 0, 0, 0);
-    listLayout->setSpacing(6);
+    listLayout->setSpacing(klistSpacing);
 
     for (auto& [id, path] : items) {
         auto* checkbox = new FlatCheckBox(path.isEmpty() ? tr("Untitled") : path,
@@ -125,7 +132,7 @@ SaveAllDialog::SaveAllDialog(MainWindow* wm,
     outer->addWidget(scroll);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
 
     auto* closeWithoutSaveBtn = new QPushButton(tr("Close without saving"),
                                                 this);

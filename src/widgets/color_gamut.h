@@ -33,7 +33,9 @@ signals:
 
 private:
     PixmapItem* mItem_;
-    int mThreshold_ = 20;
+    // Same default the spin box starts at - see color_gamut.cpp.
+    static constexpr int kdefaultThreshold = 20;
+    int mThreshold_ = kdefaultThreshold;
 };
 
 
@@ -44,7 +46,13 @@ class GamutWidget : public QWidget
 public:
     GamutWidget(QWidget* parent, PixmapItem* item);
 
-    QSize minimumSizeHint() const override { return {200, 200}; }
+    QSize minimumSizeHint() const override
+    {
+        // Square: the wheel is drawn inside a square inscribed in
+        // whatever space this gets.
+        static constexpr int kminSide = 200;
+        return {kminSide, kminSide};
+    }
     void update_values();
     int threshold() const;
 

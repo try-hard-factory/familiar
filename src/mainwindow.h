@@ -463,7 +463,7 @@ private:
     // had it on independently before enabling transparent-to-mouse.
     bool forcedAlwaysOnTopForTransparency_ = false;
 
-    int currentOpacity_ = 255;
+    int currentOpacity_ = kfullOpacity;
     QColor backGroundColor_;
     QString rgbaBackGroundStr_;
 };

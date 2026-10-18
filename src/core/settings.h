@@ -82,6 +82,35 @@ private:
 
 // ─── FamSettings ─────────────────────────────────────────────────────────────
 
+// Upper bounds of the numeric settings. Declared here because they are
+// needed in TWO places that have to agree: the validate() lambdas in
+// core/settings.cpp's field table, and the spin-box ranges in
+// widgets/setting_row.cpp. They used to be separate literals in each -
+// had they ever drifted apart, the UI would have happily offered a value
+// its own validator then rejected, and value_or_default() would silently
+// hand back the default instead.
+//
+// Namespaced because this header is included widely and bare names like
+// kmaxArrangeGap would leak into every translation unit.
+namespace setting_limits {
+
+constexpr int kmaxArrangeGap = 200;
+constexpr int kmaxImageSizeMb = 1024;
+constexpr int kmaxAutosaveIntervalSeconds = 60 * 60;
+// No upper bound in the validator (see core/settings.cpp); this is only
+// what the spin box offers.
+constexpr int kmaxUndoHistory = 10000;
+
+// How many recent files are kept, and therefore how many entries the
+// Recent Files submenu builds. Same two-places problem as the bounds
+// above: FamSettings::update_recent_files() trims the stored list to this
+// length, and ActionsMixin::build_recent_files() (actions/action_mixin.h)
+// loops exactly this many times to create the menu actions - a mismatch
+// would either hide stored entries or add dead ones.
+constexpr int kmaxRecentFiles = 10;
+
+} // namespace setting_limits
+
 struct FieldConfig
 {
     QVariant defaultValue;

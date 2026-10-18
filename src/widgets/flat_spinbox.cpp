@@ -6,6 +6,16 @@
 #include <QPainterPath>
 #include <QStyleOptionSpinBox>
 
+namespace {
+
+// Minimum row height, matching FlatComboBox so the two line up when they
+// sit in the same settings column.
+constexpr int kminRowHeight = 26;
+constexpr qreal kframeRadius = 6;
+constexpr int kdisabledTextAlpha = 110;
+
+} // namespace
+
 FlatSpinBox::FlatSpinBox(const QColor& background,
                          const QColor& text,
                          const QColor& hoverBackground,
@@ -17,10 +27,10 @@ FlatSpinBox::FlatSpinBox(const QColor& background,
 {
     setFrame(false);
     setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    setMinimumHeight(26);
+    setMinimumHeight(kminRowHeight);
 
     QColor disabledText = text_;
-    disabledText.setAlpha(110);
+    disabledText.setAlpha(kdisabledTextAlpha);
     lineEdit()->setStyleSheet(
         QStringLiteral("QLineEdit {"
                        "  background: transparent;"
@@ -68,7 +78,7 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
                           : background_;
     p.setPen(Qt::NoPen);
     p.setBrush(bg);
-    p.drawRoundedRect(rect(), 6, 6);
+    p.drawRoundedRect(rect(), kframeRadius, kframeRadius);
 
     QStyleOptionSpinBox opt;
     initStyleOption(&opt);
@@ -86,7 +96,7 @@ void FlatSpinBox::paintEvent(QPaintEvent*)
     // are custom-painted.
     QColor fg = text_;
     if (!enabled) {
-        fg.setAlpha(110);
+        fg.setAlpha(kdisabledTextAlpha);
     }
     p.setPen(Qt::NoPen);
     p.setBrush(fg);

@@ -25,6 +25,12 @@ using namespace familiar::log;
 
 namespace {
 
+// The built-in palettes, as data. Every literal below is a colour channel
+// or an opacity byte whose meaning is already given by the key next to it
+// - naming them ("kBorderGray13"?) would restate the number without
+// adding anything, so readability-magic-numbers is switched off for the
+// tables rather than satisfied with ~90 constants.
+// NOLINTBEGIN(readability-magic-numbers)
 QMap<EPresets, int> opacityListDef = {
     {EPresets::DarkPreset, 255},
     {EPresets::LightPreset, 255},
@@ -66,6 +72,7 @@ QMap<EPresetsColorIdx, QColor> customPreset4Def = {{EPresetsColorIdx::Background
                                       {EPresetsColorIdx::BorderColor, QColor({13, 13, 13})},
                                       {EPresetsColorIdx::TextColor, QColor({122, 122, 122})},
                                       {EPresetsColorIdx::SelectionColor, QColor({22, 142, 153})}};
+// NOLINTEND(readability-magic-numbers)
 
 QMap<class QString, QSharedPointer<ValueHandler>> recognizedGeneralOptions = {
     //         KEY                            TYPE                 DEFAULT_VALUE
@@ -350,7 +357,7 @@ void SettingsHandler::set_default_current_preset()
         break;
     };
 
-    set_current_opacity(255);
+    set_current_opacity(kfullOpacity);
 }
 
 

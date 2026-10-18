@@ -9,7 +9,19 @@
 
 #include "actions.h"
 #include "menu_structure.h"
+#include <core/settings.h> // setting_limits::kmaxRecentFiles
 #include <core/settingshandler.h>
+
+namespace action_mixin_consts {
+
+// Alphas for the menu's own QSS. The popup itself is fully opaque so menu
+// text never sits over the canvas; a disabled entry and the highlight
+// behind the hovered one are tinted.
+constexpr int kmenuBackgroundAlpha = 255;
+constexpr int kdisabledTextAlpha = 120;
+constexpr int khighlightAlpha = 160;
+
+} // namespace action_mixin_consts
 
 // TODO:
 
@@ -150,11 +162,12 @@ private:
                               "  background: %3;"
                               "  margin: 4px 8px;"
                               "}")
-            .arg(rgba(background, 255),
+            .arg(rgba(background,
+                      action_mixin_consts::kmenuBackgroundAlpha),
                  text.name(),
                  border.name(),
-                 rgba(text, 120),
-                 rgba(selection, 160));
+                 rgba(text, action_mixin_consts::kdisabledTextAlpha),
+                 rgba(selection, action_mixin_consts::khighlightAlpha));
     }
 
     // TODOLATER:
@@ -301,7 +314,7 @@ private:
         const QStringList files = SettingsHandler::get_recent_files(
             /*existingOnly=*/true);
 
-        for (int i = 0; i < 10; ++i) {
+        for (int i = 0; i < setting_limits::kmaxRecentFiles; ++i) {
             const QString aid = QStringLiteral("recent_files_%1").arg(i);
             const int key = (i == 9) ? 0 : i + 1;
 

@@ -17,6 +17,9 @@
 
 namespace {
 
+// Wide enough for the longest mouse-button name without eliding.
+constexpr int kmouseFieldMinWidth = 140;
+
 bool same_modifiers(const QStringList& a, const QStringList& b)
 {
     return QSet<QString>(a.begin(), a.end())
@@ -138,7 +141,7 @@ BindingEditorDialogBase::BindingEditorDialogBase(BindingTarget* target,
     layout->addWidget(mouseLabel);
     auto* mouseRow = new QHBoxLayout();
 
-    mouseButtonField_->setMinimumWidth(140);
+    mouseButtonField_->setMinimumWidth(kmouseFieldMinWidth);
     mouseRow->addWidget(mouseButtonField_);
     auto* mouseClearBtn = new QToolButton(this);
     mouseClearBtn->setText(QStringLiteral("×"));

@@ -48,7 +48,10 @@ struct Options
     Level fileLevel = Level::Debug;
     QString filePath;    // default: AppLocalDataLocation/<appName>.log
     bool console = true; // auto-off when stdout isn't a tty
-    size_t ringCapacity = 2000;
+    // Lines kept for DebugLogDialog's live tail and for a crash dump to
+    // fall back on when the file sink has not flushed yet.
+    static constexpr size_t kdefaultRingCapacity = 2000;
+    size_t ringCapacity = kdefaultRingCapacity;
 };
 
 // Parses a case-insensitive level name (TRACE/DEBUG/INFO/WARNING or WARN/

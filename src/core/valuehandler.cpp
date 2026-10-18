@@ -2,6 +2,21 @@
 
 #include <utility>
 
+namespace {
+
+// QColor accepts several "#..." spellings; these are their string lengths
+// including the '#'. The three-, nine- and twelve-digit forms (#RGB,
+// #RRRGGGBBB, #RRRRGGGGBBBB) are deliberately rejected - see
+// Color::check().
+constexpr int khexRgbLength = 4;
+constexpr int khexRrrgggbbbLength = 10;
+constexpr int khexRrrrggggbbbbLength = 13;
+// #RRGGBBAA: the flameshot-era spelling this still reads and writes,
+// which QColor itself treats as #AARRGGBB.
+constexpr int khexRgbaLength = 9;
+
+} // namespace
+
 #include <QVariant>
 
 QVariant ValueHandler::value(const QVariant& val)
@@ -134,15 +149,16 @@ bool Color::check(const QVariant& val)
     // Disable #RGB, #RRRGGGBBB and #RRRRGGGGBBBB formats that QColor supports
     return QColor::isValidColorName(str)
            && (str[0] != '#'
-               || (str.length() != 4 && str.length() != 10
-                   && str.length() != 13));
+               || (str.length() != khexRgbLength
+                   && str.length() != khexRrrgggbbbLength
+                   && str.length() != khexRrrrggggbbbbLength));
 }
 
 QVariant Color::process(const QVariant& val)
 {
     QString str = val.toString();
     QColor color(str);
-    if (str.length() == 9 && str[0] == '#') {
+    if (str.length() == khexRgbaLength && str[0] == '#') {
         // Convert #RRGGBBAA (flameshot) to #AARRGGBB (QColor)
         const int blue = color.blue();
         color.setBlue(color.green());
@@ -162,7 +178,7 @@ QVariant Color::representation(const QVariant& val)
 {
     QString str = val.toString();
     QColor color(str);
-    if (str.length() == 9 && str[0] == '#') {
+    if (str.length() == khexRgbaLength && str[0] == '#') {
         // Convert #AARRGGBB (QColor) to #RRGGBBAA (flameshot)
         const int alpha = color.alpha();
         color.setAlpha(color.red());

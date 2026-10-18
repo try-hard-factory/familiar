@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include <QDesktopServices>
 #include <QDialog>
-#include <QGraphicsDropShadowEffect>
 #include <QGraphicsOpacityEffect>
 #include <QLabel>
 #include <QLayout>
@@ -43,6 +42,30 @@ using namespace familiar::log;
 
 namespace {
 
+// The transparent-to-mouse confirmation dialog.
+constexpr int kconfirmDialogWidth = 360;
+constexpr int kconfirmDialogSpacing = 12;
+
+// Default window size, and the width below which QMenuBar starts showing
+// its own unstylable overflow popup - see setMinimumWidth()'s own comment.
+constexpr int kdefaultWindowWidth = 800;
+constexpr int kdefaultWindowHeight = 600;
+constexpr int kminWindowWidth = 850;
+
+// How often the crash-recovery snapshot is written.
+constexpr int krecoveryIntervalMs = 30 * 1000;
+constexpr int kmillisecondsPerSecond = 1000;
+
+// Auto-hiding chrome: how long the pointer has to sit still before the
+// menu bar fades out, and how long each direction of the fade takes.
+constexpr int kuiHideDelayMs = 400;
+constexpr int kuiRevealFadeMs = 200;
+constexpr int kuiHideFadeMs = 600;
+
+// Alphas for the QSS hover and pressed tints of the window controls.
+constexpr int khoverAlpha = 90;
+constexpr int kpressedAlpha = 170;
+
 // Confirmation before entering transparent-to-mouse mode
 // (MainWindow::on_action_transparent_to_mouse()) - shown every time, no
 // "don't show again" (deliberately no such option): it's the one
@@ -65,7 +88,7 @@ public:
         setAttribute(Qt::WA_TranslucentBackground, false);
         setAttribute(Qt::WA_StyledBackground);
         setWindowModality(Qt::ApplicationModal);
-        setFixedWidth(360);
+        setFixedWidth(kconfirmDialogWidth);
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -75,15 +98,11 @@ public:
         const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
-        auto* shadow = new QGraphicsDropShadowEffect(this);
-        shadow->setBlurRadius(24);
-        shadow->setOffset(0, 4);
-        shadow->setColor(QColor(0, 0, 0, 150));
-        setGraphicsEffect(shadow);
+        familiar::dialog_style::apply_dialog_shadow(this);
 
         auto* outer = new QVBoxLayout(this);
-        outer->setContentsMargins(20, 14, 20, 16);
-        outer->setSpacing(12);
+        familiar::dialog_style::apply_dialog_margins(outer);
+        outer->setSpacing(kconfirmDialogSpacing);
 
         auto* topRow = new QHBoxLayout();
         auto* titleLabel = new QLabel(tr("Transparent to Mouse"), this);
@@ -93,11 +112,9 @@ public:
         titleLabel->setFont(titleFont);
         topRow->addWidget(titleLabel, 1);
 
-        auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-        closeBtn->setFixedSize(22, 22);
-        closeBtn->setCursor(Qt::PointingHandCursor);
-        closeBtn->setFocusPolicy(Qt::NoFocus);
-        closeBtn->setObjectName(QStringLiteral("transparentConfirmCloseBtn"));
+        auto* closeBtn = familiar::dialog_style::make_close_button(
+            this,
+            "transparentConfirmCloseBtn");
         connect(closeBtn, &QPushButton::clicked, this, &QDialog::reject);
         topRow->addWidget(closeBtn);
         outer->addLayout(topRow);
@@ -199,7 +216,7 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("Familiar");
     // mainwindow.ui used to set this via its geometry property (800x600);
     // now that ui->setupUi() is gone, set a sane default size explicitly.
-    resize(800, 600);
+    resize(kdefaultWindowWidth, kdefaultWindowHeight);
     // Below this, the menu bar (File/Edit/.../Settings + the window
     // control icons) runs out of room and QMenuBar falls back to its own
     // built-in "»" overflow popup - which, over this frameless/
@@ -209,7 +226,7 @@ MainWindow::MainWindow(QWidget* parent)
     // narrow in the first place. Approximate, not measured against the
     // exact current font/DPI - nudge up if "»" still shows up at this
     // width.
-    setMinimumWidth(850);
+    setMinimumWidth(kminWindowWidth);
     statusBar()->hide();
 
     setMouseTracking(true);
@@ -275,7 +292,7 @@ MainWindow::MainWindow(QWidget* parent)
             &QTimer::timeout,
             this,
             &MainWindow::on_recovery_timeout);
-    recoveryTimer_->start(30000);
+    recoveryTimer_->start(krecoveryIntervalMs);
 
     // A clean exit means every tab's fate (saved or explicitly discarded)
     // has already been decided - nothing left in the recovery folder at
@@ -345,7 +362,7 @@ void MainWindow::restart_autosave_timer()
                             QStringLiteral("Save/autosave_interval_seconds"))
                             .toInt();
     if (enabled) {
-        autosaveTimer_->start(seconds * 1000);
+        autosaveTimer_->start(seconds * kmillisecondsPerSecond);
     }
 }
 
@@ -831,7 +848,7 @@ void MainWindow::ensure_menubar()
 
     uiHideTimer_ = new QTimer(this);
     uiHideTimer_->setSingleShot(true);
-    uiHideTimer_->setInterval(400);
+    uiHideTimer_->setInterval(kuiHideDelayMs);
     connect(uiHideTimer_,
             &QTimer::timeout,
             this,
@@ -881,8 +898,8 @@ void MainWindow::update_window_controls_style()
                        "  border: 1px solid %5;"
                        "}")
             .arg(text.name(),
-                 rgba(selection, 90),
-                 rgba(selection, 170),
+                 rgba(selection, khoverAlpha),
+                 rgba(selection, kpressedAlpha),
                  background.name(),
                  border.name()));
 }
@@ -928,8 +945,8 @@ void MainWindow::update_menubar_style()
                                            "}")
                                 .arg(background.name(),
                                      text.name(),
-                                     rgba(selection, 90),
-                                     rgba(selection, 170)));
+                                     rgba(selection, khoverAlpha),
+                                     rgba(selection, kpressedAlpha)));
 }
 
 void MainWindow::apply_menubar_state()
@@ -1002,7 +1019,7 @@ void MainWindow::start_ui_fade(bool visible)
     uiFadeAnim_->setEndValue(visible ? 1.0 : 0.0);
     // Reveal must feel immediate; hiding matches the unhurried selection
     // outline fade (canvasview.cpp).
-    uiFadeAnim_->setDuration(visible ? 200 : 600);
+    uiFadeAnim_->setDuration(visible ? kuiRevealFadeMs : kuiHideFadeMs);
     uiFadeAnim_->start();
 }
 

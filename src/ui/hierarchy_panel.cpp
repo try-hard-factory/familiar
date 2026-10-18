@@ -11,12 +11,12 @@
 #include <QDialog>
 #include <QDropEvent>
 #include <QFileInfo>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMargins>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QMovie>
@@ -39,6 +39,27 @@ namespace {
 
 constexpr int kiconSize = 18;
 constexpr int kuidRole = Qt::UserRole;
+
+// Letter glyph inside a kiconSize square, sized as a fraction of it.
+constexpr qreal kglyphScale = 0.7;
+// Thumbnail frame: inset by half a pixel so the 1px border lands on whole
+// pixels instead of straddling two.
+constexpr qreal kthumbInset = 0.5;
+constexpr qreal kthumbRadius = 3;
+// Alpha of the placeholder tint when an item has no thumbnail yet, and of
+// the thin frame drawn around every thumbnail.
+constexpr int kplaceholderAlpha = 60;
+constexpr int kthumbBorderAlpha = 60;
+
+// The panel itself.
+constexpr int kpanelWidth = 320;
+constexpr int kpanelSpacing = 10;
+constexpr int ktreeIndentation = 14;
+// Rebuilds are coalesced: the scene can emit many changes in a row while
+// an undo command runs.
+constexpr int krebuildDelayMs = 150;
+// Characters of a note's text used as its label in the tree.
+constexpr int klabelChars = 40;
 
 // Same drawn-icon approach as every other icon in this app
 // (group_toolbar.cpp, gif_playback_toolbar.cpp) - no external asset.
@@ -71,7 +92,7 @@ QIcon make_text_icon(const QColor& glyphColor)
     p.setRenderHint(QPainter::Antialiasing);
     QFont f = p.font();
     f.setBold(true);
-    f.setPixelSize(int(kiconSize * 0.7));
+    f.setPixelSize(int(kiconSize * kglyphScale));
     p.setFont(f);
     p.setPen(glyphColor);
     p.drawText(QRectF(0, 0, kiconSize, kiconSize),
@@ -89,7 +110,10 @@ QIcon make_picture_icon(const QPixmap& source, const QColor& glyphColor)
     p.setRenderHint(QPainter::Antialiasing);
     p.setRenderHint(QPainter::SmoothPixmapTransform);
     QPainterPath clip;
-    clip.addRoundedRect(QRectF(0.5, 0.5, kiconSize - 1, kiconSize - 1), 3, 3);
+    const qreal framedSide = kiconSize - (2 * kthumbInset);
+    clip.addRoundedRect(QRectF(kthumbInset, kthumbInset, framedSide, framedSide),
+                        kthumbRadius,
+                        kthumbRadius);
     p.setClipPath(clip);
     if (!source.isNull()) {
         // Scaled+cropped to fill the square (KeepAspectRatioByExpanding),
@@ -107,10 +131,12 @@ QIcon make_picture_icon(const QPixmap& source, const QColor& glyphColor)
                    QColor(glyphColor.red(),
                           glyphColor.green(),
                           glyphColor.blue(),
-                          60));
+                          kplaceholderAlpha));
     }
     p.setClipping(false);
-    QPen border(QColor(0, 0, 0, 60));
+    QColor borderColor(Qt::black);
+    borderColor.setAlpha(kthumbBorderAlpha);
+    QPen border(borderColor);
     border.setWidthF(1.0);
     p.setPen(border);
     p.setBrush(Qt::NoBrush);
@@ -221,7 +247,7 @@ public:
         setAttribute(Qt::WA_TranslucentBackground, false);
         setAttribute(Qt::WA_StyledBackground);
         setWindowModality(Qt::ApplicationModal);
-        setFixedWidth(320);
+        setFixedWidth(kpanelWidth);
 
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
@@ -231,15 +257,13 @@ public:
         const QColor& border = colorPreset[EPresetsColorIdx::BorderColor];
         const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
-        auto* shadow = new QGraphicsDropShadowEffect(this);
-        shadow->setBlurRadius(24);
-        shadow->setOffset(0, 4);
-        shadow->setColor(QColor(0, 0, 0, 150));
-        setGraphicsEffect(shadow);
+        familiar::dialog_style::apply_dialog_shadow(this);
 
         auto* outer = new QVBoxLayout(this);
-        outer->setContentsMargins(18, 14, 18, 16);
-        outer->setSpacing(10);
+        // A panel, not a dialog, so not dialog_style::apply_dialog_margins().
+        constexpr QMargins kouterMargins{18, 14, 18, 16};
+        outer->setContentsMargins(kouterMargins);
+        outer->setSpacing(kpanelSpacing);
 
         auto* titleLabel = new QLabel(tr("Rename"), this);
         QFont titleFont = titleLabel->font();
@@ -333,7 +357,8 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
 
     titleBar_->setAttribute(Qt::WA_StyledBackground);
     auto* titleLayout = new QHBoxLayout(titleBar_);
-    titleLayout->setContentsMargins(8, 5, 8, 5);
+    constexpr QMargins ktitleMargins{8, 5, 8, 5};
+    titleLayout->setContentsMargins(ktitleMargins);
     titleLabel_ = new QLabel(tr("Hierarchy"), titleBar_);
     titleLayout->addWidget(titleLabel_);
     titleLayout->addStretch(1);
@@ -342,7 +367,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
     auto* tree = new HierarchyTreeWidget(this);
     tree_ = tree;
     tree_->setHeaderHidden(true);
-    tree_->setIndentation(14);
+    tree_->setIndentation(ktreeIndentation);
     tree_->setUniformRowHeights(true);
     // Interactive drag-and-drop (current) - InternalMove
     // for the press/drag/drop gesture only, see HierarchyTreeWidget's
@@ -387,7 +412,7 @@ HierarchyPanel::HierarchyPanel(QWidget* parent)
 
 
     rebuildTimer_->setSingleShot(true);
-    rebuildTimer_->setInterval(150);
+    rebuildTimer_->setInterval(krebuildDelayMs);
     connect(rebuildTimer_, &QTimer::timeout, this, &HierarchyPanel::refresh);
 
     apply_color_style();
@@ -610,7 +635,8 @@ QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
         icon = make_picture_icon(picture->pixmap(), text);
     } else if (auto* txt = dynamic_cast<TextItem*>(item)) {
         const QString plain = txt->toPlainText().trimmed();
-        label = plain.isEmpty() ? QObject::tr("Text") : plain.left(40);
+        label = plain.isEmpty() ? QObject::tr("Text")
+                                : plain.left(klabelChars);
         icon = make_text_icon(text);
     } else {
         label = QObject::tr("Item");

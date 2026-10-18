@@ -34,6 +34,47 @@
 
 #include "log/log.h"
 
+namespace item_consts {
+
+// ─── Image storage ────────────────────────────────────────────────────────
+// "best" format picks PNG for anything with transparency or small enough
+// that the file size hardly matters, JPEG otherwise - see
+// PixmapItem::get_imgformat().
+constexpr int ksmallImageSide = 500;
+constexpr int kjpegQuality = 90;
+
+// ─── Colour-gamut sampling ────────────────────────────────────────────────
+// Pixels too close to transparent, white or black carry no useful hue, so
+// they are skipped when building the gamut histogram.
+constexpr int kgamutMinAlpha = 5;
+constexpr int kgamutMaxChannel = 250;
+constexpr int kgamutMinChannel = 5;
+
+// ─── Highlight / outline ──────────────────────────────────────────────────
+constexpr int kdropTargetAlpha = 100;
+constexpr int khighlightAlpha = 230;
+constexpr int kthinOutlineAlpha = 160;
+constexpr qreal khighlightStroke = 4.0;
+// Default note fill: black at low alpha, so text stays readable over it.
+constexpr int knoteFillAlpha = 40;
+// A group's own backdrop - near-black, fully opaque.
+constexpr int kgroupFillChannel = 20;
+// ErrorItem's placeholder rectangle.
+constexpr int kerrorRed = 200;
+
+// ─── Misc ─────────────────────────────────────────────────────────────────
+// Below this scale a pre-downscaled cache pays off - see
+// PixmapItem::downscale_factor_for()'s own comment.
+constexpr qreal kdownscaleThreshold = 0.5;
+constexpr qreal kdownscaleBase = 2.0;
+// GIF filmstrip thumbnails.
+constexpr int kframeThumbSide = 48;
+// Characters of the item's own text used in its to_string() debug label.
+constexpr int kdebugLabelChars = 40;
+constexpr int kfullSpeedPercent = 100;
+
+} // namespace item_consts
+
 template<typename U, typename T>
 class ItemMixin : public SelectableMixin<U, T>
 {
@@ -363,7 +404,8 @@ public:
 
         if (formt == QLatin1String("best")) {
             if (img.hasAlphaChannel()
-                || (img.height() < 500 && img.width() < 500)) {
+                || (img.height() < item_consts::ksmallImageSide
+                    && img.width() < item_consts::ksmallImageSide)) {
                 formt = QStringLiteral("png");
             } else {
                 formt = QStringLiteral("jpg");
@@ -392,7 +434,9 @@ public:
 
         const QImage img = pm.toImage();
         const QString imgformat = get_imgformat(img);
-        img.save(&buffer, imgformat.toUpper().toUtf8().constData(), 90);
+        img.save(&buffer,
+                 imgformat.toUpper().toUtf8().constData(),
+                 item_consts::kjpegQuality);
         return {barray, imgformat};
     }
 
@@ -456,8 +500,9 @@ public:
                     const int r = rgb.red();
                     const int g = rgb.blue();
                     const int b = rgb.green();
-                    if (rgb.alpha() > 5 && std::min({r, g, b}) < 250
-                        && std::max({r, g, b}) > 5) {
+                    if (rgb.alpha() > item_consts::kgamutMinAlpha
+                        && std::min({r, g, b}) < item_consts::kgamutMaxChannel
+                        && std::max({r, g, b}) > item_consts::kgamutMinChannel) {
                         // Only consider pixels that aren't close to
                         // transparent, white or black
                         gamut[qMakePair(rgb.hue(), rgb.saturation())]++;
@@ -702,10 +747,12 @@ public:
     // the cache would just cost memory.
     static qreal downscale_factor_for(qreal scale)
     {
-        if (!(scale > 0.0) || scale >= 0.5) {
+        if (!(scale > 0.0) || scale >= item_consts::kdownscaleThreshold) {
             return 1.0;
         }
-        return std::min(1.0, std::pow(2.0, std::ceil(std::log2(scale))));
+        return std::min(1.0,
+                        std::pow(item_consts::kdownscaleBase,
+                                 std::ceil(std::log2(scale))));
     }
 
     // Rebuilds downscaleCache_ if needed; returns false if paint()
@@ -754,7 +801,7 @@ public:
             QPainterPath path;
             path.addRect(cropTemp_.value());
             QColor color(0, 0, 0);
-            color.setAlpha(100);
+            color.setAlpha(item_consts::kdropTargetAlpha);
             painter->setBrush(QBrush(color));
             painter->setPen(Qt::NoPen);
             painter->drawPath(path);
@@ -823,7 +870,7 @@ public:
                                                ->get_current_color_preset();
                         QColor highlightColor
                             = colorPreset[EPresetsColorIdx::SelectionColor];
-                        highlightColor.setAlpha(230);
+                        highlightColor.setAlpha(item_consts::khighlightAlpha);
                         painter->save();
                         QPen highlightPen(highlightColor);
                         highlightPen.setWidthF(1.0);
@@ -1335,7 +1382,10 @@ public:
             movie_->setSpeed(percent);
         }
     }
-    int speed_percent() const { return movie_ ? movie_->speed() : 100; }
+    int speed_percent() const
+    {
+        return movie_ ? movie_->speed() : item_consts::kfullSpeedPercent;
+    }
 
 private:
     // Decodes every frame once via QImageReader (independent of movie_ -
@@ -1355,8 +1405,8 @@ private:
                 break;
             }
             frameThumbnails_.append(
-                QPixmap::fromImage(frame).scaled(48,
-                                                 48,
+                QPixmap::fromImage(frame).scaled(item_consts::kframeThumbSide,
+                                                 item_consts::kframeThumbSide,
                                                  Qt::KeepAspectRatio,
                                                  Qt::SmoothTransformation));
         }
@@ -1402,7 +1452,12 @@ class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
 public:
     // Default note fill - the backdrop TextItem always painted, now
     // per-item and persisted.
-    static QColor default_fill_color() { return {0, 0, 0, 40}; }
+    static QColor default_fill_color()
+    {
+        QColor fill(Qt::black);
+        fill.setAlpha(item_consts::knoteFillAlpha);
+        return fill;
+    }
 
     TextItem(const QString& text = QString(),
              QGraphicsTextItem* parent = nullptr)
@@ -1426,7 +1481,8 @@ public:
 
     QString to_string() const
     {
-        return QString("Text \"%1\"").arg(this->toPlainText().left(40));
+        return QString("Text \"%1\"")
+            .arg(this->toPlainText().left(item_consts::kdebugLabelChars));
     }
 
     static TextItem* create_from_data(const QVariantMap& data = QVariantMap())
@@ -1694,7 +1750,7 @@ public:
                                            ->get_current_color_preset();
                     QColor highlightColor
                         = colorPreset[EPresetsColorIdx::SelectionColor];
-                    highlightColor.setAlpha(230);
+                    highlightColor.setAlpha(item_consts::khighlightAlpha);
                     painter->save();
                     QPen highlightPen(highlightColor);
                     highlightPen.setWidthF(1.0);
@@ -1882,7 +1938,13 @@ class GroupItem : public ItemMixin<GroupItem, QGraphicsRectItem>
     const std::string type = "group"; // static constexpr
 
 public:
-    static QColor default_fill_color() { return {20, 20, 20, 255}; }
+    static QColor default_fill_color()
+    {
+        return {item_consts::kgroupFillChannel,
+                item_consts::kgroupFillChannel,
+                item_consts::kgroupFillChannel,
+                kfullOpacity};
+    }
     // Visual breathing room kept between the members' own tight bounding
     // box and the group's fill rect - single source of truth for both
     // CanvasScene::group_selection() (initial fit, on creation) and
@@ -1897,9 +1959,9 @@ public:
     static constexpr qreal kpaddingRatio = 0.03;
     static qreal compute_padding(const QRectF& contentRect)
     {
-        return qMax(kminPadding,
-                    (contentRect.width() + contentRect.height()) / 2.0
-                        * kpaddingRatio);
+        const qreal averageSide = (contentRect.width() + contentRect.height())
+                                  / 2.0;
+        return qMax(kminPadding, averageSide * kpaddingRatio);
     }
 
     GroupItem(QGraphicsRectItem* parent = nullptr)
@@ -2592,7 +2654,9 @@ public:
             }
             if (ancestorSelected) {
                 painter->save();
-                QPen thinPen(QColor(255, 255, 255, 160));
+                QColor thinColor(Qt::white);
+                thinColor.setAlpha(item_consts::kthinOutlineAlpha);
+                QPen thinPen(thinColor);
                 thinPen.setWidthF(1.0);
                 thinPen.setCosmetic(true);
                 painter->setPen(thinPen);
@@ -2613,10 +2677,10 @@ public:
                 = SettingsHandler::get_instance()->get_current_color_preset();
             QColor highlightColor
                 = colorPreset[EPresetsColorIdx::SelectionColor];
-            highlightColor.setAlpha(230);
+            highlightColor.setAlpha(item_consts::khighlightAlpha);
             painter->save();
             QPen highlightPen(highlightColor);
-            highlightPen.setWidthF(4.0);
+            highlightPen.setWidthF(item_consts::khighlightStroke);
             highlightPen.setCosmetic(true);
             painter->setPen(highlightPen);
             painter->setBrush(Qt::NoBrush);
@@ -2787,7 +2851,8 @@ public:
 
     QString to_string() const
     {
-        return QString("Error \"%1\"").arg(this->toPlainText().left(40));
+        return QString("Error \"%1\"")
+            .arg(this->toPlainText().left(item_consts::kdebugLabelChars));
     }
 
     static ErrorItem* create_from_data(const QVariantMap& data = QVariantMap())
@@ -2805,7 +2870,7 @@ public:
                QWidget* widget) override
     {
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(QColor(200, 0, 0)));
+        painter->setBrush(QBrush(QColor(item_consts::kerrorRed, 0, 0)));
         // NOLINTNEXTLINE(bugprone-parent-virtual-call) text's own rect
         painter->drawRect(QGraphicsTextItem::boundingRect());
         QStyleOptionGraphicsItem updatedOption(*option);

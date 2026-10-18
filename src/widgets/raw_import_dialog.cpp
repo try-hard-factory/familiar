@@ -4,8 +4,8 @@
 
 #include <core/settingshandler.h>
 
+#include <QColor>
 #include <QFileInfo>
-#include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -16,6 +16,14 @@
 
 namespace {
 constexpr int kiconSize = 40;
+
+// Width band: wide enough for a file path, capped so a long one wraps
+// instead of stretching the dialog across the screen.
+constexpr int kminDialogWidth = 380;
+constexpr int kmaxDialogWidth = 460;
+constexpr int kouterSpacing = 14;
+constexpr int ktopRowSpacing = 12;
+constexpr int kbuttonRowSpacing = 8;
 
 // Items/image_storage_format's own values ("best"/"png"/"jpg" - see
 // core/settings.cpp) - this setting has no dedicated UI row of its own
@@ -48,14 +56,10 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     setAttribute(Qt::WA_StyledBackground);
     setWindowModality(Qt::ApplicationModal);
     setWindowTitle(tr("RAW file needs converting"));
-    setMinimumWidth(380);
-    setMaximumWidth(460);
+    setMinimumWidth(kminDialogWidth);
+    setMaximumWidth(kmaxDialogWidth);
 
-    auto* shadow = new QGraphicsDropShadowEffect(this);
-    shadow->setBlurRadius(24);
-    shadow->setOffset(0, 4);
-    shadow->setColor(QColor(0, 0, 0, 150));
-    setGraphicsEffect(shadow);
+    familiar::dialog_style::apply_dialog_shadow(this);
 
     auto colorPreset
         = SettingsHandler::get_instance()->get_current_color_preset();
@@ -65,11 +69,11 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     const QColor& accent = colorPreset[EPresetsColorIdx::SelectionColor];
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(20, 16, 16, 16);
-    outer->setSpacing(14);
+    familiar::dialog_style::apply_dialog_margins(outer);
+    outer->setSpacing(kouterSpacing);
 
     auto* topRow = new QHBoxLayout();
-    topRow->setSpacing(12);
+    topRow->setSpacing(ktopRowSpacing);
 
     auto* iconLabel = new QLabel(this);
     iconLabel->setFixedSize(kiconSize, kiconSize);
@@ -100,11 +104,9 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     textCol->addWidget(textLabel);
     topRow->addLayout(textCol, 1);
 
-    auto* closeBtn = new QPushButton(QStringLiteral("×"), this);
-    closeBtn->setFixedSize(22, 22);
-    closeBtn->setCursor(Qt::PointingHandCursor);
-    closeBtn->setFocusPolicy(Qt::NoFocus);
-    closeBtn->setObjectName(QStringLiteral("ridCloseBtn"));
+    auto* closeBtn = familiar::dialog_style::make_close_button(
+        this,
+        "ridCloseBtn");
     connect(closeBtn, &QPushButton::clicked, this, &RawImportDialog::reject);
     topRow->addWidget(closeBtn, 0, Qt::AlignTop);
 
@@ -149,7 +151,7 @@ RawImportDialog::RawImportDialog(QWidget* parent, const QString& filename)
     outer->addWidget(rememberCheckbox_);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(8);
+    buttonRow->setSpacing(kbuttonRowSpacing);
     buttonRow->addStretch();
 
     auto* keepOriginalBtn = new QPushButton(tr("Keep original"), this);

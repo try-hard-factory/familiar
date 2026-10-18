@@ -22,6 +22,52 @@
 #include <QVariantMap>
 #include <qnamespace.h>
 
+namespace selector_consts {
+
+// ─── Selection-handle geometry ────────────────────────────────────────────
+// Were six per-object members with a "TODOLATER: constexpor?" next to
+// them; nothing ever wrote to any of them, so this is that TODO answered.
+// All are in scene units at scale 1 - fixed_length_for_viewport() below
+// converts them so a handle keeps its on-screen size as the view zooms.
+constexpr int kselectLineWidth = 2;
+constexpr int kselectHandleSize = 9;
+constexpr int kselectEdgeHandleSize = 6;
+constexpr qreal kselectResizeSize = 20;
+constexpr qreal kselectRotateSize = 10;
+constexpr qreal kselectFreeCenter = 20;
+
+// ─── Angles ───────────────────────────────────────────────────────────────
+constexpr qreal kfullTurnDegrees = 360.0;
+constexpr qreal khalfTurnDegrees = 180.0;
+// Shift/Ctrl-constrained rotation snaps to multiples of this.
+constexpr qreal krotateSnapDegrees = 15;
+// Quadrant boundaries for picking the resize cursor as an item rotates:
+// each 45-degree sector takes the cursor of the axis it now points along,
+// with the boundaries halfway between.
+constexpr qreal kcursorSector1 = 22.5;
+constexpr qreal kcursorSector2 = 67.5;
+constexpr qreal kcursorSector3 = 112.5;
+constexpr qreal kcursorSector4 = 157.5;
+// is_edge_vertical(): a rotation inside either range has swapped the
+// item's visual width and height, so a "top" edge now behaves like a side.
+constexpr qreal ksidewaysFrom = 45;
+constexpr qreal ksidewaysTo = 135;
+constexpr qreal ksidewaysFromFlipped = 225;
+constexpr qreal ksidewaysToFlipped = 315;
+
+// Nudge subtracted when carving the rotate handle out of the scale handle,
+// so the two shapes do not share an exact edge (which left a hairline the
+// hit test fell through).
+constexpr qreal khandleCarveEpsilon = 0.001;
+// Pointer travel, in scene units, before a press counts as a drag.
+constexpr int kdragThreshold = 5;
+// Alpha of the translucent fill inside the selection/rubber-band rect.
+constexpr int kselectionFillAlpha = 40;
+// Alpha of the debug overlays paint_debug() draws.
+constexpr int kdebugOverlayAlpha = 50;
+
+} // namespace selector_consts
+
 class IBaseItem : public std::enable_shared_from_this<IBaseItem>
 {
 public:
@@ -194,7 +240,7 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
         const QPointF prev = this->mapToScene(anchor);
-        QGraphicsItem::setRotation(std::fmod(value, 360.0));
+        QGraphicsItem::setRotation(std::fmod(value, selector_consts::kfullTurnDegrees));
         const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
     }
@@ -211,7 +257,8 @@ public:
         const QPointF prev = this->mapToScene(anchor);
         this->setTransform(QTransform::fromScale(-flip(), 1));
         if (vertical) {
-            this->set_rotation(this->rotation() + 180, anchor);
+            this->set_rotation(this->rotation() + selector_consts::khalfTurnDegrees,
+                               anchor);
         }
         const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
@@ -315,14 +362,6 @@ public:
 template<typename Mixin, typename T>
 class SelectableMixin : public BaseItemMixin<T>
 {
-    // TODOLATER: constexpor?
-    int selectLineWidth_{2};
-    int selectHandleSize_{9};
-    int selectEdgeHandleSize_{6};
-    qreal selectResizeSize_{20};
-    qreal selectRotateSize_{10};
-    qreal selectFreeCenter_{20};
-
     QPointF eventStart_;
     QPointF eventDirection_;
     // Distance from the fixed anchor (the opposite corner/edge-midpoint,
@@ -433,17 +472,17 @@ public:
 
     qreal select_resize_size() const
     {
-        return fixed_length_for_viewport(selectResizeSize_);
+        return fixed_length_for_viewport(selector_consts::kselectResizeSize);
     }
 
     qreal select_rotate_size() const
     {
-        return fixed_length_for_viewport(selectRotateSize_);
+        return fixed_length_for_viewport(selector_consts::kselectRotateSize);
     }
 
     QRectF select_handle_free_center() const
     {
-        const qreal size = fixed_length_for_viewport(selectFreeCenter_);
+        const qreal size = fixed_length_for_viewport(selector_consts::kselectFreeCenter);
         const qreal x = this->center().x() - size / 2;
         const qreal y = this->center().y() - size / 2;
         return {x, y, size, size};
@@ -452,14 +491,14 @@ public:
     void draw_debug_shape(
         QPainter* painter, const QRectF& shape, int r, int g, int b) const
     {
-        const QColor color(r, g, b, 50);
+        const QColor color(r, g, b, selector_consts::kdebugOverlayAlpha);
         painter->fillRect(shape, color);
     }
 
     void draw_debug_shape(
         QPainter* painter, const QPainterPath& shape, int r, int g, int b) const
     {
-        const QColor color(r, g, b, 50);
+        const QColor color(r, g, b, selector_consts::kdebugOverlayAlpha);
         painter->fillPath(shape, color);
     }
 
@@ -472,6 +511,10 @@ public:
 
         const auto& args = CommandlineArgs::instance();
 
+        // One flat colour per overlay so they can be told apart when
+        // several are on at once; the literals are RGB channels picked for
+        // contrast, nothing more.
+        // NOLINTBEGIN(readability-magic-numbers)
         if (args.debug_shapes()) {
             draw_debug_shape(painter, this->shape(), 255, 0, 0);
         }
@@ -489,6 +532,7 @@ public:
             }
             draw_debug_shape(painter, select_handle_free_center(), 255, 0, 255);
         }
+        // NOLINTEND(readability-magic-numbers)
     }
 
     void paint_selectable(QPainter* painter,
@@ -541,7 +585,7 @@ public:
                               * static_cast<float>(outlineOpacity));
 
         QPen pen(selectColor);
-        pen.setWidth(selectLineWidth_);
+        pen.setWidth(selector_consts::kselectLineWidth);
         pen.setCosmetic(true);
         painter->setPen(pen);
         painter->setBrush(QBrush());
@@ -577,7 +621,7 @@ public:
             // won't rotate (see hoverMoveEvent()/mousePressEvent() below).
             const bool resizeOnly
                 = static_cast<Mixin*>(this)->paints_edit_mode_handles();
-            pen.setWidth(selectHandleSize_);
+            pen.setWidth(selector_consts::kselectHandleSize);
             pen.setCapStyle(resizeOnly ? Qt::SquareCap : Qt::RoundCap);
             painter->setPen(pen);
             for (const QPointF& corner : corners()) {
@@ -588,7 +632,7 @@ public:
             // same way as the corners (see mousePressEvent()), just
             // anchored on the opposite edge instead of the opposite
             // corner. Same cap style as the corners.
-            pen.setWidth(selectEdgeHandleSize_);
+            pen.setWidth(selector_consts::kselectEdgeHandleSize);
             pen.setCapStyle(resizeOnly ? Qt::SquareCap : Qt::RoundCap);
             painter->setPen(pen);
             for (const auto& edge : get_edge_bounds()) {
@@ -665,7 +709,7 @@ public:
 
         path.addRect(get_rect_from_points(p1, p2));
 
-        return path - get_scale_bounds(corner, 0.001);
+        return path - get_scale_bounds(corner, selector_consts::khandleCarveEpsilon);
     }
 
 
@@ -1009,14 +1053,15 @@ protected:
     qreal get_rotate_angle(const QPointF& pos) const
     {
         const QPointF diff = pos - eventAnchor_;
-        return -std::atan2(diff.x(), diff.y()) * 180 / M_PI;
+        return -std::atan2(diff.x(), diff.y()) * selector_consts::khalfTurnDegrees / M_PI;
     }
 
     qreal get_rotate_delta(const QPointF& pos, bool snap = false) const
     {
         auto delta = get_rotate_angle(pos) - rotateStartAngle_;
         if (snap) {
-            auto target = round_to(rotateOrigDegrees_ + delta, 15);
+            auto target = round_to(rotateOrigDegrees_ + delta,
+                                   selector_consts::krotateSnapDegrees);
             delta = target - rotateOrigDegrees_;
         }
 
@@ -1033,28 +1078,28 @@ protected:
 
     Qt::CursorShape get_diag_cursor(bool isTopLeftOrBottomRight)
     {
-        auto rotation = std::fmod(this->rotation(), 180);
+        auto rotation = std::fmod(this->rotation(), selector_consts::khalfTurnDegrees);
         const bool flipped = (this->flip() == -1);
 
         if (isTopLeftOrBottomRight) {
-            if ((22.5 < rotation) && (rotation < 67.5)) {
+            if ((selector_consts::kcursorSector1 < rotation) && (rotation < selector_consts::kcursorSector2)) {
                 return Qt::SizeVerCursor;
             }
-            if ((67.5 < rotation) && (rotation < 112.5)) {
+            if ((selector_consts::kcursorSector2 < rotation) && (rotation < selector_consts::kcursorSector3)) {
                 return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
             }
-            if ((112.5 < rotation) && (rotation < 157.5)) {
+            if ((selector_consts::kcursorSector3 < rotation) && (rotation < selector_consts::kcursorSector4)) {
                 return Qt::SizeHorCursor;
             }
             return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
         }
-        if ((22.5 < rotation) && (rotation < 67.5)) {
+        if ((selector_consts::kcursorSector1 < rotation) && (rotation < selector_consts::kcursorSector2)) {
             return Qt::SizeHorCursor;
         }
-        if ((67.5 < rotation) && (rotation < 112.5)) {
+        if ((selector_consts::kcursorSector2 < rotation) && (rotation < selector_consts::kcursorSector3)) {
             return (flipped ? Qt::SizeBDiagCursor : Qt::SizeFDiagCursor);
         }
-        if ((112.5 < rotation) && (rotation < 157.5)) {
+        if ((selector_consts::kcursorSector3 < rotation) && (rotation < selector_consts::kcursorSector4)) {
             return Qt::SizeVerCursor;
         }
         return (flipped ? Qt::SizeFDiagCursor : Qt::SizeBDiagCursor);
@@ -1066,8 +1111,10 @@ protected:
     // left/right edge instead. Used to pick the resize cursor.
     bool is_edge_vertical(const EdgeBounds& edge) const
     {
-        if (((this->rotation() > 45) && (this->rotation() < 135))
-            || ((this->rotation() > 225) && (this->rotation() < 315))) {
+        const qreal rotation = this->rotation();
+        if (((rotation > selector_consts::ksidewaysFrom) && (rotation < selector_consts::ksidewaysTo))
+            || ((rotation > selector_consts::ksidewaysFromFlipped)
+                && (rotation < selector_consts::ksidewaysToFlipped))) {
             return !edge.vertical;
         }
         return edge.vertical;
@@ -1076,7 +1123,7 @@ protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override
     {
         const QPointF pos = event->scenePos();
-        if ((pos - eventStart_).manhattanLength() > 5) {
+        if ((pos - eventStart_).manhattanLength() > selector_consts::kdragThreshold) {
             // Reset previous transform when movement exceeds threshold
             auto* view = dynamic_cast<CanvasView*>(this->scene()->views().at(0));
             view->reset_previous_transform(nullptr);
@@ -1434,7 +1481,7 @@ public:
         auto colorPreset
             = SettingsHandler::get_instance()->get_current_color_preset();
         QColor fillColor = colorPreset[EPresetsColorIdx::SelectionColor];
-        fillColor.setAlpha(40);
+        fillColor.setAlpha(selector_consts::kselectionFillAlpha);
         this->setBrush(QBrush(fillColor));
 
         pen_.setWidth(1);

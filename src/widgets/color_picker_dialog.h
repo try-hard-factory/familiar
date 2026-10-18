@@ -95,7 +95,9 @@ private:
     void pick(const QPoint& pos);
 
     QColor rgb_ = Qt::red;
-    int alpha_ = 255;
+    // Starts fully opaque - see kmaxChannel in the .cpp.
+    static constexpr int kfullAlpha = 255;
+    int alpha_ = kfullAlpha;
 };
 
 // Fixed row of preset swatches (plus a "none"/fully transparent one

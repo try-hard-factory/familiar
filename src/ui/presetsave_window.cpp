@@ -7,8 +7,13 @@ PresetSaveWindow::PresetSaveWindow(QWidget* parent)
     : QWidget(parent)
 {
     setWindowTitle(tr("Save to Preset"));
-    resize(80, 300);
-    setFixedSize(240, this->geometry().height());
+    // resize() first so geometry().height() below reports the laid-out
+    // height; the width is then pinned and the height left as laid out.
+    constexpr int kinitialWidth = 80;
+    constexpr int kinitialHeight = 300;
+    constexpr int kfixedWidth = 240;
+    resize(kinitialWidth, kinitialHeight);
+    setFixedSize(kfixedWidth, this->geometry().height());
 
     setAttribute(Qt::WA_DeleteOnClose);
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint
