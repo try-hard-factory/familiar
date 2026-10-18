@@ -733,6 +733,17 @@ FmlResult FmlArchive::load(const QString& filename,
                             itemData[QStringLiteral("image")] = image;
                             itemData[QStringLiteral("filename")]
                                 = mi.data.value(QStringLiteral("filename"));
+                            // Handed to PixmapItem::set_encoded_source()
+                            // by add_queued_items() so the next save
+                            // writes these exact bytes back instead of
+                            // re-encoding the decoded pixmap - see that
+                            // cache's own comment in moveitem.h for the
+                            // generational quality loss this avoids.
+                            itemData[QStringLiteral("encodedBytes")]
+                                = QByteArray(static_cast<const char*>(imgBuf),
+                                             static_cast<int>(imgSize));
+                            itemData[QStringLiteral("encodedFormat")]
+                                = QFileInfo(mi.image).suffix();
                         }
                     }
                     mz_free(imgBuf);

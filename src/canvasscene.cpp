@@ -1928,6 +1928,13 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
                 const QString filename = data.value("filename").toString();
                 auto* pixmapItem = new PixmapItem(image, filename);
 
+                // Present only for a picture loaded from a .fml, where
+                // the encoded bytes are known to be exactly what `image`
+                // was decoded from (FmlArchive::load()).
+                pixmapItem->set_encoded_source(
+                    data.value(QStringLiteral("encodedBytes")).toByteArray(),
+                    data.value(QStringLiteral("encodedFormat")).toString());
+
                 // "crop" and "attached_to" -
                 // see PixmapItem::apply_extra_save_data() (moveitem.h).
                 const QVariant extraData = data.value("data");
