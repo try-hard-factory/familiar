@@ -473,6 +473,22 @@ public:
         return {barray, imgformat};
     }
 
+    // The cached bytes for the CURRENT pixmap, or empty if there are
+    // none (never encoded, or the pixmap has been replaced since). Lets
+    // a snapshot carry them along - see CanvasScene::snapshot_of(), so
+    // copy/paste does not quietly re-encode a picture either.
+    QByteArray encoded_source() const
+    {
+        return encodedCacheSrcKey_ == pixmap().cacheKey() ? encodedCache_
+                                                          : QByteArray();
+    }
+
+    QString encoded_source_format() const
+    {
+        return encodedCacheSrcKey_ == pixmap().cacheKey() ? encodedCacheFormat_
+                                                          : QString();
+    }
+
     // For whoever already holds the exact bytes this item's pixmap was
     // decoded from - FmlArchive::load() has them straight out of the zip
     // entry, extension included - so the next save stores them verbatim
