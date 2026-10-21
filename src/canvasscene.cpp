@@ -35,15 +35,12 @@ using namespace familiar::log;
 
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <iterator>
 #include <limits>
 #include <memory>
 #include <numeric>
 #include <string>
-#include <vector>
 
 namespace {
 
@@ -592,19 +589,38 @@ void CanvasScene::duplicate_selection()
 void CanvasScene::raise_to_top()
 {
     cancel_active_modes();
-    QList<QGraphicsItem*> items = selectedItems(true);
-    std::vector<double> zValues;
-    zValues.reserve(static_cast<std::size_t>(items.size()));
-    std::ranges::transform(items,
-
-                           std::back_inserter(zValues),
-                           [](const auto& i) { return i->zValue(); });
-    const double minZValue = *std::ranges::min_element(zValues);
-    const double delta = maxZ_ + zStep_ - minZValue;
-    FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
-    for (auto& item : items) {
-        dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
+    const QList<QGraphicsItem*> items = selectedItems(true);
+    if (items.isEmpty()) {
+        // *min_element() on an empty range dereferences end() - UB, not a
+        // graceful no-op. The "active_when_selection" action group
+        // normally keeps this unreachable with nothing selected, but
+        // that is a UI-level guard, not a real one (see
+        // widgets/recent_files_view.h's own sizeHint(), unguarded and
+        // confirmed to actually crash this way).
+        return;
     }
+    // The LOWEST item in the selection is the one that has to clear the
+    // current top, so the whole selection keeps its internal order.
+    const auto lowest = std::ranges::min_element(items,
+                                                 {},
+                                                 [](const QGraphicsItem* i) {
+                                                     return i->zValue();
+                                                 });
+    const qreal delta = maxZ_ + zStep_ - (*lowest)->zValue();
+    FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
+    push_z_shift(items, delta, QObject::tr("Raise to top"));
+}
+
+void CanvasScene::push_z_shift(const QList<QGraphicsItem*>& items,
+                               qreal delta,
+                               const QString& text)
+{
+    QList<qreal> newZValues;
+    newZValues.reserve(items.size());
+    for (const QGraphicsItem* item : items) {
+        newZValues.append(item->zValue() + delta);
+    }
+    undoStack_->push(new ChangeZOrderCommand(items, newZValues, text));
 }
 
 void CanvasScene::raise_selection_to_front() const
@@ -670,28 +686,21 @@ void CanvasScene::raise_selection_to_front() const
 void CanvasScene::lower_to_bottom()
 {
     cancel_active_modes();
-    QList<QGraphicsItem*> items = selectedItems(true);
+    const QList<QGraphicsItem*> items = selectedItems(true);
     if (items.isEmpty()) {
-        // raise_to_top() (above) guards the same way via ordered.isEmpty()
-        // - *std::max_element() below is UB on an empty range (dereferences
-        // end()). The "active_when_selection" action group normally keeps
-        // this unreachable with nothing selected, but that's a UI-level
-        // guard, not a real one - not worth trusting alone (see
-        // widgets/recent_files_view.h's own sizeHint(), unguarded and
-        // confirmed to actually crash this way).
+        // Same reason as raise_to_top()'s own guard above.
         return;
     }
-    std::vector<double> zValues;
-    std::ranges::transform(items,
-
-                           std::back_inserter(zValues),
-                           [](const auto& i) { return i->zValue(); });
-    const double maxZValue = *std::ranges::max_element(zValues);
-    const double delta = minZ_ - zStep_ - maxZValue;
+    // Mirror image of raise_to_top(): the HIGHEST item in the selection
+    // is the one that has to clear the current bottom.
+    const auto highest = std::ranges::max_element(items,
+                                                  {},
+                                                  [](const QGraphicsItem* i) {
+                                                      return i->zValue();
+                                                  });
+    const qreal delta = minZ_ - zStep_ - (*highest)->zValue();
     FLOG_DEBUG(Ch::Scene, "Lower to bottom, delta: {}", delta);
-    for (auto& item : items) {
-        dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
-    }
+    push_z_shift(items, delta, QObject::tr("Lower to bottom"));
 }
 
 void CanvasScene::group_selection()

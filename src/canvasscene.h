@@ -506,6 +506,14 @@ private:
         const QList<IBaseItem*>& copies,
         const QHash<QUuid, QUuid>& oldToNewUid);
 
+    // Shared tail of raise_to_top()/lower_to_bottom(): both move the
+    // whole selection by one delta, which preserves its internal order,
+    // and both go through the undo stack (see ChangeZOrderCommand for
+    // why that matters beyond Ctrl+Z).
+    void push_z_shift(const QList<QGraphicsItem*>& items,
+                      qreal delta,
+                      const QString& text);
+
     void restore_drilled_in_members();
 
     MainWindow& mainwindow_;

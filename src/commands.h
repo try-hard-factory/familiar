@@ -164,6 +164,46 @@ private:
 };
 
 // ============================================================================
+// ChangeZOrderCommand - Изменение порядка слоёв
+// ============================================================================
+// Raise/lower used to call IBaseItem::set_z_value() straight from
+// CanvasScene, with no command at all. Two things followed from that, and
+// the second one is the expensive one:
+//
+//   - Ctrl+Z did not undo it.
+//   - The document never became modified. "Modified" is derived purely
+//     from the undo stack's clean state (CanvasView::
+//     on_undo_clean_changed() -> set_modified(!clean)), so a change that
+//     pushes nothing leaves the tab looking saved - and closing it asked
+//     nothing and dropped the new layer order silently, even though
+//     zValue IS part of what gets written to the .fml ("z" in
+//     manifest.json).
+//
+// Absolute values, not a delta: both callers move the whole selection by
+// one shared delta, but undo has to put every item back exactly where it
+// was, whatever else happened to it in between (see
+// ScaleItemsByCommand's own comment for how a delta-based undo goes
+// wrong). Old values are captured in redo(), the same way
+// NormalizeItemsCommand does it.
+class ChangeZOrderCommand : public QUndoCommand
+{
+public:
+    // `text` is what the undo history shows - "Raise to top" or "Lower to
+    // bottom", so the two are told apart there.
+    ChangeZOrderCommand(const QList<QGraphicsItem*>& items,
+                        const QList<qreal>& newZValues,
+                        const QString& text);
+
+    void redo() override;
+    void undo() override;
+
+private:
+    QList<QGraphicsItem*> items_;
+    QList<qreal> newZValues_;
+    QList<qreal> oldZValues_;
+};
+
+// ============================================================================
 // NormalizeItemsCommand - Нормализация размеров элементов
 // ============================================================================
 class NormalizeItemsCommand : public QUndoCommand
