@@ -395,10 +395,35 @@ public:
     // Shared (not per-tab) so copy on one tab's scene can be pasted into
     // another's - the "familiar/items" marker CanvasView::on_action_copy()
     // sets is on the system clipboard already, which is inherently
-    // global; the actual items need to be too. Holding shared_ptr keeps
-    // a copied item alive even if the scene it came from gets cleared/
-    // closed before the paste happens.
-    static inline QList<std::shared_ptr<IBaseItem>> internalClipboard;
+    // global; the actual items need to be too.
+    //
+    // SNAPSHOTS, not the items themselves (snapshot_of()): a copy is the
+    // state at Ctrl+C, and stays that way however the originals are
+    // edited afterwards. Self-contained, so a scene being cleared or a
+    // tab closed cannot affect a pending paste either - which is what
+    // the shared_ptr this used to hold was for. And being plain
+    // QVariantMaps of QImage/QByteArray, they are safe to destroy at
+    // static teardown, after QApplication is already gone, which
+    // QGraphicsItems holding QPixmaps are not.
+    static inline QList<QVariantMap> internalClipboard;
+
+    // Builds one detached item from a manifest.json-shaped QVariantMap -
+    // shared by add_queued_items() (which then inserts it into the
+    // scene) and build_from_snapshots() (which leaves it detached for an
+    // undo command to insert). Scene-free by construction.
+    static IBaseItem* create_item_from_data(const QVariantMap& data);
+
+    // Captures an item's current state in that same shape, with live
+    // payload instead of archive paths. What the internal clipboard
+    // stores - see its declaration.
+    static QVariantMap snapshot_of(IBaseItem* baseItem);
+
+    // create_item_from_data() over a whole batch, giving each copy a
+    // fresh identity and re-pointing the batch's internal
+    // cross-references at it.
+    static QList<IBaseItem*> build_from_snapshots(
+        const QList<QVariantMap>& snapshots);
+
 
 private:
     int groupBatchDepth_ = 0;
@@ -471,6 +496,23 @@ private:
     // internal_clipboard()'s own comment for the full rationale.
     static QList<IBaseItem*> clone_with_remap(
         const QList<std::shared_ptr<IBaseItem>>& sources);
+
+
+    // Re-points every clone's GroupItem::child_ids_ / IBaseItem::
+    // attachedToUid_ from the original uids to the fresh ones its
+    // siblings in this same batch got; a reference to something outside
+    // the batch is dropped rather than left pointing at the original.
+    static void remap_cross_references(
+        const QList<IBaseItem*>& copies,
+        const QHash<QUuid, QUuid>& oldToNewUid);
+
+    // Shared tail of raise_to_top()/lower_to_bottom(): both move the
+    // whole selection by one delta, which preserves its internal order,
+    // and both go through the undo stack (see ChangeZOrderCommand for
+    // why that matters beyond Ctrl+Z).
+    void push_z_shift(const QList<QGraphicsItem*>& items,
+                      qreal delta,
+                      const QString& text);
 
     void restore_drilled_in_members();
 

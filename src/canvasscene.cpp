@@ -35,15 +35,12 @@ using namespace familiar::log;
 
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <iterator>
 #include <limits>
 #include <memory>
 #include <numeric>
 #include <string>
-#include <vector>
 
 namespace {
 
@@ -162,9 +159,9 @@ void CanvasScene::clear()
     detach_all_items();
     QGraphicsScene::clear();
     // internal_clipboard is intentionally NOT cleared here - it's shared
-    // across all tabs (see its declaration) and its shared_ptr entries
-    // keep copied items alive independently of this scene, so wiping it
-    // just because this one scene is being reset would break paste on
+    // across all tabs (see its declaration) and holds self-contained
+    // snapshots rather than anything belonging to this scene, so wiping
+    // it just because this one scene is being reset would break paste on
     // other tabs.
     rubberbandItem_ = new RubberbandItem();
     multiselectItem_ = new MultiSelectItem();
@@ -288,14 +285,200 @@ void CanvasScene::copy_selection_to_internal_clipboard() const
     // the user never selected. Cross-reference REMAPPING (GroupItem::
     // child_ids_ / IBaseItem::attachedToUid_, from original uids to
     // whatever fresh uids the eventual copies get) happens later, at
-    // actual paste time (paste_from_internal_clipboard()) - what's
-    // gathered here is still the ORIGINAL live items, shared via
-    // acquireShared(), not copies yet.
+    // actual paste time (build_from_snapshots()), since the fresh uids
+    // only exist then. What's stored here is a SNAPSHOT of each item's
+    // state right now (snapshot_of()), not a reference to the live
+    // item - see that function for what sharing the originals instead
+    // used to get wrong.
     for (QGraphicsItem* item : with_related_items(selectedItems(true))) {
         if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
-            internalClipboard.append(baseItem->acquire_shared());
+            internalClipboard.append(snapshot_of(baseItem));
         }
     }
+}
+
+// Builds one item from the same QVariantMap shape manifest.json's item
+// objects use (FmlArchive::write_manifest()), WITHOUT touching the scene:
+// everything here is pure construction plus the transform fields, so the
+// result can either be handed straight to addItem() (add_queued_items())
+// or stay detached until an undo command inserts it
+// (build_from_snapshots()). Returns nullptr only if the payload an item
+// of that type needs is missing; an unknown type yields an ErrorItem, as
+// it always did, so a file from a newer version still shows SOMETHING
+// where the item was rather than silently losing it.
+IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
+{
+    const QString typ = data.value("type").toString();
+
+    QGraphicsItem* item = nullptr;
+    if (typ == "pixmap") {
+        const QVariant imageVariant = data.value("image");
+        if (imageVariant.isValid()) {
+            const auto image = imageVariant.value<QImage>();
+            const QString filename = data.value("filename").toString();
+            auto* pixmapItem = new PixmapItem(image, filename);
+
+            // Present for a picture loaded from a .fml, where the
+            // encoded bytes are known to be exactly what `image` was
+            // decoded from (FmlArchive::load()), and for one carried
+            // through the internal clipboard (snapshot_of()).
+            pixmapItem->set_encoded_source(
+                data.value(QStringLiteral("encodedBytes")).toByteArray(),
+                data.value(QStringLiteral("encodedFormat")).toString());
+
+            // "crop" and "attached_to" -
+            // see PixmapItem::apply_extra_save_data() (moveitem.h).
+            const QVariant extraData = data.value("data");
+            if (extraData.isValid()) {
+                pixmapItem->apply_extra_save_data(extraData.toMap());
+            }
+            item = pixmapItem;
+        }
+    } else if (typ == "gif") {
+        const QVariant gifVariant = data.value("gifBytes");
+        if (gifVariant.isValid()) {
+            const QByteArray gifBytes = gifVariant.toByteArray();
+            const QString filename = data.value("filename").toString();
+            auto* gifItem = new GifItem(gifBytes, filename);
+
+            // "crop"/"attached_to" (via the PixmapItem base call inside
+            // GifItem::apply_extra_save_data()) plus GIF-specific
+            // "speed" - all live under the same "data" extra-map.
+            const QVariant extraData = data.value("data");
+            if (extraData.isValid()) {
+                gifItem->apply_extra_save_data(extraData.toMap());
+            }
+            item = gifItem;
+        }
+    } else if (typ == "text") {
+        const QVariantMap extraMap = data.value("data").toMap();
+        QString text = extraMap.value("text").toString();
+        if (text.isEmpty()) {
+            text = "Text";
+        }
+        auto* textItem = new TextItem();
+        textItem->setPlainText(text);
+        // Rich text ("html") and note fill ("fill_color") override the
+        // plain-text fallback when present.
+        textItem->apply_extra_save_data(extraMap);
+        item = textItem;
+    } else if (typ == "group") {
+        auto* groupItem = new GroupItem();
+        // child_ids/fill_color/rect size - see GroupItem::
+        // apply_extra_save_data() (moveitem.h). Membership resolves
+        // lazily against the scene on first actual use, not here - other
+        // members may not exist yet at this point in the load (no
+        // ordering guarantee between a group and its children in
+        // manifest.json's flat item list, and none either in the order a
+        // snapshot list happens to be in).
+        groupItem->apply_extra_save_data(data.value("data").toMap());
+        item = groupItem;
+    } else {
+        FLOG_WARN(Ch::Scene, "Encountered item of unknown type: {}", typ);
+        item = new ErrorItem(QString("Item of unknown type: %1").arg(typ));
+    }
+
+    auto* baseItem = dynamic_cast<IBaseItem*>(item);
+    if (!baseItem) {
+        delete item;
+        return nullptr;
+    }
+
+    // Restore identity when loading a saved file (see
+    // docs/fml_format_design.md 5.1/9). Absent for an item that must get
+    // a fresh identity instead (paste, legacy .fml) - it already has the
+    // uid its constructor generated.
+    const QUuid uid = data.value("id").toUuid();
+    if (!uid.isNull()) {
+        baseItem->set_uid(uid);
+    }
+
+    item->setPos(data.value("x", 0.0).toReal(), data.value("y", 0.0).toReal());
+    item->setZValue(data.value("z", 0.0).toReal());
+    item->setScale(data.value("scale", 1.0).toReal());
+    item->setRotation(data.value("rotation", 0.0).toReal());
+    if (data.value("flip", 1).toInt() == -1) {
+        baseItem->do_flip(false, {});
+    }
+
+    return baseItem;
+}
+
+// The inverse of create_item_from_data(), and the whole point of the
+// internal clipboard holding these instead of the live items it used to
+// share ownership of: a snapshot is the item's state AT COPY TIME.
+// Sharing the originals meant create_copy() ran at PASTE time, so
+// rotating the original 45 degrees between Ctrl+C and Ctrl+V pasted it
+// rotated. It also kept QGraphicsItems (and their QPixmaps) in a static
+// container outliving QApplication; a QVariantMap of QImage/QByteArray
+// has no such problem.
+//
+// Same field names as manifest.json so create_item_from_data() serves
+// both, but the payload stays live data rather than an archive path: the
+// QImage itself for a picture (plus its encoded bytes when it has them,
+// so a paste does not re-encode), the GIF stream for a GifItem.
+QVariantMap CanvasScene::snapshot_of(IBaseItem* baseItem)
+{
+    auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
+    if (!item) {
+        return {};
+    }
+
+    QVariantMap data;
+    data[QStringLiteral("type")] = QString::fromStdString(
+        baseItem->get_type());
+    data[QStringLiteral("id")] = baseItem->uid();
+    data[QStringLiteral("x")] = item->pos().x();
+    data[QStringLiteral("y")] = item->pos().y();
+    data[QStringLiteral("z")] = item->zValue();
+    data[QStringLiteral("scale")] = item->scale();
+    data[QStringLiteral("rotation")] = item->rotation();
+    data[QStringLiteral("flip")] = (baseItem->flip() == -1) ? -1 : 1;
+    data[QStringLiteral("data")] = baseItem->get_extra_save_data();
+
+    // GifItem before PixmapItem: it IS one, so the picture branch would
+    // match it too and flatten the animation to its current frame - the
+    // same ordering FmlArchive::save() needs for the same reason.
+    if (auto* gifItem = dynamic_cast<GifItem*>(baseItem)) {
+        data[QStringLiteral("gifBytes")] = gifItem->gif_bytes();
+        data[QStringLiteral("filename")] = gifItem->filename();
+    } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(baseItem)) {
+        data[QStringLiteral("image")] = pixmapItem->pixmap().toImage();
+        data[QStringLiteral("filename")] = pixmapItem->filename();
+        const QByteArray encoded = pixmapItem->encoded_source();
+        if (!encoded.isEmpty()) {
+            data[QStringLiteral("encodedBytes")] = encoded;
+            data[QStringLiteral("encodedFormat")]
+                = pixmapItem->encoded_source_format();
+        }
+    }
+
+    return data;
+}
+
+// Rebuilds a batch of snapshots as fresh, detached items. Each one gets
+// the uid its constructor generated rather than the recorded one (the
+// originals are still on the canvas under those uids), so every
+// cross-reference between them has to be re-pointed at the new identities
+// - see remap_cross_references().
+QList<IBaseItem*> CanvasScene::build_from_snapshots(
+    const QList<QVariantMap>& snapshots)
+{
+    QList<IBaseItem*> copies;
+    QHash<QUuid, QUuid> oldToNewUid;
+    copies.reserve(snapshots.size());
+    for (const QVariantMap& snapshot : snapshots) {
+        QVariantMap data = snapshot;
+        const QUuid originalUid = data.take(QStringLiteral("id")).toUuid();
+        IBaseItem* copy = create_item_from_data(data);
+        if (!copy) {
+            continue;
+        }
+        oldToNewUid.insert(originalUid, copy->uid());
+        copies.append(copy);
+    }
+    remap_cross_references(copies, oldToNewUid);
+    return copies;
 }
 
 QList<IBaseItem*> CanvasScene::clone_with_remap(
@@ -319,6 +502,13 @@ QList<IBaseItem*> CanvasScene::clone_with_remap(
         oldToNewUid.insert(item->uid(), copy->uid());
         copies.append(copy);
     }
+    remap_cross_references(copies, oldToNewUid);
+    return copies;
+}
+
+void CanvasScene::remap_cross_references(const QList<IBaseItem*>& copies,
+                                         const QHash<QUuid, QUuid>& oldToNewUid)
+{
     for (IBaseItem* copy : copies) {
         if (auto* group = dynamic_cast<GroupItem*>(copy)) {
             QList<QUuid> remapped;
@@ -344,12 +534,11 @@ QList<IBaseItem*> CanvasScene::clone_with_remap(
                                                           : QUuid());
         }
     }
-    return copies;
 }
 
 void CanvasScene::paste_from_internal_clipboard(QPointF position)
 {
-    const QList<IBaseItem*> copies = clone_with_remap(internalClipboard);
+    const QList<IBaseItem*> copies = build_from_snapshots(internalClipboard);
     undoStack_->push(new InsertItemsCommand(this, copies, position));
 }
 
@@ -400,19 +589,38 @@ void CanvasScene::duplicate_selection()
 void CanvasScene::raise_to_top()
 {
     cancel_active_modes();
-    QList<QGraphicsItem*> items = selectedItems(true);
-    std::vector<double> zValues;
-    zValues.reserve(static_cast<std::size_t>(items.size()));
-    std::ranges::transform(items,
-
-                           std::back_inserter(zValues),
-                           [](const auto& i) { return i->zValue(); });
-    const double minZValue = *std::ranges::min_element(zValues);
-    const double delta = maxZ_ + zStep_ - minZValue;
-    FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
-    for (auto& item : items) {
-        dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
+    const QList<QGraphicsItem*> items = selectedItems(true);
+    if (items.isEmpty()) {
+        // *min_element() on an empty range dereferences end() - UB, not a
+        // graceful no-op. The "active_when_selection" action group
+        // normally keeps this unreachable with nothing selected, but
+        // that is a UI-level guard, not a real one (see
+        // widgets/recent_files_view.h's own sizeHint(), unguarded and
+        // confirmed to actually crash this way).
+        return;
     }
+    // The LOWEST item in the selection is the one that has to clear the
+    // current top, so the whole selection keeps its internal order.
+    const auto lowest = std::ranges::min_element(items,
+                                                 {},
+                                                 [](const QGraphicsItem* i) {
+                                                     return i->zValue();
+                                                 });
+    const qreal delta = maxZ_ + zStep_ - (*lowest)->zValue();
+    FLOG_DEBUG(Ch::Scene, "Raise to top, delta: {}", delta);
+    push_z_shift(items, delta, QObject::tr("Raise to top"));
+}
+
+void CanvasScene::push_z_shift(const QList<QGraphicsItem*>& items,
+                               qreal delta,
+                               const QString& text)
+{
+    QList<qreal> newZValues;
+    newZValues.reserve(items.size());
+    for (const QGraphicsItem* item : items) {
+        newZValues.append(item->zValue() + delta);
+    }
+    undoStack_->push(new ChangeZOrderCommand(items, newZValues, text));
 }
 
 void CanvasScene::raise_selection_to_front() const
@@ -478,28 +686,21 @@ void CanvasScene::raise_selection_to_front() const
 void CanvasScene::lower_to_bottom()
 {
     cancel_active_modes();
-    QList<QGraphicsItem*> items = selectedItems(true);
+    const QList<QGraphicsItem*> items = selectedItems(true);
     if (items.isEmpty()) {
-        // raise_to_top() (above) guards the same way via ordered.isEmpty()
-        // - *std::max_element() below is UB on an empty range (dereferences
-        // end()). The "active_when_selection" action group normally keeps
-        // this unreachable with nothing selected, but that's a UI-level
-        // guard, not a real one - not worth trusting alone (see
-        // widgets/recent_files_view.h's own sizeHint(), unguarded and
-        // confirmed to actually crash this way).
+        // Same reason as raise_to_top()'s own guard above.
         return;
     }
-    std::vector<double> zValues;
-    std::ranges::transform(items,
-
-                           std::back_inserter(zValues),
-                           [](const auto& i) { return i->zValue(); });
-    const double maxZValue = *std::ranges::max_element(zValues);
-    const double delta = minZ_ - zStep_ - maxZValue;
+    // Mirror image of raise_to_top(): the HIGHEST item in the selection
+    // is the one that has to clear the current bottom.
+    const auto highest = std::ranges::max_element(items,
+                                                  {},
+                                                  [](const QGraphicsItem* i) {
+                                                      return i->zValue();
+                                                  });
+    const qreal delta = minZ_ - zStep_ - (*highest)->zValue();
     FLOG_DEBUG(Ch::Scene, "Lower to bottom, delta: {}", delta);
-    for (auto& item : items) {
-        dynamic_cast<IBaseItem*>(item)->set_z_value(item->zValue() + delta);
-    }
+    push_z_shift(items, delta, QObject::tr("Lower to bottom"));
 }
 
 void CanvasScene::group_selection()
@@ -1911,133 +2112,36 @@ QList<IBaseItem*> CanvasScene::add_queued_items()
             itemsToAdd_.pop();
         }
 
-        QVariantMap data = queuedData.data;
+        const QVariantMap& data = queuedData.data;
         const bool selected = queuedData.selected;
-
-        // Get item type from data
         const QString typ = data.value("type").toString();
-        data.remove("type");
 
-        // Create item based on type
-        QGraphicsItem* item = nullptr;
-        if (typ == "pixmap") {
-            // For pixmap items, we need an image - this should be provided in data
-            const QVariant imageVariant = data.value("image");
-            if (imageVariant.isValid()) {
-                const auto image = imageVariant.value<QImage>();
-                const QString filename = data.value("filename").toString();
-                auto* pixmapItem = new PixmapItem(image, filename);
-
-                // "crop" and "attached_to" -
-                // see PixmapItem::apply_extra_save_data() (moveitem.h).
-                const QVariant extraData = data.value("data");
-                if (extraData.isValid()) {
-                    pixmapItem->apply_extra_save_data(extraData.toMap());
-                }
-                item = pixmapItem;
-            }
-        } else if (typ == "gif") {
-            const QVariant gifVariant = data.value("gifBytes");
-            if (gifVariant.isValid()) {
-                const QByteArray gifBytes = gifVariant.toByteArray();
-                const QString filename = data.value("filename").toString();
-                auto* gifItem = new GifItem(gifBytes, filename);
-
-                // "crop"/"attached_to" (via the PixmapItem base call
-                // inside GifItem::apply_extra_save_data()) plus
-                // GIF-specific "speed" - all live under the same "data"
-                // extra-map.
-                const QVariant extraData = data.value("data");
-                if (extraData.isValid()) {
-                    gifItem->apply_extra_save_data(extraData.toMap());
-                }
-                item = gifItem;
-            }
-        } else if (typ == "text") {
-            const QVariantMap extraMap = data.value("data").toMap();
-            QString text = extraMap.value("text").toString();
-            if (text.isEmpty()) {
-                text = "Text";
-            }
-            auto* textItem = new TextItem();
-            textItem->setPlainText(text);
-            // Rich text ("html") and note fill ("fill_color") override
-            // the plain-text fallback when present.
-            textItem->apply_extra_save_data(extraMap);
-            item = textItem;
-        } else if (typ == "group") {
-            auto* groupItem = new GroupItem();
-            // child_ids/fill_color/rect size - see GroupItem::
-            // apply_extra_save_data() (moveitem.h). Membership resolves
-            // lazily against the scene on first actual use, not here -
-            // other members may not exist yet at this point in the load
-            // (no ordering guarantee between a group and its children in
-            // manifest.json's flat item list).
-            groupItem->apply_extra_save_data(data.value("data").toMap());
-            item = groupItem;
-        } else {
-            FLOG_WARN(Ch::Scene, "Encountered item of unknown type: {}", typ);
-            item = new ErrorItem(QString("Item of unknown type: %1").arg(typ));
+        IBaseItem* baseItem = create_item_from_data(data);
+        auto* item = dynamic_cast<QGraphicsItem*>(baseItem);
+        if (!item) {
+            continue;
         }
 
-        if (item) {
-            // Apply common item properties from data
-            auto* baseItem = dynamic_cast<IBaseItem*>(item);
-            if (baseItem) {
-                // Restore identity when loading a saved file (see
-                // docs/fml_format_design.md §5.1/§9). Absent for a
-                // freshly-constructed item (e.g. paste, legacy .fml) -
-                // it already has the uid its constructor generated.
-                const QUuid uid = data.value("id").toUuid();
-                if (!uid.isNull()) {
-                    baseItem->set_uid(uid);
-                }
+        addItem(item);
 
-                // Set position
-                const qreal x = data.value("x", 0.0).toReal();
-                const qreal y = data.value("y", 0.0).toReal();
-                item->setPos(x, y);
+        // Force recalculation of min/max z values - must go through
+        // set_z_value() (not the raw setZValue() create_item_from_data()
+        // did), since that's the only one wired to update
+        // scene->max_z/minZ_ (QGraphicsItem::setZValue() isn't virtual,
+        // so it can't be overridden directly).
+        baseItem->set_z_value(item->zValue());
 
-                // Set z-value
-                const qreal z = data.value("z", 0.0).toReal();
-                item->setZValue(z);
-
-                // Set scale
-                const qreal scale = data.value("scale", 1.0).toReal();
-                item->setScale(scale);
-
-                // Set rotation
-                const qreal rotation = data.value("rotation", 0.0).toReal();
-                item->setRotation(rotation);
-
-                // Handle flip
-                const int flip = data.value("flip", 1).toInt();
-                if (flip == -1) {
-                    baseItem->do_flip(false, {});
-                }
-
-                addItem(item);
-
-                // Force recalculation of min/max z values - must go
-                // through set_z_value() (not the raw setZValue() call
-                // above), since that's the only one wired to update
-                // scene->max_z/minZ_ (QGraphicsItem::setZValue() isn't
-                // virtual, so it can't be overridden directly).
-                baseItem->set_z_value(item->zValue());
-
-                if (selected) {
-                    item->setSelected(true);
-                    // A saved-as-selected group must NOT jump in front
-                    // of its own members - see GroupItem's class comment
-                    // (moveitem.h) on why it never bring_to_front()s.
-                    if (typ != "group") {
-                        baseItem->bring_to_front();
-                    }
-                }
-
-                addedItems.append(baseItem);
+        if (selected) {
+            item->setSelected(true);
+            // A saved-as-selected group must NOT jump in front of its
+            // own members - see GroupItem's class comment (moveitem.h)
+            // on why it never bring_to_front()s.
+            if (typ != "group") {
+                baseItem->bring_to_front();
             }
         }
+
+        addedItems.append(baseItem);
     }
 
     // Belt-and-suspenders: force every group added in this batch to

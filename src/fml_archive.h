@@ -10,6 +10,7 @@
 #include <QStringList>
 
 class CanvasScene;
+class QJsonObject;
 class ThreadedIO;
 
 // Result of a save/load operation.
@@ -53,6 +54,18 @@ public:
     static FmlResult load(const QString& filename,
                           CanvasScene* scene,
                           ThreadedIO* worker = nullptr);
+
+    // Drops group memberships and attachments that a hand-edited or
+    // corrupted manifest could have made cyclic, in place, and returns
+    // one message per drop (which load() reports as itemErrors). A cycle
+    // there is not a cosmetic problem: GroupItem's ancestor walks never
+    // terminate on one - see the definition's own comment.
+    //
+    // Called by load() itself; public only so a test can hand it a
+    // crafted manifest directly, since building the equivalent .fml plus
+    // the CanvasScene load() needs is far more machinery for the same
+    // assertion.
+    static QStringList sanitize_item_graph(QJsonObject& root);
 };
 
 #endif // FML_ARCHIVE_H
