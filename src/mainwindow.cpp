@@ -548,34 +548,63 @@ void MainWindow::save_all_window_save_cb(SaveAllDialog* w,
 {
     w->close();
 
-    int exitFlag = 1;
-
-    for (auto it = m.rbegin(); it != m.rend(); it++) {
-        if (!it->second) {
-            FLOG_DEBUG(Ch::UI,
-                       "close ID = {} {}",
-                       it->first,
-                       tabpane_->get_current_tab_path());
-            tabpane_->close_tab_by_index(it->first);
+    // `m` is keyed by tab index, captured by check_save() before this
+    // dialog was even shown - and every close below shifts every index
+    // after it. So the indices are turned into views FIRST, while they
+    // still mean what they meant, and re-derived from the view right
+    // before each use (TabPane::index_of()).
+    //
+    // `m` holds exactly the MODIFIED tabs check_save() offered, checked =
+    // save. The unmodified ones were never in the dialog and must not be
+    // touched: this loop used to walk every remaining tab instead, so an
+    // unmodified untitled tab - the blank one every session starts with -
+    // reached save_file(), whose path does not exist, which falls back to
+    // save_file_as() and popped a Save As dialog on the way out of the
+    // application. An unmodified titled tab got its file pointlessly
+    // rewritten for the same reason.
+    QList<CanvasView*> toDiscard;
+    QList<CanvasView*> toSave;
+    for (const auto& [index, save] : m) {
+        if (CanvasView* view = tabpane_->widget_at(index)) {
+            (save ? toSave : toDiscard).append(view);
         }
     }
 
-    for (int i = tabpane_->count() - 1; i >= 0; --i) {
-        FLOG_DEBUG(Ch::UI,
-                   "save ID = {} {}",
-                   i,
-                   tabpane_->get_current_tab_path());
-        tabpane_->set_current_index(i);
-
-        auto ret = fileactions_->save_file();
-        if (ret == QDialog::Rejected) {
-            exitFlag = 0;
-        } else {
-            tabpane_->close_tab_by_index(i);
-        }
+    // recovery::remove() per closed tab even though a clean exit wipes
+    // the whole folder anyway (the aboutToQuit hook in this class's
+    // constructor): this function does NOT always end in an exit. A
+    // cancelled save below leaves the application running with these
+    // tabs already gone, and a later crash in that same run would then
+    // offer to recover work the user explicitly discarded here. Exactly
+    // the case recovery::remove() exists for - see its comment
+    // (recovery.h) - and the same ordering TabPane::on_tab_closed()
+    // uses: only once the tab's fate is actually settled.
+    for (CanvasView* view : toDiscard) {
+        FLOG_DEBUG(Ch::UI, "discarding {}", view->path().toStdString());
+        familiar::recovery::remove(view->recovery_id());
+        tabpane_->close_tab_by_index(tabpane_->index_of(view));
     }
 
-    if (exitFlag) {
+    bool everythingSaved = true;
+    for (CanvasView* view : toSave) {
+        FLOG_DEBUG(Ch::UI, "saving {}", view->path().toStdString());
+        // save_file() works on the current tab, and so does the
+        // save_file_as() it falls back to for an untitled one - which a
+        // modified, never-saved tab in this list genuinely is. Same
+        // reason TabPane::on_tab_closed() activates the tab it is asking
+        // about.
+        tabpane_->set_current_index(tabpane_->index_of(view));
+        if (fileactions_->save_file() != QDialog::Accepted) {
+            // Cancelled or failed: keep this tab (and the application)
+            // open rather than discarding work nobody agreed to lose.
+            everythingSaved = false;
+            continue;
+        }
+        familiar::recovery::remove(view->recovery_id());
+        tabpane_->close_tab_by_index(tabpane_->index_of(view));
+    }
+
+    if (everythingSaved) {
         exit_project();
     }
 }

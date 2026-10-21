@@ -88,7 +88,23 @@ void TabPane::add_new_tab(const QString& path)
 
 void TabPane::close_tab_by_index(int idx)
 {
-    tabs_->removeTab(idx);
+    // Deleting the page, not removeTab(): the latter only detaches the
+    // widget from the tab bar and leaves it parentless and alive, so the
+    // whole CanvasView - its scene, every picture in it - leaked. Nothing
+    // reclaimed it, and this is also reachable without the app then
+    // exiting (MainWindow::save_all_window_save_cb() stays open if a save
+    // is cancelled), so it was a leak in a live session, not just on the
+    // way out. QTabWidget notices the page being destroyed and drops its
+    // tab entry on its own - same direct `delete` FileActions::
+    // close_tab() and TabPane::on_tab_closed() already rely on.
+    // widget() returns nullptr for an out-of-range index, and deleting
+    // that is a no-op.
+    delete tabs_->widget(idx);
+}
+
+int TabPane::index_of(CanvasView* view) const
+{
+    return tabs_->indexOf(view);
 }
 
 void TabPane::add_new_untitled_tab()
