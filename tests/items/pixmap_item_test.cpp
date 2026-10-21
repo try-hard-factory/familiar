@@ -159,3 +159,52 @@ TEST(PixmapItemEncodingTest, GrayscaleExportIsNotServedFromCache)
     const auto [storedAgain, __] = item.pixmap_to_bytes();
     EXPECT_EQ(stored, storedAgain);
 }
+
+
+// sample_color_at() used to read the raw pixmap wherever itemAt() handed
+// it a point - and shape() (selector.h) claims a margin beyond the
+// visible edge, so the eyedropper reported colours from pixels the crop
+// hides, or coordinates outside the image entirely (an invalid colour
+// plus a qWarning per mouse move, routed into this app's own log).
+TEST(PixmapItemColorSamplingTest, OnlySamplesInsideTheVisibleCrop)
+{
+    QImage img(200, 200, QImage::Format_RGB32);
+    img.fill(Qt::red);
+    // The band that a crop will hide, painted differently so sampling it
+    // by mistake is unmistakable.
+    for (int y = 0; y < 200; ++y) {
+        for (int x = 150; x < 200; ++x) {
+            img.setPixel(x, y, qRgb(0, 0, 255));
+        }
+    }
+
+    PixmapItem item(img);
+    item.set_crop(QRectF(0, 0, 150, 200)); // the blue band is cropped away
+
+    // Inside the crop: the colour that is really there.
+    EXPECT_EQ(item.sample_color_at(QPointF(10, 10)).name(),
+              QColor(Qt::red).name());
+
+    // Inside the pixmap but cropped away - what the margin around the
+    // visible edge used to reach. Must report nothing rather than blue.
+    EXPECT_FALSE(item.sample_color_at(QPointF(170, 100)).isValid());
+
+    // Outside the image altogether.
+    EXPECT_FALSE(item.sample_color_at(QPointF(500, 500)).isValid());
+    EXPECT_FALSE(item.sample_color_at(QPointF(-5, -5)).isValid());
+}
+
+// A crop wider than the pixmap (nothing validates what a .fml carries)
+// must not get past the bounds check either.
+TEST(PixmapItemColorSamplingTest, ACropLargerThanTheImageIsStillClamped)
+{
+    QImage img(100, 100, QImage::Format_RGB32);
+    img.fill(Qt::green);
+
+    PixmapItem item(img);
+    item.set_crop(QRectF(0, 0, 10000, 10000));
+
+    EXPECT_EQ(item.sample_color_at(QPointF(50, 50)).name(),
+              QColor(Qt::green).name());
+    EXPECT_FALSE(item.sample_color_at(QPointF(500, 500)).isValid());
+}

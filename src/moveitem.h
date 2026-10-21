@@ -343,6 +343,30 @@ public:
         const QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
         const QImage img = pm.toImage();
 
+        // Only where the user can actually SEE a pixel. Two ways this
+        // gets asked about one they cannot:
+        //
+        // - shape() (selector.h) claims a margin of
+        //   select_resize_size()/2 beyond the visible edge, plus the
+        //   rotate corner areas, so itemAt() hands this item points
+        //   outside crop_ - and crop_ is exactly the part that gets
+        //   drawn (paint() below renders pm's crop_ rect AT crop_, so
+        //   coordinates inside it map straight through). Sampling there
+        //   returned the colour of a pixel the crop hides.
+        // - Those same points fall outside the image itself wherever
+        //   crop_ meets the pixmap border. QImage::pixelColor() answers
+        //   that with an invalid colour AND a qWarning, which
+        //   log/qt_bridge.cpp routes into this app's own log - once per
+        //   mouse move, since the eyedropper samples on every move.
+        //
+        // Intersected with the image rather than trusting crop_ alone:
+        // it comes back from apply_extra_save_data() with nothing
+        // validating it against the pixmap, so a hand-edited .fml can
+        // put it outside.
+        if (!crop_.intersected(QRectF(img.rect())).contains(ipos)) {
+            return {};
+        }
+
         QColor color = img.pixelColor(static_cast<int>(ipos.x()),
                                       static_cast<int>(ipos.y()));
         if (color.alpha()) {
