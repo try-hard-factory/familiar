@@ -5,6 +5,9 @@
 #include <QImage>
 #include <QPixmap>
 #include <QRandomGenerator>
+#include <QRectF>
+#include <QVariantList>
+#include <QVariantMap>
 
 // Regression tests for the generational re-encoding bug: every save ran
 // pixmap_to_bytes() over the DECODED pixmap, so a picture stored as JPEG
@@ -207,4 +210,68 @@ TEST(PixmapItemColorSamplingTest, ACropLargerThanTheImageIsStillClamped)
     EXPECT_EQ(item.sample_color_at(QPointF(50, 50)).name(),
               QColor(Qt::green).name());
     EXPECT_FALSE(item.sample_color_at(QPointF(500, 500)).isValid());
+}
+
+// A crop from a file is applied through PixmapItem::
+// apply_extra_save_data(), which is the only path that can carry one
+// from outside the pixmap: ensure_point_within_crop_bounds() confines
+// interactive cropping to the image. crop_ IS the item's unselected
+// bounding rect and the rect the export path copies out of the pixmap,
+// so a rect with negative extents makes every width()/height() derived
+// handle computation negative, and an enormous one turns the export's
+// QPixmap::copy() into an allocation that cannot succeed.
+TEST(PixmapItemCropLoadTest, ACropFromAFileIsConfinedToTheImage)
+{
+    QImage img(100, 100, QImage::Format_RGB32);
+    img.fill(Qt::green);
+
+    PixmapItem item(img);
+    QVariantMap data;
+    data[QStringLiteral("crop")]
+        = QVariantList{-100000.0, -100000.0, 500000.0, 500000.0};
+    item.apply_extra_save_data(data);
+
+    EXPECT_EQ(item.crop(), QRectF(0, 0, 100, 100));
+}
+
+TEST(PixmapItemCropLoadTest, ANegativeExtentCropIsNormalized)
+{
+    QImage img(100, 100, QImage::Format_RGB32);
+    img.fill(Qt::green);
+
+    PixmapItem item(img);
+    QVariantMap data;
+    // The region (10,10)-(60,60), written back to front.
+    data[QStringLiteral("crop")] = QVariantList{60.0, 60.0, -50.0, -50.0};
+    item.apply_extra_save_data(data);
+
+    EXPECT_EQ(item.crop(), QRectF(10, 10, 50, 50));
+}
+
+// Nothing at all in common with the image: the full image is kept rather
+// than an empty rect, which would leave an invisible, unselectable item.
+TEST(PixmapItemCropLoadTest, ACropDisjointFromTheImageKeepsTheFullImage)
+{
+    QImage img(100, 100, QImage::Format_RGB32);
+    img.fill(Qt::green);
+
+    PixmapItem item(img);
+    QVariantMap data;
+    data[QStringLiteral("crop")] = QVariantList{5000.0, 5000.0, 10.0, 10.0};
+    item.apply_extra_save_data(data);
+
+    EXPECT_EQ(item.crop(), QRectF(0, 0, 100, 100));
+}
+
+TEST(PixmapItemCropLoadTest, AValidCropIsAppliedUnchanged)
+{
+    QImage img(100, 100, QImage::Format_RGB32);
+    img.fill(Qt::green);
+
+    PixmapItem item(img);
+    QVariantMap data;
+    data[QStringLiteral("crop")] = QVariantList{10.0, 20.0, 30.0, 40.0};
+    item.apply_extra_save_data(data);
+
+    EXPECT_EQ(item.crop(), QRectF(10, 20, 30, 40));
 }

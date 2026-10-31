@@ -774,6 +774,12 @@ void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
     const FmlResult result = FmlArchive::load(filename, scene, worker);
 
     if (worker) {
+        // Before finished(), so a receiver has both halves in hand by
+        // the time it decides what to show - same ordering as
+        // ImageImportSession::run()'s large_images_found().
+        if (!result.itemRepairs.isEmpty()) {
+            emit worker->items_repaired(result.itemRepairs);
+        }
         emit worker->finished(result.error, result.itemErrors);
         worker->quit();
     }

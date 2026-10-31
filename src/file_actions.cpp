@@ -17,9 +17,12 @@
 #include <QMessageBox>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QThread>
 #include <QUuid>
 #include <QtContainerFwd>
+
+#include <memory>
 
 FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
@@ -58,6 +61,17 @@ void FileActions::load_fml_into_current_tab(const QString& path,
     auto* worker = new ThreadedIO(
         [path, scene](ThreadedIO* w) { load_fml(path, scene, w); });
 
+    // load_fml() emits items_repaired() just before finished(), so this
+    // is filled in by the time the handler below runs. Shared rather
+    // than captured by reference: both lambdas outlive this function.
+    auto repairs = std::make_shared<QStringList>();
+    QObject::connect(worker,
+                     &ThreadedIO::items_repaired,
+                     &mainwindow_,
+                     [repairs](const QStringList& messages) {
+                         *repairs += messages;
+                     });
+
     QObject::connect(
         worker,
         &ThreadedIO::finished,
@@ -67,6 +81,7 @@ void FileActions::load_fml_into_current_tab(const QString& path,
          scene,
          markModifiedAfterLoad,
          recoveryIdToClear,
+         repairs,
          tabOwnership](const QString& error, const QStringList& itemErrors) {
             // A fatal error means nothing was queued and the tab is
             // empty, so the whole success path below (fit_scene, the
@@ -114,18 +129,45 @@ void FileActions::load_fml_into_current_tab(const QString& path,
 
             // Per-item problems are NOT a failed open: whatever did load
             // is real content the user should keep, so this tab stays.
-            if (!itemErrors.isEmpty()) {
-                QStringList lines;
-                for (const QString& e : itemErrors) {
-                    lines.append(QStringLiteral("<li>%1</li>").arg(e));
+            //
+            // The two lists are reported as two separate things because
+            // they mean opposite outcomes for the user: an item in
+            // `itemErrors` is content they no longer have, while one in
+            // `repairs` is content that is all there with something
+            // about it corrected. Pooling them under a single "could
+            // not be loaded" count claimed that pictures sitting right
+            // in front of the user had failed to load.
+            if (!itemErrors.isEmpty() || !repairs->isEmpty()) {
+                const auto bullets = [](const QStringList& messages) {
+                    QStringList lines;
+                    for (const QString& m : messages) {
+                        lines.append(QStringLiteral("<li>%1</li>").arg(m));
+                    }
+                    return QStringLiteral("<ul>%1</ul>")
+                        .arg(lines.join(QString()));
+                };
+
+                QString body;
+                if (!itemErrors.isEmpty()) {
+                    body += QObject::tr("%1 item(s) could not be loaded:")
+                                .arg(itemErrors.size())
+                            + bullets(itemErrors);
                 }
+                if (!repairs->isEmpty()) {
+                    body += QObject::tr("%1 item(s) were repaired:")
+                                .arg(repairs->size())
+                            + bullets(*repairs);
+                }
+
+                // A repair-only open is not a loss, so it does not get
+                // the same heading as one.
                 show_message_box(
                     QMessageBox::Warning,
                     &mainwindow_,
-                    QObject::tr("Problem loading project"),
-                    QObject::tr("%1 item(s) could not be loaded.<ul>%2</ul>")
-                        .arg(itemErrors.size())
-                        .arg(lines.join(QString())));
+                    itemErrors.isEmpty()
+                        ? QObject::tr("Project repaired while opening")
+                        : QObject::tr("Problem loading project"),
+                    body);
             }
         });
 

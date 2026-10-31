@@ -414,10 +414,37 @@ public:
         if (cropVariant.isValid()) {
             const QList<QVariant> cropList = cropVariant.toList();
             if (cropList.size() == 4) {
-                set_crop(QRectF(cropList[0].toReal(),
-                                cropList[1].toReal(),
-                                cropList[2].toReal(),
-                                cropList[3].toReal()));
+                const QRectF stored(cropList[0].toReal(),
+                                    cropList[1].toReal(),
+                                    cropList[2].toReal(),
+                                    cropList[3].toReal());
+                // crop_ IS the item's unselected bounding rect
+                // (bounding_rect_unselected() below), and the export
+                // path copies exactly this rect out of the pixmap, so a
+                // rect from a corrupted file is not a cosmetic problem:
+                // negative extents make width()/height() negative for
+                // every handle and hit-test computation, and an enormous
+                // one turns the export's pixmap copy into an allocation
+                // that cannot succeed.
+                //
+                // Nothing legitimate is narrowed by this.
+                // ensure_point_within_crop_bounds() already confines
+                // interactive cropping to the pixmap, so a rect that
+                // needs clamping here could only have been hand-edited.
+                // Normalized first so a negative-extent rect is read as
+                // the region the writer presumably meant rather than
+                // discarded outright.
+                const QRectF usable
+                    = stored.normalized().intersected(QRectF(pixmap().rect()));
+                if (usable.isEmpty()) {
+                    FLOG_WARN(familiar::log::Ch::Items,
+                              "Crop {} for {} lies outside the image; "
+                              "keeping the full image",
+                              stored,
+                              to_string());
+                } else {
+                    set_crop(usable);
+                }
             }
         }
         const QString attachedTo

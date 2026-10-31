@@ -32,6 +32,8 @@
 #include <QtContainerFwd>
 #include <QtTypes>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <functional>
 #include <miniz_common.h>
@@ -165,9 +167,13 @@ QByteArray write_manifest(const Manifest& manifest)
 // or from a formatVersion we don't understand yet) with `error` set.
 // A manifest item with a missing/duplicate id is not fatal - see the
 // per-item warning below (docs/fml_format_design.md §5.1).
+//
+// Everything this reports goes to `itemRepairs`, not itemErrors: the
+// only messages it produces come from the two sanitize passes below,
+// which fix an item in place rather than drop it.
 std::optional<Manifest> parse_manifest(const QByteArray& json,
                                        QString& error,
-                                       QStringList& itemErrors)
+                                       QStringList& itemRepairs)
 {
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
@@ -212,7 +218,11 @@ std::optional<Manifest> parse_manifest(const QByteArray& json,
     // Before anything reads the item list: a cycle in the group graph is
     // an infinite loop in GroupItem's ancestor walks, not a cosmetic
     // problem - see sanitize_item_graph()'s own comment.
-    itemErrors += FmlArchive::sanitize_item_graph(root);
+    itemRepairs += FmlArchive::sanitize_item_graph(root);
+    // Same for the transform numbers: nothing downstream of here checks
+    // them either, and a scale of 0 is not recoverable by hand once it
+    // is in - see the definition's own comment.
+    itemRepairs += FmlArchive::sanitize_item_transforms(root);
 
     Manifest manifest;
     manifest.formatVersion = kformatVersion;
@@ -523,6 +533,21 @@ std::optional<EntrySizes> entry_sizes(mz_zip_archive* zip, int index)
                       .compressed = stat.m_comp_size};
 }
 
+// Ceilings for the transform fields, used by sanitize_item_transforms()
+// below. The point of them is arithmetic, not taste: the largest number
+// JSON can carry is ~1.8e308, and a scale or a coordinate anywhere near
+// that overflows to inf the moment it is multiplied by an item's own
+// size, after which the inf propagates through every bounding-rect,
+// anchor and scene-index computation that touches the item.
+//
+// Both are far above anything the interactive paths can produce - scale
+// comes from a drag measured against the item's current size, and the
+// scene's own coordinates stay within a few hundred thousand units even
+// for a very large board - so a real project never meets either.
+constexpr double kmaxItemScale = 1e6;
+constexpr double kmaxSceneCoord = 1e9;
+constexpr double kfullTurnDegrees = 360.0;
+
 } // namespace
 
 QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
@@ -629,6 +654,108 @@ QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
     }
 
     if (!reports.isEmpty()) {
+        root[QStringLiteral("items")] = items;
+    }
+    return reports;
+}
+
+QStringList FmlArchive::sanitize_item_transforms(QJsonObject& root)
+{
+    QStringList reports;
+    const auto report = [&reports](const QString& what, const QString& id) {
+        const QString message = QStringLiteral("%1 for item %2").arg(what, id);
+        reports.append(message);
+        FLOG_WARN(Ch::IO, "FmlArchive::load: {}", message);
+    };
+
+    // Not const: the QJsonValueRef loop below writes back through it.
+    // NOLINTNEXTLINE(misc-const-correctness)
+    QJsonArray items = root.value(QStringLiteral("items")).toArray();
+
+    // Tracked separately from `reports`: the rotation normalization
+    // below rewrites the value without reporting anything, so an empty
+    // report list does not mean the array is unchanged.
+    bool changed = false;
+
+    for (QJsonValueRef itemRef : items) {
+        QJsonObject item = itemRef.toObject();
+        const QString id = item.value(QStringLiteral("id")).toString();
+        bool itemChanged = false;
+
+        // CanvasScene::create_item_from_data() applies this with
+        // QGraphicsItem::setScale(), not BaseItemMixin::set_scale(), so
+        // the "refuse a non-positive scale" guard in the latter never
+        // sees a value that arrived from a file. Zero is the worse of
+        // the two: every later handle-driven scale is computed as
+        // scale_orig_factor() * factor, which stays zero forever, so the
+        // picture cannot be scaled back by hand at all - only "Reset
+        // scale" gets it out. 1.0 rather than the nearest legal value
+        // because there is no meaningful minimum to snap to.
+        const QJsonValue scaleValue = item.value(QStringLiteral("scale"));
+        if (!scaleValue.isUndefined()) {
+            const double scale = scaleValue.toDouble(1.0);
+            double usable = scale;
+            if (!(scale > 0)) {
+                usable = 1.0;
+                report(QStringLiteral("Reset a non-positive scale"), id);
+            } else if (scale > kmaxItemScale) {
+                usable = kmaxItemScale;
+                report(QStringLiteral("Clamped an out-of-range scale"), id);
+            }
+            if (usable != scale) {
+                item[QStringLiteral("scale")] = usable;
+                itemChanged = true;
+            }
+        }
+
+        // Folded into [0, 360) because the cursor logic reads rotation()
+        // as if it already were - is_edge_vertical() and
+        // get_diag_cursor() (selector.h) both test it against fixed
+        // sector ranges, which a negative or >360 angle silently misses.
+        //
+        // Deliberately NOT reported: set_rotation() stores whatever it
+        // is given, so a -90 or a 450 in the file is ordinary output
+        // from a previous session, not corruption. Folding is lossless
+        // either way - the item ends up pointing the same direction.
+        const QJsonValue rotationValue = item.value(QStringLiteral("rotation"));
+        if (!rotationValue.isUndefined()) {
+            const double rotation = rotationValue.toDouble();
+            double usable = std::fmod(rotation, kfullTurnDegrees);
+            if (usable < 0) {
+                usable += kfullTurnDegrees;
+            }
+            if (usable != rotation) {
+                item[QStringLiteral("rotation")] = usable;
+                itemChanged = true;
+            }
+        }
+
+        const QString coordKeys[] = {QStringLiteral("x"),
+                                     QStringLiteral("y"),
+                                     QStringLiteral("z")};
+        for (const QString& key : coordKeys) {
+            const QJsonValue value = item.value(key);
+            if (value.isUndefined()) {
+                continue;
+            }
+            const double coord = value.toDouble();
+            const double usable
+                = std::clamp(coord, -kmaxSceneCoord, kmaxSceneCoord);
+            if (usable != coord) {
+                item[key] = usable;
+                itemChanged = true;
+                report(QStringLiteral("Clamped an out-of-range %1").arg(key),
+                       id);
+            }
+        }
+
+        if (itemChanged) {
+            itemRef = item;
+            changed = true;
+        }
+    }
+
+    if (changed) {
         root[QStringLiteral("items")] = items;
     }
     return reports;
@@ -887,7 +1014,7 @@ FmlResult FmlArchive::load(const QString& filename,
     QString parseError;
     std::optional<Manifest> manifest = parse_manifest(manifestJson,
                                                       parseError,
-                                                      result.itemErrors);
+                                                      result.itemRepairs);
     if (!manifest) {
         result.error = parseError;
         return result;

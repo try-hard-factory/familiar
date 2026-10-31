@@ -83,6 +83,12 @@ signals:
     // Separate from finished()'s `errors` - these images loaded fine and
     // were queued as-is, just flagged as candidates for optimization.
     void large_images_found(const QStringList& filenames);
+    // Emitted once, right before finished(), when a .fml carried item
+    // data that had to be corrected on the way in - see
+    // FmlResult::itemRepairs. Separate from finished()'s `errors` for
+    // the same reason large_images_found() is: these items are all
+    // there, something about them was simply wrong and got fixed.
+    void items_repaired(const QStringList& repairs);
     // Emitted once, right before finished(), by ImageImportSession::run() ONLY - the
     // 3-way breakdown of finished()'s own `errors` list (same filenames,
     // just classified - see ImageLoadFailure). finished()'s `errors`

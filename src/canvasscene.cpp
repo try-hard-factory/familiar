@@ -395,7 +395,16 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
 
     item->setPos(data.value("x", 0.0).toReal(), data.value("y", 0.0).toReal());
     item->setZValue(data.value("z", 0.0).toReal());
-    item->setScale(data.value("scale", 1.0).toReal());
+    // These are QGraphicsItem's own setters rather than
+    // BaseItemMixin::set_scale()/set_rotation(), which would fight the
+    // anchor-preserving repositioning those do - the saved x/y above is
+    // already the final position. That also means set_scale()'s refusal
+    // of a non-positive scale does not apply here, hence the guard:
+    // FmlArchive::sanitize_item_transforms() normally keeps such a value
+    // from reaching this function at all, but nothing in the signature
+    // says so, and a zero scale is unrecoverable by hand once applied.
+    const qreal scale = data.value("scale", 1.0).toReal();
+    item->setScale(scale > 0 ? scale : 1.0);
     item->setRotation(data.value("rotation", 0.0).toReal());
     if (data.value("flip", 1).toInt() == -1) {
         baseItem->do_flip(false, {});

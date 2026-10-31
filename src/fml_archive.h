@@ -16,13 +16,21 @@ class ThreadedIO;
 // Result of a save/load operation.
 //   error       - fatal error (file unreadable, corrupt manifest, ...);
 //                 empty means the operation otherwise succeeded.
-//   itemErrors  - non-fatal per-item problems (e.g. one image in the
-//                 archive failed to decode); the rest of the file still
+//   itemErrors  - items that did NOT make it: one image in the archive
+//                 failed to decode, one could not be stored on save.
+//                 That content is gone; the rest of the file still
 //                 loaded/saved normally.
+//   itemRepairs - items that DID make it, with something about them
+//                 corrected on the way in (a cycle in the group graph,
+//                 a scale of zero, a crop outside the image). Kept
+//                 apart from itemErrors on purpose: counting the two
+//                 together told the user that pictures sitting right in
+//                 front of them had failed to load.
 struct FmlResult
 {
     QString error;
     QStringList itemErrors;
+    QStringList itemRepairs;
 };
 
 class FmlArchive
@@ -57,7 +65,8 @@ public:
 
     // Drops group memberships and attachments that a hand-edited or
     // corrupted manifest could have made cyclic, in place, and returns
-    // one message per drop (which load() reports as itemErrors). A cycle
+    // one message per drop (which load() reports as itemRepairs - the
+    // items themselves are kept, only their links go). A cycle
     // there is not a cosmetic problem: GroupItem's ancestor walks never
     // terminate on one - see the definition's own comment.
     //
@@ -66,6 +75,17 @@ public:
     // the CanvasScene load() needs is far more machinery for the same
     // assertion.
     static QStringList sanitize_item_graph(QJsonObject& root);
+
+    // Repairs the transform numbers of every item in place - a scale
+    // that is non-positive or absurd, a coordinate far outside any real
+    // scene, an unnormalized angle - and returns one message per repair
+    // that is actually corruption (an unnormalized angle is not, so it
+    // is fixed silently; see the definition). Nothing downstream checks
+    // these: create_item_from_data() hands them to QGraphicsItem's own
+    // setters directly, which have no guards of their own.
+    //
+    // Called by load(); public for the same reason as the above.
+    static QStringList sanitize_item_transforms(QJsonObject& root);
 };
 
 #endif // FML_ARCHIVE_H
