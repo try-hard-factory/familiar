@@ -2148,6 +2148,12 @@ void CanvasView::on_raw_import_choice_required(const QString& filename)
         return;
     }
 
+    // Last thing done on this thread before the worker runs again:
+    // run() reads no Settings of its own, so a value the dialog above
+    // just wrote ("remember my choice") only reaches the rest of the
+    // queue through here. See ImageImportSession::reread_settings().
+    imageImportSession_->reread_settings();
+
     // NOT a new ProgressDialog here - imageImportProgressDialog_ (created
     // once in do_insert_images()) is still alive and still correctly
     // connected to this same imageImportWorker_; just resume it.

@@ -210,6 +210,22 @@ public:
     // rawImportChoiceRequired() fired, before the next run().
     const QString& pending_raw_file() const { return pendingRawFile_; }
 
+    // Takes the Settings this session runs by. Called on construction
+    // and again before every resume, both from the GUI thread, because
+    // run() must not read Settings itself: SettingsHandler keeps its
+    // whole store in a bare QJsonObject with no synchronisation of any
+    // kind (core/settingshandler.h), so a read there races any write
+    // the GUI makes. Nothing can reach that write today - every import
+    // runs behind a WindowModal ProgressDialog and the settings window
+    // is ApplicationModal on top of that - but the import worker was
+    // the last place in the app still reading Settings off the GUI
+    // thread, and that was holding only by the modality of a dialog.
+    //
+    // Deliberately re-read rather than taken once: "remember my choice"
+    // in RawImportDialog writes Items/raw_import_choice and the rest of
+    // this queue has to follow it.
+    void reread_settings();
+
 private:
     // Accumulated across every run() call in this session (a pause+
     // resume does NOT reset these); reported out through ThreadedIO's
@@ -226,6 +242,11 @@ private:
     QString pendingRawFile_;
     std::optional<RawImportChoice> queueChoice_;
     std::optional<RawImportChoice> oneShotChoice_;
+
+    // Snapshot taken by reread_settings() above - run() reads only these.
+    QString optimizeMode_;
+    qint64 allocationLimitBytes_ = 0;
+    QString rawImportSetting_;
 };
 
 // Load familiar's native project file.

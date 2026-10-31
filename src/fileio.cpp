@@ -38,6 +38,9 @@ namespace {
 constexpr int kexpectedBitsPerChannel = 8;
 // Poll interval while waiting for the RAW-import dialog's answer.
 constexpr int krawChoicePollMs = 10;
+// Items/image_allocation_limit is stored in MB; everything that compares
+// against it works in bytes.
+constexpr qint64 kbytesPerMegabyte = 1024LL * 1024;
 
 } // namespace
 
@@ -475,7 +478,25 @@ ImageImportSession::ImageImportSession(const QList<QUrl>& urls,
     : urls_(urls)
     , pos_(pos)
     , scene_(scene)
-{}
+{
+    reread_settings();
+}
+
+void ImageImportSession::reread_settings()
+{
+    optimizeMode_ = SettingsHandler::auto_optimize_imported_images();
+    // 0 = no limitation (Items/image_allocation_limit's own convention -
+    // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
+    // both already treat <= 0 as "never TooLarge".
+    allocationLimitBytes_ = qint64(FamSettings::value_or_default(
+                                       QStringLiteral(
+                                           "Items/image_allocation_limit"))
+                                       .toInt())
+                            * kbytesPerMegabyte;
+    rawImportSetting_ = FamSettings::value_or_default(
+                            QStringLiteral("Items/raw_import_choice"))
+                            .toString();
+}
 
 void ImageImportSession::run(ThreadedIO* worker)
 {
@@ -498,20 +519,9 @@ void ImageImportSession::run(ThreadedIO* worker)
         emit worker->begin_processing(static_cast<int>(urls_.size()));
     }
 
-    const QString optimizeMode
-        = SettingsHandler::auto_optimize_imported_images();
-    // 0 = no limitation (Items/image_allocation_limit's own convention -
-    // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
-    // both already treat <= 0 as "never TooLarge".
-    const qint64 allocationLimitBytes
-        = qint64(FamSettings::value_or_default(
-                     QStringLiteral("Items/image_allocation_limit"))
-                     .toInt())
-          * 1024 * 1024;
-    const QString rawImportSetting = FamSettings::value_or_default(
-                                         QStringLiteral(
-                                             "Items/raw_import_choice"))
-                                         .toString();
+    // Settings are deliberately NOT read anywhere in here - the members
+    // below were taken by reread_settings() on the GUI thread. See its
+    // own comment in fileio.h.
 
     // Only constructed if actually needed (most drops are local files).
     QNetworkAccessManager* netManager = nullptr;
@@ -540,9 +550,9 @@ void ImageImportSession::run(ThreadedIO* worker)
             if (is_raw_file(label)) {
                 decodedAsRaw = true;
                 RawImportChoice choice = RawImportChoice::KeepOriginal;
-                if (rawImportSetting == QLatin1String("always_optimize")) {
+                if (rawImportSetting_ == QLatin1String("always_optimize")) {
                     choice = RawImportChoice::Optimize;
-                } else if (rawImportSetting
+                } else if (rawImportSetting_
                            == QLatin1String("always_keep_original")) {
                     choice = RawImportChoice::KeepOriginal;
                 } else if (queueChoice_) {
@@ -656,7 +666,7 @@ void ImageImportSession::run(ThreadedIO* worker)
 
         if (img.isNull()) {
             const ImageLoadFailure failure
-                = classify_failed_load(bytes, allocationLimitBytes);
+                = classify_failed_load(bytes, allocationLimitBytes_);
             switch (failure) {
             case ImageLoadFailure::UnsupportedFormat:
                 FLOG_WARN(Ch::IO, "Unsupported image format: {}", label);
@@ -665,8 +675,7 @@ void ImageImportSession::run(ThreadedIO* worker)
             case ImageLoadFailure::TooLarge:
                 FLOG_WARN(Ch::IO,
                           "Image exceeds the {} MB allocation limit: {}",
-                          allocationLimitBytes
-                              / (static_cast<qint64>(1024 * 1024)),
+                          allocationLimitBytes_ / kbytesPerMegabyte,
                           label);
                 tooLargeErrors_.append(label);
                 break;
@@ -698,12 +707,12 @@ void ImageImportSession::run(ThreadedIO* worker)
         //   answer for RAW; this setting governs everything else.
         const bool animated = is_animated(bytes);
         if (!animated && !decodedAsRaw) {
-            if (optimizeMode == QLatin1String("warn")) {
+            if (optimizeMode_ == QLatin1String("warn")) {
                 if (is_image_large(img)) {
                     FLOG_DEBUG(Ch::IO, "{} is a large image", label);
                     largeImages_.append(label);
                 }
-            } else if (optimizeMode == QLatin1String("optimize_large")) {
+            } else if (optimizeMode_ == QLatin1String("optimize_large")) {
                 downscale_to_limit(img);
             }
         }
