@@ -1938,6 +1938,17 @@ QList<QGraphicsItem*> CanvasScene::items_by_type(const std::string& type)
     return itemsl;
 }
 
+QList<PixmapItem*> CanvasScene::pictures()
+{
+    QList<PixmapItem*> found;
+    for (QGraphicsItem* item : items()) {
+        if (auto* picture = dynamic_cast<PixmapItem*>(item)) {
+            found.append(picture);
+        }
+    }
+    return found;
+}
+
 QList<QGraphicsItem*> CanvasScene::items_for_save()
 {
     QList<QGraphicsItem*> userItems;

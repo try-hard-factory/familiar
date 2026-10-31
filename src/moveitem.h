@@ -491,21 +491,39 @@ public:
         return formt;
     }
 
-    std::pair<QByteArray, QString> pixmap_to_bytes(bool applyGrayscale = false,
-                                                   bool applyCrop = false)
+    // Everything encode() needs in order to produce this item's bytes,
+    // captured as plain values. It exists so an export can read the
+    // item ONCE, on the GUI thread, and do the actual (slow) encoding
+    // somewhere else: QPixmap, the item's caches and SettingsHandler
+    // are all touched here and none of them afterwards. See export.h.
+    struct ExportSource
     {
-        // Only the plain case is cacheable. A grayscale or cropped
-        // rendering is a DIFFERENT image than the one being stored, and
-        // only the export path asks for those - see export.cpp.
+        // The item's own stored bytes, reused verbatim when they still
+        // match the current pixmap - this is the cache that keeps a
+        // picture from being re-encoded generation after generation.
+        // Empty when `image` has to be encoded instead.
+        QByteArray encoded;
+        QImage image;
+        QString format;
+        // Whether encoding `image` produces the bytes this item stores,
+        // i.e. whether the result may be fed back into
+        // set_encoded_source(). False for a grayscale or cropped
+        // rendering, which is a DIFFERENT image from the stored one and
+        // only the export path ever asks for.
+        bool cacheable = false;
+    };
+
+    ExportSource export_source(bool applyGrayscale = false,
+                               bool applyCrop = false)
+    {
         const bool plain = !(applyGrayscale && grayscale_) && !applyCrop;
         if (plain && !encodedCache_.isEmpty()
             && encodedCacheSrcKey_ == pixmap().cacheKey()) {
-            return {encodedCache_, encodedCacheFormat_};
+            return {.encoded = encodedCache_,
+                    .image = {},
+                    .format = encodedCacheFormat_,
+                    .cacheable = true};
         }
-
-        QByteArray barray;
-        QBuffer buffer(&barray);
-        buffer.open(QIODevice::WriteOnly);
 
         QPixmap pm = (applyGrayscale && grayscale_) ? grayscalePixmap_
                                                     : pixmap();
@@ -513,15 +531,45 @@ public:
             pm = pm.copy(crop_.toRect());
         }
 
+        // Raster-backed, so this is a refcounted shallow copy, not a
+        // pixel-by-pixel conversion (measured: 0.0-0.1us at 3/20/48
+        // Mpx). The buffer it shares stays alive for as long as the
+        // QImage does, which is what makes the result safe to hand to
+        // another thread even if the item's pixmap is replaced - a GIF
+        // frame tick - or the item itself is deleted meanwhile.
         const QImage img = pm.toImage();
-        const QString imgformat = get_imgformat(img);
-        img.save(&buffer,
-                 imgformat.toUpper().toUtf8().constData(),
-                 item_consts::kjpegQuality);
-        if (plain) {
-            set_encoded_source(barray, imgformat);
+        return {.encoded = {},
+                .image = img,
+                .format = get_imgformat(img),
+                .cacheable = plain};
+    }
+
+    // Pure: no item state, no QPixmap, no settings. This is the half an
+    // exporter is allowed to run off the GUI thread.
+    static std::pair<QByteArray, QString> encode(const ExportSource& source)
+    {
+        if (!source.encoded.isEmpty()) {
+            return {source.encoded, source.format};
         }
-        return {barray, imgformat};
+
+        QByteArray barray;
+        QBuffer buffer(&barray);
+        buffer.open(QIODevice::WriteOnly);
+        source.image.save(&buffer,
+                          source.format.toUpper().toUtf8().constData(),
+                          item_consts::kjpegQuality);
+        return {barray, source.format};
+    }
+
+    std::pair<QByteArray, QString> pixmap_to_bytes(bool applyGrayscale = false,
+                                                   bool applyCrop = false)
+    {
+        const ExportSource source = export_source(applyGrayscale, applyCrop);
+        auto [bytes, imgformat] = encode(source);
+        if (source.cacheable) {
+            set_encoded_source(bytes, imgformat);
+        }
+        return {bytes, imgformat};
     }
 
     // The cached bytes for the CURRENT pixmap, or empty if there are

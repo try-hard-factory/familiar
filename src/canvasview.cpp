@@ -1146,6 +1146,10 @@ void CanvasView::on_action_export_scene()
         return;
     }
 
+    // Everything that reads the scene happens here, before the worker
+    // exists - see export.h's threading note on SceneExporterBase.
+    sceneExporter_->prepare();
+
     auto* worker = new ThreadedIO([this, filename](ThreadedIO* w) {
         sceneExporter_->export_to(filename, w);
     });
@@ -1175,13 +1179,7 @@ void CanvasView::on_export_scene_finished(const QString& filename,
 
 void CanvasView::on_action_export_images()
 {
-    QList<PixmapItem*> pictures;
-    for (QGraphicsItem* item : scene_->items_by_type("pixmap")) {
-        if (auto* pixmapItem = dynamic_cast<PixmapItem*>(item)) {
-            pictures.append(pixmapItem);
-        }
-    }
-    export_pictures(pictures);
+    export_pictures(scene_->pictures());
 }
 
 void CanvasView::export_pictures(const QList<PixmapItem*>& pictures)
@@ -1208,6 +1206,9 @@ void CanvasView::export_pictures(const QList<PixmapItem*>& pictures)
 
     imagesExporter_ = std::make_unique<ImagesToDirectoryExporter>(pictures,
                                                                   directory);
+    // Same rule as the scene exporters: the pictures are read here, on
+    // the GUI thread, and the worker only encodes and writes.
+    imagesExporter_->prepare();
 
     imageExportWorker_ = new ThreadedIO(
         [this](ThreadedIO* w) { imagesExporter_->export_to(w); });

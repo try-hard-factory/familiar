@@ -211,6 +211,15 @@ public:
 
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(const std::string& type);
+    // Every picture in the scene, animated ones included. NOT
+    // items_by_type("pixmap"): GifItem derives from PixmapItem but
+    // reports its own type string, "gif", and items_by_type() compares
+    // that string exactly - so asking for "pixmap" quietly leaves every
+    // gif out. That is what the Images -> Export Images menu used to
+    // do, which is why gifs never landed in the export folder next to
+    // the stills (HierarchyPanel's own per-picture/per-group Export was
+    // never affected: it filters with dynamic_cast, same as this).
+    QList<PixmapItem*> pictures();
     QList<QGraphicsItem*> items_for_save();
     void on_view_scale_change() const;
     QRectF itemsBoundingRect(bool selectionOnly = false,

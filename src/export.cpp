@@ -34,6 +34,7 @@ constexpr qreal kmarginRatio = 0.03;
 #include <QPoint>
 #include <QSize>
 #include <QStringView>
+#include <QUuid>
 #include <QXmlStreamWriter>
 #include <Qt>
 #include <QtContainerFwd>
@@ -88,7 +89,14 @@ SceneExporterBase::SceneExporterBase(CanvasScene* scene)
 {
     scene_->cancel_active_modes();
     // Selection outlines/handles would otherwise get rendered/serialized
-    // into the export.
+    // into the export - but the user's selection is theirs, so it is
+    // taken down for the duration and put back by the destructor rather
+    // than silently thrown away.
+    for (QGraphicsItem* item : scene_->selectedItems(true)) {
+        if (auto* baseItem = dynamic_cast<IBaseItem*>(item)) {
+            selectedUids_.append(baseItem->uid());
+        }
+    }
     scene_->deselect_all_items();
 
     const QRectF rect = scene_->itemsBoundingRect();
@@ -98,6 +106,17 @@ SceneExporterBase::SceneExporterBase(CanvasScene* scene)
     const int marginInt = qRound(margin_);
     defaultSize_ = contentSize.grownBy(
         QMargins(marginInt, marginInt, marginInt, marginInt));
+}
+
+SceneExporterBase::~SceneExporterBase()
+{
+    for (const QUuid& uid : selectedUids_) {
+        // Resolved now rather than held as a pointer: an item that is
+        // gone by the time the export finishes is simply skipped.
+        if (QGraphicsItem* item = scene_->find_by_uid(uid)) {
+            item->setSelected(true);
+        }
+    }
 }
 
 // ============================================================================
@@ -134,11 +153,18 @@ QImage SceneToPixmapExporter::render_to_image() const
     return image;
 }
 
+void SceneToPixmapExporter::prepare()
+{
+    rendered_ = render_to_image();
+}
+
 void SceneToPixmapExporter::export_to(const QString& filename,
                                       ThreadedIO* worker)
 {
     emit_begin_processing(worker, 1);
-    const QImage image = render_to_image();
+    // Already rendered by prepare(); QImage is a value type, so this
+    // owns its pixels outright and the scene is not read here at all.
+    const QImage image = rendered_;
 
     if (worker && worker->is_canceled()) {
         emit_finished(worker, filename, {});
@@ -190,7 +216,59 @@ QString SceneToSVGExporter::text_styles(TextItem* item)
     return styles.join(QStringLiteral(";"));
 }
 
-QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
+void SceneToSVGExporter::prepare()
+{
+    nodes_.clear();
+
+    const QRectF rect = scene()->itemsBoundingRect();
+    const QPointF offset = rect.topLeft() - QPointF(margin(), margin());
+
+    for (QGraphicsItem* gitem : scene()->items_for_save()) {
+        auto* baseItem = dynamic_cast<IBaseItem*>(gitem);
+        const std::string type = baseItem->get_type();
+
+        Node node;
+        node.pos = gitem->pos() - offset;
+        node.anchor = node.pos;
+        node.rotation = gitem->rotation();
+        node.flip = baseItem->flip();
+        node.opacity = gitem->opacity();
+
+        if (type == "text") {
+            auto* textItem = dynamic_cast<TextItem*>(gitem);
+            node.isText = true;
+            node.style = text_styles(textItem);
+            node.text = textItem->toPlainText();
+        } else if (type == "pixmap") {
+            auto* pixmapItem = dynamic_cast<PixmapItem*>(gitem);
+            node.width = pixmapItem->width() * pixmapItem->scale();
+            node.height = pixmapItem->height() * pixmapItem->scale();
+            node.crispEdges = pixmapItem->scale() > 2;
+            node.source
+                = pixmapItem->export_source(/*applyGrayscale=*/true,
+                                            /*applyCrop=*/true);
+            node.pos = node.pos + pixmapItem->crop().topLeft();
+        } else {
+            // Everything else items_for_save() hands out is left out of
+            // the SVG on purpose, and "everything else" is not nothing:
+            // it returns group and gif items too (item_add_by_user(),
+            // canvasscene.cpp). A GroupItem is a backdrop rectangle, not
+            // user content. A gif would have to be embedded either as
+            // its original bytes - which ignore the crop and grayscale
+            // this branch applies, so a cropped one would land wrong -
+            // or as one flattened frame. Neither is wanted here:
+            // Export Images writes gifs out verbatim and is the path
+            // for them.
+            continue;
+        }
+
+        nodes_.append(node);
+    }
+}
+
+QString SceneToSVGExporter::nodes_to_svg(const QList<Node>& nodes,
+                                         QSize size,
+                                         ThreadedIO* worker)
 {
     QString output;
     QXmlStreamWriter xml(&output);
@@ -198,85 +276,68 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
     xml.setAutoFormattingIndent(2);
     xml.writeStartDocument();
     xml.writeStartElement(QStringLiteral("svg"));
-    xml.writeAttribute(QStringLiteral("width"), QString::number(size_.width()));
+    xml.writeAttribute(QStringLiteral("width"), QString::number(size.width()));
     xml.writeAttribute(QStringLiteral("height"),
-                       QString::number(size_.height()));
+                       QString::number(size.height()));
     xml.writeAttribute(QStringLiteral("xmlns"),
                        QStringLiteral("http://www.w3.org/2000/svg"));
     xml.writeAttribute(QStringLiteral("xmlns:xlink"),
                        QStringLiteral("http://www.w3.org/1999/xlink"));
 
-    const QRectF rect = scene()->itemsBoundingRect();
-    const QPointF offset = rect.topLeft() - QPointF(margin(), margin());
+    for (int i = 0; i < nodes.size(); ++i) {
+        const Node& node = nodes[i];
 
-    QList<QGraphicsItem*> items = scene()->items_for_save();
-
-    for (int i = 0; i < items.size(); ++i) {
-        QGraphicsItem* gitem = items[i];
-        auto* baseItem = dynamic_cast<IBaseItem*>(gitem);
-        const std::string type = baseItem->get_type();
-
-        QPointF pos = gitem->pos() - offset;
-        const QPointF anchor = pos;
-
-        if (type == "text") {
-            auto* textItem = dynamic_cast<TextItem*>(gitem);
+        if (node.isText) {
             xml.writeStartElement(QStringLiteral("text"));
-            xml.writeAttribute(QStringLiteral("style"), text_styles(textItem));
+            xml.writeAttribute(QStringLiteral("style"), node.style);
             xml.writeAttribute(QStringLiteral("dominant-baseline"),
                                QStringLiteral("hanging"));
-        } else if (type == "pixmap") {
-            auto* pixmapItem = dynamic_cast<PixmapItem*>(gitem);
-            const qreal width = pixmapItem->width() * pixmapItem->scale();
-            const qreal height = pixmapItem->height() * pixmapItem->scale();
-            auto [bytes, imgformat]
-                = pixmapItem->pixmap_to_bytes(/*applyGrayscale=*/true,
-                                              /*applyCrop=*/true);
+        } else {
+            // The one genuinely slow step in here, and the reason this
+            // half is worth running off the GUI thread at all.
+            auto [bytes, imgformat] = PixmapItem::encode(node.source);
             const QString b64 = QString::fromLatin1(bytes.toBase64());
 
             xml.writeStartElement(QStringLiteral("image"));
             xml.writeAttribute(QStringLiteral("xlink:href"),
                                QStringLiteral("data:image/%1;base64,%2")
                                    .arg(imgformat, b64));
-            xml.writeAttribute(QStringLiteral("width"), QString::number(width));
+            xml.writeAttribute(QStringLiteral("width"),
+                               QString::number(node.width));
             xml.writeAttribute(QStringLiteral("height"),
-                               QString::number(height));
+                               QString::number(node.height));
             xml.writeAttribute(QStringLiteral("image-rendering"),
-                               pixmapItem->scale() > 2
+                               node.crispEdges
                                    ? QStringLiteral("crisp-edges")
                                    : QStringLiteral("optimizeQuality"));
-            pos = pos + pixmapItem->crop().topLeft();
-        } else {
-            // items_for_save() only returns pixmap/text.
-            continue;
         }
 
         QStringList transforms;
-        if (baseItem->flip() == -1) {
+        if (node.flip == -1) {
             // SVG has no "transform-origin"; fake one by translating to
             // the anchor, flipping, then translating back.
             transforms << QStringLiteral("translate(%1 %2)")
-                              .arg(anchor.x())
-                              .arg(anchor.y());
-            transforms << QStringLiteral("scale(%1 1)").arg(baseItem->flip());
+                              .arg(node.anchor.x())
+                              .arg(node.anchor.y());
+            transforms << QStringLiteral("scale(%1 1)").arg(node.flip);
             transforms << QStringLiteral("translate(%1 %2)")
-                              .arg(-anchor.x())
-                              .arg(-anchor.y());
+                              .arg(-node.anchor.x())
+                              .arg(-node.anchor.y());
         }
         transforms << QStringLiteral("rotate(%1 %2 %3)")
-                          .arg(gitem->rotation())
-                          .arg(anchor.x())
-                          .arg(anchor.y());
+                          .arg(node.rotation)
+                          .arg(node.anchor.x())
+                          .arg(node.anchor.y());
 
         xml.writeAttribute(QStringLiteral("transform"),
                            transforms.join(QStringLiteral(" ")));
-        xml.writeAttribute(QStringLiteral("x"), QString::number(pos.x()));
-        xml.writeAttribute(QStringLiteral("y"), QString::number(pos.y()));
+        xml.writeAttribute(QStringLiteral("x"), QString::number(node.pos.x()));
+        xml.writeAttribute(QStringLiteral("y"), QString::number(node.pos.y()));
         xml.writeAttribute(QStringLiteral("opacity"),
-                           QString::number(gitem->opacity()));
+                           QString::number(node.opacity));
 
-        if (type == "text") {
-            xml.writeCharacters(dynamic_cast<TextItem*>(gitem)->toPlainText());
+        if (node.isText) {
+            xml.writeCharacters(node.text);
         }
         xml.writeEndElement(); // text | image
 
@@ -293,9 +354,8 @@ QString SceneToSVGExporter::render_to_svg(ThreadedIO* worker) const
 
 void SceneToSVGExporter::export_to(const QString& filename, ThreadedIO* worker)
 {
-    emit_begin_processing(worker,
-                          static_cast<int>(scene()->items_for_save().size()));
-    const QString svg = render_to_svg(worker);
+    emit_begin_processing(worker, static_cast<int>(nodes_.size()));
+    const QString svg = nodes_to_svg(nodes_, size_, worker);
 
     if (worker && worker->is_canceled()) {
         emit_finished(worker, filename, {});
@@ -351,9 +411,42 @@ ImagesToDirectoryExporter::ImagesToDirectoryExporter(
     , dirname_(dirname)
 {}
 
+void ImagesToDirectoryExporter::prepare()
+{
+    jobs_.clear();
+    jobs_.reserve(items_.size());
+
+    for (PixmapItem* item : items_) {
+        Job job;
+        // GifItem checked BEFORE the generic PixmapItem case - same
+        // reasoning as FmlArchive::save(): encoding only ever produces
+        // the CURRENTLY DISPLAYED frame as a static raster, silently
+        // discarding the animation. GifItem doesn't override that, so
+        // without this check every exported gif quietly became a single
+        // still frame.
+        if (auto* gifItem = dynamic_cast<GifItem*>(item)) {
+            job.gifBytes = gifItem->gif_bytes();
+            job.filename
+                = gifItem->get_filename_for_export(QStringLiteral("gif"));
+        } else {
+            // items_ only ever gets non-null pointers (the CanvasScene
+            // constructor's dynamic_cast guard); the analyzer reaches
+            // here by assuming the dynamic_cast above failed BECAUSE
+            // item was null.
+            // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
+            job.source = item->export_source();
+            // Decided here, with the item still in hand, so the target
+            // name is settled before the worker runs - export_source()
+            // has already chosen the format the bytes will be in.
+            job.filename = item->get_filename_for_export(job.source.format);
+        }
+        jobs_.append(job);
+    }
+}
+
 void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
 {
-    const int total = static_cast<int>(items_.size());
+    const int total = static_cast<int>(jobs_.size());
     emit_begin_processing(worker, total);
     emit_progress(worker, startFrom_);
 
@@ -363,28 +456,11 @@ void ImagesToDirectoryExporter::export_to(ThreadedIO* worker)
             return;
         }
 
-        PixmapItem* item = items_[i];
-        // GifItem checked BEFORE the generic PixmapItem case - same
-        // reasoning as FmlArchive::save(): pixmap_to_bytes() only ever
-        // encodes the CURRENTLY DISPLAYED frame as a static raster,
-        // silently discarding the animation. GifItem doesn't override
-        // it, so without this check every exported gif quietly became a
-        // single still frame.
-        QByteArray bytes;
-        QString filename;
-        if (auto* gifItem = dynamic_cast<GifItem*>(item)) {
-            bytes = gifItem->gif_bytes();
-            filename = gifItem->get_filename_for_export(QStringLiteral("gif"));
-        } else {
-            // items_ only ever gets non-null pointers (the constructor's
-            // dynamic_cast guard); the analyzer reaches here by assuming
-            // the dynamic_cast above failed BECAUSE item was null.
-            // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
-            const auto [pixBytes, imgformat] = item->pixmap_to_bytes();
-            bytes = pixBytes;
-            filename = item->get_filename_for_export(imgformat);
-        }
-        const QString path = QDir(dirname_).filePath(filename);
+        const Job& job = jobs_[i];
+        const QByteArray bytes = job.gifBytes.isEmpty()
+                                     ? PixmapItem::encode(job.source).first
+                                     : job.gifBytes;
+        const QString path = QDir(dirname_).filePath(job.filename);
 
         if (QFile::exists(path)) {
             if (handleExisting_.isEmpty()) {
