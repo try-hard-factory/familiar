@@ -79,10 +79,15 @@ void save(CanvasView* canvasView)
                              QStringLiteral("dd.MM HH:mm")))
                    : QFileInfo(canvasView->path()).fileName();
 
-    QFile sidecarFile(sidecar_path_for(dir, id));
-    if (sidecarFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        sidecarFile.write(QJsonDocument(sidecar).toJson(QJsonDocument::Compact));
-    } else {
+    // Atomic, like the .fml next to it (fml_archive.cpp's QSaveFile):
+    // this one is rewritten by the autosave timer while the app runs, so
+    // the write it has to survive is the very crash the recovery folder
+    // exists for. A truncated sidecar still parses as an empty object
+    // (see scan() below), which costs originalPath - the recovered file
+    // then shows up as "Untitled", unbound from the file it came from.
+    if (!write_file_atomically(
+            sidecar_path_for(dir, id),
+            QJsonDocument(sidecar).toJson(QJsonDocument::Compact))) {
         FLOG_WARN(Ch::IO,
                   "Could not write recovery sidecar for {}",
                   canvasView->path().toStdString());

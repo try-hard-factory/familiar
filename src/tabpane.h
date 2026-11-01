@@ -22,6 +22,12 @@ public:
 
     void add_new_tab(const QString& path);
     void close_tab_by_index(int idx);
+
+    // Current index of `view`, or -1 if it is not one of the pages.
+    // Re-derived on demand rather than cached: closing any tab shifts
+    // every index after it, so an index captured earlier may already mean
+    // a different tab (see MainWindow::save_all_window_save_cb()).
+    int index_of(CanvasView* view) const;
     void add_new_untitled_tab();
 
     void set_current_tab_path(const QString& path);

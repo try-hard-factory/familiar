@@ -234,6 +234,27 @@ private:
     mutable qreal downscaleCacheFactor_ = 0.0;
     mutable qint64 downscaleCacheSrcKey_ = 0;
 
+    // The encoded bytes this picture should be STORED as, so a save does
+    // not re-encode what is already encoded. Keyed on the source pixmap's
+    // cacheKey(), exactly like downscaleCache_ above: a QPixmap's cache
+    // key is unique to its pixel data, so any replacement - setPixmap(),
+    // a grayscale toggle, a GIF frame arriving through
+    // QGraphicsPixmapItem::setPixmap() directly - makes the key stop
+    // matching and the cache is simply ignored. Nothing has to remember
+    // to invalidate it.
+    //
+    // Without this, every save re-ran pixmap_to_bytes() over the DECODED
+    // pixmap, so a picture stored as JPEG (which is what "best" picks for
+    // anything over kSmallImageSide without an alpha channel, originally
+    // a PNG included) was re-compressed on every single save->load->save
+    // round. Measured on an 800x600 noise image, mean per-channel error:
+    // 28.3 -> 29.6 -> 30.0 -> 30.1 -> 30.2 over five generations. Autosave
+    // and the crash-recovery snapshot go through the same path, so it
+    // degraded with no user action at all.
+    QByteArray encodedCache_;
+    QString encodedCacheFormat_;
+    qint64 encodedCacheSrcKey_ = 0;
+
     bool isEditable_ = false;
     QRectF crop_;
     std::optional<QRectF> cropTemp_;
@@ -322,6 +343,30 @@ public:
         const QPixmap pm = grayscale_ ? grayscalePixmap_ : pixmap();
         const QImage img = pm.toImage();
 
+        // Only where the user can actually SEE a pixel. Two ways this
+        // gets asked about one they cannot:
+        //
+        // - shape() (selector.h) claims a margin of
+        //   select_resize_size()/2 beyond the visible edge, plus the
+        //   rotate corner areas, so itemAt() hands this item points
+        //   outside crop_ - and crop_ is exactly the part that gets
+        //   drawn (paint() below renders pm's crop_ rect AT crop_, so
+        //   coordinates inside it map straight through). Sampling there
+        //   returned the colour of a pixel the crop hides.
+        // - Those same points fall outside the image itself wherever
+        //   crop_ meets the pixmap border. QImage::pixelColor() answers
+        //   that with an invalid colour AND a qWarning, which
+        //   log/qt_bridge.cpp routes into this app's own log - once per
+        //   mouse move, since the eyedropper samples on every move.
+        //
+        // Intersected with the image rather than trusting crop_ alone:
+        // it comes back from apply_extra_save_data() with nothing
+        // validating it against the pixmap, so a hand-edited .fml can
+        // put it outside.
+        if (!crop_.intersected(QRectF(img.rect())).contains(ipos)) {
+            return {};
+        }
+
         QColor color = img.pixelColor(static_cast<int>(ipos.x()),
                                       static_cast<int>(ipos.y()));
         if (color.alpha()) {
@@ -369,10 +414,37 @@ public:
         if (cropVariant.isValid()) {
             const QList<QVariant> cropList = cropVariant.toList();
             if (cropList.size() == 4) {
-                set_crop(QRectF(cropList[0].toReal(),
-                                cropList[1].toReal(),
-                                cropList[2].toReal(),
-                                cropList[3].toReal()));
+                const QRectF stored(cropList[0].toReal(),
+                                    cropList[1].toReal(),
+                                    cropList[2].toReal(),
+                                    cropList[3].toReal());
+                // crop_ IS the item's unselected bounding rect
+                // (bounding_rect_unselected() below), and the export
+                // path copies exactly this rect out of the pixmap, so a
+                // rect from a corrupted file is not a cosmetic problem:
+                // negative extents make width()/height() negative for
+                // every handle and hit-test computation, and an enormous
+                // one turns the export's pixmap copy into an allocation
+                // that cannot succeed.
+                //
+                // Nothing legitimate is narrowed by this.
+                // ensure_point_within_crop_bounds() already confines
+                // interactive cropping to the pixmap, so a rect that
+                // needs clamping here could only have been hand-edited.
+                // Normalized first so a negative-extent rect is read as
+                // the region the writer presumably meant rather than
+                // discarded outright.
+                const QRectF usable
+                    = stored.normalized().intersected(QRectF(pixmap().rect()));
+                if (usable.isEmpty()) {
+                    FLOG_WARN(familiar::log::Ch::Items,
+                              "Crop {} for {} lies outside the image; "
+                              "keeping the full image",
+                              stored,
+                              to_string());
+                } else {
+                    set_crop(usable);
+                }
             }
         }
         const QString attachedTo
@@ -419,12 +491,39 @@ public:
         return formt;
     }
 
-    std::pair<QByteArray, QString> pixmap_to_bytes(bool applyGrayscale = false,
-                                                   bool applyCrop = false)
+    // Everything encode() needs in order to produce this item's bytes,
+    // captured as plain values. It exists so an export can read the
+    // item ONCE, on the GUI thread, and do the actual (slow) encoding
+    // somewhere else: QPixmap, the item's caches and SettingsHandler
+    // are all touched here and none of them afterwards. See export.h.
+    struct ExportSource
     {
-        QByteArray barray;
-        QBuffer buffer(&barray);
-        buffer.open(QIODevice::WriteOnly);
+        // The item's own stored bytes, reused verbatim when they still
+        // match the current pixmap - this is the cache that keeps a
+        // picture from being re-encoded generation after generation.
+        // Empty when `image` has to be encoded instead.
+        QByteArray encoded;
+        QImage image;
+        QString format;
+        // Whether encoding `image` produces the bytes this item stores,
+        // i.e. whether the result may be fed back into
+        // set_encoded_source(). False for a grayscale or cropped
+        // rendering, which is a DIFFERENT image from the stored one and
+        // only the export path ever asks for.
+        bool cacheable = false;
+    };
+
+    ExportSource export_source(bool applyGrayscale = false,
+                               bool applyCrop = false)
+    {
+        const bool plain = !(applyGrayscale && grayscale_) && !applyCrop;
+        if (plain && !encodedCache_.isEmpty()
+            && encodedCacheSrcKey_ == pixmap().cacheKey()) {
+            return {.encoded = encodedCache_,
+                    .image = {},
+                    .format = encodedCacheFormat_,
+                    .cacheable = true};
+        }
 
         QPixmap pm = (applyGrayscale && grayscale_) ? grayscalePixmap_
                                                     : pixmap();
@@ -432,12 +531,75 @@ public:
             pm = pm.copy(crop_.toRect());
         }
 
+        // Raster-backed, so this is a refcounted shallow copy, not a
+        // pixel-by-pixel conversion (measured: 0.0-0.1us at 3/20/48
+        // Mpx). The buffer it shares stays alive for as long as the
+        // QImage does, which is what makes the result safe to hand to
+        // another thread even if the item's pixmap is replaced - a GIF
+        // frame tick - or the item itself is deleted meanwhile.
         const QImage img = pm.toImage();
-        const QString imgformat = get_imgformat(img);
-        img.save(&buffer,
-                 imgformat.toUpper().toUtf8().constData(),
-                 item_consts::kjpegQuality);
-        return {barray, imgformat};
+        return {.encoded = {},
+                .image = img,
+                .format = get_imgformat(img),
+                .cacheable = plain};
+    }
+
+    // Pure: no item state, no QPixmap, no settings. This is the half an
+    // exporter is allowed to run off the GUI thread.
+    static std::pair<QByteArray, QString> encode(const ExportSource& source)
+    {
+        if (!source.encoded.isEmpty()) {
+            return {source.encoded, source.format};
+        }
+
+        QByteArray barray;
+        QBuffer buffer(&barray);
+        buffer.open(QIODevice::WriteOnly);
+        source.image.save(&buffer,
+                          source.format.toUpper().toUtf8().constData(),
+                          item_consts::kjpegQuality);
+        return {barray, source.format};
+    }
+
+    std::pair<QByteArray, QString> pixmap_to_bytes(bool applyGrayscale = false,
+                                                   bool applyCrop = false)
+    {
+        const ExportSource source = export_source(applyGrayscale, applyCrop);
+        auto [bytes, imgformat] = encode(source);
+        if (source.cacheable) {
+            set_encoded_source(bytes, imgformat);
+        }
+        return {bytes, imgformat};
+    }
+
+    // The cached bytes for the CURRENT pixmap, or empty if there are
+    // none (never encoded, or the pixmap has been replaced since). Lets
+    // a snapshot carry them along - see CanvasScene::snapshot_of(), so
+    // copy/paste does not quietly re-encode a picture either.
+    QByteArray encoded_source() const
+    {
+        return encodedCacheSrcKey_ == pixmap().cacheKey() ? encodedCache_
+                                                          : QByteArray();
+    }
+
+    QString encoded_source_format() const
+    {
+        return encodedCacheSrcKey_ == pixmap().cacheKey() ? encodedCacheFormat_
+                                                          : QString();
+    }
+
+    // For whoever already holds the exact bytes this item's pixmap was
+    // decoded from - FmlArchive::load() has them straight out of the zip
+    // entry, extension included - so the next save stores them verbatim
+    // instead of running them through the encoder a second time.
+    void set_encoded_source(const QByteArray& bytes, const QString& format)
+    {
+        if (bytes.isEmpty() || format.isEmpty()) {
+            return;
+        }
+        encodedCache_ = bytes;
+        encodedCacheFormat_ = format;
+        encodedCacheSrcKey_ = pixmap().cacheKey();
     }
 
     void setPixmap(const QPixmap& pixmap)
@@ -471,6 +633,11 @@ public:
             item->do_flip(false, {});
         }
         item->set_crop(crop_);
+        // The copy's pixmap is the same refcounted QPixmap, so it carries
+        // the same cacheKey() and the cached bytes stay valid for it.
+        if (encodedCacheSrcKey_ == pixmap().cacheKey()) {
+            item->set_encoded_source(encodedCache_, encodedCacheFormat_);
+        }
         // Copied AS-IS (still pointing at the ORIGINAL anchor's uid) -
         // CanvasScene::paste_from_internal_clipboard() remaps this to
         // the anchor's own copy afterward, or clears it if the anchor

@@ -2,7 +2,15 @@
 
 #include <gtest/gtest.h>
 
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QWidget>
+
+#ifdef Q_OS_UNIX
+#include <csignal>
+#include <sys/resource.h>
+#endif
 
 // centered_widget<M, S>() is only ever called with QWidget-derived types
 // (MainWindow*, dialog subclasses - see help_dialog.cpp, about_dialog.cpp,
@@ -65,3 +73,179 @@ TEST(RoundToTest, NegativeNumbers)
 {
     EXPECT_DOUBLE_EQ(round_to(-23.0, 10.0), -20.0);
 }
+
+// ── write_file_atomically() ───────────────────────────────────────────────────
+// The property under test is not "the bytes arrive" (any QFile does
+// that) but "the file that was already there is never the casualty of a
+// write that didn't finish". settings.json and the crash-recovery
+// sidecar both used plain QFile with QIODevice::Truncate, which destroys
+// the old contents at open() time and reports nothing when the write
+// then fails - see write_file_atomically()'s own header comment.
+
+namespace {
+
+QByteArray read_all(const QString& path)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    return file.readAll();
+}
+
+} // namespace
+
+TEST(WriteFileAtomicallyTest, CreatesAFileThatDoesNotExistYet)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("new.json"));
+
+    EXPECT_TRUE(write_file_atomically(path, QByteArray("{\"a\":1}")));
+    EXPECT_EQ(read_all(path), QByteArray("{\"a\":1}"));
+}
+
+TEST(WriteFileAtomicallyTest, ReplacesExistingContentsWholesale)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("x.json"));
+
+    ASSERT_TRUE(write_file_atomically(path, QByteArray("aaaaaaaaaaaaaaaa")));
+    // Shorter than what's already there: the leftover tail of the old
+    // contents must not survive (QSaveFile replaces the whole file
+    // rather than overwriting in place, but pin it anyway).
+    ASSERT_TRUE(write_file_atomically(path, QByteArray("b")));
+    EXPECT_EQ(read_all(path), QByteArray("b"));
+}
+
+TEST(WriteFileAtomicallyTest, FailsAndKeepsTheOldFileWhenTheTargetIsUnwritable)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("x.json"));
+    ASSERT_TRUE(write_file_atomically(path, QByteArray("GOOD")));
+
+    // QSaveFile needs to create its temporary file in the target's own
+    // directory, so a directory it cannot write to fails the open() -
+    // before anything has touched the real file.
+    QFile dirAsFile(dir.path());
+    ASSERT_TRUE(dirAsFile.setPermissions(QFileDevice::ReadOwner
+                                         | QFileDevice::ExeOwner));
+    const QString probe = QDir(dir.path()).filePath(QStringLiteral("probe"));
+    QFile probeFile(probe);
+    const bool dirIsStillWritable = probeFile.open(QIODevice::WriteOnly);
+    probeFile.close();
+    QFile::remove(probe);
+
+    if (dirIsStillWritable) {
+        // Running as root (CI containers often do) - permissions don't
+        // apply, so there is nothing to assert here.
+        dirAsFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                                 | QFileDevice::ExeOwner);
+        GTEST_SKIP() << "directory permissions are not enforced for this user";
+    }
+
+    EXPECT_FALSE(write_file_atomically(path, QByteArray("NEW")));
+    EXPECT_EQ(read_all(path), QByteArray("GOOD"));
+
+    // QTemporaryDir cannot clean up a directory it may not write to.
+    dirAsFile.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner
+                             | QFileDevice::ExeOwner);
+}
+
+#ifdef Q_OS_UNIX
+TEST(WriteFileAtomicallyTest, FailsAndKeepsTheOldFileWhenTheWriteIsCutShort)
+{
+    // The regression test for the real defect, with RLIMIT_FSIZE
+    // standing in for a full disk or an exceeded quota: the only
+    // failure mode of this kind that can be injected deterministically.
+    //
+    // Which of write_file_atomically()'s two checks catches this depends
+    // on the payload, measured both ways: a payload under QIODevice's
+    // own write buffer (~16KB) is accepted whole by write() and only
+    // fails at the flush inside commit(), while a payload this large
+    // bypasses the buffer and comes back short from write() itself.
+    // Hence both checks there - this test exercises the second one.
+    // The buffered half cannot be injected here: it would need a cap
+    // under 16KB, and the cap applies to every file this process writes,
+    // the log file among them - a test must not be able to break
+    // logging for the rest of the suite.
+    constexpr rlim_t klimitBytes = 4u * 1024 * 1024;
+    constexpr int kpayloadBytes = 8 * 1024 * 1024;
+
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("x.json"));
+    ASSERT_TRUE(write_file_atomically(path, QByteArray("GOOD")));
+
+    rlimit previous{};
+    ASSERT_EQ(getrlimit(RLIMIT_FSIZE, &previous), 0);
+    if (previous.rlim_max < klimitBytes) {
+        GTEST_SKIP() << "RLIMIT_FSIZE hard limit is already below the cap";
+    }
+    // Exceeding RLIMIT_FSIZE raises SIGXFSZ as well as failing the
+    // write, and its default action terminates the process. Spelled as
+    // the POSIX return type of signal() rather than glibc's
+    // sighandler_t, which macOS's SDK does not declare.
+    using SignalHandler = void (*)(int);
+    const SignalHandler previousHandler = signal(SIGXFSZ, SIG_IGN);
+    const rlimit capped{klimitBytes, previous.rlim_max};
+    ASSERT_EQ(setrlimit(RLIMIT_FSIZE, &capped), 0);
+
+    // Whether a given platform and filesystem enforce RLIMIT_FSIZE on
+    // this particular write is an environment fact, not something this
+    // test gets to assume - so prove the injection works here, on a
+    // throwaway file, before asserting anything about the real one.
+    // Both signals are accepted, for the same reason the helper checks
+    // both: which one appears depends on the payload size.
+    const QString probe = QDir(dir.path()).filePath(QStringLiteral("probe"));
+    bool limitIsEnforced = false;
+    {
+        const QByteArray payload(kpayloadBytes, 'x');
+        QFile probeFile(probe);
+        if (probeFile.open(QIODevice::WriteOnly)) {
+            const bool shortWrite = probeFile.write(payload)
+                                    != payload.size();
+            limitIsEnforced = shortWrite || !probeFile.flush();
+        }
+    }
+
+    bool wrote = true;
+    if (limitIsEnforced) {
+        wrote = write_file_atomically(path, QByteArray(kpayloadBytes, 'x'));
+    }
+
+    ASSERT_EQ(setrlimit(RLIMIT_FSIZE, &previous), 0);
+    signal(SIGXFSZ, previousHandler);
+    QFile::remove(probe);
+
+    if (!limitIsEnforced) {
+        GTEST_SKIP() << "RLIMIT_FSIZE is not enforced for this write here";
+    }
+    EXPECT_FALSE(wrote);
+    EXPECT_EQ(read_all(path), QByteArray("GOOD"));
+}
+
+TEST(WriteFileAtomicallyTest, KeepsTheExistingFilesPermissions)
+{
+    // QSaveFile creates its temporary file 0600 and copies the target's
+    // mode over on commit. Verified here because settings.json is
+    // rewritten on every settings change: silently tightening (or
+    // loosening) its mode on each write would be a real regression.
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString path = QDir(dir.path()).filePath(QStringLiteral("x.json"));
+    ASSERT_TRUE(write_file_atomically(path, QByteArray("GOOD")));
+
+    QFile file(path);
+    ASSERT_TRUE(file.setPermissions(QFileDevice::ReadOwner
+                                    | QFileDevice::WriteOwner
+                                    | QFileDevice::ReadGroup));
+    const QFileDevice::Permissions before = QFile(path).permissions();
+
+    ASSERT_TRUE(write_file_atomically(path, QByteArray("NEWER")));
+
+    EXPECT_EQ(QFile(path).permissions(), before);
+}
+#endif // Q_OS_UNIX

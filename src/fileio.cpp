@@ -38,6 +38,9 @@ namespace {
 constexpr int kexpectedBitsPerChannel = 8;
 // Poll interval while waiting for the RAW-import dialog's answer.
 constexpr int krawChoicePollMs = 10;
+// Items/image_allocation_limit is stored in MB; everything that compares
+// against it works in bytes.
+constexpr qint64 kbytesPerMegabyte = 1024LL * 1024;
 
 } // namespace
 
@@ -475,7 +478,25 @@ ImageImportSession::ImageImportSession(const QList<QUrl>& urls,
     : urls_(urls)
     , pos_(pos)
     , scene_(scene)
-{}
+{
+    reread_settings();
+}
+
+void ImageImportSession::reread_settings()
+{
+    optimizeMode_ = SettingsHandler::auto_optimize_imported_images();
+    // 0 = no limitation (Items/image_allocation_limit's own convention -
+    // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
+    // both already treat <= 0 as "never TooLarge".
+    allocationLimitBytes_ = qint64(FamSettings::value_or_default(
+                                       QStringLiteral(
+                                           "Items/image_allocation_limit"))
+                                       .toInt())
+                            * kbytesPerMegabyte;
+    rawImportSetting_ = FamSettings::value_or_default(
+                            QStringLiteral("Items/raw_import_choice"))
+                            .toString();
+}
 
 void ImageImportSession::run(ThreadedIO* worker)
 {
@@ -498,20 +519,9 @@ void ImageImportSession::run(ThreadedIO* worker)
         emit worker->begin_processing(static_cast<int>(urls_.size()));
     }
 
-    const QString optimizeMode
-        = SettingsHandler::auto_optimize_imported_images();
-    // 0 = no limitation (Items/image_allocation_limit's own convention -
-    // see setting_descriptions.cpp) - precheckReader()/classifyFailedLoad()
-    // both already treat <= 0 as "never TooLarge".
-    const qint64 allocationLimitBytes
-        = qint64(FamSettings::value_or_default(
-                     QStringLiteral("Items/image_allocation_limit"))
-                     .toInt())
-          * 1024 * 1024;
-    const QString rawImportSetting = FamSettings::value_or_default(
-                                         QStringLiteral(
-                                             "Items/raw_import_choice"))
-                                         .toString();
+    // Settings are deliberately NOT read anywhere in here - the members
+    // below were taken by reread_settings() on the GUI thread. See its
+    // own comment in fileio.h.
 
     // Only constructed if actually needed (most drops are local files).
     QNetworkAccessManager* netManager = nullptr;
@@ -540,9 +550,9 @@ void ImageImportSession::run(ThreadedIO* worker)
             if (is_raw_file(label)) {
                 decodedAsRaw = true;
                 RawImportChoice choice = RawImportChoice::KeepOriginal;
-                if (rawImportSetting == QLatin1String("always_optimize")) {
+                if (rawImportSetting_ == QLatin1String("always_optimize")) {
                     choice = RawImportChoice::Optimize;
-                } else if (rawImportSetting
+                } else if (rawImportSetting_
                            == QLatin1String("always_keep_original")) {
                     choice = RawImportChoice::KeepOriginal;
                 } else if (queueChoice_) {
@@ -656,7 +666,7 @@ void ImageImportSession::run(ThreadedIO* worker)
 
         if (img.isNull()) {
             const ImageLoadFailure failure
-                = classify_failed_load(bytes, allocationLimitBytes);
+                = classify_failed_load(bytes, allocationLimitBytes_);
             switch (failure) {
             case ImageLoadFailure::UnsupportedFormat:
                 FLOG_WARN(Ch::IO, "Unsupported image format: {}", label);
@@ -665,8 +675,7 @@ void ImageImportSession::run(ThreadedIO* worker)
             case ImageLoadFailure::TooLarge:
                 FLOG_WARN(Ch::IO,
                           "Image exceeds the {} MB allocation limit: {}",
-                          allocationLimitBytes
-                              / (static_cast<qint64>(1024 * 1024)),
+                          allocationLimitBytes_ / kbytesPerMegabyte,
                           label);
                 tooLargeErrors_.append(label);
                 break;
@@ -698,12 +707,12 @@ void ImageImportSession::run(ThreadedIO* worker)
         //   answer for RAW; this setting governs everything else.
         const bool animated = is_animated(bytes);
         if (!animated && !decodedAsRaw) {
-            if (optimizeMode == QLatin1String("warn")) {
+            if (optimizeMode_ == QLatin1String("warn")) {
                 if (is_image_large(img)) {
                     FLOG_DEBUG(Ch::IO, "{} is a large image", label);
                     largeImages_.append(label);
                 }
-            } else if (optimizeMode == QLatin1String("optimize_large")) {
+            } else if (optimizeMode_ == QLatin1String("optimize_large")) {
                 downscale_to_limit(img);
             }
         }
@@ -760,9 +769,14 @@ void ImageImportSession::run(ThreadedIO* worker)
     const QStringList errors = unsupportedFormatErrors_ + tooLargeErrors_
                                + corruptErrors_;
     // DIAG (ProgressDialog SIGSEGV investigation).
-    FLOG_DEBUG(Ch::IO, "emit finished() worker={}", static_cast<void*>(worker));
-    emit worker->finished(QString(), errors);
-    worker->quit();
+    FLOG_DEBUG(Ch::IO,
+               "emit work_finished() worker={}",
+               static_cast<void*>(worker));
+    // No worker->quit() here (nor in load_fml()/save_fml() below): run()
+    // never calls exec(), so the thread has no event loop for quit() to
+    // end - QThread::quit() documents itself as doing nothing in that
+    // case, and the thread finishes by returning from run() regardless.
+    emit worker->work_finished(QString(), errors);
 }
 
 // ─── load_fml / save_fml ───────────────────────────────────────────────────
@@ -774,8 +788,13 @@ void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
     const FmlResult result = FmlArchive::load(filename, scene, worker);
 
     if (worker) {
-        emit worker->finished(result.error, result.itemErrors);
-        worker->quit();
+        // Before work_finished(), so a receiver has both halves in hand by
+        // the time it decides what to show - same ordering as
+        // ImageImportSession::run()'s large_images_found().
+        if (!result.itemRepairs.isEmpty()) {
+            emit worker->items_repaired(result.itemRepairs);
+        }
+        emit worker->work_finished(result.error, result.itemErrors);
     }
 }
 
@@ -804,8 +823,7 @@ void save_fml(const QString& filename,
                                               worker);
 
     if (worker) {
-        emit worker->finished(result.error, result.itemErrors);
-        worker->quit();
+        emit worker->work_finished(result.error, result.itemErrors);
     }
     FLOG_DEBUG(Ch::IO, "End save");
 }

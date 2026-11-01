@@ -232,14 +232,14 @@ void SettingsHandler::load_document()
 bool SettingsHandler::save_document() const
 {
     QDir().mkpath(QFileInfo(settingsFilePath_).absolutePath());
-    QFile file(settingsFilePath_);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    if (!write_file_atomically(
+            settingsFilePath_,
+            QJsonDocument(document_).toJson(QJsonDocument::Indented))) {
         FLOG_WARN(Ch::Settings,
                   "Could not write settings file {}",
                   settingsFilePath_.toStdString());
         return false;
     }
-    file.write(QJsonDocument(document_).toJson(QJsonDocument::Indented));
     return true;
 }
 
@@ -305,15 +305,12 @@ void SettingsHandler::set_recent_files_raw(const QStringList& files)
 
 bool SettingsHandler::export_settings_to(const QString& path) const
 {
-    QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-        FLOG_WARN(Ch::Settings,
-                  "exportSettingsTo: could not open {}: {}",
-                  path,
-                  file.errorString());
+    if (!write_file_atomically(
+            path,
+            QJsonDocument(document_).toJson(QJsonDocument::Indented))) {
+        FLOG_WARN(Ch::Settings, "exportSettingsTo: could not write {}", path);
         return false;
     }
-    file.write(QJsonDocument(document_).toJson(QJsonDocument::Indented));
     return true;
 }
 

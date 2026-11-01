@@ -37,4 +37,14 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/widgets/bindings_tree_widget_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_registry_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/items/pixmap_item_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/items/transform_commands_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/fml_graph_sanitize_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/fml_transform_sanitize_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/export_snapshot_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/scene_export_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/import_session_settings_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/worker_lifetime_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/scene/clipboard_snapshot_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/scene/z_order_command_test.cpp
 )

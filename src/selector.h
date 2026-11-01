@@ -8,6 +8,7 @@
 #include <utils/utils.h>
 
 #include "log/log.h"
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <QBrush>
@@ -1075,6 +1076,25 @@ protected:
         return delta;
     }
 
+    // "Did this drag actually change anything?" - compared against the
+    // per-item state mousePressEvent() captured when the drag started,
+    // which is the same "before" the command itself stores.
+    static bool any_scale_changed(const QList<QGraphicsItem*>& items)
+    {
+        return std::ranges::any_of(items, [](QGraphicsItem* item) {
+            auto* baseItem = dynamic_cast<IBaseItem*>(item);
+            return item->scale() != baseItem->scale_orig_factor();
+        });
+    }
+
+    static bool any_rotation_changed(const QList<QGraphicsItem*>& items)
+    {
+        return std::ranges::any_of(items, [](QGraphicsItem* item) {
+            auto* baseItem = dynamic_cast<IBaseItem*>(item);
+            return item->rotation() != baseItem->rotate_orig_degrees();
+        });
+    }
+
     Qt::CursorShape get_corner_scale_cursor(const QPointF& corner)
     {
         const bool isTopLeftOrBottomRight
@@ -1232,16 +1252,21 @@ protected:
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override
     {
         if (activeMode_ == EItemMode::ScaleMode) {
-            const qreal factor = get_scale_factor(event);
-            if (factor != 1) {
+            const QList<QGraphicsItem*> items
+                = static_cast<Mixin*>(this)->selection_action_items();
+            // Asking the ITEMS what changed, not recomputing the drag's
+            // own factor: with set_scale() free to refuse a value (it
+            // rejects anything non-positive - see its own comment), the
+            // factor the mouse implies and the scale an item actually
+            // ended up at are not the same thing. The factor was also
+            // the wrong test in the other direction: a drag whose factor
+            // came out exactly 1 would push nothing even if some item
+            // had been clamped along the way.
+            if (any_scale_changed(items)) {
                 // TODOLATER: static or dynamic? assert?
                 auto* scene = dynamic_cast<CanvasScene*>(this->scene());
                 scene->undo_stack()->push(
-                    new ScaleItemsByCommand(static_cast<Mixin*>(this)
-                                                ->selection_action_items(),
-                                            factor,
-                                            eventAnchor_,
-                                            true));
+                    new ScaleItemsByCommand(items, eventAnchor_, true));
             }
             event->accept();
             reset_actions();
@@ -1250,14 +1275,17 @@ protected:
         if (activeMode_ == EItemMode::RotateMode) {
             auto* scene = dynamic_cast<CanvasScene*>(this->scene());
             scene->on_selection_change(); // or emit selectionChange()
-            const qreal delta = get_rotate_delta(event->scenePos());
-            if (delta != 0) {
+            const QList<QGraphicsItem*> items
+                = static_cast<Mixin*>(this)->selection_action_items();
+            // Same reasoning as ScaleMode above, and here the old test
+            // was outright wrong: it recomputed an UNSNAPPED delta, so a
+            // small Shift-drag that snapped the picture to the next
+            // multiple of kRotateSnapDegrees while the raw delta rounded
+            // to zero pushed no command at all - leaving a rotation
+            // nothing could undo.
+            if (any_rotation_changed(items)) {
                 scene->undo_stack()->push(
-                    new RotateItemsByCommand(static_cast<Mixin*>(this)
-                                                 ->selection_action_items(),
-                                             delta,
-                                             eventAnchor_,
-                                             true));
+                    new RotateItemsByCommand(items, eventAnchor_, true));
             }
             event->accept();
             reset_actions();

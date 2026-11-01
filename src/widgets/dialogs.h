@@ -344,7 +344,7 @@ private:
                 this,
                 &ProgressDialog::on_progress);
         connect(worker,
-                &ThreadedIO::finished,
+                &ThreadedIO::work_finished,
                 this,
                 &ProgressDialog::on_finished);
         connect(worker,

@@ -11,6 +11,7 @@
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QHashFunctions>
 #include <QImage>
 #include <QJsonArray>
@@ -31,6 +32,8 @@
 #include <QtContainerFwd>
 #include <QtTypes>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <functional>
 #include <miniz_common.h>
@@ -164,7 +167,13 @@ QByteArray write_manifest(const Manifest& manifest)
 // or from a formatVersion we don't understand yet) with `error` set.
 // A manifest item with a missing/duplicate id is not fatal - see the
 // per-item warning below (docs/fml_format_design.md §5.1).
-std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
+//
+// Everything this reports goes to `itemRepairs`, not itemErrors: the
+// only messages it produces come from the two sanitize passes below,
+// which fix an item in place rather than drop it.
+std::optional<Manifest> parse_manifest(const QByteArray& json,
+                                       QString& error,
+                                       QStringList& itemRepairs)
 {
     QJsonParseError parseError;
     const QJsonDocument doc = QJsonDocument::fromJson(json, &parseError);
@@ -205,6 +214,15 @@ std::optional<Manifest> parse_manifest(const QByteArray& json, QString& error)
     if (formatVersion < kformatVersion) {
         apply_format_migrations(root, formatVersion);
     }
+
+    // Before anything reads the item list: a cycle in the group graph is
+    // an infinite loop in GroupItem's ancestor walks, not a cosmetic
+    // problem - see sanitize_item_graph()'s own comment.
+    itemRepairs += FmlArchive::sanitize_item_graph(root);
+    // Same for the transform numbers: nothing downstream of here checks
+    // them either, and a scale of 0 is not recoverable by hand once it
+    // is in - see the definition's own comment.
+    itemRepairs += FmlArchive::sanitize_item_transforms(root);
 
     Manifest manifest;
     manifest.formatVersion = kformatVersion;
@@ -428,6 +446,322 @@ FmlResult load_legacy(QFile& file, CanvasScene* scene, ThreadedIO* worker)
 
 } // namespace
 
+// A .fml's group-membership graph has to be a forest. GroupItem climbs it
+// with plain unguarded walks - `for (a = this; a; a = find_owning_group(a))`
+// in fit_to_contain_children() and paint(), the same shape in
+// apply_lock_to_children() (moveitem.h) - so a cycle there is not a wrong
+// picture, it is an infinite loop: a group containing itself, or A
+// containing B while B contains A, hangs the application on load (a repro
+// had to be killed on a 25s timeout). Nothing in the UI can build such a
+// graph - every grouping path goes through CanvasScene, which keeps a
+// single owner per item - but a truncated, corrupted or deliberately
+// crafted file can, and the loader otherwise only ever checked ids for
+// duplicates.
+//
+// Deliberately operating on the raw manifest JSON rather than on the
+// parsed Manifest: this is the untrusted shape, straight out of the
+// archive, and it is what a test can hand over verbatim.
+//
+// The offending MEMBERSHIPS are dropped, not the items: the file still
+// opens, the affected pictures simply end up ungrouped, and every drop is
+// reported through FmlResult::itemErrors like any other per-item problem.
+// Same treatment for "attached_to", whose chain is walked the same way
+// (CanvasScene::would_create_attach_cycle() guards its own walk, but
+// nothing ever validated the stored value).
+//
+// A child id no manifest item claims is left alone: it cannot resolve,
+// cannot close a cycle, and resolve_children() already ignores it.
+namespace {
+
+// Upper bounds on what a single archive entry is allowed to expand to.
+//
+// mz_zip_reader_extract_to_heap() takes the uncompressed size straight
+// out of the zip's own central directory and allocates that much before
+// inflating anything, so an entry that merely CLAIMS to be enormous is
+// enough: deflate reaches roughly 1032:1 on uniform data, which turns a
+// 1.5MB .fml into ~1.8GB of RSS and a ten-second hang (measured). The
+// size has to be checked BEFORE the allocation, which means asking
+// mz_zip_reader_file_stat() first - extract_to_heap() itself offers no
+// ceiling parameter.
+//
+// Items/image_allocation_limit deliberately NOT reused here: that one
+// caps the DECODED image inside Qt's own decoder
+// (QImageReader::setAllocationLimit(), core/settings.cpp), which this
+// path never reaches - the memory is gone while the bytes are still
+// compressed input.
+//
+// Both limits are also what makes the size_t -> int narrowing below safe
+// by construction: 1GiB and 64MiB are each well under INT_MAX, so
+// QByteArray's and QImage::loadFromData()'s int lengths cannot overflow.
+constexpr mz_uint64 kmaxImageEntryBytes = 1024ULL * 1024 * 1024;
+// A manifest is JSON text; 64MiB is hundreds of thousands of items.
+constexpr mz_uint64 kmaxManifestBytes = 64ULL * 1024 * 1024;
+
+// How far an image entry is allowed to expand relative to its stored
+// size. This catches what the absolute limit above cannot: a bomb sized
+// just under kMaxImageEntryBytes passes the size check, but it still
+// needs an enormous ratio to exist at all.
+//
+// Safe to keep tight because save() stores images with
+// MZ_NO_COMPRESSION (ratio 1:1), and the formats involved - JPEG, PNG,
+// GIF - are already compressed, so deflate over them wins percent, not
+// multiples. 10:1 leaves room for a third-party writer that does
+// compress its entries while still being orders of magnitude below what
+// a bomb needs.
+//
+// Deliberately NOT applied to manifest.json: write_manifest()'s output
+// goes in with MZ_DEFAULT_LEVEL, and JSON text legitimately compresses
+// five- to fifteen-fold. The absolute limit is the only usable check
+// there.
+constexpr mz_uint64 kmaxImageEntryRatio = 10;
+
+// What the archive itself declares about entry `index`, or std::nullopt
+// if its header cannot be read. Nothing is allocated.
+struct EntrySizes
+{
+    mz_uint64 uncompressed = 0;
+    mz_uint64 compressed = 0;
+};
+
+std::optional<EntrySizes> entry_sizes(mz_zip_archive* zip, int index)
+{
+    mz_zip_archive_file_stat stat;
+    if (!mz_zip_reader_file_stat(zip, static_cast<mz_uint>(index), &stat)) {
+        return std::nullopt;
+    }
+    return EntrySizes{.uncompressed = stat.m_uncomp_size,
+                      .compressed = stat.m_comp_size};
+}
+
+// Ceilings for the transform fields, used by sanitize_item_transforms()
+// below. The point of them is arithmetic, not taste: the largest number
+// JSON can carry is ~1.8e308, and a scale or a coordinate anywhere near
+// that overflows to inf the moment it is multiplied by an item's own
+// size, after which the inf propagates through every bounding-rect,
+// anchor and scene-index computation that touches the item.
+//
+// Both are far above anything the interactive paths can produce - scale
+// comes from a drag measured against the item's current size, and the
+// scene's own coordinates stay within a few hundred thousand units even
+// for a very large board - so a real project never meets either.
+constexpr double kmaxItemScale = 1e6;
+constexpr double kmaxSceneCoord = 1e9;
+constexpr double kfullTurnDegrees = 360.0;
+
+} // namespace
+
+QStringList FmlArchive::sanitize_item_graph(QJsonObject& root)
+{
+    const QString childIdsKey = QStringLiteral("child_ids");
+    const QString attachedToKey = QStringLiteral("attached_to");
+    const QString dataKey = QStringLiteral("data");
+
+    QStringList reports;
+    const auto reportDrop = [&reports](const QString& what, const QString& id) {
+        const QString message = QStringLiteral("%1 for item %2").arg(what, id);
+        reports.append(message);
+        FLOG_WARN(Ch::IO, "FmlArchive::load: {}", message);
+    };
+
+    // Walk up from `from`; reaching `target` means the new edge
+    // target -> from would close a loop. Both maps below are kept acyclic
+    // at every insertion, so this always terminates.
+    const auto closesCycle = [](const QHash<QString, QString>& edges,
+                                 const QString& from,
+                                 const QString& target) {
+        QString cursor = from;
+        while (!cursor.isEmpty()) {
+            if (cursor == target) {
+                return true;
+            }
+            cursor = edges.value(cursor);
+        }
+        return false;
+    };
+
+    // Not const: the QJsonValueRef loops below write back through it.
+    // NOLINTNEXTLINE(misc-const-correctness)
+    QJsonArray items = root.value(QStringLiteral("items")).toArray();
+
+    // child id -> the group that owns it, built claim by claim so the
+    // first claim wins and every later one is corruption.
+    QHash<QString, QString> ownerOf;
+    for (QJsonValueRef itemRef : items) {
+        QJsonObject item = itemRef.toObject();
+        if (item.value(QStringLiteral("type")).toString()
+            != QStringLiteral("group")) {
+            continue;
+        }
+        const QString groupId = item.value(QStringLiteral("id")).toString();
+        QJsonObject data = item.value(dataKey).toObject();
+        const QJsonArray stored = data.value(childIdsKey).toArray();
+        QJsonArray kept;
+        for (const auto& v : stored) {
+            const QString child = v.toString();
+            if (child.isEmpty()) {
+                continue; // apply_extra_save_data() drops these anyway
+            }
+            if (child == groupId) {
+                reportDrop(QStringLiteral("Dropped a group that contained itself"),
+                       groupId);
+                continue;
+            }
+            if (ownerOf.contains(child)) {
+                reportDrop(QStringLiteral("Dropped a second group membership "
+                                      "(already owned elsewhere)"),
+                       child);
+                continue;
+            }
+            if (closesCycle(ownerOf, groupId, child)) {
+                reportDrop(QStringLiteral(
+                           "Dropped a group membership that formed a cycle"),
+                       child);
+                continue;
+            }
+            ownerOf.insert(child, groupId);
+            kept.append(v);
+        }
+        if (kept.size() != stored.size()) {
+            data[childIdsKey] = kept;
+            item[dataKey] = data;
+            itemRef = item;
+        }
+    }
+
+    // attachee id -> what it is attached to, same invariant.
+    QHash<QString, QString> attachedTo;
+    for (QJsonValueRef itemRef : items) {
+        QJsonObject item = itemRef.toObject();
+        QJsonObject data = item.value(dataKey).toObject();
+        const QString target = data.value(attachedToKey).toString();
+        if (target.isEmpty()) {
+            continue;
+        }
+        const QString id = item.value(QStringLiteral("id")).toString();
+        const bool selfAttached = target == id;
+        if (selfAttached || closesCycle(attachedTo, target, id)) {
+            reportDrop(selfAttached
+                       ? QStringLiteral("Dropped an item attached to itself")
+                       : QStringLiteral(
+                             "Dropped an attachment that formed a cycle"),
+                   id);
+            data.remove(attachedToKey);
+            item[dataKey] = data;
+            itemRef = item;
+            continue;
+        }
+        attachedTo.insert(id, target);
+    }
+
+    if (!reports.isEmpty()) {
+        root[QStringLiteral("items")] = items;
+    }
+    return reports;
+}
+
+QStringList FmlArchive::sanitize_item_transforms(QJsonObject& root)
+{
+    QStringList reports;
+    const auto report = [&reports](const QString& what, const QString& id) {
+        const QString message = QStringLiteral("%1 for item %2").arg(what, id);
+        reports.append(message);
+        FLOG_WARN(Ch::IO, "FmlArchive::load: {}", message);
+    };
+
+    // Not const: the QJsonValueRef loop below writes back through it.
+    // NOLINTNEXTLINE(misc-const-correctness)
+    QJsonArray items = root.value(QStringLiteral("items")).toArray();
+
+    // Tracked separately from `reports`: the rotation normalization
+    // below rewrites the value without reporting anything, so an empty
+    // report list does not mean the array is unchanged.
+    bool changed = false;
+
+    for (QJsonValueRef itemRef : items) {
+        QJsonObject item = itemRef.toObject();
+        const QString id = item.value(QStringLiteral("id")).toString();
+        bool itemChanged = false;
+
+        // CanvasScene::create_item_from_data() applies this with
+        // QGraphicsItem::setScale(), not BaseItemMixin::set_scale(), so
+        // the "refuse a non-positive scale" guard in the latter never
+        // sees a value that arrived from a file. Zero is the worse of
+        // the two: every later handle-driven scale is computed as
+        // scale_orig_factor() * factor, which stays zero forever, so the
+        // picture cannot be scaled back by hand at all - only "Reset
+        // scale" gets it out. 1.0 rather than the nearest legal value
+        // because there is no meaningful minimum to snap to.
+        const QJsonValue scaleValue = item.value(QStringLiteral("scale"));
+        if (!scaleValue.isUndefined()) {
+            const double scale = scaleValue.toDouble(1.0);
+            double usable = scale;
+            if (!(scale > 0)) {
+                usable = 1.0;
+                report(QStringLiteral("Reset a non-positive scale"), id);
+            } else if (scale > kmaxItemScale) {
+                usable = kmaxItemScale;
+                report(QStringLiteral("Clamped an out-of-range scale"), id);
+            }
+            if (usable != scale) {
+                item[QStringLiteral("scale")] = usable;
+                itemChanged = true;
+            }
+        }
+
+        // Folded into [0, 360) because the cursor logic reads rotation()
+        // as if it already were - is_edge_vertical() and
+        // get_diag_cursor() (selector.h) both test it against fixed
+        // sector ranges, which a negative or >360 angle silently misses.
+        //
+        // Deliberately NOT reported: set_rotation() stores whatever it
+        // is given, so a -90 or a 450 in the file is ordinary output
+        // from a previous session, not corruption. Folding is lossless
+        // either way - the item ends up pointing the same direction.
+        const QJsonValue rotationValue = item.value(QStringLiteral("rotation"));
+        if (!rotationValue.isUndefined()) {
+            const double rotation = rotationValue.toDouble();
+            double usable = std::fmod(rotation, kfullTurnDegrees);
+            if (usable < 0) {
+                usable += kfullTurnDegrees;
+            }
+            if (usable != rotation) {
+                item[QStringLiteral("rotation")] = usable;
+                itemChanged = true;
+            }
+        }
+
+        const QString coordKeys[] = {QStringLiteral("x"),
+                                     QStringLiteral("y"),
+                                     QStringLiteral("z")};
+        for (const QString& key : coordKeys) {
+            const QJsonValue value = item.value(key);
+            if (value.isUndefined()) {
+                continue;
+            }
+            const double coord = value.toDouble();
+            const double usable
+                = std::clamp(coord, -kmaxSceneCoord, kmaxSceneCoord);
+            if (usable != coord) {
+                item[key] = usable;
+                itemChanged = true;
+                report(QStringLiteral("Clamped an out-of-range %1").arg(key),
+                       id);
+            }
+        }
+
+        if (itemChanged) {
+            itemRef = item;
+            changed = true;
+        }
+    }
+
+    if (changed) {
+        root[QStringLiteral("items")] = items;
+    }
+    return reports;
+}
+
+
 // ============================================================================
 // FmlArchive
 // ============================================================================
@@ -642,6 +976,25 @@ FmlResult FmlArchive::load(const QString& filename,
         return result;
     }
 
+    const std::optional<EntrySizes> manifestDeclared
+        = entry_sizes(zip.get(), manifestIndex);
+    if (!manifestDeclared) {
+        result.error = QStringLiteral("Could not read manifest.json from %1")
+                           .arg(filename);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
+        return result;
+    }
+    if (manifestDeclared->uncompressed > kmaxManifestBytes) {
+        result.error = QStringLiteral(
+                           "manifest.json in %1 claims to be %2 bytes, over "
+                           "the %3 byte limit")
+                           .arg(filename)
+                           .arg(manifestDeclared->uncompressed)
+                           .arg(kmaxManifestBytes);
+        FLOG_ERROR(Ch::IO, "FmlArchive::load: {}", result.error);
+        return result;
+    }
+
     size_t manifestSize = 0;
     void* manifestBuf = mz_zip_reader_extract_to_heap(zip.get(),
                                                       static_cast<mz_uint>(
@@ -659,7 +1012,9 @@ FmlResult FmlArchive::load(const QString& filename,
     mz_free(manifestBuf);
 
     QString parseError;
-    std::optional<Manifest> manifest = parse_manifest(manifestJson, parseError);
+    std::optional<Manifest> manifest = parse_manifest(manifestJson,
+                                                      parseError,
+                                                      result.itemRepairs);
     if (!manifest) {
         result.error = parseError;
         return result;
@@ -705,7 +1060,33 @@ FmlResult FmlArchive::load(const QString& filename,
                                             0);
 
             bool ok = false;
-            if (imageIndex >= 0) {
+            // Checked before extract_to_heap() allocates anything - see
+            // kMaxImageEntryBytes. An over-limit entry is treated like any
+            // other unreadable image: this one item is reported and
+            // skipped, the rest of the project still loads.
+            const std::optional<EntrySizes> declaredSize
+                = imageIndex >= 0 ? entry_sizes(zip.get(), imageIndex)
+                                  : std::nullopt;
+            const bool withinSize = declaredSize
+                                    && declaredSize->uncompressed
+                                           <= kmaxImageEntryBytes;
+            const bool withinRatio = declaredSize
+                                     && declaredSize->uncompressed
+                                            <= declaredSize->compressed
+                                                   * kmaxImageEntryRatio;
+            const bool withinLimit = withinSize && withinRatio;
+            if (declaredSize && !withinLimit) {
+                FLOG_WARN(Ch::IO,
+                          "FmlArchive::load: {} claims {} bytes from {} "
+                          "stored ({} byte limit, {}:1 ratio limit) - "
+                          "skipping",
+                          mi.image.toStdString(),
+                          declaredSize->uncompressed,
+                          declaredSize->compressed,
+                          kmaxImageEntryBytes,
+                          kmaxImageEntryRatio);
+            }
+            if (withinLimit) {
                 size_t imgSize = 0;
                 void* imgBuf
                     = mz_zip_reader_extract_to_heap(zip.get(),
@@ -733,6 +1114,17 @@ FmlResult FmlArchive::load(const QString& filename,
                             itemData[QStringLiteral("image")] = image;
                             itemData[QStringLiteral("filename")]
                                 = mi.data.value(QStringLiteral("filename"));
+                            // Handed to PixmapItem::set_encoded_source()
+                            // by add_queued_items() so the next save
+                            // writes these exact bytes back instead of
+                            // re-encoding the decoded pixmap - see that
+                            // cache's own comment in moveitem.h for the
+                            // generational quality loss this avoids.
+                            itemData[QStringLiteral("encodedBytes")]
+                                = QByteArray(static_cast<const char*>(imgBuf),
+                                             static_cast<int>(imgSize));
+                            itemData[QStringLiteral("encodedFormat")]
+                                = QFileInfo(mi.image).suffix();
                         }
                     }
                     mz_free(imgBuf);

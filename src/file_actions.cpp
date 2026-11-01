@@ -2,6 +2,7 @@
 #include "canvasscene.h"
 #include "fileio.h"
 #include "fml_archive.h"
+#include "log/log.h"
 #include "mainwindow.h"
 #include "recovery.h"
 #include "tabpane.h"
@@ -16,9 +17,12 @@
 #include <QMessageBox>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QThread>
 #include <QUuid>
 #include <QtContainerFwd>
+
+#include <memory>
 
 FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
@@ -48,7 +52,8 @@ void FileActions::open_file()
 
 void FileActions::load_fml_into_current_tab(const QString& path,
                                             bool markModifiedAfterLoad,
-                                            const QUuid& recoveryIdToClear)
+                                            const QUuid& recoveryIdToClear,
+                                            TabOwnership tabOwnership)
 {
     CanvasView* canvasView = mainwindow_.tab_pane().current_widget();
     CanvasScene* scene = canvasView->scene();
@@ -56,16 +61,47 @@ void FileActions::load_fml_into_current_tab(const QString& path,
     auto* worker = new ThreadedIO(
         [path, scene](ThreadedIO* w) { load_fml(path, scene, w); });
 
+    // load_fml() emits items_repaired() just before finished(), so this
+    // is filled in by the time the handler below runs. Shared rather
+    // than captured by reference: both lambdas outlive this function.
+    auto repairs = std::make_shared<QStringList>();
+    QObject::connect(worker,
+                     &ThreadedIO::items_repaired,
+                     &mainwindow_,
+                     [repairs](const QStringList& messages) {
+                         *repairs += messages;
+                     });
+
     QObject::connect(
         worker,
-        &ThreadedIO::finished,
+        &ThreadedIO::work_finished,
         &mainwindow_,
         [this,
          canvasView,
          scene,
          markModifiedAfterLoad,
-         recoveryIdToClear](const QString& error,
-                            const QStringList& itemErrors) {
+         recoveryIdToClear,
+         repairs,
+         tabOwnership](const QString& error, const QStringList& itemErrors) {
+            // A fatal error means nothing was queued and the tab is
+            // empty, so the whole success path below (fit_scene, the
+            // modified flag, deleting the recovery snapshot) has nothing
+            // to act on. Handled first, and the tab is not left behind
+            // as an empty page titled after a file it never managed to
+            // open.
+            if (!error.isEmpty()) {
+                // Tab first, dialog second: show_message_box() is modal
+                // and blocks here until dismissed, so doing it the other
+                // way round leaves the half-opened tab sitting behind the
+                // error for as long as the user takes to read it.
+                discard_failed_tab(canvasView, tabOwnership);
+                show_message_box(QMessageBox::Critical,
+                                 &mainwindow_,
+                                 QObject::tr("Could not open file"),
+                                 error);
+                return;
+            }
+
             scene->add_queued_items();
             // add_queued_items() populates the scene directly, bypassing
             // the undo stack entirely - the Hierarchy panel's rebuild
@@ -84,31 +120,54 @@ void FileActions::load_fml_into_current_tab(const QString& path,
 
             // Only now - after the background read has actually
             // succeeded - is it safe to delete the recovery file it was
-            // just read from. Also only on success: if loading failed,
-            // keep the recovery snapshot around rather than silently
-            // losing the only copy of that data.
-            if (error.isEmpty() && !recoveryIdToClear.isNull()) {
+            // just read from. The failure path above returns before this
+            // instead, keeping the snapshot rather than silently losing
+            // the only copy of that data.
+            if (!recoveryIdToClear.isNull()) {
                 familiar::recovery::remove(recoveryIdToClear);
             }
 
-            if (!error.isEmpty()) {
-                show_message_box(QMessageBox::Critical,
-                                 &mainwindow_,
-                                 QObject::tr("Could not open file"),
-                                 error);
-            }
-            if (!itemErrors.isEmpty()) {
-                QStringList lines;
-                for (const QString& e : itemErrors) {
-                    lines.append(QStringLiteral("<li>%1</li>").arg(e));
+            // Per-item problems are NOT a failed open: whatever did load
+            // is real content the user should keep, so this tab stays.
+            //
+            // The two lists are reported as two separate things because
+            // they mean opposite outcomes for the user: an item in
+            // `itemErrors` is content they no longer have, while one in
+            // `repairs` is content that is all there with something
+            // about it corrected. Pooling them under a single "could
+            // not be loaded" count claimed that pictures sitting right
+            // in front of the user had failed to load.
+            if (!itemErrors.isEmpty() || !repairs->isEmpty()) {
+                const auto bullets = [](const QStringList& messages) {
+                    QStringList lines;
+                    for (const QString& m : messages) {
+                        lines.append(QStringLiteral("<li>%1</li>").arg(m));
+                    }
+                    return QStringLiteral("<ul>%1</ul>")
+                        .arg(lines.join(QString()));
+                };
+
+                QString body;
+                if (!itemErrors.isEmpty()) {
+                    body += QObject::tr("%1 item(s) could not be loaded:")
+                                .arg(itemErrors.size())
+                            + bullets(itemErrors);
                 }
+                if (!repairs->isEmpty()) {
+                    body += QObject::tr("%1 item(s) were repaired:")
+                                .arg(repairs->size())
+                            + bullets(*repairs);
+                }
+
+                // A repair-only open is not a loss, so it does not get
+                // the same heading as one.
                 show_message_box(
                     QMessageBox::Warning,
                     &mainwindow_,
-                    QObject::tr("Problem loading project"),
-                    QObject::tr("%1 item(s) could not be loaded.<ul>%2</ul>")
-                        .arg(itemErrors.size())
-                        .arg(lines.join(QString())));
+                    itemErrors.isEmpty()
+                        ? QObject::tr("Project repaired while opening")
+                        : QObject::tr("Problem loading project"),
+                    body);
             }
         });
 
@@ -129,7 +188,8 @@ void FileActions::restore_from_recovery(const QString& recoveryFmlPath,
     }
     load_fml_into_current_tab(recoveryFmlPath,
                               /*markModifiedAfterLoad=*/true,
-                              recoveryId);
+                              recoveryId,
+                              TabOwnership::CreatedForThisLoad);
 }
 
 CanvasView* FileActions::find_blank_tab()
@@ -153,6 +213,38 @@ void FileActions::close_tab(CanvasView* cv)
     delete cv;
 }
 
+void FileActions::discard_failed_tab(CanvasView* canvasView,
+                                     TabOwnership tabOwnership)
+{
+    FLOG_DEBUG(familiar::log::Ch::IO,
+               "Open failed - {} its tab",
+               tabOwnership == TabOwnership::CreatedForThisLoad
+                   ? "closing"
+                   : "reverting");
+    if (tabOwnership == TabOwnership::CreatedForThisLoad) {
+        close_tab(canvasView);
+        // close_tab() is a plain delete and QTabWidget drops the page on
+        // its own, but nothing refills an emptied pane - TabPane::
+        // on_tab_closed() does this same check for the same reason.
+        if (mainwindow_.tab_pane().count() == 0) {
+            mainwindow_.tab_pane().add_new_untitled_tab();
+        }
+        return;
+    }
+
+    // The tab existed before this load (process_open_file() reuses an
+    // already-blank one instead of stacking a second empty tab next to
+    // it), so it is the user's, not ours to close: put its identity back
+    // the way it was. Addressed through the captured view rather than
+    // current_widget(), since the load is backgrounded and the user may
+    // have switched tabs while it ran. "untitled" is the sentinel
+    // ProjectSettings itself uses for all three (project_settings.h).
+    const QString untitled = QStringLiteral("untitled");
+    canvasView->set_path(untitled);
+    canvasView->set_project_name(untitled);
+    mainwindow_.tab_pane().set_tab_title(canvasView, untitled);
+}
+
 void FileActions::process_open_file(const QString& file)
 {
     // Already open in some tab - switch to it instead of opening a
@@ -167,17 +259,24 @@ void FileActions::process_open_file(const QString& file)
         }
     }
 
+    bool reusedBlankTab = false;
     if (mainwindow_.tab_pane().current_widget()->is_untitled()
         && mainwindow_.tab_pane().current_widget()->is_modified() == false) {
         mainwindow_.tab_pane().set_current_tab_path(file);
         mainwindow_.tab_pane().set_current_tab_title(QFileInfo(file).fileName());
         mainwindow_.tab_pane().set_current_tab_project_name(
             QFileInfo(file).fileName());
+        reusedBlankTab = true;
     } else {
         mainwindow_.tab_pane().add_new_tab(file);
     }
 
-    load_fml_into_current_tab(file);
+    load_fml_into_current_tab(file,
+                              /*markModifiedAfterLoad=*/false,
+                              /*recoveryIdToClear=*/QUuid(),
+                              reusedBlankTab
+                                  ? TabOwnership::ExistedBefore
+                                  : TabOwnership::CreatedForThisLoad);
 
     SettingsHandler::update_recent_files(file);
     mainwindow_.update_menu_and_actions();
@@ -198,7 +297,7 @@ int FileActions::write_to_path(CanvasView* canvasView, const QString& path)
     // callers (TabPane::onTabClosed(), MainWindow::saveAllWindowSaveCB())
     // close the tab or quit the app right after this returns, assuming the
     // save has already completed - threading it would need those flows
-    // reworked to wait on ThreadedIO::finished first.
+    // reworked to wait on ThreadedIO::work_finished first.
     const FmlResult result = FmlArchive::save(canvasView->scene(),
                                               canvasView->canvas_rect(),
                                               path);
@@ -268,14 +367,22 @@ int FileActions::save_file_as()
                                                        "Familiar (*.fml)"));
 
     if (!selected.isEmpty()) {
-        if (!mainwindow_.tab_pane().current_widget()->is_untitled()
-            && mainwindow_.tab_pane().get_current_tab_project_name()
-                   != QFileInfo(selected).fileName()) {
-            auto* canvasView = mainwindow_.tab_pane().current_widget();
-            mainwindow_.tab_pane().add_new_tab(selected);
-            load_fml_into_current_tab(canvasView->path());
-        }
-
+        // Standard Save As semantics, and nothing more: THIS tab starts
+        // living under the new path, the file it came from stays on disk
+        // untouched and is not reopened.
+        //
+        // There used to be a branch here that, for an already-saved
+        // document being saved under a different name, opened a SECOND
+        // tab on the chosen path and started a background load of the
+        // OLD file into it. Since TabPane::add_new_tab() makes the new
+        // tab current, every current_widget() below then referred to
+        // that new tab - so write_to_path() wrote out a scene the
+        // background load had not populated yet (it is delivered through
+        // ThreadedIO::work_finished, i.e. the event loop, which does not run
+        // inside this call; ProgressDialog show()s rather than exec()s).
+        // The chosen file got an EMPTY project written to it, with no
+        // error, while the user's actual changes stayed behind in the
+        // original tab, still unsaved.
         mainwindow_.tab_pane().set_current_tab_path(selected);
         mainwindow_.tab_pane().set_current_tab_title(
             QFileInfo(selected).fileName());

@@ -2,6 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTemporaryDir>
 
 // SettingsHandler owns the single settings.json document (see its own
@@ -201,6 +204,41 @@ TEST(SettingsHandlerTest, ExportToUnwritablePathFails)
     auto* h = SettingsHandler::get_instance();
     EXPECT_FALSE(
         h->export_settings_to(QStringLiteral("/nonexistent-dir-xyz/out.json")));
+}
+
+TEST(SettingsHandlerTest, SettingAValueLeavesAParseableFileOnDisk)
+{
+    // save_document() writes through write_file_atomically() (utils/
+    // utils.h) rather than a plain truncating QFile. That helper is
+    // tested on its own in tests/utils/utils_test.cpp; what is pinned
+    // here is that this class still goes through it AND still produces
+    // the same indented JSON object as before - a settings.json that
+    // doesn't parse is loaded as an empty document, which silently
+    // resets every setting the user has (load_document()).
+    auto* h = SettingsHandler::get_instance();
+    h->set_json_value(QStringLiteral("TestGroup"),
+                      QStringLiteral("key"),
+                      QJsonValue(7));
+
+    QFile file(h->settings_file_path());
+    ASSERT_TRUE(file.open(QIODevice::ReadOnly));
+    const QByteArray raw = file.readAll();
+    file.close();
+
+    const QJsonDocument parsed = QJsonDocument::fromJson(raw);
+    ASSERT_TRUE(parsed.isObject());
+    EXPECT_EQ(parsed.object()
+                  .value(QStringLiteral("TestGroup"))
+                  .toObject()
+                  .value(QStringLiteral("key"))
+                  .toInt(),
+              7);
+    // Indented, as it has always been - not a formatting assertion for
+    // its own sake: a settings.json a user can read and hand-edit is the
+    // reason this file is JSON rather than QSettings' own format.
+    EXPECT_TRUE(raw.contains('\n'));
+
+    h->remove_json_group(QStringLiteral("TestGroup"));
 }
 
 TEST(SettingsHandlerTest, ValueRemoveResetRoundTrip)
