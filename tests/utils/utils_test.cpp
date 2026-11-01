@@ -161,15 +161,16 @@ TEST(WriteFileAtomicallyTest, FailsAndKeepsTheOldFileWhenTheWriteIsCutShort)
     // standing in for a full disk or an exceeded quota: the only
     // failure mode of this kind that can be injected deterministically.
     //
-    // Note where the failure actually surfaces: QFile/QSaveFile buffer,
-    // so write() reports every byte accepted and only the flush inside
-    // commit() fails. That is exactly why the old code could not detect
-    // this - it checked nothing, but even checking write() would not
-    // have been enough.
-    //
-    // The cap is deliberately megabytes rather than bytes: it applies to
-    // every file this process writes, the log file among them, and a
-    // test must not be able to break logging for the rest of the suite.
+    // Which of write_file_atomically()'s two checks catches this depends
+    // on the payload, measured both ways: a payload under QIODevice's
+    // own write buffer (~16KB) is accepted whole by write() and only
+    // fails at the flush inside commit(), while a payload this large
+    // bypasses the buffer and comes back short from write() itself.
+    // Hence both checks there - this test exercises the second one.
+    // The buffered half cannot be injected here: it would need a cap
+    // under 16KB, and the cap applies to every file this process writes,
+    // the log file among them - a test must not be able to break
+    // logging for the rest of the suite.
     constexpr rlim_t klimitBytes = 4u * 1024 * 1024;
     constexpr int kpayloadBytes = 8 * 1024 * 1024;
 
@@ -184,18 +185,44 @@ TEST(WriteFileAtomicallyTest, FailsAndKeepsTheOldFileWhenTheWriteIsCutShort)
         GTEST_SKIP() << "RLIMIT_FSIZE hard limit is already below the cap";
     }
     // Exceeding RLIMIT_FSIZE raises SIGXFSZ as well as failing the
-    // write, and its default action terminates the process.
-    void* const previousHandler = reinterpret_cast<void*>(
-        signal(SIGXFSZ, SIG_IGN));
+    // write, and its default action terminates the process. Spelled as
+    // the POSIX return type of signal() rather than glibc's
+    // sighandler_t, which macOS's SDK does not declare.
+    using SignalHandler = void (*)(int);
+    const SignalHandler previousHandler = signal(SIGXFSZ, SIG_IGN);
     const rlimit capped{klimitBytes, previous.rlim_max};
     ASSERT_EQ(setrlimit(RLIMIT_FSIZE, &capped), 0);
 
-    const bool wrote = write_file_atomically(path,
-                                             QByteArray(kpayloadBytes, 'x'));
+    // Whether a given platform and filesystem enforce RLIMIT_FSIZE on
+    // this particular write is an environment fact, not something this
+    // test gets to assume - so prove the injection works here, on a
+    // throwaway file, before asserting anything about the real one.
+    // Both signals are accepted, for the same reason the helper checks
+    // both: which one appears depends on the payload size.
+    const QString probe = QDir(dir.path()).filePath(QStringLiteral("probe"));
+    bool limitIsEnforced = false;
+    {
+        const QByteArray payload(kpayloadBytes, 'x');
+        QFile probeFile(probe);
+        if (probeFile.open(QIODevice::WriteOnly)) {
+            const bool shortWrite = probeFile.write(payload)
+                                    != payload.size();
+            limitIsEnforced = shortWrite || !probeFile.flush();
+        }
+    }
+
+    bool wrote = true;
+    if (limitIsEnforced) {
+        wrote = write_file_atomically(path, QByteArray(kpayloadBytes, 'x'));
+    }
 
     ASSERT_EQ(setrlimit(RLIMIT_FSIZE, &previous), 0);
-    signal(SIGXFSZ, reinterpret_cast<sighandler_t>(previousHandler));
+    signal(SIGXFSZ, previousHandler);
+    QFile::remove(probe);
 
+    if (!limitIsEnforced) {
+        GTEST_SKIP() << "RLIMIT_FSIZE is not enforced for this write here";
+    }
     EXPECT_FALSE(wrote);
     EXPECT_EQ(read_all(path), QByteArray("GOOD"));
 }
