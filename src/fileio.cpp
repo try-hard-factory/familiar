@@ -769,9 +769,14 @@ void ImageImportSession::run(ThreadedIO* worker)
     const QStringList errors = unsupportedFormatErrors_ + tooLargeErrors_
                                + corruptErrors_;
     // DIAG (ProgressDialog SIGSEGV investigation).
-    FLOG_DEBUG(Ch::IO, "emit finished() worker={}", static_cast<void*>(worker));
-    emit worker->finished(QString(), errors);
-    worker->quit();
+    FLOG_DEBUG(Ch::IO,
+               "emit work_finished() worker={}",
+               static_cast<void*>(worker));
+    // No worker->quit() here (nor in load_fml()/save_fml() below): run()
+    // never calls exec(), so the thread has no event loop for quit() to
+    // end - QThread::quit() documents itself as doing nothing in that
+    // case, and the thread finishes by returning from run() regardless.
+    emit worker->work_finished(QString(), errors);
 }
 
 // ─── load_fml / save_fml ───────────────────────────────────────────────────
@@ -783,14 +788,13 @@ void load_fml(const QString& filename, CanvasScene* scene, ThreadedIO* worker)
     const FmlResult result = FmlArchive::load(filename, scene, worker);
 
     if (worker) {
-        // Before finished(), so a receiver has both halves in hand by
+        // Before work_finished(), so a receiver has both halves in hand by
         // the time it decides what to show - same ordering as
         // ImageImportSession::run()'s large_images_found().
         if (!result.itemRepairs.isEmpty()) {
             emit worker->items_repaired(result.itemRepairs);
         }
-        emit worker->finished(result.error, result.itemErrors);
-        worker->quit();
+        emit worker->work_finished(result.error, result.itemErrors);
     }
 }
 
@@ -819,8 +823,7 @@ void save_fml(const QString& filename,
                                               worker);
 
     if (worker) {
-        emit worker->finished(result.error, result.itemErrors);
-        worker->quit();
+        emit worker->work_finished(result.error, result.itemErrors);
     }
     FLOG_DEBUG(Ch::IO, "End save");
 }

@@ -8,6 +8,7 @@
 #include <widgets/main_controls.h>
 #include <widgets/welcome_overlay.h>
 #include <QGraphicsView>
+#include <QPointer>
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QObject>
@@ -408,6 +409,12 @@ private:
     // alive across the async ThreadedIO call, released in
     // on_export_scene_finished(). See src/export.h.
     std::unique_ptr<SceneExporterBase> sceneExporter_;
+    // The worker running that export. Held only so the destructor can
+    // stop it - see ~CanvasView(). QPointer, not a raw one: this worker
+    // deletes itself on QThread::finished (unlike the two below, which
+    // are deleted explicitly), and a raw member would be left dangling
+    // by that.
+    QPointer<ThreadedIO> sceneExportWorker_;
 
     // State for the in-flight on_action_export_images() operation.
     // ImagesToDirectoryExporter (src/export.h) is resumable: exportTo()

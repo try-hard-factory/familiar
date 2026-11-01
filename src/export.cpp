@@ -68,7 +68,7 @@ void ExporterBase::emit_finished(ThreadedIO* worker,
                                  const QStringList& errors)
 {
     if (worker) {
-        emit worker->finished(target, errors);
+        emit worker->work_finished(target, errors);
     }
 }
 

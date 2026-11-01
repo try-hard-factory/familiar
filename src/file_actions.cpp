@@ -74,7 +74,7 @@ void FileActions::load_fml_into_current_tab(const QString& path,
 
     QObject::connect(
         worker,
-        &ThreadedIO::finished,
+        &ThreadedIO::work_finished,
         &mainwindow_,
         [this,
          canvasView,
@@ -297,7 +297,7 @@ int FileActions::write_to_path(CanvasView* canvasView, const QString& path)
     // callers (TabPane::onTabClosed(), MainWindow::saveAllWindowSaveCB())
     // close the tab or quit the app right after this returns, assuming the
     // save has already completed - threading it would need those flows
-    // reworked to wait on ThreadedIO::finished first.
+    // reworked to wait on ThreadedIO::work_finished first.
     const FmlResult result = FmlArchive::save(canvasView->scene(),
                                               canvasView->canvas_rect(),
                                               path);
@@ -378,7 +378,7 @@ int FileActions::save_file_as()
         // tab current, every current_widget() below then referred to
         // that new tab - so write_to_path() wrote out a scene the
         // background load had not populated yet (it is delivered through
-        // ThreadedIO::finished, i.e. the event loop, which does not run
+        // ThreadedIO::work_finished, i.e. the event loop, which does not run
         // inside this call; ProgressDialog show()s rather than exec()s).
         // The chosen file got an EMPTY project written to it, with no
         // error, while the user's actual changes stayed behind in the

@@ -220,6 +220,41 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
 
 CanvasView::~CanvasView()
 {
+    // FIRST, before anything the workers read is torn down: every worker
+    // function body captures `this` and goes through it -
+    // imageImportSession_, imagesExporter_ and sceneExporter_ are all
+    // members, and the import session additionally holds scene_, which
+    // this destructor deletes below. A thread still inside one of those
+    // bodies after the capture is gone reads freed memory. Qt's own
+    // receiver-side disconnect does not help here: the danger is the
+    // captured pointer the lambda runs on, not the signals it emits.
+    //
+    // Reachable, not theoretical. ProgressDialog is WindowModal only
+    // while it is visible, and QDialog::reject() - what both Cancel and
+    // Esc do - hides it immediately, whereas cancellation itself is just
+    // a flag the worker notices at its next poll. Encoding and file
+    // writes have no poll point at all. Between those two moments the
+    // main window is live again and the tab can be closed.
+    //
+    // wait() blocks the GUI thread, which is the intent: there is
+    // nothing useful to do until the thread is out of code that reads
+    // this object. Deleting afterwards is safe even for the worker that
+    // also has a deleteLater() pending - ~QObject drops posted events
+    // for itself - while deleting one that is still RUNNING would be
+    // qFatal("QThread: Destroyed while thread is still running").
+    for (ThreadedIO* worker : {imageImportWorker_,
+                               imageExportWorker_,
+                               sceneExportWorker_.data()}) {
+        if (!worker) {
+            continue;
+        }
+        worker->on_canceled();
+        worker->wait();
+        delete worker;
+    }
+    imageImportWorker_ = nullptr;
+    imageExportWorker_ = nullptr;
+
     // undoStack_.reset() below (via QUndoStack::clear() inside
     // ~QUndoStack()) fires cleanChanged(), and scene_'s own destruction
     // can fire changed()/selectionChanged() - both are still connected to
@@ -1153,8 +1188,11 @@ void CanvasView::on_action_export_scene()
     auto* worker = new ThreadedIO([this, filename](ThreadedIO* w) {
         sceneExporter_->export_to(filename, w);
     });
+    // Remembered only so ~CanvasView() can stop it before sceneExporter_
+    // (which that lambda dereferences through `this`) is destroyed.
+    sceneExportWorker_ = worker;
     connect(worker,
-            &ThreadedIO::finished,
+            &ThreadedIO::work_finished,
             this,
             &CanvasView::on_export_scene_finished);
     connect(worker, &QThread::finished, worker, &QObject::deleteLater);
@@ -1217,7 +1255,7 @@ void CanvasView::export_pictures(const QList<PixmapItem*>& pictures)
             this,
             &CanvasView::on_export_images_file_exists);
     connect(imageExportWorker_,
-            &ThreadedIO::finished,
+            &ThreadedIO::work_finished,
             this,
             &CanvasView::on_export_images_finished);
     // Deliberately not deleteLater-on-QThread::finished here (unlike
@@ -1934,7 +1972,7 @@ void CanvasView::on_insert_images_finished(const QString& /*filename*/,
     }
 
     // True completion (this slot is only ever reached via
-    // ThreadedIO::finished, never on a RAW-choice pause - see
+    // ThreadedIO::work_finished, never on a RAW-choice pause - see
     // do_insert_images()'s own comment) - safe to clean up now, same
     // pattern as on_export_images_finished().
     // DIAG (ProgressDialog SIGSEGV investigation): the crash's last log
@@ -2040,7 +2078,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
             this,
             &CanvasView::on_items_loaded);
     connect(imageImportWorker_,
-            &ThreadedIO::finished,
+            &ThreadedIO::work_finished,
             this,
             &CanvasView::on_insert_images_finished);
     connect(imageImportWorker_,

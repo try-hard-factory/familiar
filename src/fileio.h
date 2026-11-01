@@ -74,30 +74,35 @@ protected:
 
 signals:
     void progress(int value);
-    void finished(const QString& error, const QStringList& errors);
+    // NOT named finished(): QThread already has a finished() signal of
+    // its own, and a same-named one here would hide it for unqualified
+    // lookup - `&ThreadedIO::work_finished` would quietly mean this one while
+    // `connect(w, &QThread::finished, w, &QObject::deleteLater)` means
+    // the other, with nothing to tell them apart at the call site.
+    void work_finished(const QString& error, const QStringList& errors);
     void begin_processing(int count);
     void user_input_required(const QString& message);
-    // Emitted once, right before finished(), when
+    // Emitted once, right before work_finished(), when
     // ImageImportSession::run() ran in "warn" mode (Items/auto_optimize_imported_images)
     // and found one or more images over the large-image size threshold.
-    // Separate from finished()'s `errors` - these images loaded fine and
+    // Separate from work_finished()'s `errors` - these images loaded fine and
     // were queued as-is, just flagged as candidates for optimization.
     void large_images_found(const QStringList& filenames);
-    // Emitted once, right before finished(), when a .fml carried item
+    // Emitted once, right before work_finished(), when a .fml carried item
     // data that had to be corrected on the way in - see
-    // FmlResult::itemRepairs. Separate from finished()'s `errors` for
+    // FmlResult::itemRepairs. Separate from work_finished()'s `errors` for
     // the same reason large_images_found() is: these items are all
     // there, something about them was simply wrong and got fixed.
     void items_repaired(const QStringList& repairs);
-    // Emitted once, right before finished(), by ImageImportSession::run() ONLY - the
-    // 3-way breakdown of finished()'s own `errors` list (same filenames,
-    // just classified - see ImageLoadFailure). finished()'s `errors`
+    // Emitted once, right before work_finished(), by ImageImportSession::run() ONLY - the
+    // 3-way breakdown of work_finished()'s own `errors` list (same filenames,
+    // just classified - see ImageLoadFailure). work_finished()'s `errors`
     // keeps carrying the flat list too (log/back-compat), this is
     // additive for the UI to build a clearer message from.
     void image_load_failures(const QStringList& unsupportedFormat,
                              const QStringList& tooLarge,
                              const QStringList& corrupt);
-    // Emitted (instead of finished()) by ImageImportSession::run() the
+    // Emitted (instead of work_finished()) by ImageImportSession::run() the
     // first time it reaches a RAW file whose handling isn't decided yet
     // (see ImageImportSession::setQueueChoice()) - the worker thread has
     // already stopped by the time this is delivered (run() just
@@ -169,7 +174,7 @@ enum class RawImportChoice : std::uint8_t {
 
 // Adds images to an existing scene. Resumable, same shape as
 // ImagesToDirectoryExporter (export.h): run() returns early (without
-// reaching finished()) the first time it hits a RAW file whose handling
+// reaching work_finished()) the first time it hits a RAW file whose handling
 // isn't decided yet (see setQueueChoice()/ThreadedIO::
 // rawImportChoiceRequired above) - the caller shows RawImportDialog,
 // calls setQueueChoice(), and calls run() again (same worker,
@@ -184,7 +189,7 @@ enum class RawImportChoice : std::uint8_t {
 // (mutex-protected, safe to call from any thread) — it never touches the
 // QGraphicsScene itself. The caller is expected to drain the queue with
 // CanvasScene::add_queued_items() on the GUI thread, e.g. from a slot
-// connected to ThreadedIO::progress/finished (see CanvasView::do_insert_images).
+// connected to ThreadedIO::progress/work_finished (see CanvasView::do_insert_images).
 class ImageImportSession
 {
 public:
