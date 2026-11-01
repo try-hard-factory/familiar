@@ -158,6 +158,9 @@ void CanvasScene::clear()
 
     detach_all_items();
     QGraphicsScene::clear();
+    // QGraphicsScene::clear() deletes items directly, without going
+    // through our own removeItem() above.
+    invalidate_group_ownership();
     // internal_clipboard is intentionally NOT cleared here - it's shared
     // across all tabs (see its declaration) and holds self-contained
     // snapshots rather than anything belonging to this scene, so wiping
@@ -172,6 +175,12 @@ void CanvasScene::addItem(QGraphicsItem* item)
 {
     FLOG_DEBUG(Ch::Scene, "Adding item {}", debug_string(item));
     QGraphicsScene::addItem(item);
+    // Unconditional rather than only for a GroupItem: a group's
+    // child_ids() can name a uid whose item does not exist yet (nothing
+    // orders a group against its own children in manifest.json - see
+    // add_queued_items()), so "did a group just arrive" is not the only
+    // way this index can go stale.
+    invalidate_group_ownership();
     // rubberbandItem_/multiselectItem_ implement IBaseItem too (needed
     // for corners_scene_coords()/get_type()/etc.) but aren't part of the
     // shared-ownership system at all - they're singletons with manual
@@ -192,6 +201,7 @@ void CanvasScene::removeItem(QGraphicsItem* item)
     FLOG_DEBUG(Ch::Scene, "Removing item {}", debug_string(item));
     QGraphicsScene::removeItem(item);
     attachedItems_.remove(item);
+    invalidate_group_ownership();
 }
 
 void CanvasScene::detach_all_items()
@@ -1592,16 +1602,55 @@ QGraphicsItem* CanvasScene::find_by_uid(const QUuid& uid) const
     return nullptr;
 }
 
-GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
+void CanvasScene::rebuild_owner_index() const
 {
+    ownerOf_.clear();
     for (QGraphicsItem* item : items()) {
         if (auto* group = dynamic_cast<GroupItem*>(item)) {
-            if (group->child_ids().contains(memberUid)) {
-                return group;
+            for (const QUuid& childUid : group->child_ids()) {
+                // Two owners for one uid is already diagnosed where it
+                // can be caught at the source (GroupItem::
+                // add_child_id()). Here the first group wins, which is
+                // what the old linear scan did too - it returned the
+                // first match in items() order.
+                if (!ownerOf_.contains(childUid)) {
+                    ownerOf_.insert(childUid, group);
+                }
             }
         }
     }
-    return nullptr;
+    ownerIndexDirty_ = false;
+}
+
+GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
+{
+    if (ownerIndexDirty_) {
+        rebuild_owner_index();
+    }
+    return ownerOf_.value(memberUid, nullptr);
+}
+
+QList<GroupItem*> CanvasScene::owning_group_chain(const QUuid& memberUid) const
+{
+    QList<GroupItem*> chain;
+    // memberUid itself seeds the set: a group listed among its own
+    // child_ids() is the shortest possible cycle.
+    QSet<QUuid> seen{memberUid};
+    for (GroupItem* owner = find_owning_group(memberUid); owner;
+         owner = find_owning_group(owner->uid())) {
+        if (seen.contains(owner->uid())) {
+            FLOG_WARN(Ch::Scene,
+                      "owning_group_chain(): ownership cycle at {} "
+                      "uid={} - stopping the walk after {} group(s)",
+                      owner->to_string(),
+                      owner->uid().toString(QUuid::WithoutBraces).toStdString(),
+                      chain.size());
+            break;
+        }
+        seen.insert(owner->uid());
+        chain.append(owner);
+    }
+    return chain;
 }
 
 QList<QGraphicsItem*> CanvasScene::find_attached_items(

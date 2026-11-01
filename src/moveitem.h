@@ -2310,7 +2310,13 @@ public:
 
     // See apply_extra_save_data()'s comment - the safety net
     // CanvasScene::add_queued_items() invokes after a whole load batch.
-    void invalidate_children_cache() { resolvedChildrenDirty_ = true; }
+    // Goes through mark_membership_changed() rather than touching the
+    // flag directly, so that stays the single place either cache is
+    // dropped from. The scene's owner index does not actually need it
+    // here (apply_extra_save_data() sets membership via
+    // set_child_ids(), and CanvasScene::addItem() invalidates after
+    // that anyway) - this just keeps the two from drifting apart.
+    void invalidate_children_cache() { mark_membership_changed(); }
 
     QColor fill_color() const { return fillColor_; }
     void set_fill_color(const QColor& color)
@@ -2398,8 +2404,11 @@ public:
         // self-check - dragging an OUTER group cascades down to an INNER
         // one too, and the inner one isn't itself the grabber.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (const GroupItem* ancestor = this; ancestor;
-                 ancestor = scene->find_owning_group(ancestor->uid())) {
+            if (scene->mouseGrabberItem() == this) {
+                return;
+            }
+            for (const GroupItem* ancestor :
+                 scene->owning_group_chain(uid())) {
                 if (scene->mouseGrabberItem() == ancestor) {
                     return;
                 }
@@ -2603,9 +2612,7 @@ public:
     {
         bool ancestorLocked = false;
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (const GroupItem* owner = scene->find_owning_group(this->uid());
-                 owner;
-                 owner = scene->find_owning_group(owner->uid())) {
+            for (const GroupItem* owner : scene->owning_group_chain(uid())) {
                 if (owner->locked()) {
                     ancestorLocked = true;
                     break;
@@ -2624,17 +2631,18 @@ public:
     // still protects ITS children even after an unlocked ancestor's own
     // pass would otherwise re-enable them (see set_locked()'s class
     // comment).
-    // NOLINTNEXTLINE(misc-no-recursion) group nesting is acyclic
+    // The descending counterpart of the ancestor walk
+    // CanvasScene::owning_group_chain() guards, and it needs the same
+    // protection for the same reason: nothing enforces that group
+    // nesting is acyclic. add_child_id() only LOGS when a uid gains a
+    // second owner, so two groups can end up listing each other, and
+    // this used to recurse between them until the stack ran out -
+    // reachable from the ordinary add-a-member path, since
+    // add_child_id() calls apply_lock_to_children() itself.
     void apply_effective_lock(bool ancestorLocked)
     {
-        const bool effective = ancestorLocked || locked_;
-        for (QGraphicsItem* child : resolve_children()) {
-            child->setFlag(QGraphicsItem::ItemIsSelectable, !effective);
-            child->setFlag(QGraphicsItem::ItemIsMovable, !effective);
-            if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
-                childGroup->apply_effective_lock(effective);
-            }
-        }
+        QSet<const GroupItem*> seen;
+        apply_effective_lock(ancestorLocked, seen);
     }
 
     // ── Membership (uid-based - see class comment) ─────────────────────
@@ -2642,7 +2650,7 @@ public:
     void set_child_ids(const QList<QUuid>& ids)
     {
         childIds_ = ids;
-        resolvedChildrenDirty_ = true;
+        mark_membership_changed();
         apply_lock_to_children();
     }
     void add_child_id(const QUuid& id)
@@ -2680,7 +2688,7 @@ public:
             }
             childIds_.append(id);
         }
-        resolvedChildrenDirty_ = true;
+        mark_membership_changed();
         apply_lock_to_children();
     }
     void remove_child_id(const QUuid& id)
@@ -2699,7 +2707,21 @@ public:
             }
         }
         childIds_.removeAll(id);
+        mark_membership_changed();
+    }
+
+    // Both caches that depend on this group's membership, dropped
+    // together: resolvedChildren_ here, and the scene's member-uid ->
+    // owner index (CanvasScene::invalidate_group_ownership()). The
+    // scene half is a no-op while this group is not in a scene yet -
+    // group_selection() and clone() both fill childIds_ before the
+    // group is added - and CanvasScene::addItem() invalidates anyway.
+    void mark_membership_changed()
+    {
         resolvedChildrenDirty_ = true;
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            scene->invalidate_group_ownership();
+        }
     }
 
     // Live QGraphicsItem*s for child_ids(), resolved against the scene
@@ -2811,9 +2833,7 @@ public:
         // subgroup's boundary at all.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             bool ancestorSelected = false;
-            for (const GroupItem* owner = scene->find_owning_group(this->uid());
-                 owner;
-                 owner = scene->find_owning_group(owner->uid())) {
+            for (const GroupItem* owner : scene->owning_group_chain(uid())) {
                 if (owner->isSelected()) {
                     ancestorSelected = true;
                     break;
@@ -2975,6 +2995,29 @@ private:
     QRectF localRect_;
     QColor fillColor_;
     QList<QUuid> childIds_;
+    // NOLINTNEXTLINE(misc-no-recursion) terminates: see `seen`
+    void apply_effective_lock(bool ancestorLocked,
+                              QSet<const GroupItem*>& seen)
+    {
+        if (seen.contains(this)) {
+            FLOG_WARN(familiar::log::Ch::Items,
+                      "GroupItem::apply_effective_lock(): membership cycle "
+                      "back at {} uid={} - not descending again",
+                      to_string(),
+                      uid().toString(QUuid::WithoutBraces).toStdString());
+            return;
+        }
+        seen.insert(this);
+        const bool effective = ancestorLocked || locked_;
+        for (QGraphicsItem* child : resolve_children()) {
+            child->setFlag(QGraphicsItem::ItemIsSelectable, !effective);
+            child->setFlag(QGraphicsItem::ItemIsMovable, !effective);
+            if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
+                childGroup->apply_effective_lock(effective, seen);
+            }
+        }
+    }
+
     QList<QGraphicsItem*> resolvedChildren_;
     bool resolvedChildrenDirty_ = true;
     bool autoExpanding_ = false;

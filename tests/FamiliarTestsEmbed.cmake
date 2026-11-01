@@ -46,5 +46,6 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/io/import_session_settings_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/worker_lifetime_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/clipboard_snapshot_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/scene/group_ownership_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/z_order_command_test.cpp
 )
