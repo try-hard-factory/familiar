@@ -602,6 +602,42 @@ public:
         encodedCacheSrcKey_ = pixmap().cacheKey();
     }
 
+    // Same idea as set_encoded_source() above, for a freshly imported
+    // file whose own bytes the importer still holds
+    // (ImageImportSession::run(), fileio.cpp) - except that those bytes
+    // are in whatever format the file happened to be, not a format this
+    // app chose. Adopted only when it IS the format get_imgformat()
+    // would pick anyway, so the very first save stops re-compressing a
+    // JPEG import into another JPEG: generation loss before the user
+    // edited anything, and autosave alone was enough to trigger it (see
+    // encodedCache_ for the measured error).
+    //
+    // A mismatch deliberately falls through to a re-encode. The format
+    // Items/image_storage_format asks for is also a size decision -
+    // "best" stores a photo as JPEG on purpose - and preferring the
+    // source over it would quietly put a 50 MB PNG in the archive of
+    // someone who chose otherwise.
+    void adopt_import_source(const QByteArray& bytes, const QString& format)
+    {
+        if (bytes.isEmpty() || format.isEmpty()) {
+            return;
+        }
+        // pixmap().toImage() is the same (refcounted, non-converting)
+        // view of the pixels the save path's own export_source() asks
+        // get_imgformat() about, so this answer matches the one the save
+        // would have reached.
+        const QString stored = get_imgformat(pixmap().toImage());
+        if (format != stored) {
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "Not keeping the {} source of {}: it is stored as {}",
+                       format,
+                       to_string(),
+                       stored);
+            return;
+        }
+        set_encoded_source(bytes, format);
+    }
+
     void setPixmap(const QPixmap& pixmap)
     {
         QGraphicsPixmapItem::setPixmap(pixmap);

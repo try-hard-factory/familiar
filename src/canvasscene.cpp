@@ -336,6 +336,15 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
                 data.value(QStringLiteral("encodedBytes")).toByteArray(),
                 data.value(QStringLiteral("encodedFormat")).toString());
 
+            // Present for a freshly imported file instead, where the
+            // bytes are the file's own and only usable if they are
+            // already in the storage format - the item decides, since
+            // that depends on a setting and on the image itself. See
+            // PixmapItem::adopt_import_source().
+            pixmapItem->adopt_import_source(
+                data.value(QStringLiteral("sourceBytes")).toByteArray(),
+                data.value(QStringLiteral("sourceFormat")).toString());
+
             // "crop" and "attached_to" -
             // see PixmapItem::apply_extra_save_data() (moveitem.h).
             const QVariant extraData = data.value("data");

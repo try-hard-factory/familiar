@@ -11,6 +11,7 @@
 #include <QFileInfo>
 #include <QHashFunctions>
 #include <QImage>
+#include <QImageIOHandler>
 #include <QImageReader>
 #include <QLatin1String>
 #include <QList>
@@ -280,16 +281,36 @@ ImageLoadFailure classify_failed_load(const QByteArray& bytes,
 }
 
 // Scales `img` down in place to fit within kLargeImageMaxDimension on its
-// longer side, preserving aspect ratio. No-op if already within bounds.
-void downscale_to_limit(QImage& img)
+// longer side, preserving aspect ratio. No-op if already within bounds;
+// returns whether it scaled anything, which is what tells the caller
+// that the bytes it read no longer describe `img`.
+bool downscale_to_limit(QImage& img)
 {
     if (!is_image_large(img)) {
-        return;
+        return false;
     }
     img = img.scaled(klargeImageMaxDimension,
                      klargeImageMaxDimension,
                      Qt::KeepAspectRatio,
                      Qt::SmoothTransformation);
+    return true;
+}
+
+// The format QImageReader recognizes `bytes` as, spelled the way
+// PixmapItem::get_imgformat() spells it - Qt says "jpeg", that one says
+// "jpg", and the two are compared against each other in
+// adopt_import_source(). Empty when nothing recognizes the data.
+QString source_format_name(const QByteArray& bytes)
+{
+    if (bytes.isEmpty()) {
+        return {};
+    }
+    QBuffer buf;
+    buf.setData(bytes);
+    buf.open(QIODevice::ReadOnly);
+    const QString format
+        = QString::fromLatin1(QImageReader(&buf).format()).toLower();
+    return format == QLatin1String("jpeg") ? QStringLiteral("jpg") : format;
 }
 
 // True if `bytes` is a multi-frame (animated) image Qt can decode -
@@ -535,6 +556,12 @@ void ImageImportSession::run(ThreadedIO* worker)
         // (not just "its name ends in .nef") - see the large-image
         // handling further down for what it suppresses.
         bool decodedAsRaw = false;
+        // Both mean "`bytes` is no longer what `img` holds", so the file
+        // may not be kept as this picture's stored source further down:
+        // an EXIF orientation is applied while reading, a downscale
+        // happens after.
+        bool exifTransformed = false;
+        bool downscaled = false;
 
         // Display name for ProgressDialog's "currently working on" line
         // (widgets/dialogs.h) - a local file's basename rather than its
@@ -603,6 +630,11 @@ void ImageImportSession::run(ThreadedIO* worker)
                 }
                 QImageReader reader(label);
                 reader.setAutoTransform(true); // apply EXIF rotation
+                // Asked BEFORE read(), while the header is all the
+                // handler has parsed: this is the orientation read()
+                // is about to apply, not something it reports back.
+                exifTransformed = reader.transformation()
+                                  != QImageIOHandler::TransformationNone;
                 img = reader.read();
             }
         } else if (rawUrl.scheme().compare(QStringLiteral("data"),
@@ -713,7 +745,7 @@ void ImageImportSession::run(ThreadedIO* worker)
                     largeImages_.append(label);
                 }
             } else if (optimizeMode_ == QLatin1String("optimize_large")) {
-                downscale_to_limit(img);
+                downscaled = downscale_to_limit(img);
             }
         }
 
@@ -735,6 +767,18 @@ void ImageImportSession::run(ThreadedIO* worker)
         } else {
             itemData[QStringLiteral("type")] = QStringLiteral("pixmap");
             itemData[QStringLiteral("image")] = img;
+            // The file's own bytes, carried so that the first save can
+            // store them verbatim instead of encoding `img` all over
+            // again - see PixmapItem::adopt_import_source(), which is
+            // where the decision is actually made. Withheld as soon as
+            // they describe a different picture than `img`: a RAW
+            // decode leaves them empty on purpose, the other two cases
+            // are the flags above.
+            if (!exifTransformed && !downscaled) {
+                itemData[QStringLiteral("sourceBytes")] = bytes;
+                itemData[QStringLiteral("sourceFormat")] = source_format_name(
+                    bytes);
+            }
         }
         itemData[QStringLiteral("filename")] = label;
         itemData[QStringLiteral("x")] = topLeft.x();
