@@ -4,6 +4,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <limits>
+
 #include <QElapsedTimer>
 #include <QImage>
 #include <QUndoStack>
@@ -187,31 +190,42 @@ TEST_F(GroupOwnershipTest, AGroupListedAmongItsOwnMembersIsACycleToo)
 
 // ─── Cost ──────────────────────────────────────────────────────────────────
 
-TEST_F(GroupOwnershipTest, OnChangeDoesNotGrowQuadraticallyWithTheItemCount)
+TEST_F(GroupOwnershipTest, OnChangeDoesNotGrowWithTheNumberOfGroups)
 {
-    // A wall-clock test, so the bound is on the SHAPE of the growth, not
-    // on any absolute number of milliseconds: four times the items must
-    // not cost dramatically more than four times the time. The linear
-    // scan this replaced measured ~5.4x per 2.5x items (roughly
-    // quadratic, and worse once groups nest), so the ratio below sits
-    // far above anything linear and far below what the old code did.
-    constexpr int ksmallPictures = 150;
-    constexpr int klargePictures = 600;
-    constexpr int kgroups = 20;
+    // The cost this replaced was O(groups x items): every group's
+    // fit_to_contain_children() asked find_owning_group(), and that
+    // answer came from a fresh items() sweep with a dynamic_cast per
+    // item. It answers from an index now, so the per-frame cost should
+    // stop caring how many groups there are.
+    //
+    // Groups, deliberately, and not pictures: the per-frame cost is
+    // dominated by on_change()'s own items() sweep either way, and
+    // items() sorts by stacking order, so growing the picture count
+    // grows BOTH versions superlinearly and separates them by almost
+    // nothing. Holding the pictures fixed and varying the groups
+    // isolates the term that actually changed.
+    constexpr int kpictures = 600;
+    constexpr int kfewGroups = 10;
+    constexpr int kmanyGroups = 40;
     constexpr int kframes = 30;
+    // The timed loop runs this many times and the FASTEST is kept.
+    // Scheduling noise only ever adds time, so a single measurement has
+    // a long tail upwards and none downwards; a minimum is the stable
+    // estimator of a one-sided distribution, a mean is not.
+    constexpr int kruns = 5;
 
-    const auto measure_ns = [this](int pictures) {
+    const auto measure_ns = [this](int groups) {
         scene_->clear();
         QList<QUuid> ids;
-        for (int i = 0; i < pictures; ++i) {
+        for (int i = 0; i < kpictures; ++i) {
             ids.append(add_picture(QPointF((i % 20) * 50, (i / 20) * 40))
                            ->uid());
         }
         // Nested two deep, so the ancestor walk actually has somewhere
         // to walk - that is where the old cost exploded.
         QList<GroupItem*> inner;
-        const int perGroup = pictures / kgroups;
-        for (int g = 0; g < kgroups; ++g) {
+        const int perGroup = kpictures / groups;
+        for (int g = 0; g < groups; ++g) {
             QList<QUuid> members;
             for (int k = 0; k < perGroup; ++k) {
                 members.append(ids[(g * perGroup + k) % ids.size()]);
@@ -226,24 +240,32 @@ TEST_F(GroupOwnershipTest, OnChangeDoesNotGrowQuadraticallyWithTheItemCount)
         // later one takes fit_to_contain_children()'s "already fits"
         // early-out, which is the per-frame path being measured.
         scene_->on_change();
-        QElapsedTimer timer;
-        timer.start();
-        for (int i = 0; i < kframes; ++i) {
-            scene_->on_change();
+
+        qint64 bestNs = std::numeric_limits<qint64>::max();
+        for (int run = 0; run < kruns; ++run) {
+            QElapsedTimer timer;
+            timer.start();
+            for (int i = 0; i < kframes; ++i) {
+                scene_->on_change();
+            }
+            bestNs = std::min(bestNs, timer.nsecsElapsed() / kframes);
         }
-        return timer.nsecsElapsed() / kframes;
+        return bestNs;
     };
 
-    const qint64 smallNs = measure_ns(ksmallPictures);
-    const qint64 largeNs = measure_ns(klargePictures);
+    const qint64 fewNs = measure_ns(kfewGroups);
+    const qint64 manyNs = measure_ns(kmanyGroups);
 
-    if (smallNs < 1000) {
+    if (fewNs < 1000) {
         GTEST_SKIP() << "baseline too fast to compare meaningfully ("
-                     << smallNs << "ns)";
+                     << fewNs << "ns)";
     }
-    const double itemRatio = double(klargePictures) / ksmallPictures;
-    const double timeRatio = double(largeNs) / double(smallNs);
-    EXPECT_LT(timeRatio, itemRatio * 2.0)
-        << "per-frame on_change() went from " << smallNs << "ns to " << largeNs
-        << "ns for " << itemRatio << "x the items (" << timeRatio << "x)";
+    const double groupRatio = double(kmanyGroups) / kfewGroups;
+    const double timeRatio = double(manyNs) / double(fewNs);
+    // Four times the groups over the same pictures. The old scan paid
+    // that in full; the index should be close to flat, so the bound
+    // sits halfway between the two rather than just under the old one.
+    EXPECT_LT(timeRatio, groupRatio / 2.0)
+        << "per-frame on_change() went from " << fewNs << "ns to " << manyNs
+        << "ns for " << groupRatio << "x the groups (" << timeRatio << "x)";
 }

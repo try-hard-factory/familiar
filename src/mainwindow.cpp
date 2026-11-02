@@ -310,7 +310,15 @@ MainWindow::MainWindow(QWidget* parent)
     // exitProject(), or the default quitOnLastWindowClosed after
     // closeEvent() accepts) - a real crash never reaches it, which is
     // exactly the point.
-    connect(qApp, &QApplication::aboutToQuit, this, [] {
+    connect(qApp, &QApplication::aboutToQuit, this, [this] {
+        // In this order, and the timer stopped first: snapshots are
+        // written on a background thread now, so a tick landing between
+        // here and the event loop actually stopping would read a tab
+        // and queue an archive for the folder that is about to be
+        // wiped. shutdown() alone would cover it (it refuses anything
+        // further), stopping the timer says why.
+        recoveryTimer_->stop();
+        familiar::recovery::shutdown();
         familiar::recovery::clear();
     });
 

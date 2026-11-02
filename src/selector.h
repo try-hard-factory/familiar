@@ -240,10 +240,32 @@ public:
     {
         FLOG_DEBUG(familiar::log::Ch::Items, "Setting rotation to {}", value);
         const QPointF prev = this->mapToScene(anchor);
-        QGraphicsItem::setRotation(
-            std::fmod(value, selector_consts::kfullTurnDegrees));
+        QGraphicsItem::setRotation(fold_into_one_turn(value));
         const QPointF diff = this->mapToScene(anchor) - prev;
         this->setPos(this->pos() - diff);
+    }
+
+    // Into [0, 360), not just a fmod: std::fmod keeps the sign of its
+    // dividend, and the angle arrives from get_rotate_angle() below,
+    // which is an atan2 and so spans (-180, 180] - so rotating anything
+    // counter-clockwise past zero used to store a NEGATIVE rotation.
+    //
+    // Three places read rotation() as if it were already folded, each
+    // against fixed positive sector ranges that a negative angle misses
+    // entirely, leaving the resize cursor in its fall-through branch:
+    // get_diag_cursor() and is_edge_vertical() below, and
+    // PixmapItem::get_crop_edge_cursor() (moveitem.h).
+    //
+    // FmlArchive::sanitize_item_transforms() already folds the same way,
+    // for exactly this reason and with a comment naming those readers -
+    // so a project came back correct after a save and reopen while the
+    // live session stayed wrong. It still has to: files written before
+    // this, and hand-edited ones, carry whatever they carry.
+    static qreal fold_into_one_turn(qreal degrees)
+    {
+        const qreal folded = std::fmod(degrees,
+                                       selector_consts::kfullTurnDegrees);
+        return folded < 0 ? folded + selector_consts::kfullTurnDegrees : folded;
     }
 
     qreal flip() const override

@@ -38,15 +38,18 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_registry_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/pixmap_item_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/items/rotation_normalization_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/transform_commands_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/fml_graph_sanitize_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/fml_transform_sanitize_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/export_snapshot_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/scene_export_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/import_session_settings_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/repaired_project_backup_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/worker_lifetime_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/clipboard_snapshot_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/group_ownership_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/recovery_snapshot_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/scene/recovery_writer_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/z_order_command_test.cpp
 )

@@ -46,6 +46,15 @@ protected:
             new InsertItemsCommand(view_->scene(), {item}));
     }
 
+    // What recovery::save() does on the happy path: it hands back the
+    // revision the tab was READ at. Here the read and the write are the
+    // same instant - the last test below is the case where they are
+    // not, and it passes the older revision by hand.
+    void take_snapshot() const
+    {
+        view_->mark_recovery_snapshot_taken(view_->content_revision());
+    }
+
     MainWindow window_;
     CanvasView* view_ = nullptr;
 };
@@ -72,7 +81,7 @@ TEST_F(RecoverySnapshotTest, AnIdleDirtyTabIsNotSnapshottedAgainAndAgain)
     push_an_edit();
     ASSERT_TRUE(view_->needs_recovery_snapshot());
 
-    view_->mark_recovery_snapshot_taken();
+    take_snapshot();
 
     // Still modified - nothing was saved - but the snapshot on disk
     // already holds exactly this, so every later tick must skip it.
@@ -84,7 +93,7 @@ TEST_F(RecoverySnapshotTest, AnIdleDirtyTabIsNotSnapshottedAgainAndAgain)
 TEST_F(RecoverySnapshotTest, AFurtherEditMakesItDueAgain)
 {
     push_an_edit();
-    view_->mark_recovery_snapshot_taken();
+    take_snapshot();
     ASSERT_FALSE(view_->needs_recovery_snapshot());
 
     push_an_edit();
@@ -96,7 +105,7 @@ TEST_F(RecoverySnapshotTest, UndoingIsItselfAChangeWorthSnapshotting)
 {
     push_an_edit();
     push_an_edit();
-    view_->mark_recovery_snapshot_taken();
+    take_snapshot();
     ASSERT_FALSE(view_->needs_recovery_snapshot());
 
     view_->undo_stack()->undo();
@@ -113,7 +122,7 @@ TEST_F(RecoverySnapshotTest, AnEditAfterAnUndoIsDueEvenAtTheSameUndoIndex)
 {
     push_an_edit();
     const int indexAtSnapshot = view_->undo_stack()->index();
-    view_->mark_recovery_snapshot_taken();
+    take_snapshot();
     ASSERT_FALSE(view_->needs_recovery_snapshot());
 
     view_->undo_stack()->undo();
@@ -124,9 +133,10 @@ TEST_F(RecoverySnapshotTest, AnEditAfterAnUndoIsDueEvenAtTheSameUndoIndex)
     EXPECT_TRUE(view_->needs_recovery_snapshot());
 }
 
-// FileActions marks a repaired-on-load project modified without
-// anything ever reaching the undo stack - the index stays 0. That
-// project is exactly the one most in need of a snapshot.
+// A project restored from a recovery snapshot is marked modified
+// without anything ever reaching the undo stack - the index stays 0
+// (markModifiedAfterLoad, file_actions.h). That project is exactly the
+// one most in need of another snapshot.
 TEST_F(RecoverySnapshotTest, ModifiedWithoutAnyUndoActivityIsStillDue)
 {
     view_->set_modified(true);
@@ -134,7 +144,7 @@ TEST_F(RecoverySnapshotTest, ModifiedWithoutAnyUndoActivityIsStillDue)
     ASSERT_EQ(view_->undo_stack()->index(), 0);
     EXPECT_TRUE(view_->needs_recovery_snapshot());
 
-    view_->mark_recovery_snapshot_taken();
+    take_snapshot();
     EXPECT_FALSE(view_->needs_recovery_snapshot());
 }
 
@@ -143,11 +153,33 @@ TEST_F(RecoverySnapshotTest, ModifiedWithoutAnyUndoActivityIsStillDue)
 TEST_F(RecoverySnapshotTest, SavingDoesNotMakeATabDueASnapshot)
 {
     push_an_edit();
-    view_->mark_recovery_snapshot_taken();
+    take_snapshot();
 
     view_->undo_stack()->setClean();
     view_->set_modified(false);
 
     EXPECT_FALSE(view_->is_modified());
+    EXPECT_FALSE(view_->needs_recovery_snapshot());
+}
+
+// The archive is assembled and written on a background thread now, so a
+// snapshot lands at a revision the tab may already have left behind.
+// recovery::save() passes back the revision it READ at for exactly this
+// reason: marking whatever the tab holds by then would call an edit
+// saved that never reached the file.
+TEST_F(RecoverySnapshotTest, AnEditMadeWhileTheSnapshotWasBeingWrittenIsStillDue)
+{
+    push_an_edit();
+    const quint64 captured = view_->content_revision();
+
+    // ... the write is in flight, and the user keeps working.
+    push_an_edit();
+
+    view_->mark_recovery_snapshot_taken(captured);
+
+    EXPECT_TRUE(view_->needs_recovery_snapshot());
+
+    // And the snapshot that does include it settles the tab.
+    take_snapshot();
     EXPECT_FALSE(view_->needs_recovery_snapshot());
 }

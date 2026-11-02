@@ -9,6 +9,7 @@
 #include <QMessageBox>
 #include <QMetaType>
 #include <QSharedMemory>
+#include <QStandardPaths>
 #include <QString>
 #include <QtEnvironmentVariables>
 
@@ -76,6 +77,15 @@ int main(int argc, char* argv[])
     // do here. mid(1) skips the program name and, unlike sliced(), is
     // defined even if arguments() somehow comes back empty.
     if (QCoreApplication::arguments().mid(1).contains(QStringLiteral("-t"))) {
+        // Moves every QStandardPaths location under ~/.qttest, which
+        // the settings file and the log file are already kept out of by
+        // hand (tests/support/settings_test_environment.h,
+        // log_test_environment.h) but the recovery folder was not: any
+        // test constructing a MainWindow installs its aboutToQuit hook,
+        // and that called familiar::recovery::clear() on the REAL
+        // folder at the end of every single test run - deleting the
+        // crash-recovery snapshots of the user's own last session.
+        QStandardPaths::setTestModeEnabled(true);
         ::testing::InitGoogleTest(&argc, argv);
         // Owned by GoogleTest from here on (::testing::Environment's
         // documented contract - it deletes registered environments
