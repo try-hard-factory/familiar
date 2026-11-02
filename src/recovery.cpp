@@ -69,6 +69,11 @@ void save(CanvasView* canvasView)
         return;
     }
 
+    // Only now that the .fml itself is on disk - a failed write above
+    // returned early, leaving this tab still due a snapshot so the next
+    // tick retries it.
+    canvasView->mark_recovery_snapshot_taken();
+
     const bool untitled = canvasView->is_untitled();
     QJsonObject sidecar;
     sidecar[QStringLiteral("originalPath")] = untitled ? QString()

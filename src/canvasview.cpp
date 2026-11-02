@@ -122,6 +122,12 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
             &QUndoStack::cleanChanged,
             this,
             &CanvasView::on_undo_clean_changed);
+    // indexChanged(), not cleanChanged(): the latter only fires when the
+    // stack crosses its clean position, while this has to move for every
+    // command, undo and redo - see content_revision() (canvasview.h).
+    connect(undoStack_.get(), &QUndoStack::indexChanged, this, [this](int) {
+        ++contentRevision_;
+    });
 
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
@@ -2252,6 +2258,12 @@ bool CanvasView::is_modified()
 }
 void CanvasView::set_modified(bool mod)
 {
+    // Only becoming modified counts as a content change. Clearing the
+    // flag is what a successful save does, and that must not look like
+    // a reason to take another snapshot.
+    if (mod) {
+        ++contentRevision_;
+    }
     scene_->set_modified(mod);
 }
 bool CanvasView::is_untitled()

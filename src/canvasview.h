@@ -119,6 +119,43 @@ public:
     bool is_untitled();
     QUuid recovery_id();
 
+    // ── Crash-recovery snapshot bookkeeping ───────────────────────────────
+    // MainWindow's recovery timer used to snapshot every tab whose
+    // is_modified() was true, which stays true until the next MANUAL
+    // save - so an untouched-but-dirty tab was rewritten in full every
+    // 30 seconds forever. The snapshot is not cheap: FmlArchive::save()
+    // assembles the whole archive in heap memory and writes it through
+    // QSaveFile::commit() (an fdatasync), synchronously on the GUI
+    // thread - measured at 2.1s per snapshot on a 300-picture board,
+    // 180ms on a 100-picture one, with nothing at all having changed.
+    //
+    // contentRevision_ is a monotonic counter, NOT the undo stack's
+    // index. The index does not identify a state: a new command after
+    // an undo truncates the stack, so `edit A, undo, edit B` lands back
+    // on index 1 while holding completely different content, and
+    // comparing indices would skip that snapshot and leave A on disk.
+    // The counter also moves for a modification that never went
+    // through the undo stack at all (FileActions marks a repaired-on-
+    // load project modified with an undo index of 0 - exactly the
+    // project most in need of a snapshot).
+    quint64 content_revision() const { return contentRevision_; }
+    // is_modified() AND something changed since the snapshot on disk.
+    // std::nullopt for lastSnapshotRevision_ means there is no snapshot
+    // yet, so the first one always happens.
+    bool needs_recovery_snapshot()
+    {
+        return is_modified()
+               && (!lastSnapshotRevision_
+                   || *lastSnapshotRevision_ != contentRevision_);
+    }
+    // Called by familiar::recovery::save() once the .fml is actually on
+    // disk - a failed write deliberately leaves this alone so the next
+    // tick retries instead of silently giving up.
+    void mark_recovery_snapshot_taken()
+    {
+        lastSnapshotRevision_ = contentRevision_;
+    }
+
     // The drawn canvas frame's extent - see canvasRect_ and
     // CanvasScene::remembered_bounding_rect().
     QRectF canvas_rect() const { return canvasRect_; }
@@ -301,6 +338,11 @@ private:
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;
     std::unique_ptr<QUndoStack> undoStack_;
+
+    // See content_revision() above for why this is a counter of its own
+    // rather than undoStack_->index().
+    quint64 contentRevision_ = 0;
+    std::optional<quint64> lastSnapshotRevision_;
     CanvasScene* scene_;
     uint64_t zCounter_ = 0;
 

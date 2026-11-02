@@ -383,7 +383,11 @@ void MainWindow::on_recovery_timeout()
         // Unlike onAutosaveTimeout_() above, untitled tabs are NOT
         // skipped here - they're exactly the highest-risk data (never
         // written anywhere else) that this feature exists to protect.
-        if (cv->is_modified()) {
+        //
+        // needs_recovery_snapshot(), not is_modified(): the latter stays
+        // true until the next manual save, so a dirty tab nobody is
+        // touching used to be rewritten in full on every single tick.
+        if (cv->needs_recovery_snapshot()) {
             familiar::recovery::save(cv);
         }
     }
