@@ -37,6 +37,7 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/widgets/bindings_tree_widget_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_registry_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/items/gif_frame_count_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/pixmap_item_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/rotation_normalization_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/transform_commands_test.cpp
