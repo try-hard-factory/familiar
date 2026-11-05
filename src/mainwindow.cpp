@@ -1561,6 +1561,26 @@ void MainWindow::resync_actions_for_tab(CanvasView* cv)
 void MainWindow::on_current_tab_changed(int index)
 {
     resync_actions_for_tab(tabpane_->widget_at(index));
+    sync_animation_playback();
+}
+
+// Every tab is walked rather than just the two that swapped: this also
+// covers a tab being added or closed (both emit currentChanged too), and
+// it is a handful of pointer comparisons per tab.
+void MainWindow::sync_animation_playback()
+{
+    const CanvasView* current = tabpane_->current_widget();
+    for (int i = 0; i < tabpane_->count(); ++i) {
+        const CanvasView* view = tabpane_->widget_at(i);
+        if (!view || !view->scene()) {
+            continue;
+        }
+        if (view == current) {
+            view->scene()->resume_animations();
+        } else {
+            view->scene()->suspend_animations();
+        }
+    }
 }
 
 void MainWindow::on_active_scene_changed()

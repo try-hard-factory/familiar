@@ -49,6 +49,7 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/io/import_lossless_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/repaired_project_backup_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/worker_lifetime_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/scene/gif_animation_suspend_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/clipboard_snapshot_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/group_ownership_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/scene/recovery_snapshot_test.cpp

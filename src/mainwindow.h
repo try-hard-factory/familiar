@@ -366,6 +366,9 @@ private slots:
     // in this group reacts to the currently-hooked tab's scene_/
     // undoStack_ signals - see resyncActionsForTab().
     void on_current_tab_changed(int index);
+    // Runs every animation in the open tab and stops the ones in all the
+    // others - see GifItem::suspend() for why that is worth doing.
+    void sync_animation_playback();
     void on_active_scene_changed();
     void on_active_selection_changed();
     void on_active_can_undo_changed(bool canUndo);

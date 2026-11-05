@@ -1535,16 +1535,39 @@ public:
     {
         return movie_ && movie_->state() == QMovie::Running;
     }
+    // play()/pause() are the USER asking (the GIF toolbar's own button,
+    // and stepping/scrubbing, which pause on purpose). The answer is
+    // remembered so that resume() below - which is this app deciding
+    // that something can see this animation again - never restarts an
+    // animation the user deliberately stopped.
     void play()
     {
-        if (movie_) {
-            movie_->setPaused(false);
-        }
+        userPaused_ = false;
+        start_or_unpause();
     }
     void pause()
     {
+        userPaused_ = true;
         if (movie_) {
             movie_->setPaused(true);
+        }
+    }
+
+    // Stops the clock for an animation nothing can currently see - a
+    // tab that is not the open one. QMovie runs off a timer on the event
+    // loop and knows nothing about whether its frames reach a screen, so
+    // without this a hidden tab's GIFs keep decoding a frame and
+    // repainting an item for as long as the app is open.
+    void suspend()
+    {
+        if (movie_) {
+            movie_->setPaused(true);
+        }
+    }
+    void resume()
+    {
+        if (!userPaused_) {
+            start_or_unpause();
         }
     }
     void toggle_play_pause()
@@ -1600,7 +1623,80 @@ public:
         return movie_ ? movie_->speed() : item_consts::kfullSpeedPercent;
     }
 
+    // An animation that is not in a scene cannot be seen by anyone, and
+    // it is not simply hidden - it is in the undo stack, waiting for an
+    // undo to bring it back, which is where a deleted GIF lives.
+    // Suspending it would stop the clock but keep QMovie's frame cache,
+    // and that cache is the expensive part: measured 1195 MB for a
+    // 150-frame 1920x1080 GIF (7.97 MB per frame, never evicted). So the
+    // movie goes away entirely and is rebuilt on the way back in.
+    //
+    // The still frame the item was showing stays in its pixmap, so an
+    // item sitting in the undo stack still looks like itself.
+    QVariant itemChange(GraphicsItemChange change,
+                        const QVariant& value) override
+    {
+        if (change == QGraphicsItem::ItemSceneHasChanged) {
+            if (this->scene()) {
+                rebuild_movie();
+            } else {
+                release_movie();
+            }
+        }
+        return PixmapItem::itemChange(change, value);
+    }
+
 private:
+    // QMovie::setPaused(false) does nothing to a movie that was never
+    // started, which is the state a rebuilt one is left in when it comes
+    // back paused - without this, such a GIF could never be played
+    // again.
+    void start_or_unpause()
+    {
+        if (!movie_) {
+            return;
+        }
+        if (movie_->state() == QMovie::NotRunning) {
+            movie_->start();
+        } else {
+            movie_->setPaused(false);
+        }
+    }
+
+    void release_movie()
+    {
+        if (!movie_) {
+            return;
+        }
+        releasedPlaying_ = is_playing();
+        releasedSpeed_ = speed_percent();
+        delete movie_;
+        movie_ = nullptr;
+        delete gifBuffer_;
+        gifBuffer_ = nullptr;
+    }
+
+    // Deliberately does NOT restore the frame it was on: reaching frame
+    // N on a fresh movie means decoding every frame up to it (measured
+    // 1687 ms to reach frame 100 of that same 1080p GIF), which would
+    // turn undoing a delete into a multi-second freeze. A playing
+    // animation starting its loop over is invisible; a paused one jumps
+    // back to its first frame, which is the price.
+    void rebuild_movie()
+    {
+        if (movie_) {
+            return;
+        }
+        init_movie();
+        movie_->setSpeed(releasedSpeed_);
+        // Started either way, so that it is Paused rather than
+        // NotRunning - see start_or_unpause() above.
+        movie_->start();
+        if (!releasedPlaying_) {
+            movie_->setPaused(true);
+        }
+    }
+
     // How many frames this animation has, without decoding any of them
     // where the format allows it: QImageReader::imageCount() answered in
     // 2 ms on a 150-frame 1920x1080 GIF, against 1869 ms for the full
@@ -1691,6 +1787,13 @@ private:
     // from the moment the item exists, the filmstrip does not.
     int frameCount_ = 0;
     bool thumbnailsBuilt_ = false;
+    // Set by pause()/play() only, so that suspend()/resume() can leave
+    // the user's own choice alone.
+    bool userPaused_ = false;
+    // What release_movie() has to put back - see rebuild_movie() for
+    // what it deliberately does not.
+    bool releasedPlaying_ = true;
+    int releasedSpeed_ = item_consts::kfullSpeedPercent;
 };
 
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>

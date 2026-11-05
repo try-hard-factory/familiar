@@ -211,6 +211,11 @@ public:
 
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(const std::string& type);
+    // Stop and restart every animation in this scene according to
+    // whether its tab is the open one. Neither touches a GIF the user
+    // paused themselves - see GifItem::suspend().
+    void suspend_animations();
+    void resume_animations();
     // Every picture in the scene, animated ones included. NOT
     // items_by_type("pixmap"): GifItem derives from PixmapItem but
     // reports its own type string, "gif", and items_by_type() compares
@@ -478,6 +483,9 @@ private:
     QPointF eventStart_;
     ESceneMode activeMode_{ESceneMode::NoneMode};
     bool clearOngoing_ = false;
+    // Whether this scene's tab is hidden, so that an animation arriving
+    // afterwards (a background load) is suspended too - see addItem().
+    bool animationsSuspended_ = false;
 
 public:
     // ────────────────────────────────────────────────────────────────────────

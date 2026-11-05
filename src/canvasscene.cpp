@@ -194,6 +194,37 @@ void CanvasScene::addItem(QGraphicsItem* item)
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         attachedItems_.insert(item, baseItem->acquire_shared());
     }
+    // A background load can finish into a tab that is not the open one
+    // (add_queued_items()), and a GifItem starts animating as soon as it
+    // is constructed - so a newly arrived animation has to be told about
+    // a suspension that was decided before it existed.
+    if (animationsSuspended_) {
+        if (auto* gif = dynamic_cast<GifItem*>(item)) {
+            gif->suspend();
+        }
+    }
+}
+
+// Both driven by which tab is open (MainWindow::sync_animation_playback())
+// - see GifItem::suspend() for what an unseen animation costs.
+void CanvasScene::suspend_animations()
+{
+    animationsSuspended_ = true;
+    for (QGraphicsItem* item : items_by_type("gif")) {
+        if (auto* gif = dynamic_cast<GifItem*>(item)) {
+            gif->suspend();
+        }
+    }
+}
+
+void CanvasScene::resume_animations()
+{
+    animationsSuspended_ = false;
+    for (QGraphicsItem* item : items_by_type("gif")) {
+        if (auto* gif = dynamic_cast<GifItem*>(item)) {
+            gif->resume();
+        }
+    }
 }
 
 void CanvasScene::removeItem(QGraphicsItem* item)
