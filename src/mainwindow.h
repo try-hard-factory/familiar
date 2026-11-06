@@ -16,6 +16,7 @@
 #include "tabpane.h"
 #include <actions/action_mixin.h>
 #include <canvasview.h>
+#include <memory>
 #include <utility>
 #include <utils/utils.h>
 #include <QApplication>
@@ -444,7 +445,7 @@ private:
     // sync with the fading widgets.
     qreal uiOpacity_ = 1.0;
 
-    FileActions* fileactions_ = nullptr;
+    std::unique_ptr<FileActions> fileactions_;
     TabPane* tabpane_ = nullptr;
     QTimer* autosaveTimer_ = nullptr;
     QTimer* recoveryTimer_ = nullptr;

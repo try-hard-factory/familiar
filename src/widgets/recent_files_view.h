@@ -24,7 +24,7 @@ public:
         , mainWindow_(mainWindow)
     {
         connect(this, &QListView::clicked, this, &RecentFilesView::on_clicked);
-        setModel(new RecentFilesModel(nullptr, files)); // TODO: memory leak?
+        setModel(new RecentFilesModel(this, files));
         setMouseTracking(true);
     }
 

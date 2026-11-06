@@ -41,6 +41,7 @@
 #include <core/settings.h>
 #include <core/settingshandler.h>
 #include <map>
+#include <memory>
 #include <ui/hierarchy_panel.h>
 #include <ui/settings_window.h>
 #include <QUndoStack>
@@ -183,7 +184,7 @@ MainWindow::MainWindow(QWidget* parent)
     // dropping them here is not a behavior change.
     : ActionsMixin<QMainWindow>(parent)
     , hierarchyPanel_(new HierarchyPanel(this))
-    , fileactions_(new FileActions(*this))
+    , fileactions_(std::make_unique<FileActions>(*this))
     , tabpane_(new TabPane(this, *this))
     , autosaveTimer_(new QTimer(this))
     , recoveryTimer_(new QTimer(this))
