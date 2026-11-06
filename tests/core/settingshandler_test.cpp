@@ -135,6 +135,72 @@ TEST(SettingsHandlerTest, SetDefaultCurrentPresetResetsColorsAndOpacity)
     h->remove(QStringLiteral("current_preset"));
 }
 
+// get_current_color_preset() caches its result (see
+// SettingsHandler::currentColorPreset_) because paint_selectable()
+// (selector.h) asks for it once per selected item per repaint. The three
+// tests below are about that cache going stale - every one of them
+// passes trivially without it, and each names a different way the
+// document can change under it.
+//
+// GetCurrentColorPresetDispatchesOnCurrentPreset above already covers
+// the switch-the-active-preset path for the same reason.
+
+TEST(SettingsHandlerTest, TheCurrentColorPresetReadsBackTheSameTwice)
+{
+    auto* h = SettingsHandler::get_instance();
+    const CL preset = makeColorList(31);
+    h->set_current_preset(static_cast<int>(EPresets::Custom2));
+    h->set_custom_preset2(preset);
+
+    EXPECT_EQ(h->get_current_color_preset(), preset);
+    EXPECT_EQ(h->get_current_color_preset(), preset);
+
+    h->remove(QStringLiteral("current_preset"));
+    h->remove(QStringLiteral("custom_preset2"));
+}
+
+// Reading before the write is what makes this a cache test: it is the
+// read that populates the cache the write then has to drop.
+TEST(SettingsHandlerTest, WritingTheCurrentColorPresetIsVisibleAtOnce)
+{
+    auto* h = SettingsHandler::get_instance();
+    h->set_current_preset(static_cast<int>(EPresets::Custom3));
+    h->set_custom_preset3(makeColorList(44));
+    ASSERT_EQ(h->get_current_color_preset(), makeColorList(44));
+
+    const CL replacement = makeColorList(55);
+    h->set_current_color_preset(replacement);
+    EXPECT_EQ(h->get_current_color_preset(), replacement);
+
+    h->remove(QStringLiteral("current_preset"));
+    h->remove(QStringLiteral("custom_preset3"));
+}
+
+// import_settings_from() replaces the whole document at once rather than
+// going through set_json_value(), and emits no signal of its own - so a
+// cache hung off settings_changed()/presets_changed() would survive it.
+TEST(SettingsHandlerTest, ImportingSettingsReplacesTheCurrentColorPreset)
+{
+    auto* h = SettingsHandler::get_instance();
+    h->set_current_preset(static_cast<int>(EPresets::Custom4));
+    const CL exported = makeColorList(66);
+    h->set_custom_preset4(exported);
+
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString exportPath = dir.filePath(QStringLiteral("exported.json"));
+    ASSERT_TRUE(h->export_settings_to(exportPath));
+
+    h->set_custom_preset4(makeColorList(77));
+    ASSERT_EQ(h->get_current_color_preset(), makeColorList(77));
+
+    ASSERT_TRUE(h->import_settings_from(exportPath));
+    EXPECT_EQ(h->get_current_color_preset(), exported);
+
+    h->remove(QStringLiteral("current_preset"));
+    h->remove(QStringLiteral("custom_preset4"));
+}
+
 TEST(SettingsHandlerTest, JsonValueSetRemoveRoundTrip)
 {
     auto* h = SettingsHandler::get_instance();
