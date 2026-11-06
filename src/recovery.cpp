@@ -25,7 +25,7 @@
 #include <QtContainerFwd>
 #include <QtTypes>
 
-#include <utility>
+#include <memory>
 
 #include "log/log.h"
 #include "utils/utils.h"
@@ -149,7 +149,8 @@ void flush(WriterState& state)
 void publish(const QUuid& id,
              quint64 jobId,
              quint64 revision,
-             const FmlResult& result)
+             const FmlResult& result,
+             const FmlSnapshot& snapshot)
 {
     WriterState& state = writer_state();
     const auto it = state.inFlight.find(id);
@@ -170,6 +171,15 @@ void publish(const QUuid& id,
 
     const QPointer<CanvasView> view = it->view;
     state.inFlight.erase(it);
+
+    // Before the error check below on purpose: the bytes are good
+    // whether or not the archive reached the disk, and an encode nobody
+    // keeps would be paid again on the next tick. A job that flush() or
+    // shutdown() abandoned returns above without this - it has no view
+    // to hand them to, and the cost is one re-encode.
+    if (view) {
+        FmlArchive::adopt_encoded_images(view->scene(), snapshot);
+    }
 
     if (!result.error.isEmpty()) {
         // QSaveFile left whatever was there before untouched, and the
@@ -224,10 +234,16 @@ void save(CanvasView* canvasView)
         return;
     }
 
-    FmlSnapshot snapshot;
+    // Encode::Deferred: the encoding goes to the writer thread with
+    // everything else. On the GUI thread this now only reads each
+    // picture's pixmap, which is a refcounted shallow copy - see
+    // FmlArchive::Encode.
+    auto snapshot = std::make_shared<FmlSnapshot>();
     if (!FmlArchive::capture(canvasView->scene(),
                              canvasView->canvas_rect(),
-                             snapshot)) {
+                             *snapshot,
+                             nullptr,
+                             FmlArchive::Encode::Deferred)) {
         return;
     }
     const quint64 revision = canvasView->content_revision();
@@ -258,14 +274,12 @@ void save(CanvasView* canvasView)
     // WriterState. See FmlSnapshot (fml_archive.h).
     QMetaObject::invokeMethod(
         state.context,
-        [id,
-         jobId,
-         revision,
-         fmlPath,
-         sidecarPath,
-         sidecarJson,
-         snapshot = std::move(snapshot)] {
-            const FmlResult result = FmlArchive::write(snapshot, fmlPath);
+        [id, jobId, revision, fmlPath, sidecarPath, sidecarJson, snapshot] {
+            // Shared rather than moved through: write() records the
+            // bytes it encoded in there, and publish() reads them back
+            // on the GUI thread. The two lambdas never run at the same
+            // time - this one posts that one.
+            const FmlResult result = FmlArchive::write(*snapshot, fmlPath);
 
             // Only alongside an archive that made it: the sidecar
             // describes a file, and on its own it describes nothing.
@@ -285,8 +299,8 @@ void save(CanvasView* canvasView)
 
             QMetaObject::invokeMethod(
                 QCoreApplication::instance(),
-                [id, jobId, revision, result] {
-                    publish(id, jobId, revision, result);
+                [id, jobId, revision, result, snapshot] {
+                    publish(id, jobId, revision, result, *snapshot);
                 },
                 Qt::QueuedConnection);
         },

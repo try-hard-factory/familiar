@@ -308,3 +308,38 @@ TEST_F(RecoveryWriterTest, AnEditDuringTheWriteLeavesTheTabDueAnotherSnapshot)
     EXPECT_TRUE(QFile::exists(fml_path()));
     EXPECT_TRUE(view_->needs_recovery_snapshot());
 }
+
+// The encode moved to the writer thread along with everything else, so
+// the bytes it produced have to find their way back to the pictures -
+// without that, every tick would encode the same pixels again, just
+// somewhere less harmful than the GUI thread.
+TEST_F(RecoveryWriterTest, TheSnapshotLeavesItsPicturesWithTheirBytesCached)
+{
+    push_pictures(3, 200);
+    for (PixmapItem* picture : view_->scene()->pictures()) {
+        ASSERT_TRUE(picture->encoded_source().isEmpty());
+    }
+
+    familiar::recovery::save(view_);
+    settle();
+
+    for (PixmapItem* picture : view_->scene()->pictures()) {
+        EXPECT_FALSE(picture->encoded_source().isEmpty());
+    }
+}
+
+// And the half that matters: by the time save() returns, nothing has
+// been encoded at all. No timing involved - publish() comes back
+// through the event loop, which this test does not pump until after the
+// check, so the writer cannot have answered yet.
+TEST_F(RecoveryWriterTest, TheSnapshotDoesNotEncodeOnTheGuiThread)
+{
+    push_pictures(3, 200);
+
+    familiar::recovery::save(view_);
+
+    for (PixmapItem* picture : view_->scene()->pictures()) {
+        EXPECT_TRUE(picture->encoded_source().isEmpty());
+    }
+    settle();
+}

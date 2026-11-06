@@ -784,7 +784,8 @@ FmlResult FmlArchive::save(CanvasScene* scene,
 bool FmlArchive::capture(CanvasScene* scene,
                          const QRectF& canvasRect,
                          FmlSnapshot& snapshot,
-                         ThreadedIO* worker)
+                         ThreadedIO* worker,
+                         Encode encode)
 {
     QList<QGraphicsItem*> items = scene->items_for_save();
 
@@ -827,15 +828,42 @@ bool FmlArchive::capture(CanvasScene* scene,
         // exactly what GifItem's own constructor expects back on load.
         if (auto* gifItem = dynamic_cast<GifItem*>(items[i])) {
             mi.image = QStringLiteral("images/%1.gif").arg(idStr);
-            snapshot.images.append({.archiveName = mi.image,
-                                    .itemId = idStr,
-                                    .bytes = gifItem->gif_bytes()});
+            // Nothing to encode, ever - and deliberately NOT cacheable:
+            // these are the animation's own bytes, not an encoding of
+            // the frame the item's pixmap currently holds.
+            snapshot.images.append(
+                {.archiveName = mi.image,
+                 .itemId = idStr,
+                 .source = {.encoded = gifItem->gif_bytes(),
+                            .image = {},
+                            .format = QStringLiteral("gif"),
+                            .cacheable = false},
+                 // The real key of the frame this item is showing, even
+                 // though cacheable = false already keeps these bytes
+                 // out of its cache: a key that means something is one
+                 // less thing to be wrong later.
+                 .pixmapKey = gifItem->pixmap().cacheKey()});
         } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
-            auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
-            mi.image = QStringLiteral("images/%1.%2").arg(idStr, imgformat);
-            snapshot.images.append({.archiveName = mi.image,
-                                    .itemId = idStr,
-                                    .bytes = bytes});
+            // Either way the format is settled here, because the archive
+            // entry is named after it.
+            PixmapItem::ExportSource source;
+            if (encode == Encode::Now) {
+                auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
+                // Not cacheable: pixmap_to_bytes() has already put
+                // these in the item's own cache.
+                source = {.encoded = bytes,
+                          .image = {},
+                          .format = imgformat,
+                          .cacheable = false};
+            } else {
+                source = pixmapItem->export_source();
+            }
+            mi.image = QStringLiteral("images/%1.%2").arg(idStr, source.format);
+            snapshot.images.append(
+                {.archiveName = mi.image,
+                 .itemId = idStr,
+                 .source = source,
+                 .pixmapKey = pixmapItem->pixmap().cacheKey()});
         }
 
         manifest.items.append(mi);
@@ -849,8 +877,37 @@ bool FmlArchive::capture(CanvasScene* scene,
     return true;
 }
 
-FmlResult FmlArchive::write(const FmlSnapshot& snapshot,
-                            const QString& filename)
+void FmlArchive::adopt_encoded_images(CanvasScene* scene,
+                                      const FmlSnapshot& snapshot)
+{
+    QHash<qint64, const FmlSnapshot::Image*> encoded;
+    for (const FmlSnapshot::Image& image : snapshot.images) {
+        // cacheable is ExportSource's own word for "encoding this
+        // produces the bytes the item should store" - false for a gif's
+        // verbatim stream, and for anything capture() already cached.
+        if (image.source.cacheable && !image.source.encoded.isEmpty()) {
+            encoded.insert(image.pixmapKey, &image);
+        }
+    }
+    if (encoded.isEmpty()) {
+        return;
+    }
+
+    // Walked from the pictures rather than from the snapshot so that
+    // copies, which share one QPixmap and therefore one cache key, all
+    // get the bytes rather than just whichever one a lookup happened to
+    // find.
+    for (PixmapItem* picture : scene->pictures()) {
+        const FmlSnapshot::Image* image
+            = encoded.value(picture->pixmap().cacheKey(), nullptr);
+        if (image) {
+            picture->set_encoded_source(image->source.encoded,
+                                        image->source.format);
+        }
+    }
+}
+
+FmlResult FmlArchive::write(FmlSnapshot& snapshot, const QString& filename)
 {
     FmlResult result;
 
@@ -887,12 +944,19 @@ FmlResult FmlArchive::write(const FmlSnapshot& snapshot,
         return result;
     }
 
-    for (const FmlSnapshot::Image& image : snapshot.images) {
+    for (FmlSnapshot::Image& image : snapshot.images) {
+        // Encodes only what capture() left for this half, and keeps the
+        // result in the snapshot: adopt_encoded_images() hands it back
+        // to the item afterwards, so this is paid once per picture
+        // rather than once per snapshot. A no-op when the bytes are
+        // already there - that is what encode() does with them.
+        image.source.encoded = PixmapItem::encode(image.source).first;
         const QByteArray archiveName = image.archiveName.toUtf8();
         if (!mz_zip_writer_add_mem(zip.get(),
                                    archiveName.constData(),
-                                   image.bytes.constData(),
-                                   static_cast<size_t>(image.bytes.size()),
+                                   image.source.encoded.constData(),
+                                   static_cast<size_t>(
+                                       image.source.encoded.size()),
                                    MZ_NO_COMPRESSION)) {
             result.itemErrors.append(
                 QStringLiteral("Could not store image for item %1")
