@@ -44,8 +44,21 @@ enum class Ch : std::uint8_t {
 
 struct Options
 {
-    Level consoleLevel = Level::Debug;
-    Level fileLevel = Level::Debug;
+    // Info, not Debug: FLOG_DEBUG sits in genuinely hot paths - e.g.
+    // BaseItemMixin::set_scale() (selector.h), reached from
+    // SelectableMixin::mouseMoveEvent() once per SELECTED item, so a
+    // 500-item selection logged 500 lines per mouse event - and quill
+    // formats and queues a line the moment any sink wants it. main()
+    // drives all three from one --loglevel, so `familiar --loglevel
+    // debug` still brings the lot back.
+    Level consoleLevel = Level::Info;
+    Level fileLevel = Level::Info;
+    // The ring sink needs a level of its own because it is what
+    // DebugLogDialog tails and what a crash dump falls back on. Without
+    // one it silently inherited the logger-level gate in init() (the most
+    // verbose sink), so lowering fileLevel alone would have emptied the
+    // dialog as a side effect.
+    Level ringLevel = Level::Info;
     QString filePath;    // default: AppLocalDataLocation/<appName>.log
     bool console = true; // auto-off when stdout isn't a tty
     // Lines kept for DebugLogDialog's live tail and for a crash dump to

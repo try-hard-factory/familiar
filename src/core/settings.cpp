@@ -72,7 +72,8 @@ void add_options(QCommandLineParser& parser)
 
     parser.addOption(
         {QStringList{QStringLiteral("l"), QStringLiteral("loglevel")},
-         QCoreApplication::tr("Log level for console output (default: INFO)"),
+         QCoreApplication::tr("Log level for console, log file and the "
+                              "debug log view (default: INFO)"),
          QStringLiteral("level"),
          QStringLiteral("INFO")});
 
