@@ -16,6 +16,7 @@
 #include "tabpane.h"
 #include <actions/action_mixin.h>
 #include <canvasview.h>
+#include <memory>
 #include <utility>
 #include <utils/utils.h>
 #include <QApplication>
@@ -366,6 +367,9 @@ private slots:
     // in this group reacts to the currently-hooked tab's scene_/
     // undoStack_ signals - see resyncActionsForTab().
     void on_current_tab_changed(int index);
+    // Runs every animation in the open tab and stops the ones in all the
+    // others - see GifItem::suspend() for why that is worth doing.
+    void sync_animation_playback();
     void on_active_scene_changed();
     void on_active_selection_changed();
     void on_active_can_undo_changed(bool canUndo);
@@ -441,7 +445,7 @@ private:
     // sync with the fading widgets.
     qreal uiOpacity_ = 1.0;
 
-    FileActions* fileactions_ = nullptr;
+    std::unique_ptr<FileActions> fileactions_;
     TabPane* tabpane_ = nullptr;
     QTimer* autosaveTimer_ = nullptr;
     QTimer* recoveryTimer_ = nullptr;

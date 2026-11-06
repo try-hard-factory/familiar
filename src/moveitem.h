@@ -602,6 +602,42 @@ public:
         encodedCacheSrcKey_ = pixmap().cacheKey();
     }
 
+    // Same idea as set_encoded_source() above, for a freshly imported
+    // file whose own bytes the importer still holds
+    // (ImageImportSession::run(), fileio.cpp) - except that those bytes
+    // are in whatever format the file happened to be, not a format this
+    // app chose. Adopted only when it IS the format get_imgformat()
+    // would pick anyway, so the very first save stops re-compressing a
+    // JPEG import into another JPEG: generation loss before the user
+    // edited anything, and autosave alone was enough to trigger it (see
+    // encodedCache_ for the measured error).
+    //
+    // A mismatch deliberately falls through to a re-encode. The format
+    // Items/image_storage_format asks for is also a size decision -
+    // "best" stores a photo as JPEG on purpose - and preferring the
+    // source over it would quietly put a 50 MB PNG in the archive of
+    // someone who chose otherwise.
+    void adopt_import_source(const QByteArray& bytes, const QString& format)
+    {
+        if (bytes.isEmpty() || format.isEmpty()) {
+            return;
+        }
+        // pixmap().toImage() is the same (refcounted, non-converting)
+        // view of the pixels the save path's own export_source() asks
+        // get_imgformat() about, so this answer matches the one the save
+        // would have reached.
+        const QString stored = get_imgformat(pixmap().toImage());
+        if (format != stored) {
+            FLOG_DEBUG(familiar::log::Ch::Items,
+                       "Not keeping the {} source of {}: it is stored as {}",
+                       format,
+                       to_string(),
+                       stored);
+            return;
+        }
+        set_encoded_source(bytes, format);
+    }
+
     void setPixmap(const QPixmap& pixmap)
     {
         QGraphicsPixmapItem::setPixmap(pixmap);
@@ -1395,7 +1431,7 @@ public:
         : PixmapItem(QImage(), filename, parent)
         , gifBytes_(gifBytes)
     {
-        build_thumbnails();
+        count_frames();
         init_movie(); // connects frameChanged, jumps to frame 0
         // Base PixmapItem's ctor already ran reset_crop() against the
         // empty placeholder QImage() above - redo it now that pixmap()
@@ -1474,30 +1510,64 @@ public:
     // same rationale as exposing document() from QGraphicsTextItem.
     QMovie* movie() const { return movie_; }
     const QByteArray& gif_bytes() const { return gifBytes_; }
-    // Small pre-scaled thumbnails, one per frame, decoded once up front
-    // for the "show all frames" filmstrip - QMovie::frameCount() is
-    // lazily determined for some formats/plugins and not reliable before
-    // a full pass, so this doubles as the authoritative frame count too.
-    const QList<QPixmap>& frame_thumbnails() const { return frameThumbnails_; }
-    int frame_count() const
+    // Small pre-scaled thumbnails, one per frame, for the "show all
+    // frames" filmstrip - built on the first request rather than up
+    // front, because building them decodes every frame of the animation
+    // at full size and only GifPlaybackToolbar's filmstrip, which starts
+    // hidden and opens on a button, ever asks. Measured on a 150-frame
+    // 1920x1080 GIF: 1869 ms, synchronously in the constructor, which
+    // meant that long a freeze per animated picture on import, on paste
+    // and on every .fml load (create_item_from_data() runs on the GUI
+    // thread, out of add_queued_items()).
+    const QList<QPixmap>& frame_thumbnails()
     {
-        return static_cast<int>(frameThumbnails_.size());
+        if (!thumbnailsBuilt_) {
+            build_thumbnails();
+        }
+        return frameThumbnails_;
     }
+    // Whether that has happened yet. Exposed so a test can tell "not
+    // built" apart from "built, and this animation has no frames".
+    bool thumbnails_built() const { return thumbnailsBuilt_; }
+    int frame_count() const { return frameCount_; }
 
     bool is_playing() const
     {
         return movie_ && movie_->state() == QMovie::Running;
     }
+    // play()/pause() are the USER asking (the GIF toolbar's own button,
+    // and stepping/scrubbing, which pause on purpose). The answer is
+    // remembered so that resume() below - which is this app deciding
+    // that something can see this animation again - never restarts an
+    // animation the user deliberately stopped.
     void play()
     {
-        if (movie_) {
-            movie_->setPaused(false);
-        }
+        userPaused_ = false;
+        start_or_unpause();
     }
     void pause()
     {
+        userPaused_ = true;
         if (movie_) {
             movie_->setPaused(true);
+        }
+    }
+
+    // Stops the clock for an animation nothing can currently see - a
+    // tab that is not the open one. QMovie runs off a timer on the event
+    // loop and knows nothing about whether its frames reach a screen, so
+    // without this a hidden tab's GIFs keep decoding a frame and
+    // repainting an item for as long as the app is open.
+    void suspend()
+    {
+        if (movie_) {
+            movie_->setPaused(true);
+        }
+    }
+    void resume()
+    {
+        if (!userPaused_) {
+            start_or_unpause();
         }
     }
     void toggle_play_pause()
@@ -1520,11 +1590,11 @@ public:
     // `delta` frames, wrapping around either end.
     void step_frame(int delta)
     {
-        if (!movie_ || frameThumbnails_.isEmpty()) {
+        if (!movie_ || frameCount_ <= 0) {
             return;
         }
         pause();
-        const int count = static_cast<int>(frameThumbnails_.size());
+        const int count = frameCount_;
         int next = (current_frame() + delta) % count;
         if (next < 0) {
             next += count;
@@ -1533,12 +1603,11 @@ public:
     }
     void jump_to_frame(int index)
     {
-        if (!movie_ || frameThumbnails_.isEmpty()) {
+        if (!movie_ || frameCount_ <= 0) {
             return;
         }
         pause();
-        movie_->jumpToFrame(
-            qBound(0, index, static_cast<int>(frameThumbnails_.size()) - 1));
+        movie_->jumpToFrame(qBound(0, index, frameCount_ - 1));
     }
     // QMovie's own convention: 100 = normal speed, 25 = x0.25, 200 = x2 -
     // matches the x0.25-x2 steps this app's own UI displays directly, no
@@ -1554,7 +1623,102 @@ public:
         return movie_ ? movie_->speed() : item_consts::kfullSpeedPercent;
     }
 
+    // An animation that is not in a scene cannot be seen by anyone, and
+    // it is not simply hidden - it is in the undo stack, waiting for an
+    // undo to bring it back, which is where a deleted GIF lives.
+    // Suspending it would stop the clock but keep QMovie's frame cache,
+    // and that cache is the expensive part: measured 1195 MB for a
+    // 150-frame 1920x1080 GIF (7.97 MB per frame, never evicted). So the
+    // movie goes away entirely and is rebuilt on the way back in.
+    //
+    // The still frame the item was showing stays in its pixmap, so an
+    // item sitting in the undo stack still looks like itself.
+    QVariant itemChange(GraphicsItemChange change,
+                        const QVariant& value) override
+    {
+        if (change == QGraphicsItem::ItemSceneHasChanged) {
+            if (this->scene()) {
+                rebuild_movie();
+            } else {
+                release_movie();
+            }
+        }
+        return PixmapItem::itemChange(change, value);
+    }
+
 private:
+    // QMovie::setPaused(false) does nothing to a movie that was never
+    // started, which is the state a rebuilt one is left in when it comes
+    // back paused - without this, such a GIF could never be played
+    // again.
+    void start_or_unpause()
+    {
+        if (!movie_) {
+            return;
+        }
+        if (movie_->state() == QMovie::NotRunning) {
+            movie_->start();
+        } else {
+            movie_->setPaused(false);
+        }
+    }
+
+    void release_movie()
+    {
+        if (!movie_) {
+            return;
+        }
+        releasedPlaying_ = is_playing();
+        releasedSpeed_ = speed_percent();
+        delete movie_;
+        movie_ = nullptr;
+        delete gifBuffer_;
+        gifBuffer_ = nullptr;
+    }
+
+    // Deliberately does NOT restore the frame it was on: reaching frame
+    // N on a fresh movie means decoding every frame up to it (measured
+    // 1687 ms to reach frame 100 of that same 1080p GIF), which would
+    // turn undoing a delete into a multi-second freeze. A playing
+    // animation starting its loop over is invisible; a paused one jumps
+    // back to its first frame, which is the price.
+    void rebuild_movie()
+    {
+        if (movie_) {
+            return;
+        }
+        init_movie();
+        movie_->setSpeed(releasedSpeed_);
+        // Started either way, so that it is Paused rather than
+        // NotRunning - see start_or_unpause() above.
+        movie_->start();
+        if (!releasedPlaying_) {
+            movie_->setPaused(true);
+        }
+    }
+
+    // How many frames this animation has, without decoding any of them
+    // where the format allows it: QImageReader::imageCount() answered in
+    // 2 ms on a 150-frame 1920x1080 GIF, against 1869 ms for the full
+    // decode pass build_thumbnails() does.
+    //
+    // It is documented as being determined lazily for some formats, and
+    // Qt's own docs note it may be unreliable before a full read, so a
+    // non-answer falls back to that pass - which keeps its thumbnails,
+    // since it has already paid for the decode.
+    void count_frames()
+    {
+        QBuffer buf;
+        buf.setData(gifBytes_);
+        buf.open(QIODevice::ReadOnly);
+        const int count = QImageReader(&buf).imageCount();
+        if (count > 0) {
+            frameCount_ = count;
+            return;
+        }
+        build_thumbnails();
+    }
+
     // Decodes every frame once via QImageReader (independent of movie_ -
     // its own read position isn't disturbed) into small thumbnails for
     // the filmstrip. QImageReader::read()/canRead() auto-advance through
@@ -1576,6 +1740,16 @@ private:
                                                  item_consts::kframeThumbSide,
                                                  Qt::KeepAspectRatio,
                                                  Qt::SmoothTransformation));
+        }
+        // Set once, whatever the outcome: a stream nothing can decode
+        // must not be re-attempted on every single frame_thumbnails()
+        // call.
+        thumbnailsBuilt_ = true;
+        // This pass walked the real frames, so it overrules whatever
+        // imageCount() guessed - the filmstrip and the frame count can
+        // then never disagree.
+        if (!frameThumbnails_.isEmpty()) {
+            frameCount_ = static_cast<int>(frameThumbnails_.size());
         }
     }
 
@@ -1608,6 +1782,18 @@ private:
     QBuffer* gifBuffer_ = nullptr;
     QMovie* movie_ = nullptr;
     QList<QPixmap> frameThumbnails_;
+    // Kept separately from frameThumbnails_.size() now that the
+    // thumbnails are built lazily: stepping and scrubbing need the count
+    // from the moment the item exists, the filmstrip does not.
+    int frameCount_ = 0;
+    bool thumbnailsBuilt_ = false;
+    // Set by pause()/play() only, so that suspend()/resume() can leave
+    // the user's own choice alone.
+    bool userPaused_ = false;
+    // What release_movie() has to put back - see rebuild_movie() for
+    // what it deliberately does not.
+    bool releasedPlaying_ = true;
+    int releasedSpeed_ = item_consts::kfullSpeedPercent;
 };
 
 class TextItem : public ItemMixin<TextItem, QGraphicsTextItem>
@@ -2310,7 +2496,13 @@ public:
 
     // See apply_extra_save_data()'s comment - the safety net
     // CanvasScene::add_queued_items() invokes after a whole load batch.
-    void invalidate_children_cache() { resolvedChildrenDirty_ = true; }
+    // Goes through mark_membership_changed() rather than touching the
+    // flag directly, so that stays the single place either cache is
+    // dropped from. The scene's owner index does not actually need it
+    // here (apply_extra_save_data() sets membership via
+    // set_child_ids(), and CanvasScene::addItem() invalidates after
+    // that anyway) - this just keeps the two from drifting apart.
+    void invalidate_children_cache() { mark_membership_changed(); }
 
     QColor fill_color() const { return fillColor_; }
     void set_fill_color(const QColor& color)
@@ -2398,8 +2590,11 @@ public:
         // self-check - dragging an OUTER group cascades down to an INNER
         // one too, and the inner one isn't itself the grabber.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (const GroupItem* ancestor = this; ancestor;
-                 ancestor = scene->find_owning_group(ancestor->uid())) {
+            if (scene->mouseGrabberItem() == this) {
+                return;
+            }
+            for (const GroupItem* ancestor :
+                 scene->owning_group_chain(uid())) {
                 if (scene->mouseGrabberItem() == ancestor) {
                     return;
                 }
@@ -2603,9 +2798,7 @@ public:
     {
         bool ancestorLocked = false;
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
-            for (const GroupItem* owner = scene->find_owning_group(this->uid());
-                 owner;
-                 owner = scene->find_owning_group(owner->uid())) {
+            for (const GroupItem* owner : scene->owning_group_chain(uid())) {
                 if (owner->locked()) {
                     ancestorLocked = true;
                     break;
@@ -2624,17 +2817,18 @@ public:
     // still protects ITS children even after an unlocked ancestor's own
     // pass would otherwise re-enable them (see set_locked()'s class
     // comment).
-    // NOLINTNEXTLINE(misc-no-recursion) group nesting is acyclic
+    // The descending counterpart of the ancestor walk
+    // CanvasScene::owning_group_chain() guards, and it needs the same
+    // protection for the same reason: nothing enforces that group
+    // nesting is acyclic. add_child_id() only LOGS when a uid gains a
+    // second owner, so two groups can end up listing each other, and
+    // this used to recurse between them until the stack ran out -
+    // reachable from the ordinary add-a-member path, since
+    // add_child_id() calls apply_lock_to_children() itself.
     void apply_effective_lock(bool ancestorLocked)
     {
-        const bool effective = ancestorLocked || locked_;
-        for (QGraphicsItem* child : resolve_children()) {
-            child->setFlag(QGraphicsItem::ItemIsSelectable, !effective);
-            child->setFlag(QGraphicsItem::ItemIsMovable, !effective);
-            if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
-                childGroup->apply_effective_lock(effective);
-            }
-        }
+        QSet<const GroupItem*> seen;
+        apply_effective_lock(ancestorLocked, seen);
     }
 
     // ── Membership (uid-based - see class comment) ─────────────────────
@@ -2642,7 +2836,7 @@ public:
     void set_child_ids(const QList<QUuid>& ids)
     {
         childIds_ = ids;
-        resolvedChildrenDirty_ = true;
+        mark_membership_changed();
         apply_lock_to_children();
     }
     void add_child_id(const QUuid& id)
@@ -2680,7 +2874,7 @@ public:
             }
             childIds_.append(id);
         }
-        resolvedChildrenDirty_ = true;
+        mark_membership_changed();
         apply_lock_to_children();
     }
     void remove_child_id(const QUuid& id)
@@ -2699,7 +2893,21 @@ public:
             }
         }
         childIds_.removeAll(id);
+        mark_membership_changed();
+    }
+
+    // Both caches that depend on this group's membership, dropped
+    // together: resolvedChildren_ here, and the scene's member-uid ->
+    // owner index (CanvasScene::invalidate_group_ownership()). The
+    // scene half is a no-op while this group is not in a scene yet -
+    // group_selection() and clone() both fill childIds_ before the
+    // group is added - and CanvasScene::addItem() invalidates anyway.
+    void mark_membership_changed()
+    {
         resolvedChildrenDirty_ = true;
+        if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
+            scene->invalidate_group_ownership();
+        }
     }
 
     // Live QGraphicsItem*s for child_ids(), resolved against the scene
@@ -2811,9 +3019,7 @@ public:
         // subgroup's boundary at all.
         if (auto* scene = dynamic_cast<CanvasScene*>(this->scene())) {
             bool ancestorSelected = false;
-            for (const GroupItem* owner = scene->find_owning_group(this->uid());
-                 owner;
-                 owner = scene->find_owning_group(owner->uid())) {
+            for (const GroupItem* owner : scene->owning_group_chain(uid())) {
                 if (owner->isSelected()) {
                     ancestorSelected = true;
                     break;
@@ -2975,6 +3181,29 @@ private:
     QRectF localRect_;
     QColor fillColor_;
     QList<QUuid> childIds_;
+    // NOLINTNEXTLINE(misc-no-recursion) terminates: see `seen`
+    void apply_effective_lock(bool ancestorLocked,
+                              QSet<const GroupItem*>& seen)
+    {
+        if (seen.contains(this)) {
+            FLOG_WARN(familiar::log::Ch::Items,
+                      "GroupItem::apply_effective_lock(): membership cycle "
+                      "back at {} uid={} - not descending again",
+                      to_string(),
+                      uid().toString(QUuid::WithoutBraces).toStdString());
+            return;
+        }
+        seen.insert(this);
+        const bool effective = ancestorLocked || locked_;
+        for (QGraphicsItem* child : resolve_children()) {
+            child->setFlag(QGraphicsItem::ItemIsSelectable, !effective);
+            child->setFlag(QGraphicsItem::ItemIsMovable, !effective);
+            if (auto* childGroup = dynamic_cast<GroupItem*>(child)) {
+                childGroup->apply_effective_lock(effective, seen);
+            }
+        }
+    }
+
     QList<QGraphicsItem*> resolvedChildren_;
     bool resolvedChildrenDirty_ = true;
     bool autoExpanding_ = false;

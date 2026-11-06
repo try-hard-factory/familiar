@@ -227,6 +227,7 @@ void SettingsHandler::load_document()
     }
     apply_settings_migrations(doc);
     document_ = doc;
+    invalidate_derived_cache();
 }
 
 bool SettingsHandler::save_document() const
@@ -261,6 +262,7 @@ void SettingsHandler::set_json_value(const QString& group,
     QJsonObject groupObj = document_.value(group).toObject();
     groupObj.insert(key, value);
     document_.insert(group, groupObj);
+    invalidate_derived_cache();
     save_document();
 }
 
@@ -269,12 +271,14 @@ void SettingsHandler::remove_json_value(const QString& group, const QString& key
     QJsonObject groupObj = document_.value(group).toObject();
     groupObj.remove(key);
     document_.insert(group, groupObj);
+    invalidate_derived_cache();
     save_document();
 }
 
 void SettingsHandler::remove_json_group(const QString& group)
 {
     document_.remove(group);
+    invalidate_derived_cache();
     save_document();
 }
 
@@ -300,6 +304,7 @@ void SettingsHandler::set_recent_files_raw(const QStringList& files)
         arr.append(f);
     }
     document_.insert(QStringLiteral("RecentFiles"), arr);
+    invalidate_derived_cache();
     save_document();
 }
 
@@ -334,6 +339,7 @@ bool SettingsHandler::import_settings_from(const QString& path)
     QJsonObject obj = doc.object();
     apply_settings_migrations(obj);
     document_ = obj;
+    invalidate_derived_cache();
     return save_document();
 }
 
@@ -402,26 +408,48 @@ void SettingsHandler::reset_value(const QString& key)
                    QJsonValue::fromVariant(value_handler(key)->fallback()));
 }
 
+void SettingsHandler::invalidate_derived_cache()
+{
+    currentColorPreset_.reset();
+}
+
+// The QMap is implicitly shared, so handing back a copy of the cached
+// one costs a refcount - and a caller that edits what it got (e.g.
+// ColorsWidget::pick_color()) detaches instead of writing through to
+// the cache.
 SettingsHandler::CL SettingsHandler::get_current_color_preset()
 {
+    if (currentColorPreset_) {
+        return *currentColorPreset_;
+    }
+
     const auto currentPreset = static_cast<EPresets>(current_preset());
+    CL preset;
     switch (currentPreset) {
     case EPresets::DarkPreset:
-        return dark_color_preset();
+        preset = dark_color_preset();
+        break;
     case EPresets::LightPreset:
-        return light_color_preset();
+        preset = light_color_preset();
+        break;
     case EPresets::Custom1:
-        return custom_preset1();
+        preset = custom_preset1();
+        break;
     case EPresets::Custom2:
-        return custom_preset2();
+        preset = custom_preset2();
+        break;
     case EPresets::Custom3:
-        return custom_preset3();
+        preset = custom_preset3();
+        break;
     case EPresets::Custom4:
-        return custom_preset4();
+        preset = custom_preset4();
+        break;
     default:
         break;
     };
-    return SettingsHandler::CL{};
+
+    currentColorPreset_ = preset;
+    return preset;
 }
 
 

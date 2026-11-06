@@ -197,10 +197,26 @@ private:
     static QSharedPointer<ValueHandler> value_handler(const QString& key);
     void load_document();
     bool save_document() const;
+    // Called from every place below that writes document_, and nowhere
+    // else. Deliberately not driven by settings_changed()/
+    // presets_changed(): switching preset emits only the latter, and it
+    // reaches settings_changed() just indirectly via
+    // ColorsWidget::update_components() - i.e. only while a ColorsWidget
+    // happens to exist - while import_settings_from() replaces the whole
+    // document and emits nothing at all. Hanging the cache off the write
+    // itself needs no cooperation from any widget.
+    void invalidate_derived_cache();
 
 
     QString settingsFilePath_;
     QJsonObject document_;
+    // get_current_color_preset() rebuilt this from JSON on every call:
+    // two value() lookups, each a QJsonObject copy plus a QVariant
+    // conversion plus ColorList::process() parsing five hex strings into
+    // a QMap. Measured at 2.0-2.7 us, and SelectableMixin::
+    // paint_selectable() (selector.h) asks for it once per selected item
+    // per repaint.
+    std::optional<CL> currentColorPreset_;
 };
 
 #endif // SETTINGSHANDLER_H

@@ -41,6 +41,7 @@
 #include <core/settings.h>
 #include <core/settingshandler.h>
 #include <map>
+#include <memory>
 #include <ui/hierarchy_panel.h>
 #include <ui/settings_window.h>
 #include <QUndoStack>
@@ -183,7 +184,7 @@ MainWindow::MainWindow(QWidget* parent)
     // dropping them here is not a behavior change.
     : ActionsMixin<QMainWindow>(parent)
     , hierarchyPanel_(new HierarchyPanel(this))
-    , fileactions_(new FileActions(*this))
+    , fileactions_(std::make_unique<FileActions>(*this))
     , tabpane_(new TabPane(this, *this))
     , autosaveTimer_(new QTimer(this))
     , recoveryTimer_(new QTimer(this))
@@ -310,7 +311,15 @@ MainWindow::MainWindow(QWidget* parent)
     // exitProject(), or the default quitOnLastWindowClosed after
     // closeEvent() accepts) - a real crash never reaches it, which is
     // exactly the point.
-    connect(qApp, &QApplication::aboutToQuit, this, [] {
+    connect(qApp, &QApplication::aboutToQuit, this, [this] {
+        // In this order, and the timer stopped first: snapshots are
+        // written on a background thread now, so a tick landing between
+        // here and the event loop actually stopping would read a tab
+        // and queue an archive for the folder that is about to be
+        // wiped. shutdown() alone would cover it (it refuses anything
+        // further), stopping the timer says why.
+        recoveryTimer_->stop();
+        familiar::recovery::shutdown();
         familiar::recovery::clear();
     });
 
@@ -383,7 +392,11 @@ void MainWindow::on_recovery_timeout()
         // Unlike onAutosaveTimeout_() above, untitled tabs are NOT
         // skipped here - they're exactly the highest-risk data (never
         // written anywhere else) that this feature exists to protect.
-        if (cv->is_modified()) {
+        //
+        // needs_recovery_snapshot(), not is_modified(): the latter stays
+        // true until the next manual save, so a dirty tab nobody is
+        // touching used to be rewritten in full on every single tick.
+        if (cv->needs_recovery_snapshot()) {
             familiar::recovery::save(cv);
         }
     }
@@ -1549,6 +1562,26 @@ void MainWindow::resync_actions_for_tab(CanvasView* cv)
 void MainWindow::on_current_tab_changed(int index)
 {
     resync_actions_for_tab(tabpane_->widget_at(index));
+    sync_animation_playback();
+}
+
+// Every tab is walked rather than just the two that swapped: this also
+// covers a tab being added or closed (both emit currentChanged too), and
+// it is a handful of pointer comparisons per tab.
+void MainWindow::sync_animation_playback()
+{
+    const CanvasView* current = tabpane_->current_widget();
+    for (int i = 0; i < tabpane_->count(); ++i) {
+        const CanvasView* view = tabpane_->widget_at(i);
+        if (!view || !view->scene()) {
+            continue;
+        }
+        if (view == current) {
+            view->scene()->resume_animations();
+        } else {
+            view->scene()->suspend_animations();
+        }
+    }
 }
 
 void MainWindow::on_active_scene_changed()

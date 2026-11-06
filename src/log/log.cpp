@@ -456,6 +456,7 @@ void init(const Options& options)
     sinks.push_back(fileSink);
 
     auto ring = std::make_shared<RingSink>(options.ringCapacity);
+    ring->set_log_level_filter(detail::to_quill_level(options.ringLevel));
     gRingSink = ring.get();
     sinks.push_back(std::move(ring));
 
@@ -466,10 +467,13 @@ void init(const Options& options)
                 "%Y-%m-%d %H:%M:%S.%Qus",
                 quill::Timezone::LocalTime};
 
-    // Logger-level gate: the more verbose of console/file, so neither sink
-    // starves - each sink still filters independently via its own level.
+    // Logger-level gate: the most verbose of the three sinks, so none of
+    // them starves - each still filters independently via its own level.
+    // The ring sink has to be in here too, or it gets nothing the file
+    // and console both rejected.
     const quill::LogLevel loggerLevel = detail::to_quill_level(
-        more_verbose(options.consoleLevel, options.fileLevel));
+        more_verbose(more_verbose(options.consoleLevel, options.fileLevel),
+                     options.ringLevel));
 
     // transform rather than an indexed loop: gLoggers and kchannelNames
     // are parallel std::arrays of the same length, so there is no index to

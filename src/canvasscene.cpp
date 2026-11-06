@@ -158,6 +158,9 @@ void CanvasScene::clear()
 
     detach_all_items();
     QGraphicsScene::clear();
+    // QGraphicsScene::clear() deletes items directly, without going
+    // through our own removeItem() above.
+    invalidate_group_ownership();
     // internal_clipboard is intentionally NOT cleared here - it's shared
     // across all tabs (see its declaration) and holds self-contained
     // snapshots rather than anything belonging to this scene, so wiping
@@ -172,6 +175,12 @@ void CanvasScene::addItem(QGraphicsItem* item)
 {
     FLOG_DEBUG(Ch::Scene, "Adding item {}", debug_string(item));
     QGraphicsScene::addItem(item);
+    // Unconditional rather than only for a GroupItem: a group's
+    // child_ids() can name a uid whose item does not exist yet (nothing
+    // orders a group against its own children in manifest.json - see
+    // add_queued_items()), so "did a group just arrive" is not the only
+    // way this index can go stale.
+    invalidate_group_ownership();
     // rubberbandItem_/multiselectItem_ implement IBaseItem too (needed
     // for corners_scene_coords()/get_type()/etc.) but aren't part of the
     // shared-ownership system at all - they're singletons with manual
@@ -185,6 +194,37 @@ void CanvasScene::addItem(QGraphicsItem* item)
         auto* baseItem = dynamic_cast<IBaseItem*>(item);
         attachedItems_.insert(item, baseItem->acquire_shared());
     }
+    // A background load can finish into a tab that is not the open one
+    // (add_queued_items()), and a GifItem starts animating as soon as it
+    // is constructed - so a newly arrived animation has to be told about
+    // a suspension that was decided before it existed.
+    if (animationsSuspended_) {
+        if (auto* gif = dynamic_cast<GifItem*>(item)) {
+            gif->suspend();
+        }
+    }
+}
+
+// Both driven by which tab is open (MainWindow::sync_animation_playback())
+// - see GifItem::suspend() for what an unseen animation costs.
+void CanvasScene::suspend_animations()
+{
+    animationsSuspended_ = true;
+    for (QGraphicsItem* item : items_by_type("gif")) {
+        if (auto* gif = dynamic_cast<GifItem*>(item)) {
+            gif->suspend();
+        }
+    }
+}
+
+void CanvasScene::resume_animations()
+{
+    animationsSuspended_ = false;
+    for (QGraphicsItem* item : items_by_type("gif")) {
+        if (auto* gif = dynamic_cast<GifItem*>(item)) {
+            gif->resume();
+        }
+    }
 }
 
 void CanvasScene::removeItem(QGraphicsItem* item)
@@ -192,6 +232,7 @@ void CanvasScene::removeItem(QGraphicsItem* item)
     FLOG_DEBUG(Ch::Scene, "Removing item {}", debug_string(item));
     QGraphicsScene::removeItem(item);
     attachedItems_.remove(item);
+    invalidate_group_ownership();
 }
 
 void CanvasScene::detach_all_items()
@@ -325,6 +366,15 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
             pixmapItem->set_encoded_source(
                 data.value(QStringLiteral("encodedBytes")).toByteArray(),
                 data.value(QStringLiteral("encodedFormat")).toString());
+
+            // Present for a freshly imported file instead, where the
+            // bytes are the file's own and only usable if they are
+            // already in the storage format - the item decides, since
+            // that depends on a setting and on the image itself. See
+            // PixmapItem::adopt_import_source().
+            pixmapItem->adopt_import_source(
+                data.value(QStringLiteral("sourceBytes")).toByteArray(),
+                data.value(QStringLiteral("sourceFormat")).toString());
 
             // "crop" and "attached_to" -
             // see PixmapItem::apply_extra_save_data() (moveitem.h).
@@ -1592,16 +1642,55 @@ QGraphicsItem* CanvasScene::find_by_uid(const QUuid& uid) const
     return nullptr;
 }
 
-GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
+void CanvasScene::rebuild_owner_index() const
 {
+    ownerOf_.clear();
     for (QGraphicsItem* item : items()) {
         if (auto* group = dynamic_cast<GroupItem*>(item)) {
-            if (group->child_ids().contains(memberUid)) {
-                return group;
+            for (const QUuid& childUid : group->child_ids()) {
+                // Two owners for one uid is already diagnosed where it
+                // can be caught at the source (GroupItem::
+                // add_child_id()). Here the first group wins, which is
+                // what the old linear scan did too - it returned the
+                // first match in items() order.
+                if (!ownerOf_.contains(childUid)) {
+                    ownerOf_.insert(childUid, group);
+                }
             }
         }
     }
-    return nullptr;
+    ownerIndexDirty_ = false;
+}
+
+GroupItem* CanvasScene::find_owning_group(const QUuid& memberUid) const
+{
+    if (ownerIndexDirty_) {
+        rebuild_owner_index();
+    }
+    return ownerOf_.value(memberUid, nullptr);
+}
+
+QList<GroupItem*> CanvasScene::owning_group_chain(const QUuid& memberUid) const
+{
+    QList<GroupItem*> chain;
+    // memberUid itself seeds the set: a group listed among its own
+    // child_ids() is the shortest possible cycle.
+    QSet<QUuid> seen{memberUid};
+    for (GroupItem* owner = find_owning_group(memberUid); owner;
+         owner = find_owning_group(owner->uid())) {
+        if (seen.contains(owner->uid())) {
+            FLOG_WARN(Ch::Scene,
+                      "owning_group_chain(): ownership cycle at {} "
+                      "uid={} - stopping the walk after {} group(s)",
+                      owner->to_string(),
+                      owner->uid().toString(QUuid::WithoutBraces).toStdString(),
+                      chain.size());
+            break;
+        }
+        seen.insert(owner->uid());
+        chain.append(owner);
+    }
+    return chain;
 }
 
 QList<QGraphicsItem*> CanvasScene::find_attached_items(

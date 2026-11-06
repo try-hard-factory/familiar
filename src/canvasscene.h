@@ -211,6 +211,11 @@ public:
 
     QList<QGraphicsItem*> selectedItems(bool userOnly = false) const;
     QList<QGraphicsItem*> items_by_type(const std::string& type);
+    // Stop and restart every animation in this scene according to
+    // whether its tab is the open one. Neither touches a GIF the user
+    // paused themselves - see GifItem::suspend().
+    void suspend_animations();
+    void resume_animations();
     // Every picture in the scene, animated ones included. NOT
     // items_by_type("pixmap"): GifItem derives from PixmapItem but
     // reports its own type string, "gif", and items_by_type() compares
@@ -259,11 +264,28 @@ public:
     // the scale this app's boards actually run at, and avoids having to
     // keep a second data structure in sync with addItem()/removeItem().
     QGraphicsItem* find_by_uid(const QUuid& uid) const;
-    // Scans every GroupItem in the scene for one whose child_ids()
-    // contains memberUid - the only direction group membership is
-    // tracked (group -> children), so "which group (if any) owns this
-    // item" has no shortcut besides asking every group.
+    // Which group (if any) owns memberUid. Membership itself is only
+    // tracked one way (group -> child uids), so this used to scan every
+    // GroupItem in the scene on every call - O(N) with a dynamic_cast
+    // per item, and it rebuilt the whole items() list each time. That
+    // made the ancestor walks below O(depth * N) EACH, on a path
+    // QGraphicsScene::changed() runs every frame of a drag and every
+    // frame of a GIF: measured 326ms per frame on 1000 pictures in 64
+    // groups nested 5 deep, against 0.6ms for the items() sweep around
+    // it - practically the entire cost of on_change(). Answered from
+    // ownerOf_ instead, rebuilt only after a membership change.
     GroupItem* find_owning_group(const QUuid& memberUid) const;
+    // Every group above memberUid, innermost first. The one way to walk
+    // up the ownership chain: cycle-safe (a group that somehow ends up
+    // its own ancestor stops the walk and logs, instead of spinning
+    // forever), where the four open-coded `for (a = this; a; a =
+    // find_owning_group(a->uid()))` loops this replaces were not.
+    QList<GroupItem*> owning_group_chain(const QUuid& memberUid) const;
+    // Called by GroupItem whenever its own child_ids() change, and by
+    // addItem()/removeItem()/clear() - drops ownerOf_ so the next
+    // find_owning_group() rebuilds it. Cheap (one bool), so callers
+    // never need to batch it.
+    void invalidate_group_ownership() { ownerIndexDirty_ = true; }
     // Every item (TextItem note, OR another PixmapItem/
     // GifItem) whose attachedToUid() is pictureUid - a picture
     // can have any number of things pinned to it, so this returns a
@@ -461,6 +483,9 @@ private:
     QPointF eventStart_;
     ESceneMode activeMode_{ESceneMode::NoneMode};
     bool clearOngoing_ = false;
+    // Whether this scene's tab is hidden, so that an animation arriving
+    // afterwards (a background load) is suspended too - see addItem().
+    bool animationsSuspended_ = false;
 
 public:
     // ────────────────────────────────────────────────────────────────────────
@@ -543,6 +568,24 @@ private:
     // trimmed off the undo stack by setUndoLimit() while the item is
     // still visible) would have nothing left to keep it alive.
     QHash<QGraphicsItem*, std::shared_ptr<IBaseItem>> attachedItems_;
+
+    // member uid -> the group whose child_ids() lists it, for
+    // find_owning_group(). Lazily rebuilt: every mutation just sets the
+    // dirty flag (invalidate_group_ownership()), and the next query
+    // pays for one items() sweep. Deliberately NOT maintained
+    // incrementally - a missed update there means a stale owner, which
+    // is a correctness bug, and one flag has exactly one place to get
+    // wrong. Mutable because find_owning_group() is const and callers
+    // (GroupItem::paint() among them) have nothing non-const to hand.
+    // That makes find_owning_group() a WRITE where it used to be a pure
+    // read, so it is GUI-thread-only now - the same rule the rest of
+    // this scene already follows. Nothing off the GUI thread calls it
+    // today: the exporters resolve items through find_by_uid() instead
+    // (export.cpp), which is still an unindexed scan and mutates
+    // nothing.
+    mutable QHash<QUuid, GroupItem*> ownerOf_;
+    mutable bool ownerIndexDirty_ = true;
+    void rebuild_owner_index() const;
 
     // Members of a locked group that a double-click drilled into (see
     // mouseDoubleClickEvent()) - their ItemIsSelectable/ItemIsMovable

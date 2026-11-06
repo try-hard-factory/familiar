@@ -771,14 +771,150 @@ FmlResult FmlArchive::save(CanvasScene* scene,
                            const QString& filename,
                            ThreadedIO* worker)
 {
-    FmlResult result;
+    FmlSnapshot snapshot;
+    if (!capture(scene, canvasRect, snapshot, worker)) {
+        // Cancelled. Don't write anything to disk - the previous file
+        // (if any) stays untouched. Mirrors ImageImportSession::run()'s
+        // silent-stop-on-cancel convention (empty error, no dialog).
+        return {};
+    }
+    return write(snapshot, filename);
+}
 
+bool FmlArchive::capture(CanvasScene* scene,
+                         const QRectF& canvasRect,
+                         FmlSnapshot& snapshot,
+                         ThreadedIO* worker,
+                         Encode encode)
+{
     QList<QGraphicsItem*> items = scene->items_for_save();
+
+    Manifest manifest;
+#ifdef FAMILIAR_VERSION_STRING
+    manifest.appVersion = QStringLiteral(FAMILIAR_VERSION_STRING);
+#endif
+    manifest.sceneBoundingRect = canvasRect;
+
+    if (worker) {
+        emit worker->begin_processing(static_cast<int>(items.size()));
+    }
+
+    for (int i = 0; i < items.size(); ++i) {
+        if (worker && worker->is_canceled()) {
+            return false;
+        }
+
+        auto* baseItem = dynamic_cast<IBaseItem*>(items[i]);
+        Q_ASSERT_X(baseItem, "FmlArchive::capture", "item is not an IBaseItem");
+
+        ManifestItem mi;
+        mi.id = baseItem->uid();
+        mi.type = QString::fromStdString(baseItem->get_type());
+        mi.x = items[i]->pos().x();
+        mi.y = items[i]->pos().y();
+        mi.z = items[i]->zValue();
+        mi.scale = items[i]->scale();
+        mi.rotation = items[i]->rotation();
+        mi.flip = (baseItem->flip() == -1) ? -1 : 1;
+        mi.data = baseItem->get_extra_save_data();
+
+        const QString idStr = mi.id.toString(QUuid::WithoutBraces);
+
+        // GifItem checked BEFORE PixmapItem: it IS one (inherits it), so
+        // the PixmapItem branch below would also match it - and
+        // pixmap_to_bytes() only ever encodes the CURRENTLY DISPLAYED
+        // frame as a static raster, silently discarding the animation.
+        // Store the original GIF bytes verbatim instead - lossless, and
+        // exactly what GifItem's own constructor expects back on load.
+        if (auto* gifItem = dynamic_cast<GifItem*>(items[i])) {
+            mi.image = QStringLiteral("images/%1.gif").arg(idStr);
+            // Nothing to encode, ever - and deliberately NOT cacheable:
+            // these are the animation's own bytes, not an encoding of
+            // the frame the item's pixmap currently holds.
+            snapshot.images.append(
+                {.archiveName = mi.image,
+                 .itemId = idStr,
+                 .source = {.encoded = gifItem->gif_bytes(),
+                            .image = {},
+                            .format = QStringLiteral("gif"),
+                            .cacheable = false},
+                 // The real key of the frame this item is showing, even
+                 // though cacheable = false already keeps these bytes
+                 // out of its cache: a key that means something is one
+                 // less thing to be wrong later.
+                 .pixmapKey = gifItem->pixmap().cacheKey()});
+        } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
+            // Either way the format is settled here, because the archive
+            // entry is named after it.
+            PixmapItem::ExportSource source;
+            if (encode == Encode::Now) {
+                auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
+                // Not cacheable: pixmap_to_bytes() has already put
+                // these in the item's own cache.
+                source = {.encoded = bytes,
+                          .image = {},
+                          .format = imgformat,
+                          .cacheable = false};
+            } else {
+                source = pixmapItem->export_source();
+            }
+            mi.image = QStringLiteral("images/%1.%2").arg(idStr, source.format);
+            snapshot.images.append(
+                {.archiveName = mi.image,
+                 .itemId = idStr,
+                 .source = source,
+                 .pixmapKey = pixmapItem->pixmap().cacheKey()});
+        }
+
+        manifest.items.append(mi);
+
+        if (worker) {
+            emit worker->progress(i);
+        }
+    }
+
+    snapshot.manifestJson = write_manifest(manifest);
+    return true;
+}
+
+void FmlArchive::adopt_encoded_images(CanvasScene* scene,
+                                      const FmlSnapshot& snapshot)
+{
+    QHash<qint64, const FmlSnapshot::Image*> encoded;
+    for (const FmlSnapshot::Image& image : snapshot.images) {
+        // cacheable is ExportSource's own word for "encoding this
+        // produces the bytes the item should store" - false for a gif's
+        // verbatim stream, and for anything capture() already cached.
+        if (image.source.cacheable && !image.source.encoded.isEmpty()) {
+            encoded.insert(image.pixmapKey, &image);
+        }
+    }
+    if (encoded.isEmpty()) {
+        return;
+    }
+
+    // Walked from the pictures rather than from the snapshot so that
+    // copies, which share one QPixmap and therefore one cache key, all
+    // get the bytes rather than just whichever one a lookup happened to
+    // find.
+    for (PixmapItem* picture : scene->pictures()) {
+        const FmlSnapshot::Image* image
+            = encoded.value(picture->pixmap().cacheKey(), nullptr);
+        if (image) {
+            picture->set_encoded_source(image->source.encoded,
+                                        image->source.format);
+        }
+    }
+}
+
+FmlResult FmlArchive::write(FmlSnapshot& snapshot, const QString& filename)
+{
+    FmlResult result;
 
     ZipWriter zip;
     if (!zip.init_heap()) {
         result.error = QStringLiteral("Could not initialize zip writer");
-        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
         return result;
     }
 
@@ -796,7 +932,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     // <magic> block). Purely additive - old readers (including this
     // app's own FmlArchive::load(), which never looks for this entry)
     // just ignore it, so no formatVersion bump. Must be written FIRST,
-    // before the item loop below, or the offset promise breaks.
+    // before the image loop below, or the offset promise breaks.
     static const char kMimetypeContent[] = "application/x-familiar-fml";
     if (!mz_zip_writer_add_mem(zip.get(),
                                "mimetype",
@@ -804,109 +940,41 @@ FmlResult FmlArchive::save(CanvasScene* scene,
                                sizeof(kMimetypeContent) - 1, // no trailing NUL
                                MZ_NO_COMPRESSION)) {
         result.error = QStringLiteral("Could not write mimetype marker");
-        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
         return result;
     }
 
-    Manifest manifest;
-#ifdef FAMILIAR_VERSION_STRING
-    manifest.appVersion = QStringLiteral(FAMILIAR_VERSION_STRING);
-#endif
-    manifest.sceneBoundingRect = canvasRect;
-
-    if (worker) {
-        emit worker->begin_processing(static_cast<int>(items.size()));
-    }
-
-    bool canceled = false;
-    for (int i = 0; i < items.size(); ++i) {
-        if (worker && worker->is_canceled()) {
-            canceled = true;
-            break;
-        }
-
-        auto* baseItem = dynamic_cast<IBaseItem*>(items[i]);
-        Q_ASSERT_X(baseItem, "FmlArchive::save", "item is not an IBaseItem");
-
-        ManifestItem mi;
-        mi.id = baseItem->uid();
-        mi.type = QString::fromStdString(baseItem->get_type());
-        mi.x = items[i]->pos().x();
-        mi.y = items[i]->pos().y();
-        mi.z = items[i]->zValue();
-        mi.scale = items[i]->scale();
-        mi.rotation = items[i]->rotation();
-        mi.flip = (baseItem->flip() == -1) ? -1 : 1;
-        mi.data = baseItem->get_extra_save_data();
-
-        // GifItem checked BEFORE PixmapItem: it IS one (inherits it), so
-        // the PixmapItem branch below would also match it - and
-        // pixmap_to_bytes() only ever encodes the CURRENTLY DISPLAYED
-        // frame as a static raster, silently discarding the animation.
-        // Store the original GIF bytes verbatim instead - lossless, and
-        // exactly what GifItem's own constructor expects back on load.
-        if (auto* gifItem = dynamic_cast<GifItem*>(items[i])) {
-            const QByteArray& bytes = gifItem->gif_bytes();
-            const QString idStr = mi.id.toString(QUuid::WithoutBraces);
-            mi.image = QStringLiteral("images/%1.gif").arg(idStr);
-
-            const QByteArray archiveName = mi.image.toUtf8();
-            if (!mz_zip_writer_add_mem(zip.get(),
-                                       archiveName.constData(),
-                                       bytes.constData(),
-                                       static_cast<size_t>(bytes.size()),
-                                       MZ_NO_COMPRESSION)) {
-                result.itemErrors.append(
-                    QStringLiteral("Could not store image for item %1")
-                        .arg(idStr));
-                FLOG_WARN(Ch::IO,
-                          "FmlArchive::save: could not store gif image for "
-                          "item {}",
-                          idStr);
-            }
-        } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(items[i])) {
-            auto [bytes, imgformat] = pixmapItem->pixmap_to_bytes();
-            const QString idStr = mi.id.toString(QUuid::WithoutBraces);
-            mi.image = QStringLiteral("images/%1.%2").arg(idStr, imgformat);
-
-            const QByteArray archiveName = mi.image.toUtf8();
-            if (!mz_zip_writer_add_mem(zip.get(),
-                                       archiveName.constData(),
-                                       bytes.constData(),
-                                       static_cast<size_t>(bytes.size()),
-                                       MZ_NO_COMPRESSION)) {
-                result.itemErrors.append(
-                    QStringLiteral("Could not store image for item %1")
-                        .arg(idStr));
-                FLOG_WARN(Ch::IO,
-                          "FmlArchive::save: could not store pixmap image "
-                          "for item {}",
-                          idStr);
-            }
-        }
-
-        manifest.items.append(mi);
-
-        if (worker) {
-            emit worker->progress(i);
+    for (FmlSnapshot::Image& image : snapshot.images) {
+        // Encodes only what capture() left for this half, and keeps the
+        // result in the snapshot: adopt_encoded_images() hands it back
+        // to the item afterwards, so this is paid once per picture
+        // rather than once per snapshot. A no-op when the bytes are
+        // already there - that is what encode() does with them.
+        image.source.encoded = PixmapItem::encode(image.source).first;
+        const QByteArray archiveName = image.archiveName.toUtf8();
+        if (!mz_zip_writer_add_mem(zip.get(),
+                                   archiveName.constData(),
+                                   image.source.encoded.constData(),
+                                   static_cast<size_t>(
+                                       image.source.encoded.size()),
+                                   MZ_NO_COMPRESSION)) {
+            result.itemErrors.append(
+                QStringLiteral("Could not store image for item %1")
+                    .arg(image.itemId));
+            FLOG_WARN(Ch::IO,
+                      "FmlArchive::write: could not store {} for item {}",
+                      image.archiveName.toStdString(),
+                      image.itemId.toStdString());
         }
     }
 
-    if (canceled) {
-        // Don't write anything to disk - the previous file (if any) stays
-        // untouched. Mirrors ImageImportSession::run()'s silent-stop-on-cancel
-        // convention (empty error, no dialog).
-        return result;
-    }
-
-    const QByteArray manifestJson = write_manifest(manifest);
     if (!mz_zip_writer_add_mem(zip.get(),
                                "manifest.json",
-                               manifestJson.constData(),
-                               static_cast<size_t>(manifestJson.size()),
+                               snapshot.manifestJson.constData(),
+                               static_cast<size_t>(snapshot.manifestJson.size()),
                                MZ_DEFAULT_LEVEL)) {
         result.error = QStringLiteral("Could not write manifest.json");
-        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
         return result;
     }
 
@@ -914,7 +982,7 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     size_t size = 0;
     if (!mz_zip_writer_finalize_heap_archive(zip.get(), &buf, &size)) {
         result.error = QStringLiteral("Could not finalize archive");
-        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
         return result;
     }
 
@@ -922,17 +990,37 @@ FmlResult FmlArchive::save(CanvasScene* scene,
     if (!file.open(QIODevice::WriteOnly)) {
         result.error = QStringLiteral("Could not open %1 for writing: %2")
                            .arg(filename, file.errorString());
-        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
         mz_free(buf);
         return result;
     }
-    file.write(static_cast<const char*>(buf), static_cast<qint64>(size));
+    const auto expected = static_cast<qint64>(size);
+    const qint64 written = file.write(static_cast<const char*>(buf), expected);
     mz_free(buf);
+
+    // Checked, and checked SEPARATELY from commit() below: an archive is
+    // far larger than QIODevice's own ~16KB write buffer, so these bytes
+    // go straight to the file descriptor and a write(2) that stops early
+    // - a full disk, a quota, RLIMIT_FSIZE - is reported right here.
+    // commit() would then happily replace the real file with the
+    // truncated archive and return true. Same reasoning as
+    // write_file_atomically() (utils/utils.h), which documents why BOTH
+    // checks are needed; the payload sizes just put this one firmly on
+    // the short-write side.
+    if (written != expected) {
+        result.error = QStringLiteral("Could not save %1: wrote %2 of %3 bytes")
+                           .arg(filename)
+                           .arg(written)
+                           .arg(expected);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
+        file.cancelWriting();
+        return result;
+    }
 
     if (!file.commit()) {
         result.error = QStringLiteral("Could not save %1: %2")
                            .arg(filename, file.errorString());
-        FLOG_ERROR(Ch::IO, "FmlArchive::save: {}", result.error);
+        FLOG_ERROR(Ch::IO, "FmlArchive::write: {}", result.error);
         return result;
     }
 

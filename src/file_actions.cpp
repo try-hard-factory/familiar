@@ -13,6 +13,7 @@
 #include <core/settingshandler.h>
 #include <QDialog>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QObject>
@@ -23,6 +24,51 @@
 #include <QtContainerFwd>
 
 #include <memory>
+
+namespace {
+
+QString backup_path_for(const QString& path)
+{
+    return path + QStringLiteral(".bak");
+}
+
+// Moves `path` aside so the save that follows cannot be the only copy
+// of a repaired project. A rename, not a copy: a project file runs to
+// hundreds of megabytes, and the save writes a fresh file at `path`
+// anyway. Returns whether the original is now sitting at the backup
+// path, which is what tells write_to_path() to put it back if the save
+// then fails.
+bool move_original_aside(const QString& path)
+{
+    const QString backupPath = backup_path_for(path);
+
+    // QFile::rename() refuses an existing target, so a previous backup
+    // has to go first. That leaves a moment with no backup - but never
+    // one without the original, which stays at `path` until the rename
+    // below succeeds.
+    if (QFile::exists(backupPath) && !QFile::remove(backupPath)) {
+        FLOG_WARN(familiar::log::Ch::IO,
+                  "Could not replace the previous backup {} - saving without "
+                  "keeping a copy of the repaired project",
+                  backupPath.toStdString());
+        return false;
+    }
+    if (!QFile::rename(path, backupPath)) {
+        FLOG_WARN(familiar::log::Ch::IO,
+                  "Could not move {} aside to {} - saving without keeping a "
+                  "copy of the repaired project",
+                  path.toStdString(),
+                  backupPath.toStdString());
+        return false;
+    }
+
+    FLOG_INFO(familiar::log::Ch::IO,
+              "Repaired project: kept the original as {}",
+              backupPath.toStdString());
+    return true;
+}
+
+} // namespace
 
 FileActions::FileActions(MainWindow& mw)
     : mainwindow_(mw)
@@ -79,6 +125,7 @@ void FileActions::load_fml_into_current_tab(const QString& path,
         [this,
          canvasView,
          scene,
+         path,
          markModifiedAfterLoad,
          recoveryIdToClear,
          repairs,
@@ -125,6 +172,15 @@ void FileActions::load_fml_into_current_tab(const QString& path,
             // the only copy of that data.
             if (!recoveryIdToClear.isNull()) {
                 familiar::recovery::remove(recoveryIdToClear);
+            }
+
+            // Remembered against `path` specifically - the file that was
+            // actually repaired. For a restore from recovery that is the
+            // snapshot, not the project's own file, so saving over the
+            // latter does not get treated as overwriting a repaired
+            // original: it never was one.
+            if (!repairs->isEmpty()) {
+                canvasView->set_repaired_source_path(path);
             }
 
             // Per-item problems are NOT a failed open: whatever did load
@@ -293,6 +349,14 @@ int FileActions::save_file(CanvasView* canvasView, const QString& path)
 
 int FileActions::write_to_path(CanvasView* canvasView, const QString& path)
 {
+    // This project needed repairing to open, and this save is about to
+    // replace the very file that was repaired - see CanvasView::
+    // repaired_source_path() for what goes missing when it does. Keep
+    // the original beside it, once.
+    const bool movedAside = !canvasView->repaired_source_path().isEmpty()
+                            && canvasView->repaired_source_path() == path
+                            && move_original_aside(path);
+
     // Synchronous (not backgrounded like loadFmlIntoCurrentTab()): several
     // callers (TabPane::onTabClosed(), MainWindow::saveAllWindowSaveCB())
     // close the tab or quit the app right after this returns, assuming the
@@ -303,6 +367,15 @@ int FileActions::write_to_path(CanvasView* canvasView, const QString& path)
                                               path);
 
     if (!result.error.isEmpty()) {
+        // Put it back: the save failed, so the backup would otherwise be
+        // the only copy left and the file the user opened would simply
+        // be gone from where they keep it.
+        if (movedAside && !QFile::rename(backup_path_for(path), path)) {
+            FLOG_ERROR(familiar::log::Ch::IO,
+                       "Save failed AND the original could not be moved back "
+                       "from {} - it is still there, under that name",
+                       backup_path_for(path).toStdString());
+        }
         show_message_box(QMessageBox::Critical,
                          &mainwindow_,
                          QObject::tr("Could not save file"),
@@ -333,6 +406,15 @@ int FileActions::write_to_path(CanvasView* canvasView, const QString& path)
     // undo/redo).
     canvasView->undo_stack()->setClean();
     canvasView->set_modified(false);
+    // Only for a save that went to the repaired file itself, and only
+    // now that it succeeded: that file now HOLDS the repaired content,
+    // so there is no original there left to protect. A Save As anywhere
+    // else keeps the flag, because the repaired original is still
+    // sitting where it was and a later save back over it should still
+    // move it aside.
+    if (canvasView->repaired_source_path() == path) {
+        canvasView->set_repaired_source_path(QString());
+    }
 
     // See processOpenFile()'s comment - saveFileAs() reaches this via
     // its own call to saveFile(selected), so this covers both.

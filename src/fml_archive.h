@@ -5,9 +5,15 @@
 // manifest.json + images/<uid>.<ext>. See docs/fml_format_design.md for
 // the full format spec and the rationale behind it.
 
+#include "moveitem.h"
+
+#include <QByteArray>
+#include <QList>
 #include <QRectF>
 #include <QString>
 #include <QStringList>
+
+#include <cstdint>
 
 class CanvasScene;
 class QJsonObject;
@@ -33,6 +39,44 @@ struct FmlResult
     QStringList itemRepairs;
 };
 
+// Everything a save needs from the scene, captured as plain values -
+// the same split export.h describes for the image/SVG exporters, and
+// for the same reason: capture() reads the items, write() reads nothing
+// but this, so the second half may run while the user keeps editing.
+//
+// The image bytes are refcounted copies of what the items already hold
+// (PixmapItem::encodedCache_), so holding them costs nothing until an
+// item's pixmap is actually replaced underneath.
+struct FmlSnapshot
+{
+    struct Image
+    {
+        QString archiveName; // "images/<uid>.<ext>"
+        // Carried alongside only so write(), which has no items to look
+        // anything up in, can name the item in FmlResult::itemErrors
+        // exactly as the one-pass version used to.
+        QString itemId;
+        // Either the bytes themselves - the item had them cached, or
+        // capture() was asked to encode on the spot - or a QImage that
+        // still has to be encoded. PixmapItem::encode() answers both and
+        // touches no item state, which is the whole point: a picture
+        // that has never been encoded used to cost that encode inside
+        // capture(), on the GUI thread (measured 2364 ms for 80 800x800
+        // pictures; 2 ms once their bytes were cached).
+        PixmapItem::ExportSource source;
+        // Which pixmap `source` was read from, so that an encode done
+        // somewhere else can be given back to the item afterwards - but
+        // only while it is still that same picture. See
+        // adopt_encoded_images().
+        qint64 pixmapKey = 0;
+    };
+
+    // Built by capture() too: the manifest describes the items as they
+    // were read, so it cannot be assembled later from anything else.
+    QByteArray manifestJson;
+    QList<Image> images;
+};
+
 class FmlArchive
 {
 public:
@@ -48,10 +92,60 @@ public:
     // (beginProcessing/progress) and to check for cancellation - callers
     // that want this off the GUI thread wrap the call in a ThreadedIO
     // themselves (see save_fml() in fileio.cpp).
+    //
+    // Exactly capture() followed by write(); a caller that needs the two
+    // halves apart calls them itself.
     static FmlResult save(CanvasScene* scene,
                           const QRectF& canvasRect,
                           const QString& filename,
                           ThreadedIO* worker = nullptr);
+
+    // GUI thread only: this is the only half that reads `scene`, its
+    // items or their QPixmaps, and write() reads none of them. Returns
+    // false only when `worker` reported a cancellation, in which case
+    // the caller writes nothing and the file already on disk (if any)
+    // stays as it is.
+    //
+    // `worker` gets the progress reports, because this is the half whose
+    // per-item cost dominates a FIRST save: encoding the images. On
+    // every save after it they come out of PixmapItem's encode cache
+    // and nearly all the cost moves to write().
+    enum class Encode : std::uint8_t {
+        // Here and now, which also leaves the bytes in the item's own
+        // cache for everything after. What a save the user is waiting
+        // for wants: it is synchronous anyway.
+        Now,
+        // Left to write(), wherever that runs. What the recovery
+        // snapshot wants: nobody is waiting for it, and the user is
+        // still editing while it happens. adopt_encoded_images() is how
+        // the item's cache gets filled in that case.
+        Deferred,
+    };
+    static bool capture(CanvasScene* scene,
+                        const QRectF& canvasRect,
+                        FmlSnapshot& snapshot,
+                        ThreadedIO* worker = nullptr,
+                        Encode encode = Encode::Now);
+
+    // Gives the bytes write() produced back to the pictures they were
+    // read from, so that the next save finds them cached instead of
+    // encoding the same pixels again. GUI thread only, and only for a
+    // picture whose pixmap is still the captured one - matched on
+    // QPixmap::cacheKey(), which is how PixmapItem::encodedCache_
+    // defines its own validity anyway.
+    static void adopt_encoded_images(CanvasScene* scene,
+                                     const FmlSnapshot& snapshot);
+
+    // Assembles the zip from `snapshot` and atomically replaces
+    // `filename` with it. Touches no scene, no item and no QPixmap, so
+    // this is the half that may run on a worker thread with the GUI
+    // still live - see familiar::recovery::save() (recovery.h), which
+    // does exactly that.
+    // Takes `snapshot` by reference, not by const reference: it encodes
+    // whatever capture() left for it and records the result in there,
+    // which is what adopt_encoded_images() then reads.
+    static FmlResult write(FmlSnapshot& snapshot,
+                           const QString& filename);
 
     // Reads `filename` (a .fml zip, or a legacy pre-zip .fml file - see
     // docs/fml_format_design.md §10) and queues its items via

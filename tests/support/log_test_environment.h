@@ -35,8 +35,16 @@ public:
         // Real log lines interleaved with gtest's own [ RUN ]/[ OK ]
         // console output otherwise, for no benefit - the file sink still
         // captures everything for anyone who actually needs to inspect
-        // it (logFilePath() below).
+        // it (logFilePath() below). Spelled out because Options defaults
+        // to Info now (see its own comment in log/log.h): a test run is
+        // exactly the case where the DEBUG lines are the point.
         options.console = false;
+        options.fileLevel = familiar::log::Level::Debug;
+        // And the ring sink, which is what the log tests actually read
+        // back (tests/log/log_test.cpp) - FLOG_TIMER logs at Debug, so
+        // leaving the ring at the new Info default drops the very line
+        // FlogTimerLogsElapsedTimeAtScopeExit looks for.
+        options.ringLevel = familiar::log::Level::Debug;
         familiar::log::init(options);
     }
 
