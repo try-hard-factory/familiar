@@ -1,14 +1,23 @@
 # familiar
 
-![Build](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/build_cmake.yml?label=build)
-![Windows Pack](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/Windows-pack.yml?label=windows%20package)
-![Release](https://img.shields.io/github/v/release/try-hard-factory/familiar)
-![Downloads](https://img.shields.io/github/downloads/try-hard-factory/familiar/total)
-![License](https://img.shields.io/github/license/try-hard-factory/familiar)
-![Issues](https://img.shields.io/github/issues/try-hard-factory/familiar)
-![Stars](https://img.shields.io/github/stars/try-hard-factory/familiar)
-![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)
-![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)
+[![main build](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/build_cmake.yml?branch=main&label=main%20build)](https://github.com/try-hard-factory/familiar/actions/workflows/build_cmake.yml?query=branch%3Amain)
+[![nightly](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/nightly.yml?branch=main&label=nightly)](https://github.com/try-hard-factory/familiar/actions/workflows/nightly.yml)
+[![release](https://img.shields.io/github/v/release/try-hard-factory/familiar)](https://github.com/try-hard-factory/familiar/releases/latest)
+[![downloads](https://img.shields.io/github/downloads/try-hard-factory/familiar/total)](https://github.com/try-hard-factory/familiar/releases)
+[![license](https://img.shields.io/github/license/try-hard-factory/familiar)](LICENSE)
+
+[![issues](https://img.shields.io/github/issues/try-hard-factory/familiar)](https://github.com/try-hard-factory/familiar/issues)
+[![discussions](https://img.shields.io/github/discussions/try-hard-factory/familiar)](https://github.com/try-hard-factory/familiar/discussions)
+[![stars](https://img.shields.io/github/stars/try-hard-factory/familiar?style=flat)](https://github.com/try-hard-factory/familiar)
+[![last commit](https://img.shields.io/github/last-commit/try-hard-factory/familiar?branch=main)](https://github.com/try-hard-factory/familiar/commits/main)
+<!-- PLACEHOLDER: no Discord server exists yet. Replace REPLACE_ME with the
+     real invite code before this ships, or drop the badge - as written the
+     link 404s. -->
+[![discord](https://img.shields.io/badge/discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/REPLACE_ME)
+
+[![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)](https://www.qt.io/)
+[![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
+[![platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](https://github.com/try-hard-factory/familiar/releases/latest)
 
 Reference board for 2D/3D artists — a canvas for collecting, arranging,
 and annotating reference images. Qt6/C++.
