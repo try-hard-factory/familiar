@@ -186,17 +186,77 @@ QString install_id()
     return generated;
 }
 
-QString endpoint()
+const char* endpoint_source_name(EndpointSource source)
 {
-    QString fromArgs = CommandlineArgs::instance().telemetry_url();
+    switch (source) {
+    case EndpointSource::CommandLine:
+        return "--telemetry-url";
+    case EndpointSource::Environment:
+        return "FAMILIAR_TELEMETRY_URL";
+    case EndpointSource::CompiledIn:
+        return "compiled in";
+    case EndpointSource::None:
+        break;
+    default:
+        // This build compiles with -Wswitch-default as an error, so a
+        // default is required even though every enumerator above is
+        // handled. The cost is that -Wswitch can no longer flag an
+        // enumerator added later - it would land here and be named
+        // "nowhere" instead of failing the build.
+        break;
+    }
+    return "nowhere";
+}
+
+QString endpoint(EndpointSource& source)
+{
+    const QString fromArgs = CommandlineArgs::instance().telemetry_url();
     if (!fromArgs.isEmpty()) {
+        source = EndpointSource::CommandLine;
         return fromArgs;
     }
     const QByteArray fromEnv = qgetenv("FAMILIAR_TELEMETRY_URL");
     if (!fromEnv.isEmpty()) {
+        source = EndpointSource::Environment;
         return QString::fromUtf8(fromEnv);
     }
-    return QString::fromUtf8(kcompiledEndpoint);
+    const QString compiled = QString::fromUtf8(kcompiledEndpoint);
+    // Empty is None rather than CompiledIn: "the build compiled in an
+    // empty string" and "the build compiled in nothing" are the same
+    // thing here, and CMakeLists.txt only defines the macro when the
+    // value is non-empty anyway (see its if(FAMILIAR_TELEMETRY_URL)).
+    source = compiled.isEmpty() ? EndpointSource::None
+                                : EndpointSource::CompiledIn;
+    return compiled;
+}
+
+QString endpoint()
+{
+    EndpointSource ignored = EndpointSource::None;
+    return endpoint(ignored);
+}
+
+void log_configuration()
+{
+    if (!is_compiled_in()) {
+        FLOG_INFO(Ch::Net, "Telemetry: not compiled in");
+        return;
+    }
+
+    EndpointSource source = EndpointSource::None;
+    const QString url = endpoint(source);
+    if (url.isEmpty()) {
+        // Unconditional, unlike every other suppression reason: with no
+        // address there is nothing to send to, whatever the settings or
+        // the consent dialog later say.
+        FLOG_INFO(Ch::Net,
+                  "Telemetry: no endpoint configured, nothing will be sent");
+        return;
+    }
+    FLOG_INFO(Ch::Net,
+              "Telemetry: endpoint {} (from {})",
+              url,
+              endpoint_source_name(source));
 }
 
 QString suppression_reason()
@@ -311,6 +371,8 @@ void report_launch(QNetworkAccessManager& manager)
 
     const QByteArray body = payload_for(id,
                                         QCoreApplication::applicationVersion());
+
+    FLOG_INFO(Ch::Net, "Telemetry: reporting to {}", url.toString());
 
     QNetworkReply* reply = manager.post(request, body);
 

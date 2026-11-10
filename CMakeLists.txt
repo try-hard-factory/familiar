@@ -34,7 +34,7 @@ option(FAMILIAR_TELEMETRY_DEFAULT_ON
 # telemetry::suppression_reason()), so a build that forgets to set this is
 # silent rather than pointed somewhere wrong. Override per build, or at
 # runtime with --telemetry-url / FAMILIAR_TELEMETRY_URL.
-set(FAMILIAR_TELEMETRY_URL "" CACHE STRING
+set(FAMILIAR_TELEMETRY_URL "https://telemetry.example.org/v1/launch" CACHE STRING
     "Endpoint for the launch counter, e.g. https://example.org/v1/launch")
 
 if(FAMILIAR_TELEMETRY)

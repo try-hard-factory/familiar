@@ -4,6 +4,8 @@
 #include <QObject>
 #include <QString>
 
+#include <cstdint>
+
 class QNetworkAccessManager;
 
 namespace familiar::telemetry {
@@ -65,10 +67,46 @@ QString install_id();
 QString suppression_reason();
 bool should_report();
 
+// Which of the three possible places the endpoint came from. Needed
+// because the address alone does not answer the question people
+// actually have when reports go somewhere unexpected - a build with
+// nothing compiled in and a build pointed elsewhere by an environment
+// variable it inherited look identical from the address.
+//
+// None is not "empty string": it means no source supplied one at all,
+// which is the normal state of a build that never set
+// FAMILIAR_TELEMETRY_URL, and the state in which nothing is ever sent.
+enum class EndpointSource : std::uint8_t {
+    None,
+    CommandLine, // --telemetry-url
+    Environment, // FAMILIAR_TELEMETRY_URL
+    CompiledIn   // -DFAMILIAR_TELEMETRY_URL at configure time
+};
+
+// For log lines. Returns a fixed string, never user input.
+const char* endpoint_source_name(EndpointSource source);
+
 // Endpoint actually used: the --telemetry-url override, else
 // FAMILIAR_TELEMETRY_URL from the environment, else the compiled-in
 // default.
+//
+// The overload also reports where the value came from. Both go through
+// one implementation on purpose: a second function that re-derived the
+// precedence would be free to drift away from the one that picks the
+// value, and the log would then confidently name the wrong source.
 QString endpoint();
+QString endpoint(EndpointSource& source);
+
+// Writes one INFO line naming the endpoint and where it came from.
+// Called once from main() after the logger is up.
+//
+// Deliberately does NOT log suppression_reason(): at startup the
+// consent dialog has not been shown yet, so on a first run the reason
+// is "consent not answered yet" and a report is nevertheless sent
+// moments later. A line claiming nothing will be sent would be wrong
+// exactly when a new user is watching. The one case it can state is an
+// empty endpoint, which suppresses unconditionally.
+void log_configuration();
 
 // The exact JSON body that would be sent, as compact UTF-8. Exposed so
 // a test can assert there is nothing in it beyond these three fields.
