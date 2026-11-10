@@ -23,6 +23,19 @@ const QString& placeholder()
 const QMap<QString, QString>& settings_table()
 {
     static const QMap<QString, QString> table = {
+        {QStringLiteral("Telemetry/enabled"),
+         QStringLiteral(
+             "Sends two things to familiar's own server, at most once a "
+             "day: a random number generated on this computer, and the "
+             "version you are running."
+             "<br/><br/>Nothing else - no file names, no images, no canvas "
+             "contents, no name or email. The server stores no IP "
+             "addresses and no time of day, only the date."
+             "<br/><br/>It exists to count installations and launches, and "
+             "to see which versions are still in use."
+             "<br/><br/>Setting <b>DO_NOT_TRACK=1</b> in the environment, "
+             "or passing <b>--no-telemetry</b>, overrides this for that "
+             "run.")},
         {QStringLiteral("Items/arrange_gap"),
          QStringLiteral("The gap between images when using arrange actions.")},
         {QStringLiteral("Items/image_allocation_limit"),

@@ -40,6 +40,13 @@ public:
     // SettingsHandler::SettingsHandler() (core/settingshandler.cpp).
     QString settings_file() const { return settingsFile_; }
     QString loglevel() const { return loglevel_; }
+    // Where telemetry reports go, overriding the compiled-in default -
+    // see telemetry/telemetry.h's endpoint(). Exists so a local server
+    // can be pointed at during development without rebuilding.
+    QString telemetry_url() const { return telemetryUrl_; }
+    // Suppresses telemetry for this run only, without touching the
+    // stored setting.
+    bool no_telemetry() const { return noTelemetry_; }
     bool debug_bounding_rects() const { return debugBoundingRects_; }
     bool debug_shapes() const { return debugShapes_; }
     bool debug_handles() const { return debugHandles_; }
@@ -50,6 +57,8 @@ private:
     QString filename_;
     QString settingsFile_;
     QString loglevel_ = QStringLiteral("INFO");
+    QString telemetryUrl_;
+    bool noTelemetry_ = false;
     bool debugBoundingRects_ = false;
     bool debugShapes_ = false;
     bool debugHandles_ = false;

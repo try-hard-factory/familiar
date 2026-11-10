@@ -288,6 +288,15 @@ public:
     explicit AutosaveIntervalRow(QWidget* parent = nullptr);
 };
 
+// Lets the first-run consent answer be changed later, which the consent
+// dialog itself promises ("You can change this at any time in
+// Settings") - so this row is part of that promise, not a nicety.
+class TelemetryEnabledRow : public CheckboxSettingRow
+{
+public:
+    explicit TelemetryEnabledRow(QWidget* parent = nullptr);
+};
+
 // ─── Concrete Images & Items-page rows ──────────────────────────────────────
 // Replaces settings_dialog.h's SettingsGroupBase-derived
 // ArrangeGapWidget/AllocationLimitWidget/ArrangeDefaultWidget (and drops

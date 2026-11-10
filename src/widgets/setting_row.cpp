@@ -543,6 +543,12 @@ AutosaveIntervalRow::AutosaveIntervalRow(QWidget* parent)
                         parent)
 {}
 
+TelemetryEnabledRow::TelemetryEnabledRow(QWidget* parent)
+    : CheckboxSettingRow(QStringLiteral("Send Anonymous Usage Count"),
+                         QStringLiteral("Telemetry/enabled"),
+                         parent)
+{}
+
 // ─── Concrete Images & Items-page rows ──────────────────────────────────────
 
 ArrangeGapRow::ArrangeGapRow(QWidget* parent)

@@ -8,13 +8,17 @@
 #include <QIcon>
 #include <QMessageBox>
 #include <QMetaType>
+#include <QNetworkAccessManager>
 #include <QSharedMemory>
 #include <QStandardPaths>
 #include <QString>
+#include <QTimer>
 #include <QtEnvironmentVariables>
 
 #include "core/settings.h"
 #include "log/log.h"
+#include "telemetry/telemetry.h"
+#include "widgets/telemetry_consent_dialog.h"
 using namespace familiar::log;
 
 #include <gtest/gtest.h>
@@ -178,6 +182,15 @@ int main(int argc, char* argv[])
     // `this`).
     FamSettings::on_startup();
 
+    // Before the window, before the consent dialog, before anything can
+    // be sent: which address this build will report to, and which of
+    // --telemetry-url / FAMILIAR_TELEMETRY_URL / the compiled-in
+    // default supplied it. report_launch() logs the address too, but
+    // only on a launch that actually reports - which is at most one a
+    // day, and never while a question like "is this build even pointed
+    // anywhere" is the one being asked.
+    familiar::telemetry::log_configuration();
+
 
 #ifdef NDEBUG
     FLOG_DEBUG(Ch::Core, "NDEBUG defined");
@@ -193,6 +206,34 @@ int main(int argc, char* argv[])
     // MainWindow::showOrOfferRecovery()'s own comment for why that
     // ordering matters.
     w.show_or_offer_recovery(CommandlineArgs::instance().filename());
+
+    // Telemetry: ask once, then report at most once a day. See
+    // telemetry/telemetry.h for what is sent and the four conditions
+    // that all have to hold first.
+    //
+    // A main() local rather than a static or a MainWindow member: a
+    // QObject that owns sockets has to be destroyed before
+    // QApplication is, and a namespace-scope static is destroyed after
+    // it. This one lives exactly as long as exec() below.
+    QNetworkAccessManager telemetryNetwork;
+    // Queued instead of called straight away, so the main window is up
+    // and painted before a modal dialog appears over it - otherwise the
+    // first launch looks like a hang. The recovery prompt has already
+    // finished by this point (show_or_offer_recovery() runs it modally),
+    // so the two cannot end up stacked.
+    QTimer::singleShot(0, &w, [&w, &telemetryNetwork]() {
+        if (familiar::telemetry::needs_consent()) {
+            TelemetryConsentDialog dialog(&w);
+            // exec()'s result is deliberately ignored: closing with the
+            // x is not a third answer, it means "whatever the checkbox
+            // says" - see TelemetryConsentDialog's own comment. What
+            // matters is that set_consent() runs either way, so the
+            // question is never asked twice.
+            dialog.exec();
+            familiar::telemetry::set_consent(dialog.accepted_telemetry());
+        }
+        familiar::telemetry::report_launch(telemetryNetwork);
+    });
 
     const int result = QApplication::exec();
 
