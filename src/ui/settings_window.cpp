@@ -4,6 +4,7 @@
 #include <core/controls.h>
 #include <core/settings.h>
 #include <core/settingshandler.h>
+#include <telemetry/telemetry.h>
 #include <ui/colors_widget.h>
 #include <widgets/controls/keyboard_shortcuts_page.h>
 #include <widgets/controls/search_highlight.h>
@@ -519,6 +520,13 @@ SettingsWindow::SettingsWindow(MainWindow* wm, QWidget* parent)
         intervalLayout->setContentsMargins(kintervalMargins);
     }
     miscLayout->addWidget(autosaveInterval_);
+    // Last on the page, and only when the feature exists in this build -
+    // see telemetryEnabled_'s declaration. Created here rather than in
+    // the member init list because that list cannot be conditional.
+    if (familiar::telemetry::is_compiled_in()) {
+        telemetryEnabled_ = new TelemetryEnabledRow;
+        miscLayout->addWidget(telemetryEnabled_);
+    }
     miscLayout->addStretch(1);
     autosaveInterval_->set_control_enabled(
         FamSettings::value_or_default(QStringLiteral("Save/autosave_enabled"))

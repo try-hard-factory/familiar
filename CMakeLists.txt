@@ -17,6 +17,36 @@ endif()
 # platform-independent, unlike the WIN32-only FAMILIAR_VERSION_* block below.
 add_definitions(-DFAMILIAR_VERSION_STRING="${PROJECT_VERSION}")
 
+# ─── Telemetry (src/telemetry/telemetry.h; server: familiar-web) ──────────────
+# Counts unique installs and launches: one request a day carrying a random
+# per-installation UUID and the version string, nothing else.
+#
+# FAMILIAR_TELEMETRY=OFF compiles the whole thing out, so a distribution
+# maintainer who will not ship a phone-home can build from the same source
+# without patching it. FAMILIAR_TELEMETRY_DEFAULT_ON decides only where the
+# first-run consent checkbox starts; the dialog is shown either way and the
+# stored answer wins from then on.
+option(FAMILIAR_TELEMETRY "Build the anonymous install/launch counter" ON)
+option(FAMILIAR_TELEMETRY_DEFAULT_ON
+       "Start the first-run consent checkbox ticked" ON)
+# Empty by default on purpose: no address is hardcoded until there is a real
+# one. With no endpoint configured the client reports nothing at all (see
+# telemetry::suppression_reason()), so a build that forgets to set this is
+# silent rather than pointed somewhere wrong. Override per build, or at
+# runtime with --telemetry-url / FAMILIAR_TELEMETRY_URL.
+set(FAMILIAR_TELEMETRY_URL "" CACHE STRING
+    "Endpoint for the launch counter, e.g. https://example.org/v1/launch")
+
+if(FAMILIAR_TELEMETRY)
+    add_definitions(-DFAMILIAR_TELEMETRY)
+    if(FAMILIAR_TELEMETRY_DEFAULT_ON)
+        add_definitions(-DFAMILIAR_TELEMETRY_DEFAULT_ON)
+    endif()
+    if(FAMILIAR_TELEMETRY_URL)
+        add_definitions(-DFAMILIAR_TELEMETRY_URL="${FAMILIAR_TELEMETRY_URL}")
+    endif()
+endif()
+
 if (APPLE)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.15" CACHE STRING "Minimum OS X deployment version")
 endif()

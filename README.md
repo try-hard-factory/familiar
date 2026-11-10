@@ -136,6 +136,72 @@ on `PATH` (`sudo apt install lcov` on Debian/Ubuntu).
 Uses [`.clang-format`](.clang-format) at the repo root over `src/` and
 `tests/`.
 
+## Telemetry
+
+An anonymous counter of installs and launches, off the wire entirely
+unless every one of four conditions holds — see
+[`src/telemetry/telemetry.h`](src/telemetry/telemetry.h). The server that
+receives it lives in its own repository,
+[try-hard-factory/familiar-web](https://github.com/try-hard-factory/familiar-web),
+so building the app never pulls an HTTP framework in and a distribution
+maintainer packaging it never builds one.
+
+At most once a day, two things are sent:
+
+```json
+{"schema": 1, "install_id": "<random uuid>", "version": "0.0.17"}
+```
+
+That is the whole payload, verified by capturing a real request. No file
+names, no images, no canvas contents. `Accept-Language` and `User-Agent`
+are overwritten with fixed values, because Qt otherwise fills the former
+in from the system locale.
+
+The install id is a UUID in its own file next to `settings.json`, **not**
+a key inside it: `SettingsHandler::import_settings_from()` replaces the
+whole document, so an id stored there would be overwritten by someone
+else's when they import their settings, and two machines would report as
+one install. The file is created on the first report that actually
+happens, so declining leaves no identifier on disk at all.
+
+### Turning it off
+
+| How | Scope |
+|---|---|
+| the first-run dialog's checkbox | permanent, stored in settings |
+| Settings → Performance → Send Anonymous Usage Count | permanent |
+| `DO_NOT_TRACK=1` in the environment | that run |
+| `--no-telemetry` | that run |
+| `-DFAMILIAR_TELEMETRY=OFF` at configure time | compiled out entirely |
+
+`DO_NOT_TRACK` follows the [Console Do Not Track](https://consoledonottrack.com)
+convention — a proposal rather than a standard, and with no enforcement
+behind it, but it costs one lookup to honour.
+
+### Build options
+
+| Option | Default | Effect |
+|---|---|---|
+| `FAMILIAR_TELEMETRY` | `ON` | compile the feature in at all |
+| `FAMILIAR_TELEMETRY_DEFAULT_ON` | `ON` | first-run checkbox starts ticked |
+| `FAMILIAR_TELEMETRY_URL` | *(empty)* | endpoint; empty means nothing is ever sent |
+
+No address is compiled in by default, so a build that forgets to set
+`FAMILIAR_TELEMETRY_URL` is silent rather than pointed somewhere wrong.
+Override at runtime with `--telemetry-url` or `FAMILIAR_TELEMETRY_URL`,
+which is how to aim a development build at a local server:
+
+```sh
+# in a clone of familiar-web:
+cd backend && ./build.sh release && ./build/familiar-telemetry --port 8099 &
+
+# here:
+build/familiar --telemetry-url http://127.0.0.1:8099/v1/launch
+```
+
+That repository's `backend/README.md` has the longer version of this
+check, including reading the counts back out afterwards.
+
 ## Static analysis
 
 ```sh
