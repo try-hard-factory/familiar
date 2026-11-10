@@ -182,6 +182,15 @@ int main(int argc, char* argv[])
     // `this`).
     FamSettings::on_startup();
 
+    // Before the window, before the consent dialog, before anything can
+    // be sent: which address this build will report to, and which of
+    // --telemetry-url / FAMILIAR_TELEMETRY_URL / the compiled-in
+    // default supplied it. report_launch() logs the address too, but
+    // only on a launch that actually reports - which is at most one a
+    // day, and never while a question like "is this build even pointed
+    // anywhere" is the one being asked.
+    familiar::telemetry::log_configuration();
+
 
 #ifdef NDEBUG
     FLOG_DEBUG(Ch::Core, "NDEBUG defined");
