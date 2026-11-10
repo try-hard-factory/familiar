@@ -13,6 +13,7 @@ class UndoHistorySizeRow;
 class AutoOptimizeImportedImagesRow;
 class RawImportChoiceRow;
 class AutosaveEnabledRow;
+class TelemetryEnabledRow;
 class AutosaveIntervalRow;
 class ArrangeGapRow;
 class MaximumImageSizeRow;
@@ -65,6 +66,10 @@ private:
     RawImportChoiceRow* rawImportChoice_ = nullptr;
     AutosaveEnabledRow* autosaveEnabled_ = nullptr;
     AutosaveIntervalRow* autosaveInterval_ = nullptr;
+    // Null when the build has telemetry compiled out
+    // (-DFAMILIAR_TELEMETRY=OFF): there is nothing the row could
+    // control, and showing a dead switch is worse than showing none.
+    TelemetryEnabledRow* telemetryEnabled_ = nullptr;
 
     QWidget* imagesPage_ = nullptr;
     ArrangeGapRow* arrangeGap_ = nullptr;

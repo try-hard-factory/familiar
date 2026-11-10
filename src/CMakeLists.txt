@@ -97,6 +97,8 @@ set(PROJECT_SOURCES
         core/settingshandler.h
         core/valuehandler.cpp
         core/valuehandler.h
+        telemetry/telemetry.cpp
+        telemetry/telemetry.h
         ui/colors_widget.h
         ui/colors_widget.cpp
         ui/extendedslider.cpp
@@ -141,6 +143,8 @@ set(PROJECT_SOURCES
         widgets/save_all_dialog.h
         widgets/restore_defaults_dialog.cpp
         widgets/restore_defaults_dialog.h
+        widgets/telemetry_consent_dialog.cpp
+        widgets/telemetry_consent_dialog.h
         widgets/raw_import_dialog.cpp
         widgets/raw_import_dialog.h
         widgets/help_dialog.cpp

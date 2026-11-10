@@ -3,6 +3,7 @@
 
 #include <QCommandLineParser>
 #include <QCoreApplication>
+#include <QDate>
 #include <QDir>
 #include <QFileInfo>
 #include <QHashFunctions>
@@ -12,6 +13,7 @@
 #include <QMap>
 #include <QStringView>
 #include <QVariant>
+#include <Qt>
 #include <QtAssert>
 #include <QtEnvironmentVariables>
 
@@ -21,6 +23,7 @@
 #include <optional>
 
 #include "log/log.h"
+#include "telemetry/telemetry.h"
 using namespace familiar::log;
 
 // ─── CommandlineArgs ──────────────────────────────────────────────────────────
@@ -76,6 +79,17 @@ void add_options(QCommandLineParser& parser)
                               "debug log view (default: INFO)"),
          QStringLiteral("level"),
          QStringLiteral("INFO")});
+
+    parser.addOption(
+        {QStringLiteral("telemetry-url"),
+         QCoreApplication::tr("Where to send the anonymous launch count "
+                              "(overrides the built-in address)"),
+         QStringLiteral("url")});
+
+    parser.addOption(
+        {QStringLiteral("no-telemetry"),
+         QCoreApplication::tr("Do not send the anonymous launch count for "
+                              "this run")});
 
     parser.addOption(
         {QStringLiteral("debug-boundingrects"),
@@ -154,6 +168,8 @@ std::optional<int> CommandlineArgs::process(const QCoreApplication& app)
 
     settingsFile_ = parser.value(QStringLiteral("settings"));
     loglevel_ = parser.value(QStringLiteral("loglevel"));
+    telemetryUrl_ = parser.value(QStringLiteral("telemetry-url"));
+    noTelemetry_ = parser.isSet(QStringLiteral("no-telemetry"));
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
     debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
     debugHandles_ = parser.isSet(QStringLiteral("debug-handles"));
@@ -181,6 +197,10 @@ void CommandlineArgs::parse(const QStringList& args)
     if (parser.isSet(QStringLiteral("loglevel"))) {
         loglevel_ = parser.value(QStringLiteral("loglevel"));
     }
+    if (parser.isSet(QStringLiteral("telemetry-url"))) {
+        telemetryUrl_ = parser.value(QStringLiteral("telemetry-url"));
+    }
+    noTelemetry_ = parser.isSet(QStringLiteral("no-telemetry"));
     debugBoundingRects_ = parser.isSet(QStringLiteral("debug-boundingrects"));
     debugShapes_ = parser.isSet(QStringLiteral("debug-shapes"));
     debugHandles_ = parser.isSet(QStringLiteral("debug-handles"));
@@ -341,6 +361,53 @@ const QMap<QString, FieldConfig>& FamSettings::fields()
                      return s == QLatin1String("ask")
                             || s == QLatin1String("always_optimize")
                             || s == QLatin1String("always_keep_original");
+                 },
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
+         }},
+        // ── Telemetry (telemetry/telemetry.h) ────────────────────────
+        // Three keys rather than one, because "off" and "never asked"
+        // are different states: a fresh install must show the consent
+        // dialog, while someone who switched it off must not be asked
+        // again. The install id itself is NOT here - it lives in its own
+        // file, see telemetry::install_id_path() for why.
+        {"Telemetry/enabled",
+         {
+             // The compiled-in default, so a packager can ship the same
+             // code opt-in with -DFAMILIAR_TELEMETRY_DEFAULT_ON=OFF.
+             // Only ever read before the dialog is answered; after that
+             // the stored value wins.
+             /*default*/ .defaultValue = familiar::telemetry::default_enabled(),
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toBool();
+             },
+             /*validate*/ .validate = {},
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
+         }},
+        {"Telemetry/consent_asked",
+         {
+             /*default*/ .defaultValue = false,
+             /*cast*/ .cast = [](const QVariant& v) -> QVariant {
+                 return v.toBool();
+             },
+             /*validate*/ .validate = {},
+             /*postSaveCallback*/
+             .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
+         }},
+        {"Telemetry/last_sent_date",
+         {
+             /*default*/ .defaultValue = QString(),
+             /*cast*/ .cast = {},
+             /*validate*/
+             .validate =
+                 [](const QVariant& v) {
+                     // Must be an ISO date or empty. A junk value here
+                     // would otherwise never equal today's date and so
+                     // would report on every single launch.
+                     const QString s = v.toString();
+                     return s.isEmpty()
+                            || QDate::fromString(s, Qt::ISODate).isValid();
                  },
              /*postSaveCallback*/
              .postSaveCallback = []([[maybe_unused]] const QVariant& v) {},
