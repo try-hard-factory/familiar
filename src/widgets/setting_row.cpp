@@ -13,6 +13,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QHashFunctions>
 #include <QLabel>
+#include <QLayout>
 #include <QList>
 #include <QMargins>
 #include <QMouseEvent>
@@ -144,6 +145,20 @@ void SettingInfoPopup::set_content(const QString& title,
     defaultLabel_->setVisible(!defaultText.isEmpty());
     hintLabel_->setVisible(showResetHint);
     adjustSize();
+    // adjustSize() asks the layout how tall it needs to be at the width
+    // the layout would PREFER, not at the fixed kinfoPopupWidth this
+    // popup actually has (QWidgetPrivate::adjustedSize() derives
+    // heightForWidth from sizeHint().width()). For a word-wrapped
+    // rich-text body those two widths differ in both directions: a long
+    // body prefers more than 320 and so comes back too SHORT, clipping
+    // its last lines - measured at -17px for the telemetry row's own
+    // description, which predates any of the per-shortcut copy - while a
+    // one-line body prefers less and comes back too tall, leaving dead
+    // space under the text. Re-asking at the width that is really in
+    // effect fixes both.
+    if (const QLayout* l = layout()) {
+        resize(width(), l->totalHeightForWidth(width()));
+    }
 }
 
 // ─── HoverInfoLabel ─────────────────────────────────────────────────────────
@@ -193,7 +208,11 @@ bool HoverInfoLabel::event(QEvent* event)
             // a narrow Settings window would otherwise run off-screen.
             if (const QScreen* screen = this->screen()) {
                 const QRect avail = screen->availableGeometry();
-                popup_->adjustSize();
+                // No adjustSize() here - set_content() above already
+                // sized the popup, and at the width it really has (see
+                // its own comment). A second adjustSize() would put the
+                // wrong height back, and this clamp reads height()
+                // right after.
                 pos.setX(qBound(avail.left(),
                                 pos.x(),
                                 avail.right() - popup_->width()));
