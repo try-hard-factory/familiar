@@ -274,8 +274,9 @@ QWidget* BindingsTreeWidget::build_row(BindingTarget* target,
     // "hover for more info" affordance across the whole Settings window.
     // Body text comes from widgets/setting_descriptions.h, keyed by
     // target->id() - same single-source-of-truth table those pages'
-    // own rows read from (currently still a shared placeholder for
-    // every id here, real per-action/control copy is a follow-up).
+    // own rows read from. Every Action and Control has a real entry
+    // there; the copy deliberately never spells out a key chord, since
+    // the "Default: X" line below already shows the live one.
     auto* nameLabel
         = new HoverInfoLabel(highlight_search_match(label, searchFilter_), row);
     nameLabel->set_info_text(
