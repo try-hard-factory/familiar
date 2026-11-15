@@ -27,7 +27,6 @@
 #include <QPointer>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QResizeEvent>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QSize>
@@ -199,7 +198,8 @@ public:
             familiar::dialog_style::panel_style_sheet("ProgressDialog",
                                                       background,
                                                       border,
-                                                      textColor)
+                                                      textColor,
+                                                      /*radiusPx=*/0)
             + familiar::dialog_style::close_button_style_sheet(
                 "progressCloseBtn", textColor, accent)
             // Overrides panelStyleSheet()'s blanket QLabel colour for
@@ -313,13 +313,6 @@ protected:
             return;
         }
         QDialog::mousePressEvent(event);
-    }
-
-    void resizeEvent(QResizeEvent* event) override
-    {
-        QDialog::resizeEvent(event);
-        familiar::dialog_style::apply_rounded_mask(
-            this, familiar::dialog_style::kdialogCornerRadius);
     }
 
 private:
@@ -1146,7 +1139,8 @@ public:
             familiar::dialog_style::panel_style_sheet("ChangeOpacityDialog",
                                                       background,
                                                       border,
-                                                      textColor)
+                                                      textColor,
+                                                      /*radiusPx=*/0)
             + familiar::dialog_style::close_button_style_sheet(
                 "changeOpacityCloseBtn", textColor, accent)
             // Explicit ::groove/::handle rules, not just a bare QSlider
@@ -1214,13 +1208,6 @@ protected:
             return;
         }
         QDialog::mousePressEvent(event);
-    }
-
-    void resizeEvent(QResizeEvent* event) override
-    {
-        QDialog::resizeEvent(event);
-        familiar::dialog_style::apply_rounded_mask(
-            this, familiar::dialog_style::kdialogCornerRadius);
     }
 
 private slots:
@@ -1411,7 +1398,11 @@ public:
 
         setStyleSheet(
             familiar::dialog_style::panel_style_sheet(
-                "ExportImagesFileExistsDialog", background, border, textColor)
+                "ExportImagesFileExistsDialog",
+                background,
+                border,
+                textColor,
+                /*radiusPx=*/0)
             + familiar::dialog_style::close_button_style_sheet(
                 "exportExistsCloseBtn", textColor, accent)
             // Explicit ::indicator rules, not just a bare QRadioButton
@@ -1457,13 +1448,6 @@ protected:
             return;
         }
         QDialog::mousePressEvent(event);
-    }
-
-    void resizeEvent(QResizeEvent* event) override
-    {
-        QDialog::resizeEvent(event);
-        familiar::dialog_style::apply_rounded_mask(
-            this, familiar::dialog_style::kdialogCornerRadius);
     }
 
 private:
