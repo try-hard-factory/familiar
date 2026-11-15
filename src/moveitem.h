@@ -682,41 +682,74 @@ public:
         return item;
     }
 
+    // The histogram itself, as a plain function of an image. Split out
+    // of color_gamut() so GamutPainterThread can run it off the GUI
+    // thread: QPixmap may only be touched on the GUI thread, so the
+    // caller hands over an image taken there (gamut_source_image()),
+    // and nothing in here reaches back into the item or its cache.
+    //
+    // "cancelled" is polled once per sampled column; when it answers
+    // true the walk stops and the partial result is discarded by
+    // returning an empty gamut.
+    static ColorGamut color_gamut_from_image(
+        const QImage& img,
+        const std::function<bool()>& cancelled = {})
+    {
+        ColorGamut gamut;
+        // Don't evaluate every pixel for larger images:
+        const int step = std::max(1, std::max(img.width(), img.height()) / 1000);
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Calculating color gamut, considering every {}. row/column",
+                   step);
+
+        for (int i = 0; i < img.width(); i += step) {
+            if (cancelled && cancelled()) {
+                FLOG_DEBUG(familiar::log::Ch::Items,
+                           "Color gamut calculation cancelled");
+                return {};
+            }
+            for (int j = 0; j < img.height(); j += step) {
+                const QColor rgb = img.pixelColor(i, j);
+                const int r = rgb.red();
+                const int g = rgb.green();
+                const int b = rgb.blue();
+                if (rgb.alpha() > item_consts::kgamutMinAlpha
+                    && std::min({r, g, b}) < item_consts::kgamutMaxChannel
+                    && std::max({r, g, b}) > item_consts::kgamutMinChannel) {
+                    // Only consider pixels that aren't close to
+                    // transparent, white or black
+                    gamut[qMakePair(rgb.hue(), rgb.saturation())]++;
+                }
+            }
+        }
+
+        FLOG_DEBUG(familiar::log::Ch::Items,
+                   "Got {} color gamut values",
+                   gamut.size());
+        return gamut;
+    }
+
+    // GUI thread only - QPixmap::toImage().
+    QImage gamut_source_image() const { return pixmap().toImage(); }
+
+    // The lazy cache below has no synchronisation of its own, so every
+    // one of these three is GUI-thread-only as well.
+    bool has_color_gamut() const { return colorGamut_.has_value(); }
+    // By value: ColorGamut is a QMap, so a copy is a refcount bump, and
+    // handing the optional back whole saves every caller a guard.
+    std::optional<ColorGamut> cached_color_gamut() const { return colorGamut_; }
+    void cache_color_gamut(ColorGamut gamut) const
+    {
+        colorGamut_ = std::move(gamut);
+    }
+
     const ColorGamut& color_gamut() const
     {
         if (!colorGamut_) {
             FLOG_DEBUG(familiar::log::Ch::Items,
                        "Calculating color gamut for {}",
                        to_string());
-            ColorGamut gamut;
-            const QImage img = pixmap().toImage();
-            // Don't evaluate every pixel for larger images:
-            const int step
-                = std::max(1, std::max(img.width(), img.height()) / 1000);
-            FLOG_DEBUG(familiar::log::Ch::Items,
-                       "Considering every {}. row/column",
-                       step);
-
-            for (int i = 0; i < img.width(); i += step) {
-                for (int j = 0; j < img.height(); j += step) {
-                    const QColor rgb = img.pixelColor(i, j);
-                    const int r = rgb.red();
-                    const int g = rgb.blue();
-                    const int b = rgb.green();
-                    if (rgb.alpha() > item_consts::kgamutMinAlpha
-                        && std::min({r, g, b}) < item_consts::kgamutMaxChannel
-                        && std::max({r, g, b}) > item_consts::kgamutMinChannel) {
-                        // Only consider pixels that aren't close to
-                        // transparent, white or black
-                        gamut[qMakePair(rgb.hue(), rgb.saturation())]++;
-                    }
-                }
-            }
-
-            FLOG_DEBUG(familiar::log::Ch::Items,
-                       "Got {} color gamut values",
-                       gamut.size());
-            colorGamut_ = gamut;
+            colorGamut_ = color_gamut_from_image(pixmap().toImage());
         }
         return *colorGamut_;
     }
