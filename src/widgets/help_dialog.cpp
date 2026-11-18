@@ -70,30 +70,24 @@ const QList<ControlRow>& default_control_rows()
     return rows;
 }
 
-// A wrapping rich-text QLabel with ONE inline link (`linkText`, plain
-// href="#" - never actually navigates, just a hook for linkActivated)
-// embedded in a sentence, e.g. "To see or change every shortcut, open
-// Keyboard Shortcuts." Deliberately ONE label rather than a separate
-// intro QLabel + link QLabel side by side in an HBoxLayout - neither
-// widget word-wraps on its own in that layout, so at this dialog's
-// width the text just ran past the edge and got clipped instead of
-// flowing to a second line. A single wrapping label reflows the WHOLE
-// sentence together, link included, exactly like a real paragraph.
+// Keep the sentence and its link in one label so the entire paragraph wraps.
+// Internal links use "#" and emit linkActivated; external links open in a browser.
 QLabel* make_inline_link_paragraph(const QString& before,
                                    const QString& linkText,
                                    const QString& after,
                                    QWidget* parent,
-                                   const QColor& accent)
+                                   const QColor& accent,
+                                   const QString& href = QStringLiteral("#"))
 {
     const QString prefix = before.isEmpty() ? QString() : before + QChar(' ');
-    auto* label = new QLabel(QStringLiteral("%1<a href=\"#\" style=\"color:%2; "
-                                            "text-decoration:none;\">%3</a>%4")
-                                 .arg(prefix, accent.name(), linkText, after),
+    auto* label = new QLabel(QStringLiteral("%1<a href=\"%2\" style=\"color:%3; "
+                                            "text-decoration:none;\">%4</a>%5")
+                                 .arg(prefix, href, accent.name(), linkText, after),
                              parent);
     label->setWordWrap(true);
     label->setTextInteractionFlags(Qt::TextBrowserInteraction);
     label->setCursor(Qt::PointingHandCursor);
-    label->setOpenExternalLinks(false);
+    label->setOpenExternalLinks(href != QStringLiteral("#"));
     return label;
 }
 
@@ -198,13 +192,41 @@ HelpDialog::HelpDialog(MainWindow* wm, QWidget* parent)
     outer->addWidget(supportHeading);
 
     auto* supportLabel = make_inline_link_paragraph(
-        tr("Something not working right? Write me to discord:"),
-        tr("?????"),
+        tr("Something not working right? Ask on the"),
+        tr("familiar Discord server"),
         QStringLiteral("."),
         this,
-        accent);
+        accent,
+        QStringLiteral("https://discord.gg/3672sNT5qA"));
 
     outer->addWidget(supportLabel);
+
+    auto* issuesLabel = make_inline_link_paragraph(
+        tr("Report a bug on"),
+        tr("GitHub"),
+        QStringLiteral("."),
+        this,
+        accent,
+        QStringLiteral("https://github.com/try-hard-factory/familiar/issues"));
+    outer->addWidget(issuesLabel);
+
+    auto* emailLabel = make_inline_link_paragraph(
+        tr("Or email us at"),
+        QStringLiteral("tryhardfactory@proton.me"),
+        QStringLiteral("."),
+        this,
+        accent,
+        QStringLiteral("mailto:tryhardfactory@proton.me"));
+    outer->addWidget(emailLabel);
+
+    auto* updatesLabel = make_inline_link_paragraph(
+        tr("Follow updates on"),
+        tr("X"),
+        QStringLiteral("."),
+        this,
+        accent,
+        QStringLiteral("https://x.com/familiar_app"));
+    outer->addWidget(updatesLabel);
 
     outer->addSpacing(kfooterSpacing);
 
