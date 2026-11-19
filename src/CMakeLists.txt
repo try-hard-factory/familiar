@@ -50,6 +50,8 @@ set(PROJECT_SOURCES
         moveitem.h
         modelitem.cpp
         modelitem.h
+        model_preview.cpp
+        model_preview.h
         model_viewer.qrc
         canvasscene.cpp
         canvasscene.h

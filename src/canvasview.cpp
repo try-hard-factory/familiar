@@ -8,6 +8,7 @@
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "modelitem.h"
+#include "model_preview.h"
 #include "project_settings.h"
 #include "ui/gif_playback_toolbar.h"
 #include "ui/group_toolbar.h"
@@ -228,6 +229,18 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     init_main_controls(&mw);
     setContextMenuPolicy(Qt::DefaultContextMenu);
     viewport()->setMouseTracking(true);
+
+    // QQuickWidget changes the top-level window's rendering setup when it is
+    // first added. Create it before the main window is shown, so unlocking a
+    // model cannot make the application window briefly vanish.
+    modelViewer_ = new QQuickWidget(viewport());
+    modelViewer_->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    modelViewer_->setFocusPolicy(Qt::StrongFocus);
+    modelViewer_->setSource(QUrl(QStringLiteral("qrc:/model/model_viewer.qml")));
+    modelViewer_->hide();
+    auto* modelEscape = new QShortcut(QKeySequence(Qt::Key_Escape), modelViewer_);
+    modelEscape->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(modelEscape, &QShortcut::activated, this, &CanvasView::end_model_edit);
 
     // See selectionOutlineOpacity(): fades selection chrome out after
     // this window loses activation and the cursor isn't hovering it
@@ -984,15 +997,6 @@ void CanvasView::start_model_edit(ModelItem* model)
     if (source.isEmpty()) {
         QMessageBox::warning(this, tr("3D model"), tr("Could not prepare the model file."));
         return;
-    }
-    if (!modelViewer_) {
-        modelViewer_ = new QQuickWidget(viewport());
-        modelViewer_->setResizeMode(QQuickWidget::SizeRootObjectToView);
-        modelViewer_->setFocusPolicy(Qt::StrongFocus);
-        modelViewer_->setSource(QUrl(QStringLiteral("qrc:/model/model_viewer.qml")));
-        auto* escape = new QShortcut(QKeySequence(Qt::Key_Escape), modelViewer_);
-        escape->setContext(Qt::WidgetWithChildrenShortcut);
-        connect(escape, &QShortcut::activated, this, &CanvasView::end_model_edit);
     }
     if (modelViewer_->status() != QQuickWidget::Ready || !modelViewer_->rootObject()) {
         QMessageBox::warning(this, tr("3D model"), tr("Could not start the 3D viewer."));
@@ -1837,7 +1841,7 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
         return nullptr;
     }
     const bool wasEmpty = scene_->items().isEmpty();
-    auto* model = new ModelItem({}, bytes, filename);
+    auto* model = new ModelItem(render_model_preview(bytes), bytes, filename);
     undoStack_->push(new InsertItemsCommand(scene_, {model}, scenePos));
     on_scene_changed();
     if (wasEmpty) {
