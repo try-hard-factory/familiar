@@ -80,7 +80,7 @@ Item {
             anchors.centerIn: parent
             color: "white"
             text: loader.status === RuntimeLoader.Error ? loader.errorString
-                : "Drag to rotate · Wheel to zoom · Esc to finish"
+                : "Drag to rotate · Wheel to zoom · Lock or Esc to finish"
             font.pixelSize: 12
         }
     }

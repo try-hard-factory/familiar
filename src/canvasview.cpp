@@ -11,6 +11,7 @@
 #include "project_settings.h"
 #include "ui/gif_playback_toolbar.h"
 #include "ui/group_toolbar.h"
+#include "ui/model_toolbar.h"
 #include "ui/text_edit_toolbar.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
@@ -104,6 +105,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     , textToolbar_(new TextEditToolbar(viewport()))
     , gifToolbar_(new GifPlaybackToolbar(viewport()))
     , groupToolbar_(new GroupToolbar(viewport()))
+    , modelToolbar_(new ModelToolbar(viewport()))
     , mainwindow_(mw)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
@@ -191,16 +193,29 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
             this,
             &CanvasView::update_group_toolbar_pos);
 
+    modelToolbar_->hide();
+    connect(modelToolbar_, &ModelToolbar::edit_toggled, this,
+            [this](ModelItem* item, bool editing) {
+                if (editing) {
+                    start_model_edit(item);
+                } else {
+                    end_model_edit();
+                }
+                modelToolbar_->set_editing(activeModel_ == item);
+            });
+
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         update_text_toolbar_pos();
         update_gif_toolbar_pos();
         update_group_toolbar_pos();
+        update_model_toolbar_pos();
         update_model_viewer_pos();
     });
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         update_text_toolbar_pos();
         update_gif_toolbar_pos();
         update_group_toolbar_pos();
+        update_model_toolbar_pos();
         update_model_viewer_pos();
     });
 
@@ -358,6 +373,7 @@ void CanvasView::on_scene_changed()
     // simpler than hooking drag-specific events separately).
     update_gif_toolbar_pos();
     update_group_toolbar_pos();
+    update_model_toolbar_pos();
 }
 
 void CanvasView::on_selection_changed()
@@ -396,6 +412,23 @@ void CanvasView::on_selection_changed()
         update_group_toolbar_pos();
     } else {
         groupToolbar_->hide();
+    }
+
+    ModelItem* modelItem = nullptr;
+    if (selected.size() == 1) {
+        modelItem = dynamic_cast<ModelItem*>(selected.first());
+    }
+    if (activeModel_ && activeModel_ != modelItem) {
+        end_model_edit();
+    }
+    modelToolbar_->attach(modelItem);
+    modelToolbar_->set_editing(activeModel_ == modelItem && modelItem);
+    if (modelItem) {
+        modelToolbar_->show();
+        modelToolbar_->raise();
+        update_model_toolbar_pos();
+    } else {
+        modelToolbar_->hide();
     }
 }
 
@@ -438,6 +471,9 @@ void CanvasView::settings_changed_slot()
     }
     if (groupToolbar_) {
         groupToolbar_->restyle_from_preset();
+    }
+    if (modelToolbar_) {
+        modelToolbar_->restyle_from_preset();
     }
 }
 
@@ -546,6 +582,7 @@ void CanvasView::do_scale(qreal sx, qreal sy)
     update_text_toolbar_pos();
     update_gif_toolbar_pos();
     update_group_toolbar_pos();
+    update_model_toolbar_pos();
     update_model_viewer_pos();
 }
 
@@ -625,6 +662,26 @@ void CanvasView::update_group_toolbar_pos()
     x = qBound(0, x, qMax(0, viewport()->width() - groupToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - groupToolbar_->height()));
     groupToolbar_->move(x, y);
+}
+
+void CanvasView::update_model_toolbar_pos()
+{
+    if (!modelToolbar_ || !modelToolbar_->isVisible()
+        || !modelToolbar_->item()) {
+        return;
+    }
+    if (!scene_->items().contains(modelToolbar_->item())) {
+        modelToolbar_->attach(nullptr);
+        modelToolbar_->hide();
+        return;
+    }
+    const QRectF itemRect = modelToolbar_->item()->sceneBoundingRect();
+    const int centerX = mapFromScene(itemRect.center()).x();
+    int x = centerX - modelToolbar_->width() / 2;
+    int y = mapFromScene(itemRect.bottomLeft()).y() + ktoolbarGap;
+    x = qBound(0, x, qMax(0, viewport()->width() - modelToolbar_->width()));
+    y = qMin(y, qMax(0, viewport()->height() - modelToolbar_->height()));
+    modelToolbar_->move(x, y);
 }
 
 double CanvasView::get_zoom_size(
@@ -733,6 +790,9 @@ void CanvasView::wheelEvent(QWheelEvent* event)
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
+    if (activeModel_) {
+        end_model_edit();
+    }
     if (mouse_press_event_main_controls(event)) {
         return;
     }
@@ -788,6 +848,9 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     if (groupToolbar_->isVisible()) {
         groupToolbar_->hide();
     }
+    if (modelToolbar_->isVisible()) {
+        modelToolbar_->hide();
+    }
 
     QGraphicsView::mousePressEvent(event);
 }
@@ -842,6 +905,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         if (groupToolbar_->isVisible()) {
             groupToolbar_->hide();
         }
+        if (modelToolbar_->isVisible()) {
+            modelToolbar_->hide();
+        }
     }
 
     QGraphicsView::mouseMoveEvent(event);
@@ -891,6 +957,14 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
             update_group_toolbar_pos();
         }
     }
+    if (const ModelItem* item = modelToolbar_->item()) {
+        if (!modelToolbar_->isVisible() && selected.size() == 1
+            && selected.first() == item) {
+            modelToolbar_->show();
+            modelToolbar_->raise();
+            update_model_toolbar_pos();
+        }
+    }
 }
 
 void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
@@ -933,6 +1007,10 @@ void CanvasView::start_model_edit(ModelItem* model)
     update_model_viewer_pos();
     modelViewer_->show();
     modelViewer_->raise();
+    modelToolbar_->set_editing(true);
+    modelToolbar_->show();
+    modelToolbar_->raise();
+    update_model_toolbar_pos();
     modelViewer_->setFocus();
 }
 
@@ -966,6 +1044,12 @@ void CanvasView::end_model_edit()
         }
     }
     modelViewer_->hide();
+    modelToolbar_->set_editing(false);
+    if (modelToolbar_->item() == model) {
+        modelToolbar_->show();
+        modelToolbar_->raise();
+        update_model_toolbar_pos();
+    }
     if (root) {
         root->setProperty("modelSource", QUrl());
     }
@@ -980,6 +1064,11 @@ void CanvasView::update_model_viewer_pos()
     if (!scene_->items().contains(activeModel_)) {
         activeModel_ = nullptr;
         modelViewer_->hide();
+        if (QObject* root = modelViewer_->rootObject()) {
+            root->setProperty("modelSource", QUrl());
+        }
+        modelToolbar_->attach(nullptr);
+        modelToolbar_->hide();
         return;
     }
     const QRect rect = mapFromScene(activeModel_->sceneBoundingRect()).boundingRect();
@@ -1082,6 +1171,7 @@ void CanvasView::resizeEvent(QResizeEvent* event)
     update_text_toolbar_pos();
     update_gif_toolbar_pos();
     update_group_toolbar_pos();
+    update_model_toolbar_pos();
     update_model_viewer_pos();
 }
 
@@ -1726,12 +1816,11 @@ void CanvasView::on_action_insert_model()
     if (filename.isEmpty()) {
         return;
     }
-    insert_model_file(filename, mapToScene(viewport()->rect().center()), true);
+    insert_model_file(filename, mapToScene(viewport()->rect().center()));
 }
 
 ModelItem* CanvasView::insert_model_file(const QString& filename,
-                                         const QPointF& scenePos,
-                                         bool activate)
+                                         const QPointF& scenePos)
 {
     cancel_active_modes();
     QFile file(filename);
@@ -1753,9 +1842,6 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
     on_scene_changed();
     if (wasEmpty) {
         on_action_fit_scene();
-    }
-    if (activate) {
-        start_model_edit(model);
     }
     return model;
 }
@@ -2224,8 +2310,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     for (int i = 0; i < modelFiles.size(); ++i) {
         const QPointF offset(i * 24.0 / get_scale(),
                              i * 24.0 / get_scale());
-        insert_model_file(modelFiles.at(i), scenePos + offset,
-                          modelFiles.size() == 1 && imageUrls.isEmpty());
+        insert_model_file(modelFiles.at(i), scenePos + offset);
     }
     if (imageUrls.isEmpty()) {
         return;
