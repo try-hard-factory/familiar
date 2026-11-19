@@ -15,3 +15,4 @@ tidy-*.log
 
 # Local notes and release checklists; keep media in docs tracked.
 /docs/**/*.md
+/build_debug/

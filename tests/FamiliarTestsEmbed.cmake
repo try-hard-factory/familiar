@@ -48,6 +48,7 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/io/scene_export_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/import_session_settings_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/fml_deferred_encode_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/model_canvas_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/import_lossless_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/repaired_project_backup_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/worker_lifetime_test.cpp

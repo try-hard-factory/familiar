@@ -37,6 +37,8 @@ class TextEditToolbar;
 class GifPlaybackToolbar;
 class GroupItem;
 class GroupToolbar;
+class ModelItem;
+class QQuickWidget;
 
 struct PreviousTransform
 {
@@ -256,6 +258,7 @@ public:
 
     // Insert
     void on_action_insert_images();
+    void on_action_insert_model();
     void on_action_insert_text();
 
     // Transform
@@ -345,6 +348,9 @@ private:
     // Same idea again, for the group toolbar -
     // shown/hidden from on_selection_changed() same as the GIF one.
     void update_group_toolbar_pos();
+    void start_model_edit(ModelItem* model);
+    void end_model_edit();
+    void update_model_viewer_pos();
     // Shows RawImportDialog and applies the answer to imageImportSession_
     // (setQueueChoice()/setOneShotChoice(), plus persisting to
     // Items/raw_import_choice if "Remember choice" was checked) - shared
@@ -362,6 +368,8 @@ private:
     TextEditToolbar* textToolbar_ = nullptr;
     GifPlaybackToolbar* gifToolbar_ = nullptr;
     GroupToolbar* groupToolbar_ = nullptr;
+    QQuickWidget* modelViewer_ = nullptr;
+    ModelItem* activeModel_ = nullptr;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;
