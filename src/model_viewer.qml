@@ -48,6 +48,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
+        enabled: root.loaded
         acceptedButtons: Qt.LeftButton
         property real lastX
         property real lastY
@@ -66,6 +67,15 @@ Item {
         }
     }
 
+    Text {
+        anchors.centerIn: parent
+        visible: root.modelSource.toString().length > 0
+                 && !root.loaded && loader.status !== RuntimeLoader.Error
+        text: "Loading 3D model…"
+        color: "#dce7f3"
+        font.pixelSize: 15
+    }
+
     Rectangle {
         visible: root.showHint
         anchors.horizontalCenter: parent.horizontalCenter
@@ -80,7 +90,8 @@ Item {
             anchors.centerIn: parent
             color: "white"
             text: loader.status === RuntimeLoader.Error ? loader.errorString
-                : "Drag to rotate · Wheel to zoom · Lock or Esc to finish"
+                : root.loaded ? "Drag to rotate · Wheel to zoom · Lock or Esc to finish"
+                : "Lock or Esc to finish"
             font.pixelSize: 12
         }
     }

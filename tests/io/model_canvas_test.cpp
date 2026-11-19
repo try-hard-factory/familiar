@@ -147,6 +147,18 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
     ASSERT_EQ(models.size(), 1);
     auto* model = dynamic_cast<ModelItem*>(models.first());
     ASSERT_NE(model, nullptr);
+    const QImage thumbnail = model->pixmap().toImage();
+    ASSERT_FALSE(thumbnail.isNull());
+    bool hasGeometry = false;
+    for (int y = 0; y < thumbnail.height() && !hasGeometry; ++y) {
+        for (int x = 0; x < thumbnail.width(); ++x) {
+            if (thumbnail.pixelColor(x, y) != QColor("#28313d")) {
+                hasGeometry = true;
+                break;
+            }
+        }
+    }
+    EXPECT_TRUE(hasGeometry);
     auto* toolbar = canvas->findChild<ModelToolbar*>();
     ASSERT_NE(toolbar, nullptr);
     auto* button = toolbar->findChild<QToolButton*>();
@@ -155,7 +167,9 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
     EXPECT_EQ(toolbar->item(), model);
     EXPECT_TRUE(toolbar->isVisible());
     EXPECT_FALSE(button->isChecked());
-    EXPECT_EQ(canvas->findChild<QQuickWidget*>(), nullptr);
+    auto* editViewer = canvas->findChild<QQuickWidget*>();
+    ASSERT_NE(editViewer, nullptr);
+    EXPECT_FALSE(editViewer->isVisible());
 
     canvas->scene()->deselect_all_items();
     QTest::mouseClick(canvas->viewport(),
@@ -167,9 +181,8 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
 
     QTest::mouseClick(button, Qt::LeftButton);
     EXPECT_TRUE(button->isChecked());
-    auto* editViewer = canvas->findChild<QQuickWidget*>();
-    ASSERT_NE(editViewer, nullptr);
     EXPECT_TRUE(editViewer->isVisible());
+    EXPECT_TRUE(window.isVisible());
 
     QTest::mouseClick(button, Qt::LeftButton);
     EXPECT_FALSE(button->isChecked());
