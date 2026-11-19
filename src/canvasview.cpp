@@ -1816,7 +1816,23 @@ void CanvasView::on_action_grayscale()
 
 void CanvasView::on_action_show_color_gamut()
 {
-    auto* item = dynamic_cast<PixmapItem*>(scene_->selectedItems().first());
+    // userOnly, to match the active_when_single_image group that gates
+    // this action (CanvasScene::has_single_image_selection()): the plain
+    // overload also returns the multi-select outline and other UI items,
+    // and QGraphicsScene::selectedItems() has no defined order, so
+    // first() on it is not necessarily the picture.
+    const QList<QGraphicsItem*> selected = scene_->selectedItems(true);
+    if (selected.size() != 1) {
+        FLOG_WARN(Ch::View,
+                  "Show color gamut with {} selected items, ignoring",
+                  selected.size());
+        return;
+    }
+    auto* item = dynamic_cast<PixmapItem*>(selected.first());
+    if (item == nullptr) {
+        FLOG_WARN(Ch::View, "Show color gamut on a non-image item, ignoring");
+        return;
+    }
     new GamutDialog(this, item);
 }
 

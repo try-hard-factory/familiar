@@ -1,26 +1,51 @@
-# familiar
+<p align="center">
+  <img src="data/img/app/familiar_256.png" alt="Familiar app icon" width="112">
+</p>
 
-[![main build](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/build_cmake.yml?branch=main&label=main%20build)](https://github.com/try-hard-factory/familiar/actions/workflows/build_cmake.yml?query=branch%3Amain)
-[![nightly](https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/nightly.yml?branch=main&label=nightly)](https://github.com/try-hard-factory/familiar/actions/workflows/nightly.yml)
-[![release](https://img.shields.io/github/v/release/try-hard-factory/familiar)](https://github.com/try-hard-factory/familiar/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/try-hard-factory/familiar/total)](https://github.com/try-hard-factory/familiar/releases)
-[![license](https://img.shields.io/github/license/try-hard-factory/familiar)](LICENSE)
+<h1 align="center">Familiar</h1>
 
-[![issues](https://img.shields.io/github/issues/try-hard-factory/familiar)](https://github.com/try-hard-factory/familiar/issues)
-[![discussions](https://img.shields.io/github/discussions/try-hard-factory/familiar)](https://github.com/try-hard-factory/familiar/discussions)
-[![stars](https://img.shields.io/github/stars/try-hard-factory/familiar?style=flat)](https://github.com/try-hard-factory/familiar)
-[![last commit](https://img.shields.io/github/last-commit/try-hard-factory/familiar?branch=main)](https://github.com/try-hard-factory/familiar/commits/main)
-<!-- PLACEHOLDER: no Discord server exists yet. Replace REPLACE_ME with the
-     real invite code before this ships, or drop the badge - as written the
-     link 404s. -->
-[![discord](https://img.shields.io/badge/discord-join-5865F2?logo=discord&logoColor=white)](https://discord.gg/REPLACE_ME)
+<p align="center">
+  <strong>Every reference you need, on one board.</strong><br>
+  A free, open source reference board for 2D and 3D artists.
+</p>
 
-[![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt&logoColor=white)](https://www.qt.io/)
-[![C++](https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white)](https://en.cppreference.com/w/cpp/20)
-[![platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](https://github.com/try-hard-factory/familiar/releases/latest)
+<p align="center">
+  <a href="https://familiar-app.net/">Website</a> ·
+  <a href="https://familiar-app.net/download/">Download</a> ·
+  <a href="https://familiar-app.net/docs/">Handbook</a> ·
+  <a href="https://x.com/familiar_app">X</a> ·
+  <a href="https://discord.gg/3672sNT5qA">Discord</a>
+</p>
 
-Reference board for 2D/3D artists — a canvas for collecting, arranging,
-and annotating reference images. Qt6/C++.
+<p align="center">
+  <a href="https://github.com/try-hard-factory/familiar/actions/workflows/build_cmake.yml?query=branch%3Amain"><img alt="main build" src="https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/build_cmake.yml?branch=main&amp;label=main%20build"></a>
+  <a href="https://github.com/try-hard-factory/familiar/actions/workflows/nightly.yml"><img alt="nightly" src="https://img.shields.io/github/actions/workflow/status/try-hard-factory/familiar/nightly.yml?branch=main&amp;label=nightly"></a>
+  <a href="https://github.com/try-hard-factory/familiar/releases/latest"><img alt="latest release" src="https://img.shields.io/github/v/release/try-hard-factory/familiar"></a>
+  <a href="https://github.com/try-hard-factory/familiar/releases"><img alt="downloads" src="https://img.shields.io/github/downloads/try-hard-factory/familiar/total"></a>
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/github/license/try-hard-factory/familiar"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/try-hard-factory/familiar/issues"><img alt="issues" src="https://img.shields.io/github/issues/try-hard-factory/familiar"></a>
+  <a href="https://github.com/try-hard-factory/familiar/discussions"><img alt="discussions" src="https://img.shields.io/github/discussions/try-hard-factory/familiar"></a>
+  <a href="https://github.com/try-hard-factory/familiar"><img alt="stars" src="https://img.shields.io/github/stars/try-hard-factory/familiar?style=flat"></a>
+  <a href="https://github.com/try-hard-factory/familiar/commits/main"><img alt="last commit" src="https://img.shields.io/github/last-commit/try-hard-factory/familiar?branch=main"></a>
+</p>
+
+<p align="center">
+  <a href="https://discord.gg/3672sNT5qA"><img alt="Discord members" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv10%2Finvites%2F3672sNT5qA%3Fwith_counts%3Dtrue&amp;query=%24.approximate_member_count&amp;label=Discord%20members&amp;logo=discord&amp;logoColor=white&amp;color=5865F2"></a>
+  <a href="https://discord.gg/3672sNT5qA"><img alt="Join Discord" src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&amp;logoColor=white"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.qt.io/"><img alt="Qt 6" src="https://img.shields.io/badge/Qt-6-41CD52?logo=qt&amp;logoColor=white"></a>
+  <a href="https://en.cppreference.com/w/cpp/20"><img alt="C++20" src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&amp;logoColor=white"></a>
+  <a href="https://github.com/try-hard-factory/familiar/releases/latest"><img alt="Linux and Windows; macOS coming soon" src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20macOS%20soon-lightgrey"></a>
+</p>
+
+<p align="center"><sub>Linux · Windows · macOS (Apple Silicon) coming soon</sub></p>
+
+---
 
 
 ## Building
@@ -193,12 +218,12 @@ behind it, but it costs one lookup to honour.
 |---|---|---|
 | `FAMILIAR_TELEMETRY` | `ON` | compile the feature in at all |
 | `FAMILIAR_TELEMETRY_DEFAULT_ON` | `ON` | first-run checkbox starts ticked |
-| `FAMILIAR_TELEMETRY_URL` | *(empty)* | endpoint; empty means nothing is ever sent |
+| `FAMILIAR_TELEMETRY_URL` | `https://familiar-app.net/v1/launch` | endpoint; empty means nothing is ever sent |
 
-No address is compiled in by default, so a build that forgets to set
-`FAMILIAR_TELEMETRY_URL` is silent rather than pointed somewhere wrong.
-Override at runtime with `--telemetry-url` or `FAMILIAR_TELEMETRY_URL`,
-which is how to aim a development build at a local server:
+Official builds use the public endpoint after the user accepts the first-run
+consent dialog. Override it at CMake configure time, or at runtime with
+`--telemetry-url` or `FAMILIAR_TELEMETRY_URL`, to aim a development build
+at a local server:
 
 ```sh
 # in a clone of familiar-web:

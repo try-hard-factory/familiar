@@ -5,13 +5,7 @@
 class MainWindow;
 class QMouseEvent;
 
-// "Help" (F1, the "help" action) - two-section layout
-// (Controls + Support), adapted from a reference.
-// Its own external links (handbook, keyboard shortcuts web page, FAQ,
-// forums) are all skipped - no site yet - replaced where a real in-app
-// equivalent exists (Settings' Keyboard Shortcuts page, the Debug Log
-// dialog) instead of just being cut with
-// nothing in their place.
+// "Help" (F1, the "help" action) shows controls and a support link.
 class HelpDialog : public QDialog
 {
     Q_OBJECT

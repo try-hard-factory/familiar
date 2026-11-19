@@ -15,7 +15,6 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
-#include <QResizeEvent>
 #include <QVBoxLayout>
 #include <QWindow>
 #include <Qt>
@@ -162,7 +161,8 @@ TelemetryConsentDialog::TelemetryConsentDialog(QWidget* parent)
         familiar::dialog_style::panel_style_sheet("TelemetryConsentDialog",
                                                   background,
                                                   border,
-                                                  textColor)
+                                                  textColor,
+                                                  /*radiusPx=*/0)
         + familiar::dialog_style::close_button_style_sheet("tcdCloseBtn",
                                                            textColor,
                                                            accent));
@@ -183,13 +183,4 @@ void TelemetryConsentDialog::mousePressEvent(QMouseEvent* event)
         return;
     }
     QDialog::mousePressEvent(event);
-}
-
-void TelemetryConsentDialog::resizeEvent(QResizeEvent* event)
-{
-    QDialog::resizeEvent(event);
-    // QSS border-radius only paints inside the rounded outline; without
-    // this the real window corners stay square and show through.
-    familiar::dialog_style::apply_rounded_mask(
-        this, familiar::dialog_style::kdialogCornerRadius);
 }

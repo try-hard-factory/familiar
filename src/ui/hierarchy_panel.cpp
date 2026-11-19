@@ -646,7 +646,11 @@ QTreeWidgetItem* HierarchyPanel::make_node(QGraphicsItem* item)
                     : QFileInfo(picture->filename()).fileName();
         icon = make_picture_icon(picture->pixmap(), text);
     } else if (auto* txt = dynamic_cast<TextItem*>(item)) {
-        const QString plain = txt->toPlainText().trimmed();
+        // simplified(), not trimmed(): a note's own line breaks survive
+        // trimmed() and land in the label, and since the tree runs with
+        // setUniformRowHeights(true) one multi-line label stretches
+        // EVERY row in the panel to its height.
+        const QString plain = txt->toPlainText().simplified();
         label = plain.isEmpty() ? QObject::tr("Text") : plain.left(klabelChars);
         icon = make_text_icon(text);
     } else {
