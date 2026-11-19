@@ -29,13 +29,18 @@ add_definitions(-DFAMILIAR_VERSION_STRING="${PROJECT_VERSION}")
 option(FAMILIAR_TELEMETRY "Build the anonymous install/launch counter" ON)
 option(FAMILIAR_TELEMETRY_DEFAULT_ON
        "Start the first-run consent checkbox ticked" ON)
-# Empty by default on purpose: no address is hardcoded until there is a real
-# one. With no endpoint configured the client reports nothing at all (see
-# telemetry::suppression_reason()), so a build that forgets to set this is
-# silent rather than pointed somewhere wrong. Override per build, or at
-# runtime with --telemetry-url / FAMILIAR_TELEMETRY_URL.
-set(FAMILIAR_TELEMETRY_URL "https://telemetry.example.org/v1/launch" CACHE STRING
+# Official builds report to the public endpoint after first-run consent.
+# Packagers can override this per build, or disable telemetry entirely with
+# FAMILIAR_TELEMETRY=OFF. Runtime overrides are --telemetry-url and the
+# FAMILIAR_TELEMETRY_URL environment variable.
+set(FAMILIAR_TELEMETRY_URL "https://familiar-app.net/v1/launch" CACHE STRING
     "Endpoint for the launch counter, e.g. https://example.org/v1/launch")
+# CMake keeps the old value in existing build directories. Migrate only
+# the previous example endpoint; explicit custom URLs remain untouched.
+if(FAMILIAR_TELEMETRY_URL STREQUAL "https://telemetry.example.org/v1/launch")
+    set(FAMILIAR_TELEMETRY_URL "https://familiar-app.net/v1/launch" CACHE STRING
+        "Endpoint for the launch counter, e.g. https://example.org/v1/launch" FORCE)
+endif()
 
 if(FAMILIAR_TELEMETRY)
     add_definitions(-DFAMILIAR_TELEMETRY)
