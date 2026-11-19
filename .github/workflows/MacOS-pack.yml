@@ -1,12 +1,9 @@
 name: Packaging(MacOS)
 
+# Keep macOS packaging available for manual testing while beta releases
+# publish only Windows portable ZIP and Linux AppImage.
 on:
-  push:
-    tags:
-      - 'v[0-9].[0-9]+.[0-9]+'
-    paths-ignore:
-      - 'README.md'
-      - 'LICENSE'
+  workflow_dispatch:
 
 env:
   PRODUCT: familiar

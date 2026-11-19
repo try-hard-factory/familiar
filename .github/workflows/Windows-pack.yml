@@ -84,7 +84,9 @@ jobs:
             qt_arch_install: msvc2022_64,
             pak_arch: win64
           }
-        type: [portable, installer]
+        # Beta releases ship only the portable ZIP. Keep installer steps
+        # below so the MSI can be re-enabled later by restoring the matrix.
+        type: [portable]
     steps:
       - name: Checkout Source code
         if: github.event_name == 'push'
