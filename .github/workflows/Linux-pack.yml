@@ -75,6 +75,7 @@ jobs:
   # tooling at all, works on any glibc-compatible distro close enough to
   # the build image.
   tarball-pack:
+    if: ${{ false }} # Beta release: AppImage is the only Linux download.
     name: Build tar.gz
     needs: run-tests
     runs-on: ubuntu-24.04
@@ -149,6 +150,7 @@ jobs:
   # regardless of which distro built it. Runs directly on the runner,
   # no `container:` needed - dpkg-deb ships on ubuntu-24.04 by default.
   deb-pack:
+    if: ${{ false }} # Re-enable after the portable beta.
     name: Build .deb
     needs: [run-tests, appimage-pack]
     runs-on: ubuntu-24.04
@@ -210,6 +212,7 @@ jobs:
   # cross-building an .rpm from ubuntu-24.04 needs nothing Fedora-side
   # at all once there's no compiling against Fedora's Qt.
   rpm-pack:
+    if: ${{ false }} # Re-enable after the portable beta.
     name: Build .rpm
     needs: [run-tests, appimage-pack]
     runs-on: ubuntu-24.04
@@ -294,6 +297,7 @@ jobs:
   # a from-scratch checkout; flatpak-builder here builds from THIS
   # checkout's working tree via a local "type: dir" source override).
   flatpak-pack:
+    if: ${{ false }} # Re-enable after the portable beta.
     name: Build flatpak
     needs: run-tests
     runs-on: ubuntu-24.04
@@ -473,6 +477,7 @@ jobs:
   # that up and added SNAPCRAFT_STORE_CREDENTIALS as a repo secret
   # (`snapcraft export-login`), skipped entirely until then.
   snap-pack:
+    if: ${{ false }} # Re-enable after the portable beta.
     name: Build snap
     needs: run-tests
     runs-on: ubuntu-24.04
