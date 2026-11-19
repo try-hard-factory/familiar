@@ -463,8 +463,13 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          # The checksum goes next to the download, not just into the
+          # run's artifacts: those expire after 90 days and need a
+          # GitHub login, so whoever downloads the AppImage from the
+          # release page could not check it against anything.
           files: |
             familiar-${{ env.VERSION }}-x86_64.AppImage
+            familiar-${{ env.VERSION }}-x86_64.AppImage.sha256sum
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
