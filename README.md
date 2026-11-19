@@ -293,3 +293,15 @@ the way.
 
 `-Werror` (`/WX` on MSVC) is **on by default**, for every compiler — a
 warning nobody is forced to look at is a warning that accumulates.
+
+## Support the Project
+
+If Familiar is useful to you, you can support its development in any way
+that works for you:
+
+[![Support on Lava.top](https://img.shields.io/badge/Lava.top-Support-8B5CF6)](https://app.lava.top/familiar-app)
+[![Support on Boosty](https://img.shields.io/badge/Boosty-Support-F15B2A)](https://boosty.to/familiarapp/donate)
+
+- **USDT (ERC-20):** `0x26f7cCD90354DBfcAF682138c3C5551eDBB7cE66`
+- **Bitcoin (BTC):** `bc1qc7a4f7duhhruuhd98rypzlrwry3yy270033pqf`
+- **Solana (SOL):** `Be4HFZ5Drf3dW3RhWT1Tk5ZkJhFgbSUducvoT6eGo6SN`
