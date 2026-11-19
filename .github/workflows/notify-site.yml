@@ -1,0 +1,160 @@
+name: Notify site
+
+# A client release changes what the website shows: /download builds its
+# buttons out of the release's assets and /releases renders the release
+# notes, and both are read from the GitHub API at BUILD time (see
+# familiar-web/frontend/src/lib/releases.ts for why - the asset names
+# carry the version, so there is no stable URL a static page could point
+# at). The site is a static export baked into a container image, so
+# nothing it does at request time can pick up a new release: the image
+# has to be rebuilt. This workflow starts that rebuild, which is what
+# makes a release reach the site without anyone pressing "Run workflow"
+# in the other repository.
+#
+# Why this hangs off `release: published` rather than the tag push: the
+# tag push starts three workflows at once - Create Release plus both
+# packaging ones - and the download buttons come from the release's
+# ASSETS, which the packaging workflows upload minutes later. A rebuild
+# fired on the tag itself would publish a page showing a release with no
+# downloads under it. `published` fires exactly once per release, and the
+# first step below then waits for the packaging that uploads those
+# assets.
+
+on:
+  release:
+    types: [published]
+
+  # For re-running by hand: a release whose assets changed afterwards, a
+  # failed packaging job that was re-run, or a failure of this workflow
+  # itself. Same effect, with the tag given explicitly.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose state the site should be rebuilt from
+        required: true
+
+permissions:
+  # Reading this repository's own workflow runs, to tell when packaging
+  # has finished. Nothing here writes to this repository.
+  actions: read
+  contents: read
+
+jobs:
+  rebuild-site:
+    name: Rebuild the website
+    runs-on: ubuntu-latest
+    # Windows packaging (Qt install, vcpkg, a full MSVC build) is the
+    # long pole and sets this. The wait loop gives up before the job
+    # does, so a timeout is reported as an error with a message rather
+    # than as a cancelled job.
+    timeout-minutes: 120
+    env:
+      SITE_REPO: try-hard-factory/familiar-web
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+    steps:
+      - name: Wait for packaging to finish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # The tag may be annotated, in which case the tags/ ref points
+          # at a tag object rather than at a commit; this endpoint
+          # resolves either to the commit the workflow runs are keyed by.
+          sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)"
+          echo "Release $TAG is commit $sha"
+          echo "RELEASE_SHA=$sha" >> "$GITHUB_ENV"
+
+          # Deliberately not a hardcoded list of expected assets: that
+          # list changes every time a packaging job is enabled or
+          # disabled (right now the beta ships only the Windows portable
+          # ZIP and the Linux AppImage), and a stale list would either
+          # wait for something that is never uploaded or stop waiting too
+          # early. Whatever packaging workflows this commit actually
+          # started are the ones to wait for.
+          #
+          # Zero of them is a legitimate answer, not an error - a release
+          # created by hand from a commit that was never packaged has
+          # nothing to wait for. But it is also what a race would look
+          # like, so an empty answer is not trusted straight away: on
+          # v0.0.17 the run records appeared at 11:54:09 and the release
+          # was published at 11:54:14, five seconds later. Treating
+          # "nothing found" as "nothing to wait for" that early would
+          # dispatch a rebuild against a release with no assets on it.
+          # Hence the grace period below, which only applies while the
+          # list is empty.
+          #
+          # event=push is not cosmetic: nightly builds from main's HEAD,
+          # so the commit a tag sits on accumulates one Nightly run per
+          # day - v0.0.17's commit already has 35 of them. Runs come back
+          # newest first, so without this filter the packaging runs would
+          # eventually be pushed off the page by nightlies, the loop
+          # would see nothing to wait for, and the rebuild would fire
+          # before the assets exist. A tag push is a push; nightlies are
+          # schedule or workflow_dispatch.
+          deadline=$((SECONDS + 100 * 60))
+          grace=$((SECONDS + 3 * 60))
+          while :; do
+            runs="$(gh api --paginate \
+              "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$sha&event=push&per_page=100" \
+              --jq '.workflow_runs[]
+                    | select(.name | startswith("Packaging"))
+                    | [.name, .status, (.conclusion // "-")]
+                    | @tsv')"
+
+            printf '%s\n' "$runs" | awk -F'\t' 'NF { printf "  %-20s %-12s %s\n", $1, $2, $3 }'
+
+            found="$(printf '%s\n' "$runs" | awk -F'\t' 'NF' | wc -l)"
+            pending="$(printf '%s\n' "$runs" | awk -F'\t' 'NF && $2 != "completed"' | wc -l)"
+            if [ "$found" -eq 0 ] && [ "$SECONDS" -lt "$grace" ]; then
+              echo "  no packaging runs for this commit yet, waiting"
+            elif [ "$pending" -eq 0 ]; then
+              if [ "$found" -eq 0 ]; then
+                echo "No packaging ran for this commit; nothing to wait for."
+              fi
+              break
+            fi
+
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::$pending packaging run(s) for $TAG still unfinished after 100 minutes. The site was not rebuilt; re-run this workflow with the tag once packaging is done."
+              exit 1
+            fi
+            sleep 60
+          done
+
+          # A failed packaging run is not a reason to skip the rebuild.
+          # The release is public either way, and a site that shows it
+          # with the assets that did get uploaded is more accurate than
+          # one that still shows the previous release.
+          failed="$(printf '%s\n' "$runs" | awk -F'\t' 'NF && $3 != "success"' | wc -l)"
+          if [ "$failed" -gt 0 ]; then
+            echo "::warning::$failed packaging run(s) for $TAG did not succeed. Rebuilding the site anyway; it will show whichever downloads exist. Re-run this workflow after fixing and re-running packaging."
+          fi
+
+      - name: Ask familiar-web to rebuild and publish its images
+        env:
+          # Cross-repository: GITHUB_TOKEN is scoped to this repository
+          # only and cannot dispatch to another one. This needs a token
+          # with Contents: write on $SITE_REPO - a fine-grained PAT
+          # limited to that one repository, or a GitHub App installation
+          # token. Without it the API answers 404, not 403, so the guard
+          # below exists to make a missing secret say so.
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::Secret SITE_DISPATCH_TOKEN is not set in this repository. Create a fine-grained token with Contents: write on $SITE_REPO and add it, otherwise every release needs the site workflow started by hand."
+            exit 1
+          fi
+
+          # jq builds the body so the tag goes in as data rather than as
+          # text spliced into JSON.
+          jq -n --arg tag "$TAG" --arg commit "$RELEASE_SHA" \
+            '{event_type: "familiar-release",
+              client_payload: {tag: $tag, commit: $commit}}' \
+            | gh api -X POST "repos/$SITE_REPO/dispatches" --input -
+
+          echo "Dispatched familiar-release for $TAG."
+          echo "The image build runs in $SITE_REPO; the VPS picks the new image up within 15 minutes (familiar-update.timer)." >> "$GITHUB_STEP_SUMMARY"
