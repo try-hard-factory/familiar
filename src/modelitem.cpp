@@ -18,7 +18,7 @@ QImage placeholder(const QString& filename)
     painter.drawText(image.rect().adjusted(20, 20, -20, -20),
                      Qt::AlignCenter | Qt::TextWordWrap,
                      QFileInfo(filename).fileName()
-                         + QStringLiteral("\nDouble-click to view in 3D"));
+                         + QStringLiteral("\nSelect, then unlock to rotate"));
     return image;
 }
 } // namespace

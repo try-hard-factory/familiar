@@ -3,6 +3,7 @@
 #include "fml_archive.h"
 #include "mainwindow.h"
 #include "modelitem.h"
+#include "ui/model_toolbar.h"
 
 #include <gtest/gtest.h>
 #include <QDataStream>
@@ -11,6 +12,7 @@
 #include <QQuickWidget>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QToolButton>
 #include <QUndoStack>
 
 TEST(ModelCanvasTest, ModelAndViewSurviveProjectRoundTrip)
@@ -136,9 +138,41 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
                              5000);
 
     MainWindow window;
+    window.show();
     CanvasView* canvas = window.tab_pane().current_widget();
     ASSERT_NE(canvas, nullptr);
     canvas->do_insert_images({QUrl::fromLocalFile(sourceFile)},
                              QPoint(160, 160));
-    EXPECT_EQ(canvas->scene()->items_by_type("model").size(), 1);
+    const auto models = canvas->scene()->items_by_type("model");
+    ASSERT_EQ(models.size(), 1);
+    auto* model = dynamic_cast<ModelItem*>(models.first());
+    ASSERT_NE(model, nullptr);
+    auto* toolbar = canvas->findChild<ModelToolbar*>();
+    ASSERT_NE(toolbar, nullptr);
+    auto* button = toolbar->findChild<QToolButton*>();
+    ASSERT_NE(button, nullptr);
+    EXPECT_TRUE(model->isSelected());
+    EXPECT_EQ(toolbar->item(), model);
+    EXPECT_TRUE(toolbar->isVisible());
+    EXPECT_FALSE(button->isChecked());
+    EXPECT_EQ(canvas->findChild<QQuickWidget*>(), nullptr);
+
+    canvas->scene()->deselect_all_items();
+    QTest::mouseClick(canvas->viewport(),
+                      Qt::LeftButton,
+                      {},
+                      canvas->mapFromScene(model->sceneBoundingRect().center()));
+    EXPECT_TRUE(model->isSelected());
+    EXPECT_TRUE(toolbar->isVisible());
+
+    QTest::mouseClick(button, Qt::LeftButton);
+    EXPECT_TRUE(button->isChecked());
+    auto* editViewer = canvas->findChild<QQuickWidget*>();
+    ASSERT_NE(editViewer, nullptr);
+    EXPECT_TRUE(editViewer->isVisible());
+
+    QTest::mouseClick(button, Qt::LeftButton);
+    EXPECT_FALSE(button->isChecked());
+    EXPECT_FALSE(editViewer->isVisible());
+    EXPECT_TRUE(model->isSelected());
 }
