@@ -1,7 +1,8 @@
 # 3D canvas prototype
 
 This branch adds a `.glb` model as a canvas item. Build with Qt 6 including
-Quick Widgets and Quick 3D. In Familiar, choose **Insert → 3D model (.glb)...**.
+Quick Widgets and Quick 3D. In Familiar, choose **Insert → 3D model (.glb)...**,
+drag a local `.glb` onto the canvas, or paste a copied `.glb` file.
 The imported item behaves like a picture until you double-click it. Drag inside
 its frame to rotate, use the wheel to change the camera distance, and press
 **Esc** to return to the canvas. The camera change is undoable.
