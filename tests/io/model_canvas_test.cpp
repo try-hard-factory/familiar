@@ -1,4 +1,5 @@
 #include "canvasscene.h"
+#include "canvasview.h"
 #include "fml_archive.h"
 #include "mainwindow.h"
 #include "modelitem.h"
@@ -126,9 +127,18 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
     viewer.resize(400, 400);
     viewer.setSource(QUrl(QStringLiteral("qrc:/model/model_viewer.qml")));
     ASSERT_EQ(viewer.status(), QQuickWidget::Ready);
+    const QString sourceFile = qEnvironmentVariable("FAMILIAR_TEST_GLB",
+                                                    filename);
     viewer.rootObject()->setProperty("modelSource",
-                                     QUrl::fromLocalFile(filename));
+                                     QUrl::fromLocalFile(sourceFile));
     viewer.show();
     QTRY_VERIFY_WITH_TIMEOUT(viewer.rootObject()->property("loaded").toBool(),
                              5000);
+
+    MainWindow window;
+    CanvasView* canvas = window.tab_pane().current_widget();
+    ASSERT_NE(canvas, nullptr);
+    canvas->do_insert_images({QUrl::fromLocalFile(sourceFile)},
+                             QPoint(160, 160));
+    EXPECT_EQ(canvas->scene()->items_by_type("model").size(), 1);
 }

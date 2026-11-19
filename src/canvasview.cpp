@@ -1721,29 +1721,43 @@ void CanvasView::on_action_insert_images()
 
 void CanvasView::on_action_insert_model()
 {
-    end_model_edit();
     const QString filename = QFileDialog::getOpenFileName(
         this, tr("Insert 3D model"), {}, tr("glTF binary model (*.glb)"));
     if (filename.isEmpty()) {
         return;
     }
+    insert_model_file(filename, mapToScene(viewport()->rect().center()), true);
+}
+
+ModelItem* CanvasView::insert_model_file(const QString& filename,
+                                         const QPointF& scenePos,
+                                         bool activate)
+{
+    cancel_active_modes();
     QFile file(filename);
     constexpr qint64 kmaxModelBytes = 128LL * 1024 * 1024;
     if (!file.open(QIODevice::ReadOnly) || file.size() <= 0
         || file.size() > kmaxModelBytes) {
         QMessageBox::warning(this, tr("3D model"),
                              tr("Could not read the model (maximum 128 MB)."));
-        return;
+        return nullptr;
     }
     const QByteArray bytes = file.readAll();
     if (bytes.size() != file.size() || !bytes.startsWith("glTF")) {
         QMessageBox::warning(this, tr("3D model"), tr("This is not a valid .glb file."));
-        return;
+        return nullptr;
     }
+    const bool wasEmpty = scene_->items().isEmpty();
     auto* model = new ModelItem({}, bytes, filename);
-    const QPointF pos = mapToScene(viewport()->rect().center());
-    undoStack_->push(new InsertItemsCommand(scene_, {model}, pos));
-    start_model_edit(model);
+    undoStack_->push(new InsertItemsCommand(scene_, {model}, scenePos));
+    on_scene_changed();
+    if (wasEmpty) {
+        on_action_fit_scene();
+    }
+    if (activate) {
+        start_model_edit(model);
+    }
+    return model;
 }
 
 void CanvasView::on_action_insert_text()
@@ -2196,7 +2210,28 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         validUrls.append(url);
     }
 
-    imageImportSession_ = std::make_unique<ImageImportSession>(validUrls,
+    QList<QUrl> imageUrls;
+    QStringList modelFiles;
+    for (const QUrl& url : validUrls) {
+        if (url.isLocalFile()
+            && QFileInfo(url.toLocalFile()).suffix().compare(
+                   QStringLiteral("glb"), Qt::CaseInsensitive) == 0) {
+            modelFiles.append(url.toLocalFile());
+        } else {
+            imageUrls.append(url);
+        }
+    }
+    for (int i = 0; i < modelFiles.size(); ++i) {
+        const QPointF offset(i * 24.0 / get_scale(),
+                             i * 24.0 / get_scale());
+        insert_model_file(modelFiles.at(i), scenePos + offset,
+                          modelFiles.size() == 1 && imageUrls.isEmpty());
+    }
+    if (imageUrls.isEmpty()) {
+        return;
+    }
+
+    imageImportSession_ = std::make_unique<ImageImportSession>(imageUrls,
                                                                scenePos,
                                                                scene_);
 
@@ -2214,7 +2249,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
                                              "Items/raw_import_choice"))
                                          .toString();
     if (rawImportSetting == QLatin1String("ask")) {
-        for (const QUrl& url : validUrls) {
+        for (const QUrl& url : imageUrls) {
             if (url.isLocalFile() && is_raw_file(url.toLocalFile())) {
                 if (!resolve_raw_import_choice(url.toLocalFile())) {
                     imageImportSession_.reset();
