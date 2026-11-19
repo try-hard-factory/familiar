@@ -188,8 +188,18 @@ jobs:
         if:  matrix.type == 'portable'
         shell: bash
         run: |
-          sha256sum $GITHUB_WORKSPACE/build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip
-          sha256sum $GITHUB_WORKSPACE/build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip > $GITHUB_WORKSPACE/build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip.sha256sum
+          # Hashed from inside the directory, by bare filename. sha256sum
+          # writes back whatever path it was given, so passing an
+          # absolute one put the runner's own path
+          # (D:\a\familiar\familiar\...) into the file - which makes
+          # `sha256sum -c` on the user's machine look for that path and
+          # fail. The file is published on the release now, so its
+          # contents have to be verifiable somewhere other than this
+          # runner. tee prints and writes in one pass, the same way every
+          # Linux packaging job does it.
+          cd "$GITHUB_WORKSPACE/build/Package/portable"
+          sha256sum "familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip" \
+            | tee "familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip.sha256sum"
           python -m pip install -U -q requests
           echo "===========Windows portable sha256sum download link============"
           echo $(python $GITHUB_WORKSPACE/scripts/upload_services/transferwee.py upload $GITHUB_WORKSPACE/build/Package/portable/familiar-${VERSION}-${{ matrix.config.pak_arch }}.zip.sha256sum)
@@ -227,8 +237,11 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/') && matrix.type == 'portable'
         with:
+          # See the AppImage job's note in Linux-pack.yml: the checksum
+          # belongs next to the download, not only in the run artifacts.
           files: |
             build/Package/portable/familiar-${{ env.VERSION}}-${{ matrix.config.pak_arch }}.zip
+            build/Package/portable/familiar-${{ env.VERSION}}-${{ matrix.config.pak_arch }}.zip.sha256sum
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Github Release upload installer
