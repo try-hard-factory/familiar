@@ -1,6 +1,7 @@
 #include "canvasscene.h"
 #include "mainwindow.h"
 #include "moveitem.h"
+#include "modelitem.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -352,7 +353,19 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
     const QString typ = data.value("type").toString();
 
     QGraphicsItem* item = nullptr;
-    if (typ == "pixmap") {
+    if (typ == "model") {
+        const QByteArray bytes = data.value(QStringLiteral("modelBytes")).toByteArray();
+        const QImage preview = data.value(QStringLiteral("image")).value<QImage>();
+        if (!bytes.isEmpty() && !preview.isNull()) {
+            auto* model = new ModelItem(preview, bytes,
+                                        data.value(QStringLiteral("filename")).toString());
+            model->apply_extra_save_data(data.value(QStringLiteral("data")).toMap());
+            model->set_encoded_source(
+                data.value(QStringLiteral("encodedBytes")).toByteArray(),
+                data.value(QStringLiteral("encodedFormat")).toString());
+            item = model;
+        }
+    } else if (typ == "pixmap") {
         const QVariant imageVariant = data.value("image");
         if (imageVariant.isValid()) {
             const auto image = imageVariant.value<QImage>();
@@ -498,7 +511,17 @@ QVariantMap CanvasScene::snapshot_of(IBaseItem* baseItem)
     // GifItem before PixmapItem: it IS one, so the picture branch would
     // match it too and flatten the animation to its current frame - the
     // same ordering FmlArchive::save() needs for the same reason.
-    if (auto* gifItem = dynamic_cast<GifItem*>(baseItem)) {
+    if (auto* model = dynamic_cast<ModelItem*>(baseItem)) {
+        data[QStringLiteral("modelBytes")] = model->model_bytes();
+        data[QStringLiteral("image")] = model->pixmap().toImage();
+        data[QStringLiteral("filename")] = model->filename();
+        const QByteArray encoded = model->encoded_source();
+        if (!encoded.isEmpty()) {
+            data[QStringLiteral("encodedBytes")] = encoded;
+            data[QStringLiteral("encodedFormat")]
+                = model->encoded_source_format();
+        }
+    } else if (auto* gifItem = dynamic_cast<GifItem*>(baseItem)) {
         data[QStringLiteral("gifBytes")] = gifItem->gif_bytes();
         data[QStringLiteral("filename")] = gifItem->filename();
     } else if (auto* pixmapItem = dynamic_cast<PixmapItem*>(baseItem)) {
@@ -2288,7 +2311,7 @@ bool CanvasScene::item_add_by_user(QGraphicsItem* item)
         return false;
     }
     const std::string type = baseItem->get_type();
-    return type == "pixmap" || type == "text" || type == "gif"
+    return type == "pixmap" || type == "model" || type == "text" || type == "gif"
            || type == "group";
 }
 

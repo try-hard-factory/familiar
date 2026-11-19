@@ -12,3 +12,4 @@ _deps
 
 # clang-tidy run logs (./tidy.sh)
 tidy-*.log
+/build_debug/

@@ -3,6 +3,7 @@
 #include "canvasscene.h"
 #include "fileio.h"
 #include "moveitem.h"
+#include "modelitem.h"
 
 #include "miniz.h"
 #include "miniz_zip.h"
@@ -820,6 +821,12 @@ bool FmlArchive::capture(CanvasScene* scene,
 
         const QString idStr = mi.id.toString(QUuid::WithoutBraces);
 
+        if (auto* model = dynamic_cast<ModelItem*>(items[i])) {
+            const QString archiveName = QStringLiteral("models/%1.glb").arg(idStr);
+            mi.data[QStringLiteral("model")] = archiveName;
+            snapshot.models.append({archiveName, idStr, model->model_bytes()});
+        }
+
         // GifItem checked BEFORE PixmapItem: it IS one (inherits it), so
         // the PixmapItem branch below would also match it - and
         // pixmap_to_bytes() only ever encodes the CURRENTLY DISPLAYED
@@ -965,6 +972,17 @@ FmlResult FmlArchive::write(FmlSnapshot& snapshot, const QString& filename)
                       "FmlArchive::write: could not store {} for item {}",
                       image.archiveName.toStdString(),
                       image.itemId.toStdString());
+        }
+    }
+
+    for (const FmlSnapshot::Model& model : snapshot.models) {
+        const QByteArray name = model.archiveName.toUtf8();
+        if (!mz_zip_writer_add_mem(zip.get(), name.constData(),
+                                   model.bytes.constData(),
+                                   static_cast<size_t>(model.bytes.size()),
+                                   MZ_NO_COMPRESSION)) {
+            result.itemErrors.append(
+                QStringLiteral("Could not store model for item %1").arg(model.itemId));
         }
     }
 
@@ -1139,6 +1157,7 @@ FmlResult FmlArchive::load(const QString& filename,
         itemData[QStringLiteral("data")] = mi.data;
 
         if (mi.type == QStringLiteral("pixmap")
+            || mi.type == QStringLiteral("model")
             || mi.type == QStringLiteral("gif")) {
             const QByteArray imagePath = mi.image.toUtf8();
             const int imageIndex
@@ -1230,6 +1249,34 @@ FmlResult FmlArchive::load(const QString& filename,
                 if (worker) {
                     emit worker->progress(i);
                 }
+                continue;
+            }
+        }
+
+        if (mi.type == QStringLiteral("model")) {
+            const QString modelPath = mi.data.value(QStringLiteral("model")).toString();
+            const QByteArray entryName = modelPath.toUtf8();
+            const int modelIndex = modelPath.startsWith(QStringLiteral("models/"))
+                                       ? mz_zip_reader_locate_file(zip.get(), entryName.constData(), nullptr, 0)
+                                       : -1;
+            const auto sizes = modelIndex >= 0 ? entry_sizes(zip.get(), modelIndex)
+                                               : std::nullopt;
+            constexpr mz_uint64 kmaxModelBytes = 128ULL * 1024 * 1024;
+            if (sizes && sizes->uncompressed > 0
+                && sizes->uncompressed <= kmaxModelBytes) {
+                size_t modelSize = 0;
+                void* buffer = mz_zip_reader_extract_to_heap(
+                    zip.get(), static_cast<mz_uint>(modelIndex), &modelSize, 0);
+                if (buffer) {
+                    itemData[QStringLiteral("modelBytes")]
+                        = QByteArray(static_cast<const char*>(buffer),
+                                     static_cast<int>(modelSize));
+                    mz_free(buffer);
+                }
+            }
+            if (!itemData.contains(QStringLiteral("modelBytes"))) {
+                result.itemErrors.append(QStringLiteral("Could not load model for item %1")
+                                             .arg(mi.id.toString(QUuid::WithoutBraces)));
                 continue;
             }
         }

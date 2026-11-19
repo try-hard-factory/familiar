@@ -1344,6 +1344,12 @@ void MainWindow::on_action_insert_images()
         cv->on_action_insert_images();
     }
 }
+void MainWindow::on_action_insert_model()
+{
+    if (auto* cv = tabpane_->current_widget()) {
+        cv->on_action_insert_model();
+    }
+}
 void MainWindow::on_action_insert_text()
 {
     if (auto* cv = tabpane_->current_widget()) {

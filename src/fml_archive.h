@@ -75,6 +75,13 @@ struct FmlSnapshot
     // were read, so it cannot be assembled later from anything else.
     QByteArray manifestJson;
     QList<Image> images;
+    struct Model
+    {
+        QString archiveName;
+        QString itemId;
+        QByteArray bytes;
+    };
+    QList<Model> models;
 };
 
 class FmlArchive
