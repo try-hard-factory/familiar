@@ -6,6 +6,7 @@
 #include "export.h"
 #include "fileio.h"
 #include "gltf_import.h"
+#include "obj_import.h"
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "modelitem.h"
@@ -1957,7 +1958,8 @@ void CanvasView::on_action_insert_images()
 void CanvasView::on_action_insert_model()
 {
     const QString filename = QFileDialog::getOpenFileName(
-        this, tr("Insert 3D model"), {}, tr("glTF models (*.glb *.gltf)"));
+        this, tr("Insert 3D model"), {},
+        tr("3D models (*.glb *.gltf *.obj)"));
     if (filename.isEmpty()) {
         return;
     }
@@ -1970,9 +1972,12 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
     cancel_active_modes();
     constexpr qint64 kmaxModelBytes = 128LL * 1024 * 1024;
     QByteArray bytes;
-    if (QFileInfo(filename).suffix().compare(QStringLiteral("gltf"),
-                                              Qt::CaseInsensitive) == 0) {
-        GltfImportResult imported = import_gltf(filename);
+    const QString suffix = QFileInfo(filename).suffix();
+    if (suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0
+        || suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
+        GltfImportResult imported
+            = suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0
+                  ? import_obj(filename) : import_gltf(filename);
         if (!imported.error.isEmpty()) {
             QMessageBox::warning(this, tr("3D model"), imported.error);
             return nullptr;
@@ -2460,7 +2465,8 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         const QString suffix = url.isLocalFile()
                                    ? QFileInfo(url.toLocalFile()).suffix() : QString();
         if (suffix.compare(QStringLiteral("glb"), Qt::CaseInsensitive) == 0
-            || suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0) {
+            || suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0
+            || suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
             modelFiles.append(url.toLocalFile());
         } else {
             imageUrls.append(url);

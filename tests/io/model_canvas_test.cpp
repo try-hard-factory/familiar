@@ -2,6 +2,7 @@
 #include "canvasview.h"
 #include "fml_archive.h"
 #include "gltf_import.h"
+#include "obj_import.h"
 #include "mainwindow.h"
 #include "modelitem.h"
 #include "model_preview.h"
@@ -10,6 +11,7 @@
 #include <gtest/gtest.h>
 #include <QDataStream>
 #include <QBuffer>
+#include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QJsonDocument>
@@ -345,6 +347,114 @@ TEST(ModelCanvasTest, GltfImportBundlesExternalFilesForProjectSave)
     const auto* restoredModel = dynamic_cast<ModelItem*>(restoredModels.first());
     ASSERT_NE(restoredModel, nullptr);
     EXPECT_EQ(restoredModel->model_bytes(), imported.glb);
+}
+
+TEST(ModelCanvasTest, ObjImportBundlesMaterialAndTextureForProjectSave)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    ASSERT_TRUE(QDir().mkpath(dir.filePath(QStringLiteral("textures"))));
+    const QString texturePath = dir.filePath(QStringLiteral("textures/color.png"));
+    QImage texture(2, 2, QImage::Format_RGB32);
+    texture.setPixelColor(0, 0, Qt::red);
+    texture.setPixelColor(1, 0, Qt::green);
+    texture.setPixelColor(0, 1, Qt::blue);
+    texture.setPixelColor(1, 1, Qt::yellow);
+    ASSERT_TRUE(texture.save(texturePath));
+    const QString mtlPath = dir.filePath(QStringLiteral("square.mtl"));
+    QFile mtl(mtlPath);
+    ASSERT_TRUE(mtl.open(QIODevice::WriteOnly));
+    ASSERT_GT(mtl.write("newmtl painted\nKd 1 1 1\n"
+                        "map_Kd textures/color.png\n"), 0);
+    mtl.close();
+    const QString objPath = dir.filePath(QStringLiteral("square.obj"));
+    QFile obj(objPath);
+    ASSERT_TRUE(obj.open(QIODevice::WriteOnly));
+    ASSERT_GT(obj.write("mtllib square.mtl\n"
+                        "v -1 -1 0\nv 1 -1 0\nv 1 1 0\nv -1 1 0\n"
+                        "vt 0 0\nvt 1 0\nvt 1 1\nvt 0 1\n"
+                        "vn 0 0 1\nusemtl painted\n"
+                        "f -4/1/1 -3/2/1 -2/3/1 -1/4/1\n"), 0);
+    obj.close();
+
+    const GltfImportResult imported = import_obj(objPath);
+    ASSERT_TRUE(imported.error.isEmpty()) << imported.error.toStdString();
+    ASSERT_TRUE(imported.glb.startsWith("glTF"));
+    quint32 jsonLength = 0;
+    std::memcpy(&jsonLength, imported.glb.constData() + 12, sizeof(jsonLength));
+    const QJsonObject json = QJsonDocument::fromJson(
+        imported.glb.mid(20, jsonLength)).object();
+    ASSERT_EQ(json.value(QStringLiteral("meshes")).toArray().size(), 1);
+    const QJsonArray primitives = json.value(QStringLiteral("meshes"))
+                                      .toArray().first().toObject()
+                                      .value(QStringLiteral("primitives")).toArray();
+    ASSERT_EQ(primitives.size(), 1);
+    const QJsonArray accessors = json.value(QStringLiteral("accessors")).toArray();
+    const int indices = primitives.first().toObject()
+                            .value(QStringLiteral("indices")).toInt();
+    EXPECT_EQ(accessors.at(indices).toObject()
+                  .value(QStringLiteral("count")).toInt(), 6);
+    EXPECT_EQ(json.value(QStringLiteral("images")).toArray().size(), 1);
+    const QImage preview = render_model_preview(imported.glb);
+    ASSERT_FALSE(preview.isNull());
+    int coloredPixels = 0;
+    for (int y = 0; y < preview.height(); ++y) {
+        for (int x = 0; x < preview.width(); ++x) {
+            const QColor color = preview.pixelColor(x, y);
+            if (color == Qt::red || color == Qt::green
+                || color == Qt::blue || color == Qt::yellow) {
+                ++coloredPixels;
+            }
+        }
+    }
+    EXPECT_GT(coloredPixels, 10000);
+
+    MainWindow window;
+    window.show();
+    CanvasView* canvas = window.tab_pane().current_widget();
+    ASSERT_NE(canvas, nullptr);
+    canvas->do_insert_images({QUrl::fromLocalFile(objPath)}, QPoint(160, 160));
+    const auto models = canvas->scene()->items_by_type("model");
+    ASSERT_EQ(models.size(), 1);
+    auto* model = dynamic_cast<ModelItem*>(models.first());
+    ASSERT_NE(model, nullptr);
+    EXPECT_EQ(model->model_bytes(), imported.glb);
+
+    const QString projectPath = dir.filePath(QStringLiteral("object.fml"));
+    const FmlResult saved = FmlArchive::save(canvas->scene(), {}, projectPath);
+    ASSERT_TRUE(saved.error.isEmpty()) << saved.error.toStdString();
+    ASSERT_TRUE(QFile::remove(texturePath));
+    EXPECT_FALSE(import_obj(objPath).error.isEmpty());
+    ASSERT_TRUE(QFile::remove(mtlPath));
+    ASSERT_TRUE(QFile::remove(objPath));
+    QUndoStack undo;
+    uint64_t zCounter = 0;
+    CanvasScene restored(window, zCounter, &undo);
+    const FmlResult loaded = FmlArchive::load(projectPath, &restored);
+    ASSERT_TRUE(loaded.error.isEmpty()) << loaded.error.toStdString();
+    restored.add_queued_items();
+    const auto restoredModels = restored.items_by_type("model");
+    ASSERT_EQ(restoredModels.size(), 1);
+    const auto* restoredModel = dynamic_cast<ModelItem*>(restoredModels.first());
+    ASSERT_NE(restoredModel, nullptr);
+    EXPECT_EQ(restoredModel->model_bytes(), imported.glb);
+
+    const QString plainPath = dir.filePath(QStringLiteral("plain.obj"));
+    QFile plain(plainPath);
+    ASSERT_TRUE(plain.open(QIODevice::WriteOnly));
+    ASSERT_GT(plain.write("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"), 0);
+    plain.close();
+    const GltfImportResult untextured = import_obj(plainPath);
+    ASSERT_TRUE(untextured.error.isEmpty()) << untextured.error.toStdString();
+    const QImage plainPreview = render_model_preview(untextured.glb);
+    ASSERT_FALSE(plainPreview.isNull());
+    int whitePixels = 0;
+    for (int y = 0; y < plainPreview.height(); ++y) {
+        for (int x = 0; x < plainPreview.width(); ++x) {
+            whitePixels += plainPreview.pixelColor(x, y) == Qt::white;
+        }
+    }
+    EXPECT_GT(whitePixels, 100);
 }
 
 TEST(ModelCanvasTest, ModelImportAndUnlock)
