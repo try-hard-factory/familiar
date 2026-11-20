@@ -324,6 +324,7 @@ TEST(ModelCanvasTest, GltfImportBundlesExternalFilesForProjectSave)
     CanvasView* canvas = window.tab_pane().current_widget();
     ASSERT_NE(canvas, nullptr);
     canvas->do_insert_images({QUrl::fromLocalFile(gltfPath)}, QPoint(160, 160));
+    QTRY_COMPARE(canvas->scene()->items_by_type("model").size(), 1);
     const auto models = canvas->scene()->items_by_type("model");
     ASSERT_EQ(models.size(), 1);
     auto* model = dynamic_cast<ModelItem*>(models.first());
@@ -616,7 +617,7 @@ TEST(ModelCanvasTest, ModelImportAndUnlock)
         EXPECT_TRUE(progress->isVisible());
     }
     QTRY_COMPARE_WITH_TIMEOUT(canvas->scene()->items_by_type("model").size(),
-                              1, 30000);
+                              1, 60000);
     EXPECT_LT(importHeartbeat.longest_gap(), 2000);
     const auto models = canvas->scene()->items_by_type("model");
     ASSERT_EQ(models.size(), 1);

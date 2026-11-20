@@ -1,6 +1,7 @@
 #include "core/settingshandler.h"
 #include "file_actions.h"
 #include "mainwindow.h"
+#include "model_thumbnail.h"
 
 #include <optional>
 
@@ -69,6 +70,12 @@ int main(int argc, char* argv[])
     qRegisterMetaType<SettingsHandler::OL>("SettingsHandler::OL");
 
     const QApplication a(argc, argv);
+
+    const QStringList arguments = QCoreApplication::arguments();
+    if (arguments.size() == 4
+        && arguments.at(1) == QStringLiteral("--render-model-thumbnail")) {
+        return render_model_thumbnail_file(arguments.at(2), arguments.at(3));
+    }
 
     // Checked here, before anything below sets up real app state
     // (single-instance lock, SettingsHandler, MainWindow) - "familiar

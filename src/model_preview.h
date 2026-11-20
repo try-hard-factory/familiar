@@ -13,8 +13,7 @@ struct ModelBounds
 
 ModelBounds model_bounds(const QByteArray& glb);
 
-// A software thumbnail rasterized from mesh triangles and their base colour
-// texture, so importing a model does not need to start Qt Quick 3D.
+// Software fallback when Qt Quick 3D cannot render a thumbnail.
 QImage render_model_preview(const QByteArray& glb);
 
 #endif

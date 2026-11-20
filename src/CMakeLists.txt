@@ -52,6 +52,8 @@ set(PROJECT_SOURCES
         modelitem.h
         model_preview.cpp
         model_preview.h
+        model_thumbnail.cpp
+        model_thumbnail.h
         gltf_import.cpp
         gltf_import.h
         obj_import.cpp
