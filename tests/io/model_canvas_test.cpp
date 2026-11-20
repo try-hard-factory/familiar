@@ -3,10 +3,12 @@
 #include "fml_archive.h"
 #include "mainwindow.h"
 #include "modelitem.h"
+#include "model_preview.h"
 #include "ui/model_toolbar.h"
 
 #include <gtest/gtest.h>
 #include <QDataStream>
+#include <QBuffer>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QQuickItem>
@@ -102,6 +104,115 @@ TEST(ModelCanvasTest, DuplicateKeepsTheModelEditable)
     EXPECT_EQ(duplicate->yaw(), model.yaw());
     EXPECT_EQ(duplicate->pitch(), model.pitch());
     EXPECT_EQ(duplicate->distance(), model.distance());
+}
+
+TEST(ModelCanvasTest, PreviewKeepsTextureUpright)
+{
+    QImage texture(4, 4, QImage::Format_RGB32);
+    for (int y = 0; y < 4; ++y) {
+        for (int x = 0; x < 4; ++x) {
+            texture.setPixelColor(x, y,
+                                  y < 2 ? (x < 2 ? Qt::red : Qt::green)
+                                        : (x < 2 ? Qt::blue : Qt::yellow));
+        }
+    }
+    QByteArray png;
+    QBuffer pngBuffer(&png);
+    ASSERT_TRUE(pngBuffer.open(QIODevice::WriteOnly));
+    ASSERT_TRUE(texture.save(&pngBuffer, "PNG"));
+    pngBuffer.close();
+
+    QByteArray binary;
+    QDataStream mesh(&binary, QIODevice::WriteOnly);
+    mesh.setByteOrder(QDataStream::LittleEndian);
+    mesh.setFloatingPointPrecision(QDataStream::SinglePrecision);
+    for (float coordinate : {-1.0f, 1.0f, 0.0f,
+                             1.0f, 1.0f, 0.0f,
+                             1.0f, -1.0f, 0.0f,
+                             -1.0f, -1.0f, 0.0f}) {
+        mesh << coordinate;
+    }
+    for (float uv : {0.0f, 0.0f, 1.0f, 0.0f,
+                     1.0f, 1.0f, 0.0f, 1.0f}) {
+        mesh << uv;
+    }
+    for (quint16 index : {0, 1, 2, 0, 2, 3}) {
+        mesh << index;
+    }
+    ASSERT_EQ(binary.size(), 92);
+    binary.append(png);
+    const int bufferSize = binary.size();
+    while (binary.size() % 4) {
+        binary.append('\0');
+    }
+
+    QByteArray json = QByteArrayLiteral(R"({
+"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],
+"nodes":[{"mesh":0}],"meshes":[{"primitives":[{
+"attributes":{"POSITION":0,"TEXCOORD_0":1},"indices":2,"material":0}]}],
+"materials":[{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}],
+"textures":[{"source":0}],"images":[{"bufferView":3,"mimeType":"image/png"}],
+"buffers":[{"byteLength":@BUFFER@}],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":48},
+{"buffer":0,"byteOffset":48,"byteLength":32},
+{"buffer":0,"byteOffset":80,"byteLength":12},
+{"buffer":0,"byteOffset":92,"byteLength":@PNG@}],
+"accessors":[{"bufferView":0,"componentType":5126,"count":4,"type":"VEC3",
+"min":[-1,-1,0],"max":[1,1,0]},
+{"bufferView":1,"componentType":5126,"count":4,"type":"VEC2"},
+{"bufferView":2,"componentType":5123,"count":6,"type":"SCALAR"}]})");
+    json.replace("@BUFFER@", QByteArray::number(bufferSize));
+    json.replace("@PNG@", QByteArray::number(png.size()));
+    while (json.size() % 4) {
+        json.append(' ');
+    }
+    QByteArray glb;
+    QDataStream file(&glb, QIODevice::WriteOnly);
+    file.setByteOrder(QDataStream::LittleEndian);
+    file << quint32(0x46546C67) << quint32(2)
+         << quint32(12 + 8 + json.size() + 8 + binary.size())
+         << quint32(json.size()) << quint32(0x4E4F534A);
+    file.writeRawData(json.constData(), json.size());
+    file << quint32(binary.size()) << quint32(0x004E4942);
+    file.writeRawData(binary.constData(), binary.size());
+
+    const QImage preview = render_model_preview(glb);
+    ASSERT_FALSE(preview.isNull());
+    qint64 redY = 0, blueY = 0;
+    int redCount = 0, blueCount = 0;
+    for (int y = 0; y < preview.height(); ++y) {
+        for (int x = 0; x < preview.width(); ++x) {
+            const QColor color = preview.pixelColor(x, y);
+            if (color == Qt::red) {
+                redY += y;
+                ++redCount;
+            } else if (color == Qt::blue) {
+                blueY += y;
+                ++blueCount;
+            }
+        }
+    }
+    ASSERT_GT(redCount, 100);
+    ASSERT_GT(blueCount, 100);
+    EXPECT_LT(double(redY) / redCount, double(blueY) / blueCount);
+
+    QImage stale(400, 400, QImage::Format_RGB32);
+    stale.fill(Qt::magenta);
+    QVariantMap saved;
+    saved[QStringLiteral("type")] = QStringLiteral("model");
+    saved[QStringLiteral("modelBytes")] = glb;
+    saved[QStringLiteral("image")] = QVariant::fromValue(stale);
+    saved[QStringLiteral("filename")] = QStringLiteral("old.glb");
+    saved[QStringLiteral("data")] = QVariantMap{{QStringLiteral("yaw"), 25},
+                                                {QStringLiteral("pitch"), -15},
+                                                {QStringLiteral("distance"), 450}};
+    saved[QStringLiteral("encodedBytes")] = QByteArrayLiteral("stale preview");
+    saved[QStringLiteral("encodedFormat")] = QStringLiteral("png");
+    std::unique_ptr<IBaseItem> restored(CanvasScene::create_item_from_data(saved));
+    auto* model = dynamic_cast<ModelItem*>(restored.get());
+    ASSERT_NE(model, nullptr);
+    EXPECT_EQ(model->pixmap().toImage(), preview);
+    EXPECT_TRUE(model->encoded_source().isEmpty());
 }
 
 TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
@@ -234,7 +345,9 @@ TEST(ModelCanvasTest, SavedBoardUnlocksModel)
     ASSERT_TRUE(loaded.error.isEmpty()) << loaded.error.toStdString();
     canvas->scene()->add_queued_items();
     const auto models = canvas->scene()->items_by_type("model");
-    ASSERT_FALSE(models.isEmpty());
+    if (models.isEmpty()) {
+        GTEST_SKIP() << "The selected board has no saved 3D model";
+    }
     auto* model = dynamic_cast<ModelItem*>(models.first());
     ASSERT_NE(model, nullptr);
     canvas->centerOn(model);

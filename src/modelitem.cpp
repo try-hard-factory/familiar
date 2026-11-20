@@ -44,6 +44,7 @@ QVariantMap ModelItem::get_extra_save_data() const
     data[QStringLiteral("yaw")] = yaw_;
     data[QStringLiteral("pitch")] = pitch_;
     data[QStringLiteral("distance")] = distance_;
+    data[QStringLiteral("previewVersion")] = kPreviewVersion;
     return data;
 }
 
