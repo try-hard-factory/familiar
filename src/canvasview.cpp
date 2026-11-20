@@ -55,6 +55,7 @@
 #include <QStandardPaths>
 #include <QStringView>
 #include <QTextCursor>
+#include <QTemporaryFile>
 #include <QThread>
 #include <QTimer>
 #include <QUndoStack>
@@ -269,6 +270,7 @@ CanvasView::~CanvasView()
         if (QObject* root = modelViewer_->rootObject()) {
             root->setProperty("modelSource", QUrl());
             root->setProperty("preparedSource", QUrl());
+            root->setProperty("previewSource", QUrl());
         }
         activeModel_ = nullptr;
     }
@@ -1010,6 +1012,17 @@ void CanvasView::start_model_edit(ModelItem* model)
     root->setProperty("yaw", model->yaw());
     root->setProperty("pitch", model->pitch());
     root->setProperty("distance", model->distance());
+    modelPreviewFile_ = std::make_unique<QTemporaryFile>(
+        QDir::tempPath() + QStringLiteral("/familiar-preview-XXXXXX.png"));
+    if (modelPreviewFile_->open()
+        && model->pixmap().toImage().save(modelPreviewFile_.get(), "PNG")
+        && modelPreviewFile_->flush()) {
+        root->setProperty("previewSource",
+                          QUrl::fromLocalFile(modelPreviewFile_->fileName()));
+    } else {
+        modelPreviewFile_.reset();
+        root->setProperty("previewSource", QUrl());
+    }
     root->setProperty("errorMessage", QString());
     root->setProperty("preparing", model->prepared_url().isEmpty());
     activeModel_ = model;
@@ -1061,9 +1074,11 @@ void CanvasView::prepare_model(ModelItem* model)
     auto directory = std::make_shared<QTemporaryDir>(
         QDir::tempPath() + QStringLiteral("/familiar-balsam-XXXXXX"));
     if (!directory->isValid()) {
-        if (QObject* viewer = modelViewer_->rootObject()) {
-            viewer->setProperty("preparing", false);
-            viewer->setProperty("errorMessage", tr("Could not prepare 3D model"));
+        if (activeModel_ == model) {
+            if (QObject* viewer = modelViewer_->rootObject()) {
+                viewer->setProperty("preparing", false);
+                viewer->setProperty("errorMessage", tr("Could not prepare 3D model"));
+            }
         }
         return;
     }
@@ -1161,8 +1176,10 @@ void CanvasView::end_model_edit()
     if (root) {
         root->setProperty("modelSource", QUrl());
         root->setProperty("preparedSource", QUrl());
+        root->setProperty("previewSource", QUrl());
         root->setProperty("preparing", false);
     }
+    modelPreviewFile_.reset();
     setFocus();
 }
 
@@ -1177,8 +1194,10 @@ void CanvasView::update_model_viewer_pos()
         if (QObject* root = modelViewer_->rootObject()) {
             root->setProperty("modelSource", QUrl());
             root->setProperty("preparedSource", QUrl());
+            root->setProperty("previewSource", QUrl());
             root->setProperty("preparing", false);
         }
+        modelPreviewFile_.reset();
         modelToolbar_->attach(nullptr);
         modelToolbar_->hide();
         return;
@@ -1955,6 +1974,7 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
     if (wasEmpty) {
         on_action_fit_scene();
     }
+    prepare_model(model);
     return model;
 }
 

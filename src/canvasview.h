@@ -41,6 +41,7 @@ class GroupToolbar;
 class ModelToolbar;
 class ModelItem;
 class QQuickWidget;
+class QTemporaryFile;
 
 struct PreviousTransform
 {
@@ -376,6 +377,7 @@ private:
     GroupToolbar* groupToolbar_ = nullptr;
     ModelToolbar* modelToolbar_ = nullptr;
     QQuickWidget* modelViewer_ = nullptr;
+    std::unique_ptr<QTemporaryFile> modelPreviewFile_;
     QSet<QUuid> preparingModels_;
     ModelItem* activeModel_ = nullptr;
 
