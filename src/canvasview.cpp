@@ -49,11 +49,14 @@
 #include <QPaintDevice>
 #include <QPainter>
 #include <QPoint>
+#include <QProcess>
 #include <QRegularExpression>
 #include <QScrollBar>
+#include <QStandardPaths>
 #include <QStringView>
 #include <QTextCursor>
 #include <QThread>
+#include <QTimer>
 #include <QUndoStack>
 #include <QUrl>
 #include <QUuid>
@@ -265,6 +268,7 @@ CanvasView::~CanvasView()
         modelViewer_->hide();
         if (QObject* root = modelViewer_->rootObject()) {
             root->setProperty("modelSource", QUrl());
+            root->setProperty("preparedSource", QUrl());
         }
         activeModel_ = nullptr;
     }
@@ -1006,7 +1010,8 @@ void CanvasView::start_model_edit(ModelItem* model)
     root->setProperty("yaw", model->yaw());
     root->setProperty("pitch", model->pitch());
     root->setProperty("distance", model->distance());
-    root->setProperty("modelSource", source);
+    root->setProperty("errorMessage", QString());
+    root->setProperty("preparing", model->prepared_url().isEmpty());
     activeModel_ = model;
     update_model_viewer_pos();
     modelViewer_->show();
@@ -1016,6 +1021,105 @@ void CanvasView::start_model_edit(ModelItem* model)
     modelToolbar_->raise();
     update_model_toolbar_pos();
     modelViewer_->setFocus();
+
+    // Balsam converts the GLB in a separate process. Loader3D then creates
+    // the prepared QML scene asynchronously on the GUI thread.
+    QTimer::singleShot(0, this, [this, model, source] {
+        if (activeModel_ == model && modelViewer_->isVisible()) {
+            if (QObject* viewer = modelViewer_->rootObject()) {
+                if (!model->prepared_url().isEmpty()) {
+                    viewer->setProperty("preparedCenter",
+                                        QVariant::fromValue(model->bounds().center));
+                    viewer->setProperty("preparedExtent", model->bounds().extent);
+                    viewer->setProperty("preparedSource", model->prepared_url());
+                    viewer->setProperty("preparing", false);
+                } else if (QStandardPaths::findExecutable(QStringLiteral("balsam"))
+                               .isEmpty()) {
+                    // Keep the original importer available in builds that
+                    // do not ship the Qt conversion tool.
+                    viewer->setProperty("modelSource", source);
+                    viewer->setProperty("preparing", false);
+                } else {
+                    prepare_model(model);
+                }
+            }
+        }
+    });
+}
+
+void CanvasView::prepare_model(ModelItem* model)
+{
+    const QUuid modelId = model->uid();
+    if (preparingModels_.contains(modelId)) {
+        return;
+    }
+    const QString converter = QStandardPaths::findExecutable(QStringLiteral("balsam"));
+    const QUrl source = model->model_url();
+    if (converter.isEmpty() || source.isEmpty()) {
+        return;
+    }
+    auto directory = std::make_shared<QTemporaryDir>(
+        QDir::tempPath() + QStringLiteral("/familiar-balsam-XXXXXX"));
+    if (!directory->isValid()) {
+        if (QObject* viewer = modelViewer_->rootObject()) {
+            viewer->setProperty("preparing", false);
+            viewer->setProperty("errorMessage", tr("Could not prepare 3D model"));
+        }
+        return;
+    }
+    preparingModels_.insert(modelId);
+    auto* process = new QProcess(this);
+    process->setProcessChannelMode(QProcess::MergedChannels);
+    connect(process, &QProcess::finished, this,
+            [this, process, directory, modelId](int exitCode,
+                                                QProcess::ExitStatus status) {
+                preparingModels_.remove(modelId);
+                auto* item = dynamic_cast<ModelItem*>(scene_->find_by_uid(modelId));
+                const QStringList qmlFiles = QDir(directory->path()).entryList(
+                    {QStringLiteral("*.qml")}, QDir::Files);
+                const bool ready = item && status == QProcess::NormalExit
+                                   && exitCode == 0 && qmlFiles.size() == 1;
+                if (ready) {
+                    const QUrl prepared = QUrl::fromLocalFile(
+                        directory->filePath(qmlFiles.first()));
+                    item->set_prepared_assets(directory, prepared);
+                    if (activeModel_ == item) {
+                        if (QObject* viewer = modelViewer_->rootObject()) {
+                            viewer->setProperty("preparedCenter",
+                                                QVariant::fromValue(item->bounds().center));
+                            viewer->setProperty("preparedExtent", item->bounds().extent);
+                            viewer->setProperty("preparedSource", prepared);
+                            viewer->setProperty("preparing", false);
+                        }
+                    }
+                } else if (item && activeModel_ == item) {
+                    if (QObject* viewer = modelViewer_->rootObject()) {
+                        viewer->setProperty("preparing", false);
+                        viewer->setProperty("errorMessage",
+                                            tr("Could not prepare 3D model"));
+                    }
+                }
+                process->deleteLater();
+            });
+    connect(process, &QProcess::errorOccurred, this,
+            [this, process, modelId](QProcess::ProcessError error) {
+                if (error != QProcess::FailedToStart) {
+                    return;
+                }
+                preparingModels_.remove(modelId);
+                if (auto* item = dynamic_cast<ModelItem*>(scene_->find_by_uid(modelId))) {
+                    if (activeModel_ == item) {
+                        if (QObject* viewer = modelViewer_->rootObject()) {
+                            viewer->setProperty("preparing", false);
+                            viewer->setProperty("errorMessage",
+                                                tr("Could not prepare 3D model"));
+                        }
+                    }
+                }
+                process->deleteLater();
+            });
+    process->start(converter,
+                   {QStringLiteral("-o"), directory->path(), source.toLocalFile()});
 }
 
 void CanvasView::end_model_edit()
@@ -1056,6 +1160,8 @@ void CanvasView::end_model_edit()
     }
     if (root) {
         root->setProperty("modelSource", QUrl());
+        root->setProperty("preparedSource", QUrl());
+        root->setProperty("preparing", false);
     }
     setFocus();
 }
@@ -1070,6 +1176,8 @@ void CanvasView::update_model_viewer_pos()
         modelViewer_->hide();
         if (QObject* root = modelViewer_->rootObject()) {
             root->setProperty("modelSource", QUrl());
+            root->setProperty("preparedSource", QUrl());
+            root->setProperty("preparing", false);
         }
         modelToolbar_->attach(nullptr);
         modelToolbar_->hide();

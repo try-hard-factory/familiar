@@ -112,6 +112,56 @@ struct Cloud
 };
 } // namespace
 
+ModelBounds model_bounds(const QByteArray& glb)
+{
+    if (glb.size() < 20 || std::memcmp(glb.constData(), "glTF", 4) != 0
+        || u32(glb.constData() + 4) != 2
+        || u32(glb.constData() + 8) != quint32(glb.size())) {
+        return {};
+    }
+    const quint32 jsonSize = u32(glb.constData() + 12);
+    if (u32(glb.constData() + 16) != 0x4e4f534a
+        || jsonSize > quint64(glb.size() - 20)) {
+        return {};
+    }
+    const QJsonObject json = QJsonDocument::fromJson(glb.mid(20, jsonSize)).object();
+    const QJsonArray accessors = json.value("accessors").toArray();
+    QVector3D low(std::numeric_limits<float>::max(),
+                  std::numeric_limits<float>::max(),
+                  std::numeric_limits<float>::max());
+    QVector3D high(-low.x(), -low.y(), -low.z());
+    bool found = false;
+    for (const QJsonValue& mesh : json.value("meshes").toArray()) {
+        for (const QJsonValue& primitive : mesh.toObject().value("primitives").toArray()) {
+            const int index = primitive.toObject().value("attributes").toObject()
+                                  .value("POSITION").toInt(-1);
+            if (index < 0 || index >= accessors.size()) {
+                continue;
+            }
+            const QJsonObject position = accessors.at(index).toObject();
+            const QJsonArray minimum = position.value("min").toArray();
+            const QJsonArray maximum = position.value("max").toArray();
+            if (minimum.size() != 3 || maximum.size() != 3) {
+                continue;
+            }
+            found = true;
+            for (int axis = 0; axis < 3; ++axis) {
+                low[axis] = std::min(low[axis], float(minimum.at(axis).toDouble()));
+                high[axis] = std::max(high[axis], float(maximum.at(axis).toDouble()));
+            }
+        }
+    }
+    if (!found) {
+        return {};
+    }
+    const float extent = std::max({high.x() - low.x(), high.y() - low.y(),
+                                   high.z() - low.z()});
+    if (!std::isfinite(extent) || extent <= 0) {
+        return {};
+    }
+    return {(low + high) / 2, extent};
+}
+
 QImage render_model_preview(const QByteArray& glb)
 {
     if (glb.size() < 28 || std::memcmp(glb.constData(), "glTF", 4) != 0

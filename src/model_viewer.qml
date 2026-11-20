@@ -5,11 +5,21 @@ import QtQuick3D.AssetUtils
 Item {
     id: root
     property url modelSource
+    property url preparedSource
+    property bool preparing: false
+    property string errorMessage: ""
+    property vector3d preparedCenter: Qt.vector3d(0, 0, 0)
+    property real preparedExtent: 1
     property real yaw: 25
     property real pitch: -15
     property real distance: 450
-    property bool loaded: loader.status === RuntimeLoader.Success
-    property string error: loader.errorString
+    property bool loaded: preparedSource.toString().length > 0
+                          ? preparedLoader.status === Loader3D.Ready
+                          : loader.status === RuntimeLoader.Success
+    property string error: errorMessage.length > 0 ? errorMessage
+                           : preparedSource.toString().length > 0
+                           ? (preparedLoader.status === Loader3D.Error ? "Could not load prepared model" : "")
+                           : loader.errorString
     property bool showHint: true
 
     Rectangle { anchors.fill: parent; color: "#28313d" }
@@ -33,7 +43,7 @@ Item {
             eulerRotation: Qt.vector3d(root.pitch, root.yaw, 0)
             RuntimeLoader {
                 id: loader
-                source: root.modelSource
+                source: root.preparedSource.toString().length > 0 ? "" : root.modelSource
                 position: Qt.vector3d(-(bounds.maximum.x + bounds.minimum.x) * fit / 2,
                                       -(bounds.maximum.y + bounds.minimum.y) * fit / 2,
                                       -(bounds.maximum.z + bounds.minimum.z) * fit / 2)
@@ -42,6 +52,17 @@ Item {
                                                         bounds.maximum.y - bounds.minimum.y,
                                                         bounds.maximum.z - bounds.minimum.z)
                 readonly property real fit: extent > 0 ? 250 / extent : 1
+            }
+            Loader3D {
+                id: preparedLoader
+                asynchronous: true
+                source: root.preparedSource
+                readonly property real fit: root.preparedExtent > 0
+                                            ? 250 / root.preparedExtent : 1
+                scale: Qt.vector3d(fit, fit, fit)
+                position: Qt.vector3d(-root.preparedCenter.x * fit,
+                                      -root.preparedCenter.y * fit,
+                                      -root.preparedCenter.z * fit)
             }
         }
     }
@@ -69,9 +90,10 @@ Item {
 
     Text {
         anchors.centerIn: parent
-        visible: root.modelSource.toString().length > 0
-                 && !root.loaded && loader.status !== RuntimeLoader.Error
-        text: "Loading 3D model…"
+        visible: (root.preparing || root.modelSource.toString().length > 0
+                  || root.preparedSource.toString().length > 0)
+                 && !root.loaded && root.error.length === 0
+        text: root.preparing ? "Preparing 3D model…" : "Loading 3D model…"
         color: "#dce7f3"
         font.pixelSize: 15
     }
@@ -89,7 +111,7 @@ Item {
             id: hint
             anchors.centerIn: parent
             color: "white"
-            text: loader.status === RuntimeLoader.Error ? loader.errorString
+            text: root.error.length > 0 ? root.error
                 : root.loaded ? "Drag to rotate · Wheel to zoom · Lock or Esc to finish"
                 : "Lock or Esc to finish"
             font.pixelSize: 12

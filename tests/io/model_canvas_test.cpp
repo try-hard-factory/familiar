@@ -7,13 +7,40 @@
 
 #include <gtest/gtest.h>
 #include <QDataStream>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QQuickItem>
 #include <QQuickWidget>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimer>
 #include <QToolButton>
 #include <QUndoStack>
+
+namespace {
+class EventLoopHeartbeat
+{
+public:
+    EventLoopHeartbeat()
+    {
+        clock_.start();
+        QObject::connect(&timer_, &QTimer::timeout, [&] {
+            const qint64 now = clock_.elapsed();
+            longestGap_ = std::max(longestGap_, now - previous_);
+            previous_ = now;
+        });
+        timer_.start(20);
+    }
+
+    qint64 longest_gap() const { return longestGap_; }
+
+private:
+    QElapsedTimer clock_;
+    QTimer timer_;
+    qint64 previous_ = 0;
+    qint64 longestGap_ = 0;
+};
+} // namespace
 
 TEST(ModelCanvasTest, ModelAndViewSurviveProjectRoundTrip)
 {
@@ -125,18 +152,8 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
     ASSERT_EQ(file.write(glb), glb.size());
     file.close();
 
-    QQuickWidget viewer;
-    viewer.resize(400, 400);
-    viewer.setSource(QUrl(QStringLiteral("qrc:/model/model_viewer.qml")));
-    ASSERT_EQ(viewer.status(), QQuickWidget::Ready);
     const QString sourceFile = qEnvironmentVariable("FAMILIAR_TEST_GLB",
                                                     filename);
-    viewer.rootObject()->setProperty("modelSource",
-                                     QUrl::fromLocalFile(sourceFile));
-    viewer.show();
-    QTRY_VERIFY_WITH_TIMEOUT(viewer.rootObject()->property("loaded").toBool(),
-                             5000);
-
     MainWindow window;
     window.show();
     CanvasView* canvas = window.tab_pane().current_widget();
@@ -179,13 +196,63 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
     EXPECT_TRUE(model->isSelected());
     EXPECT_TRUE(toolbar->isVisible());
 
+    EventLoopHeartbeat heartbeat;
     QTest::mouseClick(button, Qt::LeftButton);
     EXPECT_TRUE(button->isChecked());
     EXPECT_TRUE(editViewer->isVisible());
     EXPECT_TRUE(window.isVisible());
+    // Lock and unlock again while conversion is still running. The first
+    // process should finish for the same canvas item without opening a
+    // second copy or reviving the closed viewer.
+    QTest::qWait(50);
+    QTest::mouseClick(button, Qt::LeftButton);
+    EXPECT_FALSE(button->isChecked());
+    QTest::mouseClick(button, Qt::LeftButton);
+    EXPECT_TRUE(button->isChecked());
+    QTRY_VERIFY_WITH_TIMEOUT(editViewer->rootObject()->property("loaded").toBool(),
+                             60000);
+    QTest::qWait(100);
+    EXPECT_LT(heartbeat.longest_gap(), 4500);
 
     QTest::mouseClick(button, Qt::LeftButton);
     EXPECT_FALSE(button->isChecked());
     EXPECT_FALSE(editViewer->isVisible());
     EXPECT_TRUE(model->isSelected());
+}
+
+TEST(ModelCanvasTest, SavedBoardUnlocksModel)
+{
+    const QString sourceFile = qEnvironmentVariable("FAMILIAR_TEST_FML");
+    if (sourceFile.isEmpty()) {
+        GTEST_SKIP() << "Set FAMILIAR_TEST_FML to test a saved board";
+    }
+    MainWindow window;
+    window.show();
+    CanvasView* canvas = window.tab_pane().current_widget();
+    ASSERT_NE(canvas, nullptr);
+    const FmlResult loaded = FmlArchive::load(sourceFile, canvas->scene());
+    ASSERT_TRUE(loaded.error.isEmpty()) << loaded.error.toStdString();
+    canvas->scene()->add_queued_items();
+    const auto models = canvas->scene()->items_by_type("model");
+    ASSERT_FALSE(models.isEmpty());
+    auto* model = dynamic_cast<ModelItem*>(models.first());
+    ASSERT_NE(model, nullptr);
+    canvas->centerOn(model);
+    model->setSelected(true);
+    auto* toolbar = canvas->findChild<ModelToolbar*>();
+    ASSERT_NE(toolbar, nullptr);
+    auto* button = toolbar->findChild<QToolButton*>();
+    ASSERT_NE(button, nullptr);
+    QTRY_VERIFY(toolbar->isVisible());
+    EventLoopHeartbeat heartbeat;
+    QTest::mouseClick(button, Qt::LeftButton);
+    auto* viewer = canvas->findChild<QQuickWidget*>();
+    ASSERT_NE(viewer, nullptr);
+    ASSERT_TRUE(viewer->isVisible());
+    QTRY_VERIFY_WITH_TIMEOUT(viewer->rootObject()->property("loaded").toBool(),
+                             60000);
+    QTest::qWait(100);
+    EXPECT_LT(heartbeat.longest_gap(), 4500);
+    QTest::mouseClick(button, Qt::LeftButton);
+    EXPECT_TRUE(window.isVisible());
 }
