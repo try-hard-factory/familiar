@@ -48,6 +48,26 @@
 ---
 
 
+## Downloads
+
+Builds are **not code-signed yet** — no Authenticode certificate on
+Windows, no Developer ID on macOS, no GPG signatures on the Linux
+packages. On Windows that means SmartScreen will step in on the first
+run of a fresh download and report an unrecognised app from an unknown
+publisher; getting past it takes **More info → Run anyway**. Nothing is
+wrong with the file, it simply has no reputation and no publisher
+identity behind it.
+
+What you can check instead: every release download has a `.sha256sum`
+next to it on the [releases page](https://github.com/try-hard-factory/familiar/releases).
+
+```sh
+sha256sum -c familiar-0.0.17-x86_64.AppImage.sha256sum
+```
+
+A checksum proves the file arrived intact. It does not prove who built
+it — that's what signing is for, and it's on the list.
+
 ## Building
 
 Requires Qt6 (Widgets + Network) and CMake. Build via `./build.sh`, not
