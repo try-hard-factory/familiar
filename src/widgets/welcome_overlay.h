@@ -44,7 +44,7 @@ protected:
 
 private:
     static constexpr char ktxt[] = R"(
-        <p>Paste or drop images and .glb models here.</p>
+        <p>Paste or drop images and .glb/.gltf models here.</p>
         <p>Right-click for more options.</p>
     )";
 

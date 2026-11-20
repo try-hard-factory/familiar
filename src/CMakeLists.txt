@@ -52,6 +52,8 @@ set(PROJECT_SOURCES
         modelitem.h
         model_preview.cpp
         model_preview.h
+        gltf_import.cpp
+        gltf_import.h
         model_viewer.qrc
         canvasscene.cpp
         canvasscene.h
