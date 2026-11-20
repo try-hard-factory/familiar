@@ -37,7 +37,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFrame>
-#include <QFutureWatcher>
 #include <QGraphicsView>
 #include <QImage>
 #include <QImageReader>
@@ -52,9 +51,7 @@
 #include <QPaintDevice>
 #include <QPainter>
 #include <QPoint>
-#include <QPointer>
 #include <QProcess>
-#include <QProgressDialog>
 #include <QRegularExpression>
 #include <QScrollBar>
 #include <QStandardPaths>
@@ -74,7 +71,6 @@
 #include <QtNumeric>
 #include <QtPreprocessorSupport>
 #include <QtTypes>
-#include <QtConcurrent/QtConcurrentRun>
 
 #include <core/settingshandler.h>
 
@@ -325,6 +321,12 @@ CanvasView::~CanvasView()
         worker->wait();
         delete worker;
     }
+    for (ThreadedIO* worker : modelImportWorkers_) {
+        worker->on_canceled();
+        worker->wait();
+        delete worker;
+    }
+    modelImportWorkers_.clear();
     imageImportWorker_ = nullptr;
     imageExportWorker_ = nullptr;
 
@@ -1984,45 +1986,38 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
             QImage preview;
             QString error;
         };
-        auto* progress = new QProgressDialog(
-            tr("Preparing 3D model…"), tr("Cancel"), 0, 0, this);
-        progress->setAttribute(Qt::WA_DeleteOnClose);
-        progress->setWindowModality(Qt::WindowModal);
-        progress->setMinimumDuration(0);
-        progress->show();
-        const QPointer<QProgressDialog> progressPointer(progress);
-        auto cancelled = std::make_shared<bool>(false);
-        connect(progress, &QProgressDialog::canceled, this,
-                [cancelled] { *cancelled = true; });
-        auto* watcher = new QFutureWatcher<PreparedObj>(this);
-        connect(watcher, &QFutureWatcher<PreparedObj>::finished, this,
-                [this, watcher, progressPointer, cancelled, filename, scenePos] {
-                    const PreparedObj result = watcher->result();
-                    watcher->deleteLater();
-                    // QProgressDialog emits canceled() when close() is called,
-                    // including after a successful import.
-                    const bool wasCancelled = *cancelled;
-                    if (progressPointer) {
-                        progressPointer->close();
-                    }
-                    if (wasCancelled) {
-                        return;
-                    }
-                    if (!result.error.isEmpty()) {
-                        QMessageBox::warning(this, tr("3D model"), result.error);
-                        return;
-                    }
-                    insert_prepared_model(filename, scenePos, result.bytes,
-                                          result.preview);
-                });
-        watcher->setFuture(QtConcurrent::run([filename] {
+        auto result = std::make_shared<PreparedObj>();
+        auto* worker = new ThreadedIO([filename, result](ThreadedIO* running) {
+            emit running->current_item_changed(QFileInfo(filename).fileName());
             GltfImportResult imported = import_obj(filename);
-            if (!imported.error.isEmpty()) {
-                return PreparedObj{{}, {}, imported.error};
+            result->error = imported.error;
+            if (result->error.isEmpty() && !running->is_canceled()) {
+                result->preview = render_model_preview(imported.glb);
+                result->bytes = std::move(imported.glb);
             }
-            QImage preview = render_model_preview(imported.glb);
-            return PreparedObj{std::move(imported.glb), std::move(preview), {}};
-        }));
+            emit running->work_finished(result->error, {});
+        }, this);
+        modelImportWorkers_.insert(worker);
+        new ProgressDialog(tr("Preparing 3D model"), worker, 0, this);
+        connect(worker, &ThreadedIO::work_finished, this,
+                [this, worker, result, filename, scenePos](const QString&,
+                                                            const QStringList&) {
+                    if (worker->is_canceled()) {
+                        return;
+                    }
+                    if (!result->error.isEmpty()) {
+                        show_message_box(QMessageBox::Warning, this,
+                                         tr("3D model"), result->error);
+                        return;
+                    }
+                    insert_prepared_model(filename, scenePos, result->bytes,
+                                          result->preview);
+                });
+        connect(worker, &QThread::finished, this, [this, worker] {
+            modelImportWorkers_.remove(worker);
+            worker->deleteLater();
+        });
+        worker->start();
         return nullptr;
     }
     if (suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0) {
