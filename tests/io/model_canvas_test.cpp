@@ -1,6 +1,7 @@
 #include "canvasscene.h"
 #include "canvasview.h"
 #include "fml_archive.h"
+#include "gltf_import.h"
 #include "mainwindow.h"
 #include "modelitem.h"
 #include "model_preview.h"
@@ -11,6 +12,9 @@
 #include <QBuffer>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QQuickItem>
 #include <QQuickWidget>
 #include <QTemporaryDir>
@@ -18,6 +22,7 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QUndoStack>
+#include <cstring>
 
 namespace {
 class EventLoopHeartbeat
@@ -233,7 +238,116 @@ TEST(ModelCanvasTest, PreviewKeepsTextureUpright)
     EXPECT_TRUE(model->encoded_source().isEmpty());
 }
 
-TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
+TEST(ModelCanvasTest, GltfImportBundlesExternalFilesForProjectSave)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    QByteArray geometry;
+    QDataStream mesh(&geometry, QIODevice::WriteOnly);
+    mesh.setByteOrder(QDataStream::LittleEndian);
+    mesh.setFloatingPointPrecision(QDataStream::SinglePrecision);
+    for (float coordinate : {-1.0f, -1.0f, 0.0f,
+                             1.0f, -1.0f, 0.0f,
+                             0.0f, 1.0f, 0.0f}) {
+        mesh << coordinate;
+    }
+    for (quint16 index : {0, 1, 2}) {
+        mesh << index;
+    }
+    ASSERT_EQ(geometry.size(), 42);
+    const QString binPath = dir.filePath(QStringLiteral("mesh.bin"));
+    QFile binFile(binPath);
+    ASSERT_TRUE(binFile.open(QIODevice::WriteOnly));
+    ASSERT_EQ(binFile.write(geometry), geometry.size());
+    binFile.close();
+
+    QImage texture(2, 2, QImage::Format_RGB32);
+    texture.fill(Qt::red);
+    const QString texturePath = dir.filePath(QStringLiteral("texture.png"));
+    ASSERT_TRUE(texture.save(texturePath));
+
+    const QByteArray json = QByteArrayLiteral(R"({
+"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],
+"nodes":[{"mesh":0}],"meshes":[{"primitives":[{
+"attributes":{"POSITION":0},"indices":1}]}],
+"buffers":[{"uri":"mesh.bin","byteLength":42}],
+"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36},
+{"buffer":0,"byteOffset":36,"byteLength":6}],
+"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3",
+"min":[-1,-1,0],"max":[1,1,0]},
+{"bufferView":1,"componentType":5123,"count":3,"type":"SCALAR"}],
+"images":[{"uri":"texture.png"}]})");
+    const QString gltfPath = dir.filePath(QStringLiteral("triangle.gltf"));
+    QFile gltfFile(gltfPath);
+    ASSERT_TRUE(gltfFile.open(QIODevice::WriteOnly));
+    ASSERT_EQ(gltfFile.write(json), json.size());
+    gltfFile.close();
+
+    const GltfImportResult imported = import_gltf(gltfPath);
+    ASSERT_TRUE(imported.error.isEmpty()) << imported.error.toStdString();
+    ASSERT_TRUE(imported.glb.startsWith("glTF"));
+    quint32 jsonLength = 0;
+    std::memcpy(&jsonLength, imported.glb.constData() + 12, sizeof(jsonLength));
+    const QJsonObject packed = QJsonDocument::fromJson(
+        imported.glb.mid(20, jsonLength)).object();
+    EXPECT_EQ(packed.value(QStringLiteral("buffers")).toArray().size(), 1);
+    EXPECT_EQ(packed.value(QStringLiteral("bufferViews")).toArray().size(), 3);
+    const QJsonObject image = packed.value(QStringLiteral("images"))
+                                  .toArray().first().toObject();
+    EXPECT_FALSE(image.contains(QStringLiteral("uri")));
+    EXPECT_EQ(image.value(QStringLiteral("mimeType")).toString(),
+              QStringLiteral("image/png"));
+
+    QFile textureFile(texturePath);
+    ASSERT_TRUE(textureFile.open(QIODevice::ReadOnly));
+    const QByteArray png = textureFile.readAll();
+    textureFile.close();
+    QByteArray embeddedJson = json;
+    embeddedJson.replace("mesh.bin",
+                         "data:application/octet-stream;base64," + geometry.toBase64());
+    embeddedJson.replace("texture.png", "data:image/png;base64," + png.toBase64());
+    const QString embeddedPath = dir.filePath(QStringLiteral("embedded.gltf"));
+    QFile embeddedFile(embeddedPath);
+    ASSERT_TRUE(embeddedFile.open(QIODevice::WriteOnly));
+    ASSERT_EQ(embeddedFile.write(embeddedJson), embeddedJson.size());
+    embeddedFile.close();
+    const GltfImportResult embedded = import_gltf(embeddedPath);
+    ASSERT_TRUE(embedded.error.isEmpty()) << embedded.error.toStdString();
+    EXPECT_EQ(embedded.glb, imported.glb);
+
+    MainWindow window;
+    window.show();
+    CanvasView* canvas = window.tab_pane().current_widget();
+    ASSERT_NE(canvas, nullptr);
+    canvas->do_insert_images({QUrl::fromLocalFile(gltfPath)}, QPoint(160, 160));
+    const auto models = canvas->scene()->items_by_type("model");
+    ASSERT_EQ(models.size(), 1);
+    auto* model = dynamic_cast<ModelItem*>(models.first());
+    ASSERT_NE(model, nullptr);
+    EXPECT_EQ(model->model_bytes(), imported.glb);
+
+    const QString projectPath = dir.filePath(QStringLiteral("model.fml"));
+    const FmlResult saved = FmlArchive::save(canvas->scene(), {}, projectPath);
+    ASSERT_TRUE(saved.error.isEmpty()) << saved.error.toStdString();
+    ASSERT_TRUE(QFile::remove(texturePath));
+    EXPECT_FALSE(import_gltf(gltfPath).error.isEmpty());
+    ASSERT_TRUE(QFile::remove(gltfPath));
+    ASSERT_TRUE(QFile::remove(binPath));
+
+    QUndoStack undo;
+    uint64_t zCounter = 0;
+    CanvasScene restored(window, zCounter, &undo);
+    const FmlResult loaded = FmlArchive::load(projectPath, &restored);
+    ASSERT_TRUE(loaded.error.isEmpty()) << loaded.error.toStdString();
+    restored.add_queued_items();
+    const auto restoredModels = restored.items_by_type("model");
+    ASSERT_EQ(restoredModels.size(), 1);
+    const auto* restoredModel = dynamic_cast<ModelItem*>(restoredModels.first());
+    ASSERT_NE(restoredModel, nullptr);
+    EXPECT_EQ(restoredModel->model_bytes(), imported.glb);
+}
+
+TEST(ModelCanvasTest, ModelImportAndUnlock)
 {
     QByteArray geometry;
     QDataStream binary(&geometry, QIODevice::WriteOnly);

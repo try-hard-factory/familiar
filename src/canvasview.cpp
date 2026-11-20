@@ -5,6 +5,7 @@
 #include "core/settings.h"
 #include "export.h"
 #include "fileio.h"
+#include "gltf_import.h"
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "modelitem.h"
@@ -265,6 +266,19 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
 
 CanvasView::~CanvasView()
 {
+    // QProcess can emit finished() from its own destructor. Stop and delete
+    // converters while CanvasView's members are still alive; otherwise its
+    // completion callback can access preparingModels_ after destruction.
+    for (QProcess* process : findChildren<QProcess*>(QString(),
+                                                    Qt::FindDirectChildrenOnly)) {
+        QObject::disconnect(process, nullptr, this, nullptr);
+        if (process->state() != QProcess::NotRunning) {
+            process->kill();
+            process->waitForFinished(1000);
+        }
+        delete process;
+    }
+    preparingModels_.clear();
     if (modelViewer_) {
         modelViewer_->hide();
         if (QObject* root = modelViewer_->rootObject()) {
@@ -1943,7 +1957,7 @@ void CanvasView::on_action_insert_images()
 void CanvasView::on_action_insert_model()
 {
     const QString filename = QFileDialog::getOpenFileName(
-        this, tr("Insert 3D model"), {}, tr("glTF binary model (*.glb)"));
+        this, tr("Insert 3D model"), {}, tr("glTF models (*.glb *.gltf)"));
     if (filename.isEmpty()) {
         return;
     }
@@ -1954,18 +1968,30 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
                                          const QPointF& scenePos)
 {
     cancel_active_modes();
-    QFile file(filename);
     constexpr qint64 kmaxModelBytes = 128LL * 1024 * 1024;
-    if (!file.open(QIODevice::ReadOnly) || file.size() <= 0
-        || file.size() > kmaxModelBytes) {
-        QMessageBox::warning(this, tr("3D model"),
-                             tr("Could not read the model (maximum 128 MB)."));
-        return nullptr;
-    }
-    const QByteArray bytes = file.readAll();
-    if (bytes.size() != file.size() || !bytes.startsWith("glTF")) {
-        QMessageBox::warning(this, tr("3D model"), tr("This is not a valid .glb file."));
-        return nullptr;
+    QByteArray bytes;
+    if (QFileInfo(filename).suffix().compare(QStringLiteral("gltf"),
+                                              Qt::CaseInsensitive) == 0) {
+        GltfImportResult imported = import_gltf(filename);
+        if (!imported.error.isEmpty()) {
+            QMessageBox::warning(this, tr("3D model"), imported.error);
+            return nullptr;
+        }
+        bytes = std::move(imported.glb);
+    } else {
+        QFile file(filename);
+        if (!file.open(QIODevice::ReadOnly) || file.size() <= 0
+            || file.size() > kmaxModelBytes) {
+            QMessageBox::warning(this, tr("3D model"),
+                                 tr("Could not read the model (maximum 128 MB)."));
+            return nullptr;
+        }
+        bytes = file.readAll();
+        if (bytes.size() != file.size() || !bytes.startsWith("glTF")) {
+            QMessageBox::warning(this, tr("3D model"),
+                                 tr("This is not a valid .glb file."));
+            return nullptr;
+        }
     }
     const bool wasEmpty = scene_->items().isEmpty();
     auto* model = new ModelItem(render_model_preview(bytes), bytes, filename);
@@ -2431,9 +2457,10 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
     QList<QUrl> imageUrls;
     QStringList modelFiles;
     for (const QUrl& url : validUrls) {
-        if (url.isLocalFile()
-            && QFileInfo(url.toLocalFile()).suffix().compare(
-                   QStringLiteral("glb"), Qt::CaseInsensitive) == 0) {
+        const QString suffix = url.isLocalFile()
+                                   ? QFileInfo(url.toLocalFile()).suffix() : QString();
+        if (suffix.compare(QStringLiteral("glb"), Qt::CaseInsensitive) == 0
+            || suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0) {
             modelFiles.append(url.toLocalFile());
         } else {
             imageUrls.append(url);
