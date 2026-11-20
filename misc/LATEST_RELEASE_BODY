@@ -1,8 +1,10 @@
 Changes:
-  - feedback fixes (#101)
-  - add log level to log widget and updates logs (#100)
-  - cmd line rework (#99)
-  - new file format (#98)
-  - rework restore defaults (#97)
-  - add nightly
-  - issue template
+  - ci: publish .sha256sum next to the release downloads
+  - ci: rebuild the site when a release is published
+  - BETA: temporary disable some package
+  - add annotation shortcuts (#116)
+  - Add telemetry (#115)
+  - Add some badges (#113)
+  - Perfomance fix (#111)
+  - Bug fixing (#110)
+  - Warnings fix(gcc clang) (#107)
