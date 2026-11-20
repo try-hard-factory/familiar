@@ -87,6 +87,24 @@ TEST(ModelCanvasTest, ViewerQmlLoads)
     viewer.setSource(QUrl(QStringLiteral("qrc:/model/model_viewer.qml")));
     EXPECT_EQ(viewer.status(), QQuickWidget::Ready);
     ASSERT_NE(viewer.rootObject(), nullptr);
+    EXPECT_TRUE(viewer.rootObject()->property("error").toString().isEmpty());
+
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString previewPath = dir.filePath(QStringLiteral("preview.png"));
+    QImage preview(400, 400, QImage::Format_RGB32);
+    preview.fill(Qt::red);
+    ASSERT_TRUE(preview.save(previewPath));
+    viewer.resize(400, 400);
+    viewer.rootObject()->setProperty("previewSource",
+                                     QUrl::fromLocalFile(previewPath));
+    viewer.rootObject()->setProperty("preparing", true);
+    viewer.show();
+    auto* previewItem = viewer.rootObject()->findChild<QQuickItem*>(
+        QStringLiteral("modelPreview"));
+    ASSERT_NE(previewItem, nullptr);
+    QTRY_COMPARE(previewItem->property("status").toInt(), 1); // Image.Ready
+    EXPECT_TRUE(previewItem->isVisible());
 }
 
 TEST(ModelCanvasTest, DuplicateKeepsTheModelEditable)
@@ -312,6 +330,8 @@ TEST(ModelCanvasTest, RuntimeLoaderOpensGlb)
     EXPECT_TRUE(button->isChecked());
     EXPECT_TRUE(editViewer->isVisible());
     EXPECT_TRUE(window.isVisible());
+    EXPECT_TRUE(editViewer->rootObject()->property("error").toString().isEmpty());
+    EXPECT_FALSE(editViewer->rootObject()->property("previewSource").toUrl().isEmpty());
     // Lock and unlock again while conversion is still running. The first
     // process should finish for the same canvas item without opening a
     // second copy or reviving the closed viewer.

@@ -6,7 +6,9 @@ Item {
     id: root
     property url modelSource
     property url preparedSource
+    property url previewSource
     property bool preparing: false
+    property bool previewVisible: true
     property string errorMessage: ""
     property vector3d preparedCenter: Qt.vector3d(0, 0, 0)
     property real preparedExtent: 1
@@ -19,8 +21,25 @@ Item {
     property string error: errorMessage.length > 0 ? errorMessage
                            : preparedSource.toString().length > 0
                            ? (preparedLoader.status === Loader3D.Error ? "Could not load prepared model" : "")
-                           : loader.errorString
+                           : modelSource.toString().length > 0
+                             && loader.status === RuntimeLoader.Error
+                           ? loader.errorString : ""
     property bool showHint: true
+    onLoadedChanged: {
+        if (loaded) {
+            revealTimer.restart()
+        } else {
+            revealTimer.stop()
+            previewVisible = true
+        }
+    }
+    onPreviewSourceChanged: previewVisible = true
+
+    Timer {
+        id: revealTimer
+        interval: 150
+        onTriggered: root.previewVisible = false
+    }
 
     Rectangle { anchors.fill: parent; color: "#28313d" }
 
@@ -67,6 +86,16 @@ Item {
         }
     }
 
+    Image {
+        objectName: "modelPreview"
+        anchors.fill: parent
+        source: root.previewSource
+        fillMode: Image.PreserveAspectFit
+        smooth: true
+        cache: false
+        visible: root.previewVisible && root.previewSource.toString().length > 0
+    }
+
     MouseArea {
         anchors.fill: parent
         enabled: root.loaded
@@ -88,14 +117,22 @@ Item {
         }
     }
 
-    Text {
+    Rectangle {
         anchors.centerIn: parent
         visible: (root.preparing || root.modelSource.toString().length > 0
                   || root.preparedSource.toString().length > 0)
                  && !root.loaded && root.error.length === 0
-        text: root.preparing ? "Preparing 3D model…" : "Loading 3D model…"
-        color: "#dce7f3"
-        font.pixelSize: 15
+        width: loadingText.implicitWidth + 24
+        height: loadingText.implicitHeight + 14
+        radius: 6
+        color: "#bb101821"
+        Text {
+            id: loadingText
+            anchors.centerIn: parent
+            text: root.preparing ? "Preparing 3D model…" : "Loading 3D model…"
+            color: "#dce7f3"
+            font.pixelSize: 15
+        }
     }
 
     Rectangle {
