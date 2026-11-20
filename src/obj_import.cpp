@@ -3,6 +3,7 @@
 #include <QBuffer>
 #include <QDataStream>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
@@ -11,6 +12,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QObject>
+#include <QSet>
 #include <QTextStream>
 #include <QVector2D>
 #include <QVector3D>
@@ -60,6 +62,12 @@ struct Material
     float opacity = 1;
     QString texture;
     QDir textureDir;
+    QString basePath;
+    QString normalPath;
+    QString roughnessPath;
+    QString metallicPath;
+    QString occlusionPath;
+    QString emissivePath;
 };
 
 QString asset_path(const QDir& root, const QDir& relativeTo,
@@ -123,6 +131,96 @@ QString map_path(QString value)
         i += arguments;
     }
     return parts.mid(i).join(QLatin1Char(' '));
+}
+
+QString normalized_name(const QString& text)
+{
+    QString result;
+    result.reserve(text.size());
+    for (const QChar character : text) {
+        if (character.isLetterOrNumber()) {
+            result.append(character.toLower());
+        }
+    }
+    return result;
+}
+
+void discover_textures(const QDir& modelDir, QVector<Material>& materials,
+                       const QVector<Primitive>& primitives)
+{
+    QStringList folders{modelDir.absolutePath(),
+                        modelDir.filePath(QStringLiteral("textures"))};
+    QDir parent = modelDir;
+    if (parent.cdUp()) {
+        folders.append(parent.filePath(QStringLiteral("textures")));
+    }
+    QSet<QString> visited;
+    for (const QString& folder : folders) {
+        if (!QFileInfo(folder).isDir()) {
+            continue;
+        }
+        QDirIterator files(folder, QDir::Files, QDirIterator::Subdirectories);
+        int scanned = 0;
+        while (files.hasNext() && scanned++ < 2000) {
+            const QString path = QFileInfo(files.next()).canonicalFilePath();
+            const QString canonicalFolder = QFileInfo(folder).canonicalFilePath();
+            if (path.isEmpty() || canonicalFolder.isEmpty()
+                || !path.startsWith(canonicalFolder + QDir::separator())) {
+                continue;
+            }
+            if (visited.contains(path)) {
+                continue;
+            }
+            visited.insert(path);
+            const QString extension = QFileInfo(path).suffix().toLower();
+            if (extension != QLatin1String("png")
+                && extension != QLatin1String("jpg")
+                && extension != QLatin1String("jpeg")
+                && extension != QLatin1String("webp")
+                && extension != QLatin1String("bmp")
+                && extension != QLatin1String("tga")) {
+                continue;
+            }
+            const QString stem = normalized_name(QFileInfo(path).completeBaseName());
+            for (int i = 0; i < materials.size(); ++i) {
+                Material& material = materials[i];
+                if (material.name.isEmpty() || primitives[i].indices.isEmpty()) {
+                    continue;
+                }
+                const QString name = normalized_name(material.name);
+                const auto assign = [&](const QStringList& suffixes,
+                                        QString& destination) {
+                    if (!destination.isEmpty()) {
+                        return;
+                    }
+                    for (const QString& suffix : suffixes) {
+                        if (!stem.endsWith(suffix)) {
+                            continue;
+                        }
+                        const QString prefix = stem.left(stem.size() - suffix.size());
+                        if (prefix == name || prefix.endsWith(name)) {
+                            destination = path;
+                            return;
+                        }
+                    }
+                };
+                assign({QStringLiteral("basecolor"), QStringLiteral("albedo"),
+                        QStringLiteral("diffuse"), QStringLiteral("color")},
+                       material.basePath);
+                assign({QStringLiteral("normalopengl"),
+                        QStringLiteral("normalgl"), QStringLiteral("normal")},
+                       material.normalPath);
+                assign({QStringLiteral("roughness")}, material.roughnessPath);
+                assign({QStringLiteral("metallic"), QStringLiteral("metalness")},
+                       material.metallicPath);
+                assign({QStringLiteral("ambientocclusion"),
+                        QStringLiteral("mixedao"), QStringLiteral("occlusion"),
+                        QStringLiteral("ao")}, material.occlusionPath);
+                assign({QStringLiteral("emissive"), QStringLiteral("emission")},
+                       material.emissivePath);
+            }
+        }
+    }
 }
 
 QString parse_mtl(const QString& path,
@@ -289,6 +387,62 @@ ImageData read_image(const QString& path, qint64 remaining)
     }
     return {bytes, mime, image.hasAlphaChannel(), {}};
 }
+
+ImageData pack_material_maps(const Material& material, qint64 remaining)
+{
+    QImage roughness;
+    QImage metallic;
+    QImage occlusion;
+    const auto load = [](const QString& path, QImage& output) {
+        if (path.isEmpty()) {
+            return true;
+        }
+        output = QImage(path).convertToFormat(QImage::Format_Grayscale8);
+        return !output.isNull();
+    };
+    if (!load(material.roughnessPath, roughness)
+        || !load(material.metallicPath, metallic)
+        || !load(material.occlusionPath, occlusion)) {
+        return {{}, {}, false, QObject::tr("Could not read OBJ material map")};
+    }
+    const QSize size = !roughness.isNull() ? roughness.size()
+                       : !metallic.isNull() ? metallic.size()
+                                            : occlusion.size();
+    if (size.isEmpty()) {
+        return {{}, {}, false, QObject::tr("OBJ material map is empty")};
+    }
+    if (!roughness.isNull() && roughness.size() != size) {
+        roughness = roughness.scaled(size);
+    }
+    if (!metallic.isNull() && metallic.size() != size) {
+        metallic = metallic.scaled(size);
+    }
+    if (!occlusion.isNull() && occlusion.size() != size) {
+        occlusion = occlusion.scaled(size);
+    }
+    QImage packed(size, QImage::Format_RGB888);
+    if (packed.isNull()) {
+        return {{}, {}, false, QObject::tr("OBJ material map is too large")};
+    }
+    for (int y = 0; y < size.height(); ++y) {
+        uchar* output = packed.scanLine(y);
+        const uchar* r = roughness.isNull() ? nullptr : roughness.constScanLine(y);
+        const uchar* m = metallic.isNull() ? nullptr : metallic.constScanLine(y);
+        const uchar* o = occlusion.isNull() ? nullptr : occlusion.constScanLine(y);
+        for (int x = 0; x < size.width(); ++x) {
+            output[3 * x] = o ? o[x] : 255;
+            output[3 * x + 1] = r ? r[x] : 255;
+            output[3 * x + 2] = m ? m[x] : 0;
+        }
+    }
+    QByteArray bytes;
+    QBuffer output(&bytes);
+    if (!output.open(QIODevice::WriteOnly) || !packed.save(&output, "PNG")
+        || bytes.size() > remaining) {
+        return {{}, {}, false, QObject::tr("Model exceeds 128 MB after packing")};
+    }
+    return {bytes, QStringLiteral("image/png"), false, {}};
+}
 } // namespace
 
 GltfImportResult import_obj(const QString& filename)
@@ -299,6 +453,11 @@ GltfImportResult import_obj(const QString& filename)
         return {{}, QObject::tr("Could not read .obj file (maximum 128 MB)")};
     }
     const QDir root(QFileInfo(filename).absolutePath());
+    QDir resourceRoot = root;
+    QDir parent = root;
+    if (parent.cdUp() && parent.exists(QStringLiteral("textures"))) {
+        resourceRoot = parent;
+    }
     QTextStream input(&file);
     QVector<QVector3D> positions;
     QVector<QVector2D> uvs;
@@ -328,11 +487,11 @@ GltfImportResult import_obj(const QString& filename)
         const QString value = line.mid(space + 1).trimmed();
         if (command == QLatin1String("mtllib")) {
             QStringList libraries{value};
-            if (asset_path(root, root, value).isEmpty()) {
+            if (asset_path(resourceRoot, root, value).isEmpty()) {
                 libraries = value.simplified().split(QLatin1Char(' '));
             }
             for (const QString& library : libraries) {
-                const QString path = asset_path(root, root, library);
+                const QString path = asset_path(resourceRoot, root, library);
                 if (path.isEmpty()) {
                     return {{}, QObject::tr("OBJ material file is missing: %1")
                                     .arg(library)};
@@ -439,6 +598,19 @@ GltfImportResult import_obj(const QString& filename)
     if (geometryBytes == 0) {
         return {{}, QObject::tr("The .obj file contains no faces")};
     }
+    for (int i = 0; i < materials.size(); ++i) {
+        Material& material = materials[i];
+        if (primitives[i].indices.isEmpty() || material.texture.isEmpty()) {
+            continue;
+        }
+        material.basePath = asset_path(resourceRoot, material.textureDir,
+                                       material.texture);
+        if (material.basePath.isEmpty()) {
+            return {{}, QObject::tr("OBJ texture is missing: %1")
+                            .arg(material.texture)};
+        }
+    }
+    discover_textures(root, materials, primitives);
 
     QByteArray binary;
     QJsonArray views;
@@ -497,51 +669,104 @@ GltfImportResult import_obj(const QString& filename)
     QJsonArray textures;
     QHash<QString, int> imageIndices;
     QHash<QString, bool> imageAlpha;
+    QString textureError;
+    const auto store_image = [&](const QString& key, ImageData image) {
+        const int cached = imageIndices.value(key, -1);
+        if (cached >= 0) {
+            return cached;
+        }
+        if (!image.error.isEmpty()) {
+            textureError = image.error;
+            return -1;
+        }
+        if (image.bytes.size() > kmaxGlbBytes - binary.size() - 4) {
+            textureError = QObject::tr("Model exceeds 128 MB after packing");
+            return -1;
+        }
+        const qsizetype offset = binary.size();
+        const qsizetype length = image.bytes.size();
+        binary.append(image.bytes);
+        while (binary.size() % 4) {
+            binary.append('\0');
+        }
+        const int view = int(views.size());
+        append_view(views, offset, length);
+        const int imageIndex = int(images.size());
+        images.append(QJsonObject{{QStringLiteral("bufferView"), view},
+                                  {QStringLiteral("mimeType"), image.mime}});
+        const int textureIndex = int(textures.size());
+        textures.append(QJsonObject{{QStringLiteral("source"), imageIndex}});
+        imageIndices.insert(key, textureIndex);
+        imageAlpha.insert(key, image.alpha);
+        return textureIndex;
+    };
+    const auto load_texture = [&](const QString& path) {
+        const int cached = imageIndices.value(path, -1);
+        return cached >= 0 ? cached
+                           : store_image(path, read_image(
+                               path, kmaxGlbBytes - binary.size()));
+    };
     for (int i = 0; i < materials.size(); ++i) {
         const Material& material = materials[i];
         QJsonObject pbr{{QStringLiteral("baseColorFactor"),
                          QJsonArray{material.color.x(), material.color.y(),
                                     material.color.z(), material.opacity}},
-                        {QStringLiteral("metallicFactor"), 0},
+                        {QStringLiteral("metallicFactor"),
+                         material.metallicPath.isEmpty() ? 0 : 1},
                         {QStringLiteral("roughnessFactor"), 1}};
         bool alpha = material.opacity < 1.0f;
-        if (!primitives[i].indices.isEmpty() && !material.texture.isEmpty()) {
-            const QString path = asset_path(root, material.textureDir,
-                                            material.texture);
-            if (path.isEmpty()) {
-                return {{}, QObject::tr("OBJ texture is missing: %1")
-                                .arg(material.texture)};
-            }
-            int textureIndex = imageIndices.value(path, -1);
+        if (!primitives[i].indices.isEmpty() && !material.basePath.isEmpty()) {
+            const int textureIndex = load_texture(material.basePath);
             if (textureIndex < 0) {
-                ImageData image = read_image(path, kmaxGlbBytes - binary.size());
-                if (!image.error.isEmpty()) {
-                    return {{}, image.error};
-                }
-                alpha = alpha || image.alpha;
-                const qsizetype offset = binary.size();
-                const qsizetype length = image.bytes.size();
-                binary.append(image.bytes);
-                while (binary.size() % 4) {
-                    binary.append('\0');
-                }
-                const int view = int(views.size());
-                append_view(views, offset, length);
-                const int imageIndex = int(images.size());
-                images.append(QJsonObject{{QStringLiteral("bufferView"), view},
-                                          {QStringLiteral("mimeType"), image.mime}});
-                textureIndex = int(textures.size());
-                textures.append(QJsonObject{{QStringLiteral("source"), imageIndex}});
-                imageIndices.insert(path, textureIndex);
-                imageAlpha.insert(path, image.alpha);
-            } else {
-                alpha = alpha || imageAlpha.value(path);
+                return {{}, textureError};
             }
+            alpha = alpha || imageAlpha.value(material.basePath);
             pbr[QStringLiteral("baseColorTexture")]
                 = QJsonObject{{QStringLiteral("index"), textureIndex}};
         }
         QJsonObject gltfMaterial{{QStringLiteral("pbrMetallicRoughness"), pbr},
                                  {QStringLiteral("doubleSided"), true}};
+        if (!primitives[i].indices.isEmpty()) {
+            if (!material.roughnessPath.isEmpty()
+                || !material.metallicPath.isEmpty()
+                || !material.occlusionPath.isEmpty()) {
+                const QString key = QStringLiteral("packed:") + material.name;
+                const int index = store_image(
+                    key, pack_material_maps(material,
+                                            kmaxGlbBytes - binary.size()));
+                if (index < 0) {
+                    return {{}, textureError};
+                }
+                if (!material.roughnessPath.isEmpty()
+                    || !material.metallicPath.isEmpty()) {
+                    pbr[QStringLiteral("metallicRoughnessTexture")]
+                        = QJsonObject{{QStringLiteral("index"), index}};
+                }
+                if (!material.occlusionPath.isEmpty()) {
+                    gltfMaterial[QStringLiteral("occlusionTexture")]
+                        = QJsonObject{{QStringLiteral("index"), index}};
+                }
+            }
+            if (!material.normalPath.isEmpty()) {
+                const int index = load_texture(material.normalPath);
+                if (index < 0) {
+                    return {{}, textureError};
+                }
+                gltfMaterial[QStringLiteral("normalTexture")]
+                    = QJsonObject{{QStringLiteral("index"), index}};
+            }
+            if (!material.emissivePath.isEmpty()) {
+                const int index = load_texture(material.emissivePath);
+                if (index < 0) {
+                    return {{}, textureError};
+                }
+                gltfMaterial[QStringLiteral("emissiveTexture")]
+                    = QJsonObject{{QStringLiteral("index"), index}};
+                gltfMaterial[QStringLiteral("emissiveFactor")]
+                    = QJsonArray{1, 1, 1};
+            }
+        }
+        gltfMaterial[QStringLiteral("pbrMetallicRoughness")] = pbr;
         if (!material.name.isEmpty()) {
             gltfMaterial[QStringLiteral("name")] = material.name;
         }

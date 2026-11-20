@@ -3,7 +3,7 @@
 # synthetic-event helpers used by tests/widgets/*, plain utility
 # classes/functions usable from any test framework.
 find_package(QT NAMES Qt6 COMPONENTS Widgets Network Test REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Test QuickWidgets Quick3D REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Test QuickWidgets Quick3D Concurrent REQUIRED)
 
 ##################
 #     DOXYGEN    #
@@ -240,7 +240,8 @@ endif()
 # CMAKE_CXX_STANDARD.
 target_link_libraries(familiar PRIVATE project_warnings)
 target_link_libraries(familiar PRIVATE Qt${QT_VERSION_MAJOR}::QuickWidgets
-                                       Qt${QT_VERSION_MAJOR}::Quick3D)
+                                       Qt${QT_VERSION_MAJOR}::Quick3D
+                                       Qt${QT_VERSION_MAJOR}::Concurrent)
 
 # GoogleTest suite lives inside the app binary itself (main.cpp's "-t"
 # handling: ::testing::InitGoogleTest + RUN_ALL_TESTS instead of the

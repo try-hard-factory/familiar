@@ -37,6 +37,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFrame>
+#include <QFutureWatcher>
 #include <QGraphicsView>
 #include <QImage>
 #include <QImageReader>
@@ -51,7 +52,9 @@
 #include <QPaintDevice>
 #include <QPainter>
 #include <QPoint>
+#include <QPointer>
 #include <QProcess>
+#include <QProgressDialog>
 #include <QRegularExpression>
 #include <QScrollBar>
 #include <QStandardPaths>
@@ -71,6 +74,7 @@
 #include <QtNumeric>
 #include <QtPreprocessorSupport>
 #include <QtTypes>
+#include <QtConcurrent/QtConcurrentRun>
 
 #include <core/settingshandler.h>
 
@@ -1973,11 +1977,56 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
     constexpr qint64 kmaxModelBytes = 128LL * 1024 * 1024;
     QByteArray bytes;
     const QString suffix = QFileInfo(filename).suffix();
-    if (suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0
-        || suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
-        GltfImportResult imported
-            = suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0
-                  ? import_obj(filename) : import_gltf(filename);
+    if (suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
+        struct PreparedObj
+        {
+            QByteArray bytes;
+            QImage preview;
+            QString error;
+        };
+        auto* progress = new QProgressDialog(
+            tr("Preparing 3D model…"), tr("Cancel"), 0, 0, this);
+        progress->setAttribute(Qt::WA_DeleteOnClose);
+        progress->setWindowModality(Qt::WindowModal);
+        progress->setMinimumDuration(0);
+        progress->show();
+        const QPointer<QProgressDialog> progressPointer(progress);
+        auto cancelled = std::make_shared<bool>(false);
+        connect(progress, &QProgressDialog::canceled, this,
+                [cancelled] { *cancelled = true; });
+        auto* watcher = new QFutureWatcher<PreparedObj>(this);
+        connect(watcher, &QFutureWatcher<PreparedObj>::finished, this,
+                [this, watcher, progressPointer, cancelled, filename, scenePos] {
+                    const PreparedObj result = watcher->result();
+                    watcher->deleteLater();
+                    // QProgressDialog emits canceled() when close() is called,
+                    // including after a successful import.
+                    const bool wasCancelled = *cancelled;
+                    if (progressPointer) {
+                        progressPointer->close();
+                    }
+                    if (wasCancelled) {
+                        return;
+                    }
+                    if (!result.error.isEmpty()) {
+                        QMessageBox::warning(this, tr("3D model"), result.error);
+                        return;
+                    }
+                    insert_prepared_model(filename, scenePos, result.bytes,
+                                          result.preview);
+                });
+        watcher->setFuture(QtConcurrent::run([filename] {
+            GltfImportResult imported = import_obj(filename);
+            if (!imported.error.isEmpty()) {
+                return PreparedObj{{}, {}, imported.error};
+            }
+            QImage preview = render_model_preview(imported.glb);
+            return PreparedObj{std::move(imported.glb), std::move(preview), {}};
+        }));
+        return nullptr;
+    }
+    if (suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0) {
+        GltfImportResult imported = import_gltf(filename);
         if (!imported.error.isEmpty()) {
             QMessageBox::warning(this, tr("3D model"), imported.error);
             return nullptr;
@@ -1998,8 +2047,17 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
             return nullptr;
         }
     }
+    return insert_prepared_model(filename, scenePos, bytes,
+                                 render_model_preview(bytes));
+}
+
+ModelItem* CanvasView::insert_prepared_model(const QString& filename,
+                                             const QPointF& scenePos,
+                                             QByteArray bytes,
+                                             const QImage& preview)
+{
     const bool wasEmpty = scene_->items().isEmpty();
-    auto* model = new ModelItem(render_model_preview(bytes), bytes, filename);
+    auto* model = new ModelItem(preview, std::move(bytes), filename);
     undoStack_->push(new InsertItemsCommand(scene_, {model}, scenePos));
     on_scene_changed();
     if (wasEmpty) {
