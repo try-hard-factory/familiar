@@ -11,7 +11,10 @@ does not depend on the source files.
 If the `.mtl` does not name textures, the OBJ importer also looks for image
 files named after its materials in a `textures` folder beside the OBJ folder.
 It recognizes base color, normal, roughness, metallic, occlusion, and emissive
-maps. Large OBJ files are prepared in the background with a cancelable dialog.
+maps. Models are prepared in the background with a cancelable dialog. The
+initial preview is rendered by the same 3D viewer used after unlocking, in a
+separate process so large models do not freeze the canvas. If that renderer is
+unavailable, a simpler software preview is used.
 The imported item is selected and transformed like a picture. Select it and
 press the padlock button below it to unlock 3D rotation; double-clicking the
 model is a shortcut. Drag inside its frame to rotate and use the wheel to

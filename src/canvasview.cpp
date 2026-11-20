@@ -35,6 +35,7 @@
 #include <QDialog>
 #include <QFileDialog>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFrame>
 #include <QGraphicsView>
@@ -58,6 +59,7 @@
 #include <QStringView>
 #include <QTextCursor>
 #include <QTemporaryFile>
+#include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
 #include <QUndoStack>
@@ -1976,74 +1978,103 @@ ModelItem* CanvasView::insert_model_file(const QString& filename,
                                          const QPointF& scenePos)
 {
     cancel_active_modes();
-    constexpr qint64 kmaxModelBytes = 128LL * 1024 * 1024;
-    QByteArray bytes;
     const QString suffix = QFileInfo(filename).suffix();
-    if (suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
-        struct PreparedObj
-        {
-            QByteArray bytes;
-            QImage preview;
-            QString error;
-        };
-        auto result = std::make_shared<PreparedObj>();
-        auto* worker = new ThreadedIO([filename, result](ThreadedIO* running) {
+    struct PreparedModel
+    {
+        QByteArray bytes;
+        QImage preview;
+        QString error;
+    };
+    auto result = std::make_shared<PreparedModel>();
+    const QString thumbnailProgram = QCoreApplication::applicationFilePath();
+    auto* worker = new ThreadedIO(
+        [filename, suffix, result, thumbnailProgram](ThreadedIO* running) {
             emit running->current_item_changed(QFileInfo(filename).fileName());
-            GltfImportResult imported = import_obj(filename);
-            result->error = imported.error;
-            if (result->error.isEmpty() && !running->is_canceled()) {
-                result->preview = render_model_preview(imported.glb);
+            if (suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
+                GltfImportResult imported = import_obj(filename);
                 result->bytes = std::move(imported.glb);
+                result->error = imported.error;
+            } else if (suffix.compare(QStringLiteral("gltf"),
+                                      Qt::CaseInsensitive) == 0) {
+                GltfImportResult imported = import_gltf(filename);
+                result->bytes = std::move(imported.glb);
+                result->error = imported.error;
+            } else {
+                QFile source(filename);
+                if (!source.open(QIODevice::ReadOnly) || source.size() <= 0
+                    || source.size() > 128LL * 1024 * 1024) {
+                    result->error = QObject::tr(
+                        "Could not read the model (maximum 128 MB).");
+                } else {
+                    result->bytes = source.readAll();
+                    if (result->bytes.size() != source.size()
+                        || !result->bytes.startsWith("glTF")) {
+                        result->error = QObject::tr(
+                            "This is not a valid .glb file.");
+                    }
+                }
+            }
+            if (result->error.isEmpty() && !running->is_canceled()) {
+                QTemporaryDir thumbnailDir;
+                if (thumbnailDir.isValid()) {
+                    const QString glbPath = thumbnailDir.filePath(
+                        QStringLiteral("model.glb"));
+                    const QString imagePath = thumbnailDir.filePath(
+                        QStringLiteral("preview.png"));
+                    QFile glbFile(glbPath);
+                    if (glbFile.open(QIODevice::WriteOnly)
+                        && glbFile.write(result->bytes) == result->bytes.size()) {
+                        glbFile.close();
+                        QProcess renderer;
+                        renderer.setProcessChannelMode(QProcess::ForwardedChannels);
+                        renderer.start(thumbnailProgram,
+                                       {QStringLiteral("--render-model-thumbnail"),
+                                        glbPath, imagePath});
+                        if (renderer.waitForStarted(2000)) {
+                            QElapsedTimer elapsed;
+                            elapsed.start();
+                            while (renderer.state() != QProcess::NotRunning
+                                   && !running->is_canceled()
+                                   && elapsed.elapsed() < 60000) {
+                                renderer.waitForFinished(100);
+                            }
+                            if (renderer.state() != QProcess::NotRunning) {
+                                renderer.kill();
+                                renderer.waitForFinished(1000);
+                            } else if (renderer.exitCode() == 0) {
+                                result->preview = QImage(imagePath);
+                            }
+                        }
+                    }
+                }
+                if (result->preview.isNull() && !running->is_canceled()) {
+                    result->preview = render_model_preview(result->bytes);
+                }
             }
             emit running->work_finished(result->error, {});
         }, this);
-        modelImportWorkers_.insert(worker);
-        new ProgressDialog(tr("Preparing 3D model"), worker, 0, this);
-        connect(worker, &ThreadedIO::work_finished, this,
-                [this, worker, result, filename, scenePos](const QString&,
-                                                            const QStringList&) {
-                    if (worker->is_canceled()) {
-                        return;
-                    }
-                    if (!result->error.isEmpty()) {
-                        show_message_box(QMessageBox::Warning, this,
-                                         tr("3D model"), result->error);
-                        return;
-                    }
-                    insert_prepared_model(filename, scenePos, result->bytes,
-                                          result->preview);
-                });
-        connect(worker, &QThread::finished, this, [this, worker] {
-            modelImportWorkers_.remove(worker);
-            worker->deleteLater();
-        });
-        worker->start();
-        return nullptr;
-    }
-    if (suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0) {
-        GltfImportResult imported = import_gltf(filename);
-        if (!imported.error.isEmpty()) {
-            QMessageBox::warning(this, tr("3D model"), imported.error);
-            return nullptr;
-        }
-        bytes = std::move(imported.glb);
-    } else {
-        QFile file(filename);
-        if (!file.open(QIODevice::ReadOnly) || file.size() <= 0
-            || file.size() > kmaxModelBytes) {
-            QMessageBox::warning(this, tr("3D model"),
-                                 tr("Could not read the model (maximum 128 MB)."));
-            return nullptr;
-        }
-        bytes = file.readAll();
-        if (bytes.size() != file.size() || !bytes.startsWith("glTF")) {
-            QMessageBox::warning(this, tr("3D model"),
-                                 tr("This is not a valid .glb file."));
-            return nullptr;
-        }
-    }
-    return insert_prepared_model(filename, scenePos, bytes,
-                                 render_model_preview(bytes));
+    modelImportWorkers_.insert(worker);
+    new ProgressDialog(tr("Preparing 3D model"), worker, 0, this);
+    connect(worker, &ThreadedIO::work_finished, this,
+            [this, worker, result, filename, scenePos](const QString&,
+                                                        const QStringList&) {
+                if (worker->is_canceled()) {
+                    return;
+                }
+                if (!result->error.isEmpty()) {
+                    show_message_box(QMessageBox::Warning, this,
+                                     tr("3D model"), result->error);
+                    return;
+                }
+                insert_prepared_model(filename, scenePos, result->bytes,
+                                      result->preview);
+            });
+    connect(worker, &QThread::finished, this, [this, worker] {
+        modelImportWorkers_.remove(worker);
+        worker->deleteLater();
+    });
+    worker->start();
+    return nullptr;
 }
 
 ModelItem* CanvasView::insert_prepared_model(const QString& filename,
