@@ -61,10 +61,6 @@ identity behind it.
 What you can check instead: every release download has a `.sha256sum`
 next to it on the [releases page](https://github.com/try-hard-factory/familiar/releases).
 
-```sh
-sha256sum -c familiar-0.0.17-x86_64.AppImage.sha256sum
-```
-
 A checksum proves the file arrived intact. It does not prove who built
 it — that's what signing is for, and it's on the list.
 
