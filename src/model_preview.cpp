@@ -134,7 +134,16 @@ QImage base_color_texture(const QJsonObject& json, const char* bin,
     const int textureIndex = pbr.value("baseColorTexture").toObject()
                                  .value("index").toInt(-1);
     if (textureIndex < 0 || textureIndex >= textures.size()) {
-        return {};
+        const QJsonArray factor = pbr.value("baseColorFactor").toArray();
+        if (factor.size() < 3) {
+            return {};
+        }
+        QImage color(1, 1, QImage::Format_RGB32);
+        color.fill(QColor::fromRgbF(
+            float(std::clamp(factor.at(0).toDouble(), 0.0, 1.0)),
+            float(std::clamp(factor.at(1).toDouble(), 0.0, 1.0)),
+            float(std::clamp(factor.at(2).toDouble(), 0.0, 1.0))));
+        return color;
     }
     const int imageIndex = textures.at(textureIndex).toObject()
                                .value("source").toInt(-1);
