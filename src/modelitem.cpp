@@ -28,7 +28,15 @@ ModelItem::ModelItem(const QImage& preview,
                      const QString& filename)
     : PixmapItem(preview.isNull() ? placeholder(filename) : preview, filename)
     , modelBytes_(std::move(modelBytes))
+    , bounds_(model_bounds(modelBytes_))
 {}
+
+void ModelItem::set_prepared_assets(std::shared_ptr<QTemporaryDir> directory,
+                                    const QUrl& url)
+{
+    preparedDir_ = std::move(directory);
+    preparedUrl_ = url;
+}
 
 QVariantMap ModelItem::get_extra_save_data() const
 {

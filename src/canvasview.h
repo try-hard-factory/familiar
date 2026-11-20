@@ -13,6 +13,7 @@
 #include <QMouseEvent>
 #include <QObject>
 #include <QScrollBar>
+#include <QSet>
 #include <QTransform>
 #include <QUrl>
 #include <QUuid>
@@ -351,6 +352,7 @@ private:
     void update_group_toolbar_pos();
     void update_model_toolbar_pos();
     void start_model_edit(ModelItem* model);
+    void prepare_model(ModelItem* model);
     void end_model_edit();
     void update_model_viewer_pos();
     ModelItem* insert_model_file(const QString& filename,
@@ -374,6 +376,7 @@ private:
     GroupToolbar* groupToolbar_ = nullptr;
     ModelToolbar* modelToolbar_ = nullptr;
     QQuickWidget* modelViewer_ = nullptr;
+    QSet<QUuid> preparingModels_;
     ModelItem* activeModel_ = nullptr;
 
     MainWindow& mainwindow_;
