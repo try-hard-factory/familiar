@@ -414,6 +414,7 @@ TEST(ModelCanvasTest, ObjImportBundlesMaterialAndTextureForProjectSave)
     CanvasView* canvas = window.tab_pane().current_widget();
     ASSERT_NE(canvas, nullptr);
     canvas->do_insert_images({QUrl::fromLocalFile(objPath)}, QPoint(160, 160));
+    QTRY_COMPARE(canvas->scene()->items_by_type("model").size(), 1);
     const auto models = canvas->scene()->items_by_type("model");
     ASSERT_EQ(models.size(), 1);
     auto* model = dynamic_cast<ModelItem*>(models.first());
@@ -455,6 +456,77 @@ TEST(ModelCanvasTest, ObjImportBundlesMaterialAndTextureForProjectSave)
         }
     }
     EXPECT_GT(whitePixels, 100);
+}
+
+TEST(ModelCanvasTest, ObjFindsSiblingPbrTexturesWithoutMtlReferences)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString sourceDir = dir.filePath(QStringLiteral("source"));
+    const QString textureDir = dir.filePath(QStringLiteral("textures"));
+    ASSERT_TRUE(QDir().mkpath(sourceDir));
+    ASSERT_TRUE(QDir().mkpath(textureDir));
+    const QList<QPair<QString, QColor>> maps{
+        {QStringLiteral("Upper_Part_BaseColor.png"), Qt::red},
+        {QStringLiteral("Upper_Part_Normal_OpenGL.png"), QColor(128, 128, 255)},
+        {QStringLiteral("Upper_Part_Roughness.png"), QColor(100, 100, 100)},
+        {QStringLiteral("Upper_Part_Metallic.png"), QColor(150, 150, 150)},
+        {QStringLiteral("Upper_Part_Mixed_AO.png"), QColor(50, 50, 50)},
+        {QStringLiteral("Upper_Part_Emissive.png"), Qt::green}};
+    for (const auto& [name, color] : maps) {
+        QImage image(2, 2, QImage::Format_RGB32);
+        image.fill(color);
+        ASSERT_TRUE(image.save(textureDir + QLatin1Char('/') + name));
+    }
+    QFile mtl(sourceDir + QStringLiteral("/part.mtl"));
+    ASSERT_TRUE(mtl.open(QIODevice::WriteOnly));
+    ASSERT_GT(mtl.write("newmtl Upper_Part\nKd 1 1 1\n"), 0);
+    mtl.close();
+    const QString objPath = sourceDir + QStringLiteral("/part.obj");
+    QFile obj(objPath);
+    ASSERT_TRUE(obj.open(QIODevice::WriteOnly));
+    ASSERT_GT(obj.write("mtllib part.mtl\n"
+                        "v -1 -1 0\nv 1 -1 0\nv 0 1 0\n"
+                        "vt 0 0\nvt 1 0\nvt 0.5 1\n"
+                        "usemtl Upper_Part\nf 1/1 2/2 3/3\n"), 0);
+    obj.close();
+
+    const GltfImportResult imported = import_obj(objPath);
+    ASSERT_TRUE(imported.error.isEmpty()) << imported.error.toStdString();
+    quint32 jsonLength = 0;
+    std::memcpy(&jsonLength, imported.glb.constData() + 12, sizeof(jsonLength));
+    const QJsonObject json = QJsonDocument::fromJson(
+        imported.glb.mid(20, jsonLength)).object();
+    const QJsonArray materials = json.value(QStringLiteral("materials")).toArray();
+    ASSERT_EQ(materials.size(), 2);
+    const QJsonObject material = materials.at(1).toObject();
+    const QJsonObject pbr = material.value(QStringLiteral("pbrMetallicRoughness"))
+                                .toObject();
+    EXPECT_TRUE(pbr.contains(QStringLiteral("baseColorTexture")));
+    EXPECT_TRUE(pbr.contains(QStringLiteral("metallicRoughnessTexture")));
+    EXPECT_TRUE(material.contains(QStringLiteral("normalTexture")));
+    EXPECT_TRUE(material.contains(QStringLiteral("occlusionTexture")));
+    EXPECT_TRUE(material.contains(QStringLiteral("emissiveTexture")));
+    EXPECT_EQ(json.value(QStringLiteral("images")).toArray().size(), 4);
+
+    const int packedTexture = pbr.value(QStringLiteral("metallicRoughnessTexture"))
+                                  .toObject().value(QStringLiteral("index")).toInt();
+    EXPECT_EQ(material.value(QStringLiteral("occlusionTexture"))
+                  .toObject().value(QStringLiteral("index")).toInt(), packedTexture);
+    const QJsonArray textures = json.value(QStringLiteral("textures")).toArray();
+    const int imageIndex = textures.at(packedTexture).toObject()
+                               .value(QStringLiteral("source")).toInt();
+    const QJsonObject packedImage = json.value(QStringLiteral("images")).toArray()
+                                        .at(imageIndex).toObject();
+    const int viewIndex = packedImage.value(QStringLiteral("bufferView")).toInt();
+    const QJsonObject view = json.value(QStringLiteral("bufferViews")).toArray()
+                                 .at(viewIndex).toObject();
+    const qsizetype binaryStart = 20 + jsonLength + 8;
+    const QImage packed = QImage::fromData(imported.glb.mid(
+        binaryStart + view.value(QStringLiteral("byteOffset")).toInteger(),
+        view.value(QStringLiteral("byteLength")).toInteger()));
+    ASSERT_FALSE(packed.isNull());
+    EXPECT_EQ(packed.pixelColor(0, 0), QColor(50, 100, 150));
 }
 
 TEST(ModelCanvasTest, ModelImportAndUnlock)
@@ -511,8 +583,12 @@ TEST(ModelCanvasTest, ModelImportAndUnlock)
     window.show();
     CanvasView* canvas = window.tab_pane().current_widget();
     ASSERT_NE(canvas, nullptr);
+    EventLoopHeartbeat importHeartbeat;
     canvas->do_insert_images({QUrl::fromLocalFile(sourceFile)},
                              QPoint(160, 160));
+    QTRY_COMPARE_WITH_TIMEOUT(canvas->scene()->items_by_type("model").size(),
+                              1, 30000);
+    EXPECT_LT(importHeartbeat.longest_gap(), 2000);
     const auto models = canvas->scene()->items_by_type("model");
     ASSERT_EQ(models.size(), 1);
     auto* model = dynamic_cast<ModelItem*>(models.first());

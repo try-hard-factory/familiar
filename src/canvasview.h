@@ -358,6 +358,10 @@ private:
     void update_model_viewer_pos();
     ModelItem* insert_model_file(const QString& filename,
                                  const QPointF& scenePos);
+    ModelItem* insert_prepared_model(const QString& filename,
+                                    const QPointF& scenePos,
+                                    QByteArray bytes,
+                                    const QImage& preview);
     // Shows RawImportDialog and applies the answer to imageImportSession_
     // (setQueueChoice()/setOneShotChoice(), plus persisting to
     // Items/raw_import_choice if "Remember choice" was checked) - shared
