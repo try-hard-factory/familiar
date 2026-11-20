@@ -7,6 +7,7 @@
 #include "modelitem.h"
 #include "model_preview.h"
 #include "ui/model_toolbar.h"
+#include "widgets/dialogs.h"
 
 #include <gtest/gtest.h>
 #include <QDataStream>
@@ -17,6 +18,7 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QPointer>
 #include <QQuickItem>
 #include <QQuickWidget>
 #include <QTemporaryDir>
@@ -529,6 +531,28 @@ TEST(ModelCanvasTest, ObjFindsSiblingPbrTexturesWithoutMtlReferences)
     EXPECT_EQ(packed.pixelColor(0, 0), QColor(50, 100, 150));
 }
 
+TEST(ModelCanvasTest, CancelObjPreparationDoesNotAddModel)
+{
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString objPath = dir.filePath(QStringLiteral("triangle.obj"));
+    QFile obj(objPath);
+    ASSERT_TRUE(obj.open(QIODevice::WriteOnly));
+    ASSERT_GT(obj.write("v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"), 0);
+    obj.close();
+
+    MainWindow window;
+    window.show();
+    CanvasView* canvas = window.tab_pane().current_widget();
+    ASSERT_NE(canvas, nullptr);
+    canvas->do_insert_images({QUrl::fromLocalFile(objPath)}, QPoint(160, 160));
+    QPointer<ProgressDialog> progress = canvas->findChild<ProgressDialog*>();
+    ASSERT_FALSE(progress.isNull());
+    progress->reject();
+    QTRY_VERIFY(progress.isNull());
+    EXPECT_TRUE(canvas->scene()->items_by_type("model").isEmpty());
+}
+
 TEST(ModelCanvasTest, ModelImportAndUnlock)
 {
     QByteArray geometry;
@@ -586,6 +610,11 @@ TEST(ModelCanvasTest, ModelImportAndUnlock)
     EventLoopHeartbeat importHeartbeat;
     canvas->do_insert_images({QUrl::fromLocalFile(sourceFile)},
                              QPoint(160, 160));
+    if (sourceFile.endsWith(QStringLiteral(".obj"), Qt::CaseInsensitive)) {
+        auto* progress = canvas->findChild<ProgressDialog*>();
+        ASSERT_NE(progress, nullptr);
+        EXPECT_TRUE(progress->isVisible());
+    }
     QTRY_COMPARE_WITH_TIMEOUT(canvas->scene()->items_by_type("model").size(),
                               1, 30000);
     EXPECT_LT(importHeartbeat.longest_gap(), 2000);

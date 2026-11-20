@@ -383,6 +383,7 @@ private:
     QQuickWidget* modelViewer_ = nullptr;
     std::unique_ptr<QTemporaryFile> modelPreviewFile_;
     QSet<QUuid> preparingModels_;
+    QSet<ThreadedIO*> modelImportWorkers_;
     ModelItem* activeModel_ = nullptr;
 
     MainWindow& mainwindow_;

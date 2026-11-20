@@ -1,7 +1,7 @@
 # 3D canvas prototype
 
 This branch adds `.glb`, `.gltf`, and `.obj` models as canvas items. Build with
-Qt 6 including Quick Widgets, Quick 3D, and Concurrent. In Familiar, choose
+Qt 6 including Quick Widgets and Quick 3D. In Familiar, choose
 **Insert → 3D model...**, drag a local model onto the canvas, or paste a copied
 model file.
 For `.gltf`, keep its referenced buffers and images beside it. For `.obj`, keep
