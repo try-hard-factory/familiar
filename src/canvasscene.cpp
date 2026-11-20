@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "modelitem.h"
+#include "model_preview.h"
 
 #include <QApplication>
 #include <QClipboard>
@@ -355,14 +356,31 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
     QGraphicsItem* item = nullptr;
     if (typ == "model") {
         const QByteArray bytes = data.value(QStringLiteral("modelBytes")).toByteArray();
-        const QImage preview = data.value(QStringLiteral("image")).value<QImage>();
+        QImage preview = data.value(QStringLiteral("image")).value<QImage>();
         if (!bytes.isEmpty() && !preview.isNull()) {
+            const QVariantMap extra = data.value(QStringLiteral("data")).toMap();
+            const bool oldDefaultView
+                = extra.value(QStringLiteral("previewVersion")).toInt()
+                      < ModelItem::kPreviewVersion
+                  && std::abs(extra.value(QStringLiteral("yaw"), 25).toDouble() - 25) < 0.001
+                  && std::abs(extra.value(QStringLiteral("pitch"), -15).toDouble() + 15) < 0.001
+                  && std::abs(extra.value(QStringLiteral("distance"), 450).toDouble() - 450) < 0.001;
+            bool rebuiltPreview = false;
+            if (oldDefaultView) {
+                const QImage corrected = render_model_preview(bytes);
+                if (!corrected.isNull()) {
+                    preview = corrected;
+                    rebuiltPreview = true;
+                }
+            }
             auto* model = new ModelItem(preview, bytes,
                                         data.value(QStringLiteral("filename")).toString());
-            model->apply_extra_save_data(data.value(QStringLiteral("data")).toMap());
-            model->set_encoded_source(
-                data.value(QStringLiteral("encodedBytes")).toByteArray(),
-                data.value(QStringLiteral("encodedFormat")).toString());
+            model->apply_extra_save_data(extra);
+            if (!rebuiltPreview) {
+                model->set_encoded_source(
+                    data.value(QStringLiteral("encodedBytes")).toByteArray(),
+                    data.value(QStringLiteral("encodedFormat")).toString());
+            }
             item = model;
         }
     } else if (typ == "pixmap") {

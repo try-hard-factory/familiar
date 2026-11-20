@@ -66,6 +66,58 @@ Accessor accessor(const QJsonObject& json, int index, const char* bin,
     return {bin + offset, int(count), int(stride), components};
 }
 
+struct IndexAccessor
+{
+    const char* data = nullptr;
+    int count = 0;
+    int stride = 0;
+    int componentSize = 0;
+
+    bool valid() const { return data && count >= 3; }
+    quint32 value(int index) const
+    {
+        const char* bytes = data + index * stride;
+        if (componentSize == 1) {
+            return quint8(*bytes);
+        }
+        if (componentSize == 2) {
+            return qFromLittleEndian<quint16>(bytes);
+        }
+        return qFromLittleEndian<quint32>(bytes);
+    }
+};
+
+IndexAccessor indices(const QJsonObject& json, int index, const char* bin,
+                      qsizetype binSize)
+{
+    const QJsonArray accessors = json.value("accessors").toArray();
+    const QJsonArray views = json.value("bufferViews").toArray();
+    if (index < 0 || index >= accessors.size()) {
+        return {};
+    }
+    const QJsonObject a = accessors.at(index).toObject();
+    const int viewIndex = a.value("bufferView").toInt(-1);
+    if (viewIndex < 0 || viewIndex >= views.size()
+        || a.value("type").toString() != QStringLiteral("SCALAR")) {
+        return {};
+    }
+    const int type = a.value("componentType").toInt();
+    const int size = type == 5121 ? 1 : type == 5123 ? 2 : type == 5125 ? 4 : 0;
+    const QJsonObject view = views.at(viewIndex).toObject();
+    const qint64 count = a.value("count").toInteger();
+    const qint64 stride = view.value("byteStride").toInt(size);
+    const qint64 offset = view.value("byteOffset").toInteger()
+                          + a.value("byteOffset").toInteger();
+    const qint64 viewEnd = view.value("byteOffset").toInteger()
+                           + view.value("byteLength").toInteger();
+    if (!size || count < 3 || count > 20000000 || stride < size
+        || stride > 1024 || offset < 0 || viewEnd > binSize
+        || offset + (count - 1) * stride + size > viewEnd) {
+        return {};
+    }
+    return {bin + offset, int(count), int(stride), size};
+}
+
 QImage base_color_texture(const QJsonObject& json, const char* bin,
                           qsizetype binSize, const QJsonObject& primitive)
 {
@@ -108,8 +160,31 @@ struct Cloud
 {
     Accessor position;
     Accessor uv;
+    IndexAccessor index;
     QImage texture;
 };
+
+struct ScreenVertex
+{
+    float x;
+    float y;
+    float z;
+    float u;
+    float v;
+};
+
+QRgb texture_color(const QImage& texture, float u, float v)
+{
+    if (texture.isNull() || !std::isfinite(u) || !std::isfinite(v)) {
+        return qRgb(194, 207, 222);
+    }
+    const int tx = std::clamp(int((u - std::floor(u)) * float(texture.width())),
+                              0, texture.width() - 1);
+    const int ty = std::clamp(int((v - std::floor(v))
+                                  * float(texture.height())),
+                              0, texture.height() - 1);
+    return texture.pixel(tx, ty);
+}
 } // namespace
 
 ModelBounds model_bounds(const QByteArray& glb)
@@ -211,6 +286,14 @@ QImage render_model_preview(const QByteArray& glb)
             }
             cloud.uv = accessor(json, attrs.value("TEXCOORD_0").toInt(-1),
                                 bin, binSize, 2);
+            if (primitive.value("mode").toInt(4) != 4) {
+                continue;
+            }
+            cloud.index = indices(json, primitive.value("indices").toInt(-1),
+                                   bin, binSize);
+            if (primitive.contains("indices") && !cloud.index.valid()) {
+                continue;
+            }
             cloud.texture = base_color_texture(json, bin, binSize, primitive);
             const QJsonObject position = json.value("accessors").toArray()
                                              .at(attrs.value("POSITION").toInt())
@@ -252,40 +335,85 @@ QImage render_model_preview(const QByteArray& glb)
     rotation.rotate(25, 0, 1, 0);
     const float scale = (ksize * 0.78f) / extent;
     for (const Cloud& cloud : clouds) {
-        const int step = std::max(1, cloud.position.count / 1000000);
-        for (int i = 0; i < cloud.position.count; i += step) {
+        std::vector<ScreenVertex> vertices;
+        vertices.reserve(size_t(cloud.position.count));
+        for (int i = 0; i < cloud.position.count; ++i) {
             const QVector3D point(cloud.position.value(i, 0),
                                   cloud.position.value(i, 1),
                                   cloud.position.value(i, 2));
             const QVector3D rotated = rotation.map(point - center);
-            const int x = int(std::lround(ksize / 2.0f + rotated.x() * scale));
-            const int y = int(std::lround(ksize / 2.0f - rotated.y() * scale));
-            if (x < 1 || x >= ksize - 1 || y < 1 || y >= ksize - 1) {
+            vertices.push_back({ksize / 2.0f + rotated.x() * scale,
+                                ksize / 2.0f - rotated.y() * scale,
+                                rotated.z(),
+                                cloud.uv.valid() && i < cloud.uv.count
+                                    ? cloud.uv.value(i, 0) : 0,
+                                cloud.uv.valid() && i < cloud.uv.count
+                                    ? cloud.uv.value(i, 1) : 0});
+        }
+        const int indexCount = cloud.index.valid()
+                                   ? cloud.index.count : cloud.position.count;
+        for (int triangle = 0; triangle + 2 < indexCount; triangle += 3) {
+            const quint32 i0 = cloud.index.valid() ? cloud.index.value(triangle)
+                                                    : quint32(triangle);
+            const quint32 i1 = cloud.index.valid() ? cloud.index.value(triangle + 1)
+                                                    : quint32(triangle + 1);
+            const quint32 i2 = cloud.index.valid() ? cloud.index.value(triangle + 2)
+                                                    : quint32(triangle + 2);
+            if (i0 >= quint32(vertices.size()) || i1 >= quint32(vertices.size())
+                || i2 >= quint32(vertices.size())) {
                 continue;
             }
-            QRgb color = qRgb(194, 207, 222);
-            if (!cloud.texture.isNull() && cloud.uv.valid()
-                && i < cloud.uv.count) {
-                const float u = cloud.uv.value(i, 0);
-                const float v = cloud.uv.value(i, 1);
-                if (std::isfinite(u) && std::isfinite(v)) {
-                    const int tx = std::clamp(int((u - std::floor(u))
-                                                  * float(cloud.texture.width())),
-                                              0, cloud.texture.width() - 1);
-                    const int ty = std::clamp(int((1 - (v - std::floor(v)))
-                                                  * float(cloud.texture.height())),
-                                              0, cloud.texture.height() - 1);
-                    color = cloud.texture.pixel(tx, ty);
-                }
+            const ScreenVertex& a = vertices[i0];
+            const ScreenVertex& b = vertices[i1];
+            const ScreenVertex& c = vertices[i2];
+            if (!std::isfinite(a.x) || !std::isfinite(a.y)
+                || !std::isfinite(b.x) || !std::isfinite(b.y)
+                || !std::isfinite(c.x) || !std::isfinite(c.y)) {
+                continue;
             }
-            for (int dy = -1; dy <= 1; ++dy) {
-                for (int dx = -1; dx <= 1; ++dx) {
-                    const int px = x + dx, py = y + dy;
-                    const size_t pixel = size_t(py * ksize + px);
-                    if (rotated.z() > depth[pixel]) {
-                        depth[pixel] = rotated.z();
-                        result.setPixel(px, py, color);
+            const float area = (b.x - a.x) * (c.y - a.y)
+                               - (b.y - a.y) * (c.x - a.x);
+            if (!std::isfinite(area) || std::abs(area) < 0.00001f) {
+                continue;
+            }
+            const float left = std::min({a.x, b.x, c.x});
+            const float right = std::max({a.x, b.x, c.x});
+            const float top = std::min({a.y, b.y, c.y});
+            const float bottom = std::max({a.y, b.y, c.y});
+            if (right < 0 || bottom < 0
+                || left >= float(ksize) || top >= float(ksize)) {
+                continue;
+            }
+            const int minX = int(std::floor(std::max(0.0f, left)));
+            const int maxX = int(std::ceil(std::min(float(ksize - 1), right)));
+            const int minY = int(std::floor(std::max(0.0f, top)));
+            const int maxY = int(std::ceil(std::min(float(ksize - 1), bottom)));
+            if (minX > maxX || minY > maxY) {
+                continue;
+            }
+            const float inverseArea = 1 / area;
+            for (int y = minY; y <= maxY; ++y) {
+                for (int x = minX; x <= maxX; ++x) {
+                    const float px = float(x) + 0.5f;
+                    const float py = float(y) + 0.5f;
+                    const float wa = ((b.x - px) * (c.y - py)
+                                      - (b.y - py) * (c.x - px)) * inverseArea;
+                    const float wb = ((c.x - px) * (a.y - py)
+                                      - (c.y - py) * (a.x - px)) * inverseArea;
+                    const float wc = 1 - wa - wb;
+                    if (wa < 0 || wb < 0 || wc < 0) {
+                        continue;
                     }
+                    const size_t pixel = size_t(y * ksize + x);
+                    const float z = wa * a.z + wb * b.z + wc * c.z;
+                    if (z <= depth[pixel]) {
+                        continue;
+                    }
+                    depth[pixel] = z;
+                    result.setPixel(x, y,
+                                    texture_color(cloud.texture,
+                                                  wa * a.u + wb * b.u + wc * c.u,
+                                                  wa * a.v + wb * b.v + wc * c.v));
                 }
             }
         }

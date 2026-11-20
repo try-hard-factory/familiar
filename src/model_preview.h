@@ -13,8 +13,8 @@ struct ModelBounds
 
 ModelBounds model_bounds(const QByteArray& glb);
 
-// A quick software thumbnail. It samples the mesh vertices and its base
-// colour texture, so importing a model does not need to start Qt Quick 3D.
+// A software thumbnail rasterized from mesh triangles and their base colour
+// texture, so importing a model does not need to start Qt Quick 3D.
 QImage render_model_preview(const QByteArray& glb);
 
 #endif

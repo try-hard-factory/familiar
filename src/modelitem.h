@@ -15,6 +15,8 @@
 class ModelItem : public PixmapItem
 {
 public:
+    static constexpr int kPreviewVersion = 2;
+
     ModelItem(const QImage& preview,
               QByteArray modelBytes,
               const QString& filename = {});
