@@ -68,15 +68,15 @@ body:
   validations:
     required: false
 - type: textarea
-  id: screenshots
-  attributes:
-    label: Screenshots or screen recordings
-    description: If it would help us understand the issue, attach a screenshot or screen recording here.
-- type: textarea
   id: logs
   attributes:
     label: Logs
     description: |
-      Help menu > Show Debug Log > Copy To Clipboard, then paste here - or just drag the log file itself into this box.
+      After a crash, reopen Familiar and choose Help > Show Debug Log; the path at the top shows where the logs are stored. Open that folder and attach familiar_old.log here.
   validations:
     required: false
+- type: textarea
+  id: screenshots
+  attributes:
+    label: Screenshots or screen recordings
+    description: If it would help us understand the issue, attach a screenshot or screen recording here.
