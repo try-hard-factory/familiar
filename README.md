@@ -13,6 +13,7 @@
   <a href="https://familiar-app.net/">Website</a> ·
   <a href="https://familiar-app.net/download/">Download</a> ·
   <a href="https://familiar-app.net/docs/">Handbook</a> ·
+  <a href="https://familiar-app.net/roadmap/">Roadmap</a> ·
   <a href="https://x.com/familiar_app">X</a> ·
   <a href="https://discord.gg/3672sNT5qA">Discord</a>
 </p>
@@ -63,6 +64,13 @@ next to it on the [releases page](https://github.com/try-hard-factory/familiar/r
 
 A checksum proves the file arrived intact. It does not prove who built
 it — that's what signing is for, and it's on the list.
+
+## Roadmap
+
+See [the roadmap](ROADMAP.md) for the product features we're exploring. The
+order may change, and there are no promised release dates. Feature requests
+are welcome on [GitHub](https://github.com/try-hard-factory/familiar/issues)
+and [Discord](https://discord.gg/3672sNT5qA).
 
 ## Building
 
