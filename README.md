@@ -48,6 +48,12 @@
 
 ---
 
+## Video tutorial
+
+[![Watch the Familiar video tutorial](docs/tutorial-poster.jpg)](docs/tutorial.mp4)
+
+Watch the seven-minute walkthrough [on the website](https://familiar-app.net/docs/#tutorial)
+or [download the MP4 from this repository](docs/tutorial.mp4).
 
 ## Downloads
 
