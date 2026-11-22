@@ -1,10 +1,5 @@
 Changes:
-  - ci: publish .sha256sum next to the release downloads
-  - ci: rebuild the site when a release is published
-  - BETA: temporary disable some package
-  - add annotation shortcuts (#116)
-  - Add telemetry (#115)
-  - Add some badges (#113)
-  - Perfomance fix (#111)
-  - Bug fixing (#110)
-  - Warnings fix(gcc clang) (#107)
+  - fix moving group bug
+  - Add tutorials
+  - Add roadmap
+  - Update bug report
