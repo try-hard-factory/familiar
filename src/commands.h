@@ -544,6 +544,14 @@ private:
     CanvasScene* scene_;
     GroupItem* group_;
     QList<QGraphicsItem*> members_;
+    struct PreviousOwner
+    {
+        GroupItem* group;
+        QList<QUuid> childIds;
+    };
+    QList<PreviousOwner> previousOwners_;
+    // Replacing siblings inside one group creates a subgroup there.
+    GroupItem* parentGroup_ = nullptr;
     // See InsertItemsCommand::ownedRefs_ - keeps `group_` alive across
     // undo/redo regardless of scene attachment.
     std::shared_ptr<IBaseItem> groupRef_;

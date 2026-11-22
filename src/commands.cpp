@@ -13,6 +13,7 @@
 #include <QtTypes>
 
 #include "log/log.h"
+#include <algorithm>
 #include <optional>
 using namespace familiar::log;
 
@@ -904,12 +905,48 @@ GroupCommand::GroupCommand(CanvasScene* scene,
     , group_(group)
     , members_(members)
     , groupRef_(group->acquire_shared())
-{}
+{
+    // A selected member may already belong to a group. Move its
+    // membership into the new group, and keep the new group inside the
+    // old one when all selected members were siblings there.
+    bool sameOwner = true;
+    bool first = true;
+    for (const QUuid& uid : group_->child_ids()) {
+        GroupItem* owner = scene_->find_owning_group(uid);
+        if (first) {
+            parentGroup_ = owner;
+            first = false;
+        } else if (owner != parentGroup_) {
+            sameOwner = false;
+        }
+        if (owner) {
+            const auto snapshot = std::find_if(
+                previousOwners_.cbegin(), previousOwners_.cend(),
+                [owner](const PreviousOwner& entry) {
+                    return entry.group == owner;
+                });
+            if (snapshot == previousOwners_.cend()) {
+                previousOwners_.append({owner, owner->child_ids()});
+            }
+        }
+    }
+    if (!sameOwner) {
+        parentGroup_ = nullptr;
+    }
+}
 
 void GroupCommand::redo()
 {
     FLOG_DEBUG(Ch::Undo, "GroupCommand::redo() ({} member(s))", members_.size());
     scene_->deselect_all_items();
+    for (const QUuid& uid : group_->child_ids()) {
+        for (const PreviousOwner& entry : previousOwners_) {
+            if (entry.childIds.contains(uid)) {
+                entry.group->remove_child_id(uid);
+                break;
+            }
+        }
+    }
     // Sits BEHIND every member it contains - set below their current z,
     // not bring_to_front() (InsertItemsCommand's usual move for newly
     // inserted content): a group is a background, not new content on top.
@@ -919,6 +956,12 @@ void GroupCommand::redo()
     }
     scene_->addItem(group_);
     group_->set_z_value(minZ - scene_->z_step());
+    if (parentGroup_) {
+        parentGroup_->add_child_id(group_->uid());
+    }
+    for (const PreviousOwner& entry : previousOwners_) {
+        entry.group->fit_to_contain_children();
+    }
     group_->setSelected(true);
 }
 
@@ -926,7 +969,14 @@ void GroupCommand::undo()
 {
     FLOG_DEBUG(Ch::Undo, "GroupCommand::undo() ({} member(s))", members_.size());
     scene_->deselect_all_items();
+    if (parentGroup_) {
+        parentGroup_->remove_child_id(group_->uid());
+    }
     scene_->removeItem(group_);
+    for (const PreviousOwner& entry : previousOwners_) {
+        entry.group->set_child_ids(entry.childIds);
+        entry.group->fit_to_contain_children();
+    }
     for (auto* item : members_) {
         item->setSelected(true);
     }

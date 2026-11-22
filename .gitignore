@@ -12,3 +12,6 @@ _deps
 
 # clang-tidy run logs (./tidy.sh)
 tidy-*.log
+
+# Local notes and release checklists; keep media in docs tracked.
+/docs/**/*.md

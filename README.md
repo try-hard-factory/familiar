@@ -48,12 +48,35 @@
 
 ---
 
-## Video tutorial
+## Video tutorials
 
-[![Watch the Familiar video tutorial](docs/tutorial-poster.jpg)](docs/tutorial.mp4)
+### Full walkthrough
+
+[![Preview of the Familiar walkthrough](docs/tutorial-preview.gif)](https://familiar-app.net/docs/#tutorial)
 
 Watch the seven-minute walkthrough [on the website](https://familiar-app.net/docs/#tutorial)
 or [download the MP4 from this repository](docs/tutorial.mp4).
+
+### Always on top and click-through
+
+[![Preview of Always on Top and click-through](docs/always-on-top-preview.gif)](https://familiar-app.net/docs/#always-on-top)
+
+Watch the short tutorial [on the website](https://familiar-app.net/docs/#always-on-top)
+or [download the MP4 from this repository](docs/always-on-top.mp4).
+
+### Notes attached to images
+
+[![Preview of attaching a note to an image](docs/notes-preview.gif)](https://familiar-app.net/docs/#pinned-notes)
+
+Watch the short tutorial [on the website](https://familiar-app.net/docs/#pinned-notes)
+or [download the MP4 from this repository](docs/notes.mp4).
+
+### Groups and nested groups
+
+[![Preview of creating nested image groups](docs/groups-preview.gif)](https://familiar-app.net/docs/#groups)
+
+Watch the short tutorial [on the website](https://familiar-app.net/docs/#groups)
+or [download the MP4 from this repository](docs/groups.mp4).
 
 ## Downloads
 

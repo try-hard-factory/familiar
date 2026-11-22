@@ -188,6 +188,54 @@ TEST_F(GroupOwnershipTest, AGroupListedAmongItsOwnMembersIsACycleToo)
     EXPECT_TRUE(scene_->owning_group_chain(group->uid()).isEmpty());
 }
 
+TEST_F(GroupOwnershipTest, GroupingTwoMembersCreatesAMovableNestedGroup)
+{
+    PixmapItem* first = add_picture(QPointF(0, 0));
+    PixmapItem* second = add_picture(QPointF(50, 0));
+    PixmapItem* third = add_picture(QPointF(100, 0));
+    first->setSelected(true);
+    second->setSelected(true);
+    third->setSelected(true);
+    scene_->group_selection();
+    GroupItem* outer = scene_->find_owning_group(first->uid());
+    ASSERT_NE(outer, nullptr);
+
+    scene_->deselect_all_items();
+    first->setSelected(true);
+    second->setSelected(true);
+    scene_->group_selection();
+    GroupItem* inner = scene_->find_owning_group(first->uid());
+    ASSERT_NE(inner, nullptr);
+    ASSERT_NE(inner, outer);
+    EXPECT_EQ(scene_->find_owning_group(second->uid()), inner);
+    EXPECT_EQ(scene_->find_owning_group(inner->uid()), outer);
+    EXPECT_EQ(scene_->find_owning_group(third->uid()), outer);
+    EXPECT_FALSE(outer->child_ids().contains(first->uid()));
+    EXPECT_FALSE(outer->child_ids().contains(second->uid()));
+
+    scene_->deselect_all_items();
+    outer->setSelected(true);
+    const QPointF firstBefore = first->pos();
+    const QPointF secondBefore = second->pos();
+    const QPointF thirdBefore = third->pos();
+    const QPointF delta(80, 35);
+    outer->setPos(outer->pos() + delta);
+    EXPECT_EQ(first->pos(), firstBefore + delta);
+    EXPECT_EQ(second->pos(), secondBefore + delta);
+    EXPECT_EQ(third->pos(), thirdBefore + delta);
+
+    undoStack_.undo();
+    EXPECT_EQ(scene_->find_owning_group(first->uid()), outer);
+    EXPECT_EQ(scene_->find_owning_group(second->uid()), outer);
+    EXPECT_EQ(scene_->find_owning_group(third->uid()), outer);
+    EXPECT_EQ(scene_->find_owning_group(inner->uid()), nullptr);
+
+    undoStack_.redo();
+    EXPECT_EQ(scene_->find_owning_group(first->uid()), inner);
+    EXPECT_EQ(scene_->find_owning_group(second->uid()), inner);
+    EXPECT_EQ(scene_->find_owning_group(inner->uid()), outer);
+}
+
 // ─── Cost ──────────────────────────────────────────────────────────────────
 
 TEST_F(GroupOwnershipTest, OnChangeDoesNotGrowWithTheNumberOfGroups)

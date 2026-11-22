@@ -806,21 +806,18 @@ void CanvasScene::group_selection()
         if (!baseItem) {
             continue;
         }
-        // Skip an item whose OWNING group is ALSO part of this same
-        // selection - a rubber-band sweep can catch both an unlocked
-        // group AND (redundantly) its own individual members at once,
-        // since members of an unlocked group stay individually
-        // selectable. Adding it directly here too would make it a
-        // member of BOTH its existing group and the new outer one
-        // simultaneously - two independent cascades (itemChange()/
-        // fit_to_contain_children()) then fight over its position,
-        // visibly desyncing it from the rest during a drag (confirmed
-        // via testing). It's already covered transitively through its own
-        // group's membership, which IS in `ids` below.
-        if (auto* owner = find_owning_group(baseItem->uid())) {
+        // A selection can contain a group and any of its descendants.
+        // The descendant is already included through that group, even
+        // when several nesting levels separate them.
+        bool coveredBySelectedAncestor = false;
+        for (GroupItem* owner : owning_group_chain(baseItem->uid())) {
             if (selected.contains(owner)) {
-                continue;
+                coveredBySelectedAncestor = true;
+                break;
             }
+        }
+        if (coveredBySelectedAncestor) {
+            continue;
         }
         ids.append(baseItem->uid());
     }
