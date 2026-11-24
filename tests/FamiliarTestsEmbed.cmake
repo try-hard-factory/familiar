@@ -30,6 +30,7 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/widgets/binding_dialogs_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/binding_editor_dialog_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/keyboard_shortcuts_page_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/command_palette_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/color_picker_dialog_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/message_box_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/menu_structure_test.cpp

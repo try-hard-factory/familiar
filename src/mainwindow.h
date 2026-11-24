@@ -128,6 +128,7 @@ public slots:
     void on_action_hierarchy(bool checked);
 
     // Settings / Help
+    void on_action_command_palette();
     void on_action_settings();
     void on_action_open_settings_dir();
     void on_action_help();

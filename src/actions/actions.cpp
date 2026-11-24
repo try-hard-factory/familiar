@@ -255,6 +255,10 @@ ActionRegistry build_registry()
     r.add(A::make("quit", "Quit", "on_action_quit", {"Ctrl+Q"}));
 
     // ── Edit ──────────────────────────────────────────────────────────────────
+    r.add(A::make("command_palette",
+                  "Command Palette...",
+                  "on_action_command_palette",
+                  {"Ctrl+Shift+P"}));
     r.add(A::make("undo",
                   "Undo",
                   "on_action_undo",

@@ -23,6 +23,8 @@ const QList<MenuNode>& menu_structure()
                           }),
         MenuNode::submenu("Edit",
                           {
+                              MenuNode::action("command_palette"),
+                              MenuNode::sep(),
                               MenuNode::action("undo"),
                               MenuNode::action("redo"),
                               MenuNode::sep(),
