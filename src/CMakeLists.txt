@@ -3,7 +3,7 @@
 # synthetic-event helpers used by tests/widgets/*, plain utility
 # classes/functions usable from any test framework.
 find_package(QT NAMES Qt6 COMPONENTS Widgets Network Test REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Test REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Test QuickWidgets Quick3D REQUIRED)
 
 ##################
 #     DOXYGEN    #
@@ -48,6 +48,17 @@ set(PROJECT_SOURCES
         canvasview.h
         moveitem.cpp
         moveitem.h
+        modelitem.cpp
+        modelitem.h
+        model_preview.cpp
+        model_preview.h
+        model_thumbnail.cpp
+        model_thumbnail.h
+        gltf_import.cpp
+        gltf_import.h
+        obj_import.cpp
+        obj_import.h
+        model_viewer.qrc
         canvasscene.cpp
         canvasscene.h
         debug_macros.h
@@ -77,6 +88,8 @@ set(PROJECT_SOURCES
         ui/text_edit_toolbar.h
         ui/gif_playback_toolbar.cpp
         ui/gif_playback_toolbar.h
+        ui/model_toolbar.cpp
+        ui/model_toolbar.h
         ui/group_toolbar.cpp
         ui/group_toolbar.h
         ui/hierarchy_panel.cpp
@@ -228,6 +241,8 @@ endif()
 # nothing this target doesn't already get from the project-wide
 # CMAKE_CXX_STANDARD.
 target_link_libraries(familiar PRIVATE project_warnings)
+target_link_libraries(familiar PRIVATE Qt${QT_VERSION_MAJOR}::QuickWidgets
+                                       Qt${QT_VERSION_MAJOR}::Quick3D)
 
 # GoogleTest suite lives inside the app binary itself (main.cpp's "-t"
 # handling: ::testing::InitGoogleTest + RUN_ALL_TESTS instead of the

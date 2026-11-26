@@ -5,11 +5,16 @@
 #include "core/settings.h"
 #include "export.h"
 #include "fileio.h"
+#include "gltf_import.h"
+#include "obj_import.h"
 #include "mainwindow.h"
 #include "moveitem.h"
+#include "modelitem.h"
+#include "model_preview.h"
 #include "project_settings.h"
 #include "ui/gif_playback_toolbar.h"
 #include "ui/group_toolbar.h"
+#include "ui/model_toolbar.h"
 #include "ui/text_edit_toolbar.h"
 #include "widgets/color_gamut.h"
 #include "widgets/dialogs.h"
@@ -28,7 +33,9 @@
 #include <QCursor>
 #include <QDesktopServices>
 #include <QDialog>
+#include <QFileDialog>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFrame>
 #include <QGraphicsView>
@@ -38,15 +45,23 @@
 #include <QLatin1String>
 #include <QList>
 #include <QMessageBox>
+#include <QQuickItem>
+#include <QQuickWidget>
+#include <QShortcut>
 #include <QMimeData>
 #include <QPaintDevice>
 #include <QPainter>
 #include <QPoint>
+#include <QProcess>
 #include <QRegularExpression>
 #include <QScrollBar>
+#include <QStandardPaths>
 #include <QStringView>
 #include <QTextCursor>
+#include <QTemporaryFile>
+#include <QTemporaryDir>
 #include <QThread>
+#include <QTimer>
 #include <QUndoStack>
 #include <QUrl>
 #include <QUuid>
@@ -99,6 +114,7 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     , textToolbar_(new TextEditToolbar(viewport()))
     , gifToolbar_(new GifPlaybackToolbar(viewport()))
     , groupToolbar_(new GroupToolbar(viewport()))
+    , modelToolbar_(new ModelToolbar(viewport()))
     , mainwindow_(mw)
     , welcomeOverlay_(new WelcomeOverlay(this, &mw))
     , undoStack_(std::make_unique<QUndoStack>(this))
@@ -186,15 +202,30 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
             this,
             &CanvasView::update_group_toolbar_pos);
 
+    modelToolbar_->hide();
+    connect(modelToolbar_, &ModelToolbar::edit_toggled, this,
+            [this](ModelItem* item, bool editing) {
+                if (editing) {
+                    start_model_edit(item);
+                } else {
+                    end_model_edit();
+                }
+                modelToolbar_->set_editing(activeModel_ == item);
+            });
+
     connect(horizontalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         update_text_toolbar_pos();
         update_gif_toolbar_pos();
         update_group_toolbar_pos();
+        update_model_toolbar_pos();
+        update_model_viewer_pos();
     });
     connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this] {
         update_text_toolbar_pos();
         update_gif_toolbar_pos();
         update_group_toolbar_pos();
+        update_model_toolbar_pos();
+        update_model_viewer_pos();
     });
 
     connect(SettingsHandler::get_instance(),
@@ -206,6 +237,18 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
     init_main_controls(&mw);
     setContextMenuPolicy(Qt::DefaultContextMenu);
     viewport()->setMouseTracking(true);
+
+    // QQuickWidget changes the top-level window's rendering setup when it is
+    // first added. Create it before the main window is shown, so unlocking a
+    // model cannot make the application window briefly vanish.
+    modelViewer_ = new QQuickWidget(viewport());
+    modelViewer_->setResizeMode(QQuickWidget::SizeRootObjectToView);
+    modelViewer_->setFocusPolicy(Qt::StrongFocus);
+    modelViewer_->setSource(QUrl(QStringLiteral("qrc:/model/model_viewer.qml")));
+    modelViewer_->hide();
+    auto* modelEscape = new QShortcut(QKeySequence(Qt::Key_Escape), modelViewer_);
+    modelEscape->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(modelEscape, &QShortcut::activated, this, &CanvasView::end_model_edit);
 
     // See selectionOutlineOpacity(): fades selection chrome out after
     // this window loses activation and the cursor isn't hovering it
@@ -226,6 +269,28 @@ CanvasView::CanvasView(MainWindow& mw, [[maybe_unused]] QWidget* parent)
 
 CanvasView::~CanvasView()
 {
+    // QProcess can emit finished() from its own destructor. Stop and delete
+    // converters while CanvasView's members are still alive; otherwise its
+    // completion callback can access preparingModels_ after destruction.
+    for (QProcess* process : findChildren<QProcess*>(QString(),
+                                                    Qt::FindDirectChildrenOnly)) {
+        QObject::disconnect(process, nullptr, this, nullptr);
+        if (process->state() != QProcess::NotRunning) {
+            process->kill();
+            process->waitForFinished(1000);
+        }
+        delete process;
+    }
+    preparingModels_.clear();
+    if (modelViewer_) {
+        modelViewer_->hide();
+        if (QObject* root = modelViewer_->rootObject()) {
+            root->setProperty("modelSource", QUrl());
+            root->setProperty("preparedSource", QUrl());
+            root->setProperty("previewSource", QUrl());
+        }
+        activeModel_ = nullptr;
+    }
     // FIRST, before anything the workers read is torn down: every worker
     // function body captures `this` and goes through it -
     // imageImportSession_, imagesExporter_ and sceneExporter_ are all
@@ -258,6 +323,12 @@ CanvasView::~CanvasView()
         worker->wait();
         delete worker;
     }
+    for (ThreadedIO* worker : modelImportWorkers_) {
+        worker->on_canceled();
+        worker->wait();
+        delete worker;
+    }
+    modelImportWorkers_.clear();
     imageImportWorker_ = nullptr;
     imageExportWorker_ = nullptr;
 
@@ -292,6 +363,7 @@ CanvasView::~CanvasView()
 
 void CanvasView::on_scene_changed()
 {
+    update_model_viewer_pos();
     const QRectF currentItemsRect = scene_->itemsBoundingRect();
     if (!currentItemsRect.isEmpty()) {
         canvasRect_ = canvasRect_.united(currentItemsRect);
@@ -343,6 +415,7 @@ void CanvasView::on_scene_changed()
     // simpler than hooking drag-specific events separately).
     update_gif_toolbar_pos();
     update_group_toolbar_pos();
+    update_model_toolbar_pos();
 }
 
 void CanvasView::on_selection_changed()
@@ -381,6 +454,23 @@ void CanvasView::on_selection_changed()
         update_group_toolbar_pos();
     } else {
         groupToolbar_->hide();
+    }
+
+    ModelItem* modelItem = nullptr;
+    if (selected.size() == 1) {
+        modelItem = dynamic_cast<ModelItem*>(selected.first());
+    }
+    if (activeModel_ && activeModel_ != modelItem) {
+        end_model_edit();
+    }
+    modelToolbar_->attach(modelItem);
+    modelToolbar_->set_editing(activeModel_ == modelItem && modelItem);
+    if (modelItem) {
+        modelToolbar_->show();
+        modelToolbar_->raise();
+        update_model_toolbar_pos();
+    } else {
+        modelToolbar_->hide();
     }
 }
 
@@ -424,6 +514,9 @@ void CanvasView::settings_changed_slot()
     if (groupToolbar_) {
         groupToolbar_->restyle_from_preset();
     }
+    if (modelToolbar_) {
+        modelToolbar_->restyle_from_preset();
+    }
 }
 
 // ─── Active modes ─────────────────────────────────────────────────────────────
@@ -443,6 +536,7 @@ void CanvasView::cancel_sample_color_mode()
 
 void CanvasView::cancel_active_modes()
 {
+    end_model_edit();
     scene_->cancel_active_modes();
     cancel_sample_color_mode();
     activeMode_ = ActiveMode::ModeNone;
@@ -530,6 +624,8 @@ void CanvasView::do_scale(qreal sx, qreal sy)
     update_text_toolbar_pos();
     update_gif_toolbar_pos();
     update_group_toolbar_pos();
+    update_model_toolbar_pos();
+    update_model_viewer_pos();
 }
 
 void CanvasView::on_edit_item_changed(TextItem* item)
@@ -608,6 +704,26 @@ void CanvasView::update_group_toolbar_pos()
     x = qBound(0, x, qMax(0, viewport()->width() - groupToolbar_->width()));
     y = qMin(y, qMax(0, viewport()->height() - groupToolbar_->height()));
     groupToolbar_->move(x, y);
+}
+
+void CanvasView::update_model_toolbar_pos()
+{
+    if (!modelToolbar_ || !modelToolbar_->isVisible()
+        || !modelToolbar_->item()) {
+        return;
+    }
+    if (!scene_->items().contains(modelToolbar_->item())) {
+        modelToolbar_->attach(nullptr);
+        modelToolbar_->hide();
+        return;
+    }
+    const QRectF itemRect = modelToolbar_->item()->sceneBoundingRect();
+    const int centerX = mapFromScene(itemRect.center()).x();
+    int x = centerX - modelToolbar_->width() / 2;
+    int y = mapFromScene(itemRect.bottomLeft()).y() + ktoolbarGap;
+    x = qBound(0, x, qMax(0, viewport()->width() - modelToolbar_->width()));
+    y = qMin(y, qMax(0, viewport()->height() - modelToolbar_->height()));
+    modelToolbar_->move(x, y);
 }
 
 double CanvasView::get_zoom_size(
@@ -716,6 +832,9 @@ void CanvasView::wheelEvent(QWheelEvent* event)
 
 void CanvasView::mousePressEvent(QMouseEvent* event)
 {
+    if (activeModel_) {
+        end_model_edit();
+    }
     if (mouse_press_event_main_controls(event)) {
         return;
     }
@@ -771,6 +890,9 @@ void CanvasView::mousePressEvent(QMouseEvent* event)
     if (groupToolbar_->isVisible()) {
         groupToolbar_->hide();
     }
+    if (modelToolbar_->isVisible()) {
+        modelToolbar_->hide();
+    }
 
     QGraphicsView::mousePressEvent(event);
 }
@@ -825,6 +947,9 @@ void CanvasView::mouseMoveEvent(QMouseEvent* event)
         if (groupToolbar_->isVisible()) {
             groupToolbar_->hide();
         }
+        if (modelToolbar_->isVisible()) {
+            modelToolbar_->hide();
+        }
     }
 
     QGraphicsView::mouseMoveEvent(event);
@@ -874,11 +999,234 @@ void CanvasView::mouseReleaseEvent(QMouseEvent* event)
             update_group_toolbar_pos();
         }
     }
+    if (const ModelItem* item = modelToolbar_->item()) {
+        if (!modelToolbar_->isVisible() && selected.size() == 1
+            && selected.first() == item) {
+            modelToolbar_->show();
+            modelToolbar_->raise();
+            update_model_toolbar_pos();
+        }
+    }
 }
 
 void CanvasView::mouseDoubleClickEvent(QMouseEvent* event)
 {
+    if (auto* model = dynamic_cast<ModelItem*>(itemAt(event->pos()))) {
+        start_model_edit(model);
+        event->accept();
+        return;
+    }
     QGraphicsView::mouseDoubleClickEvent(event);
+}
+
+void CanvasView::start_model_edit(ModelItem* model)
+{
+    end_model_edit();
+    const QUrl source = model->model_url();
+    if (source.isEmpty()) {
+        QMessageBox::warning(this, tr("3D model"), tr("Could not prepare the model file."));
+        return;
+    }
+    if (modelViewer_->status() != QQuickWidget::Ready || !modelViewer_->rootObject()) {
+        QMessageBox::warning(this, tr("3D model"), tr("Could not start the 3D viewer."));
+        return;
+    }
+    QObject* root = modelViewer_->rootObject();
+    root->setProperty("yaw", model->yaw());
+    root->setProperty("pitch", model->pitch());
+    root->setProperty("distance", model->distance());
+    modelPreviewFile_ = std::make_unique<QTemporaryFile>(
+        QDir::tempPath() + QStringLiteral("/familiar-preview-XXXXXX.png"));
+    if (modelPreviewFile_->open()
+        && model->pixmap().toImage().save(modelPreviewFile_.get(), "PNG")
+        && modelPreviewFile_->flush()) {
+        root->setProperty("previewSource",
+                          QUrl::fromLocalFile(modelPreviewFile_->fileName()));
+    } else {
+        modelPreviewFile_.reset();
+        root->setProperty("previewSource", QUrl());
+    }
+    root->setProperty("errorMessage", QString());
+    root->setProperty("preparing", model->prepared_url().isEmpty());
+    activeModel_ = model;
+    update_model_viewer_pos();
+    modelViewer_->show();
+    modelViewer_->raise();
+    modelToolbar_->set_editing(true);
+    modelToolbar_->show();
+    modelToolbar_->raise();
+    update_model_toolbar_pos();
+    modelViewer_->setFocus();
+
+    // Balsam converts the GLB in a separate process. Loader3D then creates
+    // the prepared QML scene asynchronously on the GUI thread.
+    QTimer::singleShot(0, this, [this, model, source] {
+        if (activeModel_ == model && modelViewer_->isVisible()) {
+            if (QObject* viewer = modelViewer_->rootObject()) {
+                if (!model->prepared_url().isEmpty()) {
+                    viewer->setProperty("preparedCenter",
+                                        QVariant::fromValue(model->bounds().center));
+                    viewer->setProperty("preparedExtent", model->bounds().extent);
+                    viewer->setProperty("preparedSource", model->prepared_url());
+                    viewer->setProperty("preparing", false);
+                } else if (QStandardPaths::findExecutable(QStringLiteral("balsam"))
+                               .isEmpty()) {
+                    // Keep the original importer available in builds that
+                    // do not ship the Qt conversion tool.
+                    viewer->setProperty("modelSource", source);
+                    viewer->setProperty("preparing", false);
+                } else {
+                    prepare_model(model);
+                }
+            }
+        }
+    });
+}
+
+void CanvasView::prepare_model(ModelItem* model)
+{
+    const QUuid modelId = model->uid();
+    if (preparingModels_.contains(modelId)) {
+        return;
+    }
+    const QString converter = QStandardPaths::findExecutable(QStringLiteral("balsam"));
+    const QUrl source = model->model_url();
+    if (converter.isEmpty() || source.isEmpty()) {
+        return;
+    }
+    auto directory = std::make_shared<QTemporaryDir>(
+        QDir::tempPath() + QStringLiteral("/familiar-balsam-XXXXXX"));
+    if (!directory->isValid()) {
+        if (activeModel_ == model) {
+            if (QObject* viewer = modelViewer_->rootObject()) {
+                viewer->setProperty("preparing", false);
+                viewer->setProperty("errorMessage", tr("Could not prepare 3D model"));
+            }
+        }
+        return;
+    }
+    preparingModels_.insert(modelId);
+    auto* process = new QProcess(this);
+    process->setProcessChannelMode(QProcess::MergedChannels);
+    connect(process, &QProcess::finished, this,
+            [this, process, directory, modelId](int exitCode,
+                                                QProcess::ExitStatus status) {
+                preparingModels_.remove(modelId);
+                auto* item = dynamic_cast<ModelItem*>(scene_->find_by_uid(modelId));
+                const QStringList qmlFiles = QDir(directory->path()).entryList(
+                    {QStringLiteral("*.qml")}, QDir::Files);
+                const bool ready = item && status == QProcess::NormalExit
+                                   && exitCode == 0 && qmlFiles.size() == 1;
+                if (ready) {
+                    const QUrl prepared = QUrl::fromLocalFile(
+                        directory->filePath(qmlFiles.first()));
+                    item->set_prepared_assets(directory, prepared);
+                    if (activeModel_ == item) {
+                        if (QObject* viewer = modelViewer_->rootObject()) {
+                            viewer->setProperty("preparedCenter",
+                                                QVariant::fromValue(item->bounds().center));
+                            viewer->setProperty("preparedExtent", item->bounds().extent);
+                            viewer->setProperty("preparedSource", prepared);
+                            viewer->setProperty("preparing", false);
+                        }
+                    }
+                } else if (item && activeModel_ == item) {
+                    if (QObject* viewer = modelViewer_->rootObject()) {
+                        viewer->setProperty("preparing", false);
+                        viewer->setProperty("errorMessage",
+                                            tr("Could not prepare 3D model"));
+                    }
+                }
+                process->deleteLater();
+            });
+    connect(process, &QProcess::errorOccurred, this,
+            [this, process, modelId](QProcess::ProcessError error) {
+                if (error != QProcess::FailedToStart) {
+                    return;
+                }
+                preparingModels_.remove(modelId);
+                if (auto* item = dynamic_cast<ModelItem*>(scene_->find_by_uid(modelId))) {
+                    if (activeModel_ == item) {
+                        if (QObject* viewer = modelViewer_->rootObject()) {
+                            viewer->setProperty("preparing", false);
+                            viewer->setProperty("errorMessage",
+                                                tr("Could not prepare 3D model"));
+                        }
+                    }
+                }
+                process->deleteLater();
+            });
+    process->start(converter,
+                   {QStringLiteral("-o"), directory->path(), source.toLocalFile()});
+}
+
+void CanvasView::end_model_edit()
+{
+    if (!activeModel_ || !modelViewer_) {
+        return;
+    }
+    ModelItem* model = activeModel_;
+    activeModel_ = nullptr;
+    const bool stillOnScene = scene_->items().contains(model);
+    QObject* root = modelViewer_->rootObject();
+    if (stillOnScene && root && root->property("loaded").toBool()) {
+        root->setProperty("showHint", false);
+        const QImage frame = modelViewer_->grabFramebuffer();
+        root->setProperty("showHint", true);
+        const QImage before = model->pixmap().toImage();
+        const QImage after = frame.isNull()
+                                 ? before
+                                 : frame.scaled(400, 400, Qt::IgnoreAspectRatio,
+                                                Qt::SmoothTransformation);
+        const qreal yaw = root->property("yaw").toReal();
+        const qreal pitch = root->property("pitch").toReal();
+        const qreal distance = root->property("distance").toReal();
+        if (before != after || model->yaw() != yaw
+            || model->pitch() != pitch || model->distance() != distance) {
+            undoStack_->push(new ModelViewCommand(model, before, after,
+                                                   model->yaw(), model->pitch(),
+                                                   model->distance(), yaw,
+                                                   pitch, distance));
+        }
+    }
+    modelViewer_->hide();
+    modelToolbar_->set_editing(false);
+    if (modelToolbar_->item() == model) {
+        modelToolbar_->show();
+        modelToolbar_->raise();
+        update_model_toolbar_pos();
+    }
+    if (root) {
+        root->setProperty("modelSource", QUrl());
+        root->setProperty("preparedSource", QUrl());
+        root->setProperty("previewSource", QUrl());
+        root->setProperty("preparing", false);
+    }
+    modelPreviewFile_.reset();
+    setFocus();
+}
+
+void CanvasView::update_model_viewer_pos()
+{
+    if (!activeModel_ || !modelViewer_) {
+        return;
+    }
+    if (!scene_->items().contains(activeModel_)) {
+        activeModel_ = nullptr;
+        modelViewer_->hide();
+        if (QObject* root = modelViewer_->rootObject()) {
+            root->setProperty("modelSource", QUrl());
+            root->setProperty("preparedSource", QUrl());
+            root->setProperty("previewSource", QUrl());
+            root->setProperty("preparing", false);
+        }
+        modelPreviewFile_.reset();
+        modelToolbar_->attach(nullptr);
+        modelToolbar_->hide();
+        return;
+    }
+    const QRect rect = mapFromScene(activeModel_->sceneBoundingRect()).boundingRect();
+    modelViewer_->setGeometry(rect);
 }
 
 void CanvasView::keyPressEvent(QKeyEvent* event)
@@ -977,6 +1325,8 @@ void CanvasView::resizeEvent(QResizeEvent* event)
     update_text_toolbar_pos();
     update_gif_toolbar_pos();
     update_group_toolbar_pos();
+    update_model_toolbar_pos();
+    update_model_viewer_pos();
 }
 
 
@@ -1613,6 +1963,136 @@ void CanvasView::on_action_insert_images()
     do_insert_images(urls);
 }
 
+void CanvasView::on_action_insert_model()
+{
+    const QString filename = QFileDialog::getOpenFileName(
+        this, tr("Insert 3D model"), {},
+        tr("3D models (*.glb *.gltf *.obj)"));
+    if (filename.isEmpty()) {
+        return;
+    }
+    insert_model_file(filename, mapToScene(viewport()->rect().center()));
+}
+
+ModelItem* CanvasView::insert_model_file(const QString& filename,
+                                         const QPointF& scenePos)
+{
+    cancel_active_modes();
+    const QString suffix = QFileInfo(filename).suffix();
+    struct PreparedModel
+    {
+        QByteArray bytes;
+        QImage preview;
+        QString error;
+    };
+    auto result = std::make_shared<PreparedModel>();
+    const QString thumbnailProgram = QCoreApplication::applicationFilePath();
+    auto* worker = new ThreadedIO(
+        [filename, suffix, result, thumbnailProgram](ThreadedIO* running) {
+            emit running->current_item_changed(QFileInfo(filename).fileName());
+            if (suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
+                GltfImportResult imported = import_obj(filename);
+                result->bytes = std::move(imported.glb);
+                result->error = imported.error;
+            } else if (suffix.compare(QStringLiteral("gltf"),
+                                      Qt::CaseInsensitive) == 0) {
+                GltfImportResult imported = import_gltf(filename);
+                result->bytes = std::move(imported.glb);
+                result->error = imported.error;
+            } else {
+                QFile source(filename);
+                if (!source.open(QIODevice::ReadOnly) || source.size() <= 0
+                    || source.size() > 128LL * 1024 * 1024) {
+                    result->error = QObject::tr(
+                        "Could not read the model (maximum 128 MB).");
+                } else {
+                    result->bytes = source.readAll();
+                    if (result->bytes.size() != source.size()
+                        || !result->bytes.startsWith("glTF")) {
+                        result->error = QObject::tr(
+                            "This is not a valid .glb file.");
+                    }
+                }
+            }
+            if (result->error.isEmpty() && !running->is_canceled()) {
+                QTemporaryDir thumbnailDir;
+                if (thumbnailDir.isValid()) {
+                    const QString glbPath = thumbnailDir.filePath(
+                        QStringLiteral("model.glb"));
+                    const QString imagePath = thumbnailDir.filePath(
+                        QStringLiteral("preview.png"));
+                    QFile glbFile(glbPath);
+                    if (glbFile.open(QIODevice::WriteOnly)
+                        && glbFile.write(result->bytes) == result->bytes.size()) {
+                        glbFile.close();
+                        QProcess renderer;
+                        renderer.setProcessChannelMode(QProcess::ForwardedChannels);
+                        renderer.start(thumbnailProgram,
+                                       {QStringLiteral("--render-model-thumbnail"),
+                                        glbPath, imagePath});
+                        if (renderer.waitForStarted(2000)) {
+                            QElapsedTimer elapsed;
+                            elapsed.start();
+                            while (renderer.state() != QProcess::NotRunning
+                                   && !running->is_canceled()
+                                   && elapsed.elapsed() < 60000) {
+                                renderer.waitForFinished(100);
+                            }
+                            if (renderer.state() != QProcess::NotRunning) {
+                                renderer.kill();
+                                renderer.waitForFinished(1000);
+                            } else if (renderer.exitCode() == 0) {
+                                result->preview = QImage(imagePath);
+                            }
+                        }
+                    }
+                }
+                if (result->preview.isNull() && !running->is_canceled()) {
+                    result->preview = render_model_preview(result->bytes);
+                }
+            }
+            emit running->work_finished(result->error, {});
+        }, this);
+    modelImportWorkers_.insert(worker);
+    new ProgressDialog(tr("Preparing 3D model"), worker, 0, this);
+    connect(worker, &ThreadedIO::work_finished, this,
+            [this, worker, result, filename, scenePos](const QString&,
+                                                        const QStringList&) {
+                if (worker->is_canceled()) {
+                    return;
+                }
+                if (!result->error.isEmpty()) {
+                    show_message_box(QMessageBox::Warning, this,
+                                     tr("3D model"), result->error);
+                    return;
+                }
+                insert_prepared_model(filename, scenePos, result->bytes,
+                                      result->preview);
+            });
+    connect(worker, &QThread::finished, this, [this, worker] {
+        modelImportWorkers_.remove(worker);
+        worker->deleteLater();
+    });
+    worker->start();
+    return nullptr;
+}
+
+ModelItem* CanvasView::insert_prepared_model(const QString& filename,
+                                             const QPointF& scenePos,
+                                             QByteArray bytes,
+                                             const QImage& preview)
+{
+    const bool wasEmpty = scene_->items().isEmpty();
+    auto* model = new ModelItem(preview, std::move(bytes), filename);
+    undoStack_->push(new InsertItemsCommand(scene_, {model}, scenePos));
+    on_scene_changed();
+    if (wasEmpty) {
+        on_action_fit_scene();
+    }
+    prepare_model(model);
+    return model;
+}
+
 void CanvasView::on_action_insert_text()
 {
     cancel_active_modes();
@@ -2063,7 +2543,29 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
         validUrls.append(url);
     }
 
-    imageImportSession_ = std::make_unique<ImageImportSession>(validUrls,
+    QList<QUrl> imageUrls;
+    QStringList modelFiles;
+    for (const QUrl& url : validUrls) {
+        const QString suffix = url.isLocalFile()
+                                   ? QFileInfo(url.toLocalFile()).suffix() : QString();
+        if (suffix.compare(QStringLiteral("glb"), Qt::CaseInsensitive) == 0
+            || suffix.compare(QStringLiteral("gltf"), Qt::CaseInsensitive) == 0
+            || suffix.compare(QStringLiteral("obj"), Qt::CaseInsensitive) == 0) {
+            modelFiles.append(url.toLocalFile());
+        } else {
+            imageUrls.append(url);
+        }
+    }
+    for (int i = 0; i < modelFiles.size(); ++i) {
+        const QPointF offset(i * 24.0 / get_scale(),
+                             i * 24.0 / get_scale());
+        insert_model_file(modelFiles.at(i), scenePos + offset);
+    }
+    if (imageUrls.isEmpty()) {
+        return;
+    }
+
+    imageImportSession_ = std::make_unique<ImageImportSession>(imageUrls,
                                                                scenePos,
                                                                scene_);
 
@@ -2081,7 +2583,7 @@ void CanvasView::do_insert_images(const QList<QUrl>& urls,
                                              "Items/raw_import_choice"))
                                          .toString();
     if (rawImportSetting == QLatin1String("ask")) {
-        for (const QUrl& url : validUrls) {
+        for (const QUrl& url : imageUrls) {
             if (url.isLocalFile() && is_raw_file(url.toLocalFile())) {
                 if (!resolve_raw_import_choice(url.toLocalFile())) {
                     imageImportSession_.reset();

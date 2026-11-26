@@ -13,6 +13,7 @@
 #include <QMouseEvent>
 #include <QObject>
 #include <QScrollBar>
+#include <QSet>
 #include <QTransform>
 #include <QUrl>
 #include <QUuid>
@@ -37,6 +38,10 @@ class TextEditToolbar;
 class GifPlaybackToolbar;
 class GroupItem;
 class GroupToolbar;
+class ModelToolbar;
+class ModelItem;
+class QQuickWidget;
+class QTemporaryFile;
 
 struct PreviousTransform
 {
@@ -256,6 +261,7 @@ public:
 
     // Insert
     void on_action_insert_images();
+    void on_action_insert_model();
     void on_action_insert_text();
 
     // Transform
@@ -345,6 +351,17 @@ private:
     // Same idea again, for the group toolbar -
     // shown/hidden from on_selection_changed() same as the GIF one.
     void update_group_toolbar_pos();
+    void update_model_toolbar_pos();
+    void start_model_edit(ModelItem* model);
+    void prepare_model(ModelItem* model);
+    void end_model_edit();
+    void update_model_viewer_pos();
+    ModelItem* insert_model_file(const QString& filename,
+                                 const QPointF& scenePos);
+    ModelItem* insert_prepared_model(const QString& filename,
+                                    const QPointF& scenePos,
+                                    QByteArray bytes,
+                                    const QImage& preview);
     // Shows RawImportDialog and applies the answer to imageImportSession_
     // (setQueueChoice()/setOneShotChoice(), plus persisting to
     // Items/raw_import_choice if "Remember choice" was checked) - shared
@@ -362,6 +379,12 @@ private:
     TextEditToolbar* textToolbar_ = nullptr;
     GifPlaybackToolbar* gifToolbar_ = nullptr;
     GroupToolbar* groupToolbar_ = nullptr;
+    ModelToolbar* modelToolbar_ = nullptr;
+    QQuickWidget* modelViewer_ = nullptr;
+    std::unique_ptr<QTemporaryFile> modelPreviewFile_;
+    QSet<QUuid> preparingModels_;
+    QSet<ThreadedIO*> modelImportWorkers_;
+    ModelItem* activeModel_ = nullptr;
 
     MainWindow& mainwindow_;
     WelcomeOverlay* welcomeOverlay_;

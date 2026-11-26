@@ -402,6 +402,7 @@ ActionRegistry build_registry()
                   "Images...",
                   "on_action_insert_images",
                   {"Ctrl+I"}));
+    r.add(A::make("insert_model", "3D model...", "on_action_insert_model"));
     // Was Ctrl+T - freed up for the new "transparent_to_mouse" action
     // above (Ctrl+T there matches a reference app's own binding for it).
     r.add(A::make("insert_text", "Text", "on_action_insert_text", {"Ctrl+N"}));

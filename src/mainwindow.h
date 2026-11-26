@@ -171,6 +171,7 @@ public slots:
 
     // Insert
     void on_action_insert_images();
+    void on_action_insert_model();
     void on_action_insert_text();
 
     // Transform

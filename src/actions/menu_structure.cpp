@@ -59,6 +59,7 @@ const QList<MenuNode>& menu_structure()
         MenuNode::submenu("Insert",
                           {
                               MenuNode::action("insert_images"),
+                              MenuNode::action("insert_model"),
                               MenuNode::action("insert_text"),
                           }),
         MenuNode::submenu("Transform",
