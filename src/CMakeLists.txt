@@ -151,6 +151,8 @@ set(PROJECT_SOURCES
         widgets/help_dialog.h
         widgets/about_dialog.cpp
         widgets/about_dialog.h
+        widgets/command_palette.cpp
+        widgets/command_palette.h
         widgets/setting_row.cpp
         widgets/setting_row.h
         widgets/setting_descriptions.cpp

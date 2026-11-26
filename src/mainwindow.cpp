@@ -32,6 +32,7 @@
 #include "tabpane.h"
 #include "utils/utils.h"
 #include "widgets/about_dialog.h"
+#include "widgets/command_palette.h"
 #include "widgets/dialog_style.h"
 #include "widgets/dialogs.h"
 #include "widgets/help_dialog.h"
@@ -1168,6 +1169,18 @@ int MainWindow::ui_strip_height() const
 }
 
 // Settings / Help
+void MainWindow::on_action_command_palette()
+{
+    CommandPalette palette(get_actions(), this);
+    palette.move(mapToGlobal(QPoint((width() - palette.width()) / 2, 18)));
+    if (palette.exec() == QDialog::Accepted) {
+        if (QAction* action = palette.selected_action(); action
+            && action->isEnabled()) {
+            action->trigger();
+        }
+    }
+}
+
 void MainWindow::on_action_settings()
 {
     settings_window();
