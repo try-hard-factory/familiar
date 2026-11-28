@@ -358,6 +358,8 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
             const auto image = imageVariant.value<QImage>();
             const QString filename = data.value("filename").toString();
             auto* pixmapItem = new PixmapItem(image, filename);
+            pixmapItem->set_render_preview(
+                data.value(QStringLiteral("renderPreview")).value<QImage>());
 
             // Present for a picture loaded from a .fml, where the
             // encoded bytes are known to be exactly what `image` was
@@ -381,6 +383,9 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
             const QVariant extraData = data.value("data");
             if (extraData.isValid()) {
                 pixmapItem->apply_extra_save_data(extraData.toMap());
+                pixmapItem->setOpacity(
+                    extraData.toMap().value(QStringLiteral("opacity"), 1.0)
+                        .toReal());
             }
             item = pixmapItem;
         }
@@ -397,6 +402,9 @@ IBaseItem* CanvasScene::create_item_from_data(const QVariantMap& data)
             const QVariant extraData = data.value("data");
             if (extraData.isValid()) {
                 gifItem->apply_extra_save_data(extraData.toMap());
+                gifItem->setOpacity(
+                    extraData.toMap().value(QStringLiteral("opacity"), 1.0)
+                        .toReal());
             }
             item = gifItem;
         }

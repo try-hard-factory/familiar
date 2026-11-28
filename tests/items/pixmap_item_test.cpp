@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <QImage>
+#include <QGraphicsScene>
+#include <QPainter>
 #include <QPixmap>
 #include <QRandomGenerator>
 #include <QRectF>
@@ -55,6 +57,34 @@ double mean_channel_error(const QImage& a, const QImage& b)
 }
 
 } // namespace
+
+TEST(PixmapItemRenderingTest, PreviewIsUsedOnlyForItsSourcePixmap)
+{
+    QImage original(800, 800, QImage::Format_RGB32);
+    original.fill(Qt::red);
+    QImage preview(100, 100, QImage::Format_RGB32);
+    preview.fill(Qt::green); // Deliberately distinct to reveal which path painted.
+
+    QGraphicsScene scene;
+    auto* item = new PixmapItem(original);
+    scene.addItem(item);
+    item->set_render_preview(preview);
+
+    const auto render = [&scene] {
+        QImage output(100, 100, QImage::Format_RGB32);
+        output.fill(Qt::black);
+        QPainter painter(&output);
+        scene.render(&painter, QRectF(0, 0, 100, 100),
+                     QRectF(0, 0, 800, 800));
+        return output.pixelColor(50, 50);
+    };
+    EXPECT_EQ(render(), QColor(Qt::green));
+
+    QImage replacement(800, 800, QImage::Format_RGB32);
+    replacement.fill(Qt::blue);
+    item->setPixmap(QPixmap::fromImage(replacement));
+    EXPECT_EQ(render(), QColor(Qt::blue));
+}
 
 // 800x600 with no alpha channel: over kSmallImageSide, so "best" sends it
 // to JPEG - the exact case that degraded.

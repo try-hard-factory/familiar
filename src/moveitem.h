@@ -233,6 +233,11 @@ private:
     mutable QPixmap downscaleCache_;
     mutable qreal downscaleCacheFactor_ = 0.0;
     mutable qint64 downscaleCacheSrcKey_ = 0;
+    // A small copy prepared by the file-loading worker. The GUI thread
+    // uses it as the source for overview mip levels instead of reading
+    // every pixel of the full image on a wheel event.
+    QPixmap renderPreview_;
+    qint64 renderPreviewSrcKey_ = 0;
 
     // The encoded bytes this picture should be STORED as, so a save does
     // not re-encode what is already encoded. Keyed on the source pixmap's
@@ -284,6 +289,15 @@ public:
         // moveitem.h) to carry along any items attached to THIS picture
         // (attachedToUid_ above) when it moves. See itemChange() below.
         this->setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    }
+
+    void set_render_preview(const QImage& preview)
+    {
+        if (preview.isNull()) {
+            return;
+        }
+        renderPreview_ = QPixmap::fromImage(preview);
+        renderPreviewSrcKey_ = pixmap().cacheKey();
     }
 
     bool is_image() const override { return isImage_; }
@@ -1012,9 +1026,16 @@ public:
             // real area-averaging rescale (every source pixel
             // contributes), unlike QPainter's SmoothPixmapTransform
             // render hint - see paint()'s own comment.
-            downscaleCache_ = pm.scaled(target,
-                                        Qt::IgnoreAspectRatio,
-                                        Qt::SmoothTransformation);
+            const QPixmap& source = renderPreviewSrcKey_ == pm.cacheKey()
+                                            && renderPreview_.width() >= target.width()
+                                            && renderPreview_.height() >= target.height()
+                                        ? renderPreview_
+                                        : pm;
+            downscaleCache_ = source.size() == target
+                                  ? source
+                                  : source.scaled(target,
+                                                  Qt::IgnoreAspectRatio,
+                                                  Qt::SmoothTransformation);
             downscaleCacheFactor_ = factor;
             downscaleCacheSrcKey_ = pm.cacheKey();
         }

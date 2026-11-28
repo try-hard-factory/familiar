@@ -68,6 +68,8 @@ public:
     void do_insert_images(const QList<QUrl>& urls,
                           std::optional<QPoint> pos = std::nullopt);
     void handle_drop(const QMimeData* mimedata, const QPoint& pos);
+    void import_pureref(const QString& path,
+                        std::optional<QPoint> pos = std::nullopt);
 
     // Folder-picker + threaded export, factored out of
     // on_action_export_images() so HierarchyPanel's per-picture/
@@ -256,6 +258,7 @@ public:
 
     // Insert
     void on_action_insert_images();
+    void on_action_import_pureref();
     void on_action_insert_text();
 
     // Transform

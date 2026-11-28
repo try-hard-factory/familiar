@@ -8,6 +8,7 @@
 #include "mainwindow.h"
 #include "moveitem.h"
 #include "project_settings.h"
+#include "pureref_import.h"
 #include "ui/gif_playback_toolbar.h"
 #include "ui/group_toolbar.h"
 #include "ui/text_edit_toolbar.h"
@@ -1089,6 +1090,14 @@ void CanvasView::handle_drop(const QMimeData* mimedata, const QPoint& pos)
                    debug_string(mimedata->urls()));
 
         QList<QUrl> urls = mimedata->urls();
+        // A PureRef scene is a project, not an image. Import it through
+        // the same path as File > Import so its layout stays intact.
+        if (urls.size() == 1 && urls.first().isLocalFile()
+            && QFileInfo(urls.first().toLocalFile()).suffix().compare(
+                   QStringLiteral("pur"), Qt::CaseInsensitive) == 0) {
+            import_pureref(urls.first().toLocalFile(), pos);
+            return;
+        }
         // Some sites' drag data doesn't give a direct image link at all -
         // Google Images gives its own search-result page ("imgres?...");
         // kp.ru (and presumably others) gives the containing article
@@ -1611,6 +1620,104 @@ void CanvasView::on_action_insert_images()
         urls.append(QUrl::fromLocalFile(fn));
     }
     do_insert_images(urls);
+}
+
+void CanvasView::on_action_import_pureref()
+{
+    const QString file = show_open_file_dialog(
+        &mainwindow_, tr("Import PureRef project"), QDir::homePath(),
+        QStringLiteral("PureRef projects (*.pur)"));
+    if (!file.isEmpty()) {
+        import_pureref(file);
+    }
+}
+
+void CanvasView::import_pureref(const QString& path, std::optional<QPoint> pos)
+{
+    cancel_active_modes();
+    const QPointF target = mapToScene(pos.value_or(get_view_center().toPoint()));
+    auto result = std::make_shared<familiar::pureref::ImportResult>();
+    auto* worker = new ThreadedIO([path, result](ThreadedIO* thread) {
+        *result = familiar::pureref::read_project(
+            path, [thread] { return thread->is_canceled(); });
+        emit thread->work_finished(result->error, result->warnings);
+    });
+    connect(worker,
+            &ThreadedIO::work_finished,
+            this,
+            [this, result, target, worker](const QString& error,
+                                   const QStringList& warnings) {
+                if (worker->is_canceled()) {
+                    return;
+                }
+                if (!error.isEmpty()) {
+                    show_message_box(QMessageBox::Critical,
+                                     this,
+                                     tr("Could not import PureRef project"),
+                                     error);
+                    return;
+                }
+                if (result->items.isEmpty()) {
+                    show_message_box(QMessageBox::Information,
+                                     this,
+                                     tr("PureRef project is empty"),
+                                     tr("No supported items were found in this project."));
+                    return;
+                }
+                const bool wasEmpty = scene_->items().isEmpty();
+                const QPointF offset = wasEmpty || result->bounds.isEmpty()
+                                           ? QPointF()
+                                           : target - result->bounds.center();
+                qreal minImportedZ = result->items.first()
+                                         .value(QStringLiteral("z"))
+                                         .toReal();
+                for (const QVariantMap& item : result->items) {
+                    minImportedZ = qMin(minImportedZ,
+                                        item.value(QStringLiteral("z")).toReal());
+                }
+                const qreal zOffset = wasEmpty ? 0.0
+                                               : scene_->max_z()
+                                                     + scene_->z_step()
+                                                     - minImportedZ;
+                for (QVariantMap item : result->items) {
+                    item[QStringLiteral("z")] = item.value(QStringLiteral("z")).toReal()
+                                                + zOffset;
+                    if (item.value(QStringLiteral("type")).toString()
+                        != QLatin1String("group")) {
+                        item[QStringLiteral("x")] = item.value(QStringLiteral("x")).toDouble()
+                                                    + offset.x();
+                        item[QStringLiteral("y")] = item.value(QStringLiteral("y")).toDouble()
+                                                    + offset.y();
+                    }
+                    scene_->add_item_later(item, false);
+                }
+                const QList<IBaseItem*> added = scene_->add_queued_items();
+                if (!added.isEmpty()) {
+                    scene_->deselect_all_items();
+                    undoStack_->push(new InsertItemsCommand(scene_, added,
+                                                            std::nullopt, true));
+                    welcomeOverlay_->hide();
+                    if (wasEmpty) {
+                        on_action_fit_scene();
+                    }
+                }
+                if (!warnings.isEmpty()) {
+                    QStringList lines;
+                    for (const QString& warning : warnings) {
+                        lines << QStringLiteral("<li>%1</li>")
+                                     .arg(warning.toHtmlEscaped());
+                    }
+                    show_message_box(QMessageBox::Warning,
+                                     this,
+                                     tr("PureRef import notes"),
+                                     QStringLiteral("<ul>%1</ul>")
+                                         .arg(lines.join(QString())));
+                }
+            });
+    connect(worker, &QThread::finished, worker, &QObject::deleteLater);
+    new ProgressDialog(tr("Importing %1").arg(QFileInfo(path).fileName()),
+                       worker, 0, this);
+    worker->start();
 }
 
 void CanvasView::on_action_insert_text()

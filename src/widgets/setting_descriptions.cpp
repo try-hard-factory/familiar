@@ -121,6 +121,10 @@ const QMap<QString, QString>& binding_targets_table()
              "files at once opens each of them."
              "<br/><br/>The current tab is reused only while it is still "
              "an empty, never-saved one.")},
+        {QStringLiteral("import_pureref"),
+         QStringLiteral("Imports images, notes and groups from a PureRef "
+                        "2.x <b>.pur</b> project into the current board. "
+                        "The original project is left untouched.")},
         {QStringLiteral("save"),
          QStringLiteral(
              "Writes the current tab back to its <b>.fml</b> file."

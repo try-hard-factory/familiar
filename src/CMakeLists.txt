@@ -2,8 +2,8 @@
 # "-t" handling) - just for QSignalSpy/QTest::mouseClick/keyClick, the
 # synthetic-event helpers used by tests/widgets/*, plain utility
 # classes/functions usable from any test framework.
-find_package(QT NAMES Qt6 COMPONENTS Widgets Network Test REQUIRED)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Test REQUIRED)
+find_package(QT NAMES Qt6 COMPONENTS Widgets Network Sql Test REQUIRED)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS Widgets Network Sql Test REQUIRED)
 
 ##################
 #     DOXYGEN    #
@@ -69,6 +69,8 @@ set(PROJECT_SOURCES
         tabpane.h
         file_actions.cpp
         file_actions.h
+        pureref_import.cpp
+        pureref_import.h
         ui/settings_window.cpp
         ui/settings_window.h
         ui/presetsave_window.cpp
@@ -196,6 +198,7 @@ if (WIN32)
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
+        Qt${QT_VERSION_MAJOR}::Sql
         quill::quill
         miniz
         libraw
@@ -205,6 +208,7 @@ elseif(APPLE)
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
+        Qt${QT_VERSION_MAJOR}::Sql
         quill::quill
         miniz
         libraw
@@ -213,6 +217,7 @@ else()
     target_link_libraries(familiar PRIVATE
         Qt${QT_VERSION_MAJOR}::Widgets
         Qt${QT_VERSION_MAJOR}::Network
+        Qt${QT_VERSION_MAJOR}::Sql
         quill::quill
         miniz
         libraw

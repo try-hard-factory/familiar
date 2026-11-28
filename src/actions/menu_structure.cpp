@@ -8,6 +8,7 @@ const QList<MenuNode>& menu_structure()
                           {
                               MenuNode::action("new_scene"),
                               MenuNode::action("open"),
+                              MenuNode::action("import_pureref"),
                               MenuNode::submenu("Open Recent",
                                                 {
                                                     MenuNode::dynamic(

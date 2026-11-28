@@ -1200,6 +1200,12 @@ FmlResult FmlArchive::load(const QString& filename,
                                                 static_cast<int>(imgSize));
                         if (ok) {
                             itemData[QStringLiteral("image")] = image;
+                            if (image.width() > 512 || image.height() > 512) {
+                                itemData[QStringLiteral("renderPreview")]
+                                    = image.scaled(image.size() / 8,
+                                                   Qt::IgnoreAspectRatio,
+                                                   Qt::SmoothTransformation);
+                            }
                             itemData[QStringLiteral("filename")]
                                 = mi.data.value(QStringLiteral("filename"));
                             // Handed to PixmapItem::set_encoded_source()

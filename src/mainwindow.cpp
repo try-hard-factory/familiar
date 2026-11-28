@@ -657,6 +657,13 @@ void MainWindow::on_action_open()
     file_actions().open_file();
 }
 
+void MainWindow::on_action_import_pureref()
+{
+    if (auto* cv = tab_pane().current_widget()) {
+        cv->on_action_import_pureref();
+    }
+}
+
 void MainWindow::on_action_open_recent_file(const QString& filename)
 {
     file_actions().process_open_file(filename);

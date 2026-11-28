@@ -116,6 +116,7 @@ public slots:
     // File
     void on_action_new_scene();
     void on_action_open();
+    void on_action_import_pureref();
     void on_action_open_recent_file(const QString& filename);
     void on_action_quit();
 

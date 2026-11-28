@@ -437,6 +437,10 @@ jobs:
           # qt6-base-dev package (Debian/Ubuntu's own packaging
           # convention), no longer installing Qt that way here.
           export QMAKE="$(which qmake6 2>/dev/null || which qmake)"
+          # PureRef import uses Qt's SQLite driver, loaded at runtime.
+          QT_PLUGINS_DIR="$($QMAKE -query QT_INSTALL_PLUGINS)"
+          install -Dm755 "$QT_PLUGINS_DIR/sqldrivers/libqsqlite.so" \
+            AppDir/usr/plugins/sqldrivers/libqsqlite.so
           # FUSE-mounting an AppImage is unreliable in GH-hosted CI
           # containers - extract-and-run sidesteps that entirely, at the
           # cost of a bit of startup time (irrelevant here, this only

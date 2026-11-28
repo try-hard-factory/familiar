@@ -224,6 +224,9 @@ ActionRegistry build_registry()
     // ── File ──────────────────────────────────────────────────────────────────
     r.add(A::make("new_scene", "New Scene", "on_action_new_scene", {"Ctrl+E"}));
     r.add(A::make("open", "Open", "on_action_open", {"Ctrl+O"}));
+    r.add(A::make("import_pureref",
+                  "Import PureRef Project...",
+                  "on_action_import_pureref"));
     r.add(A::make("save",
                   "Save",
                   "on_action_save",
