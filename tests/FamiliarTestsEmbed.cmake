@@ -23,6 +23,12 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_checkbox_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_spinbox_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/flat_combobox_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/file_browser_dialog_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/raw_import_dialog_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/restore_defaults_dialog_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/telemetry_consent_dialog_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/help_dialog_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/widgets/save_all_dialog_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/setting_row_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/setting_descriptions_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/widgets/dialog_style_test.cpp
@@ -39,6 +45,7 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/actions/action_registry_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/gif_frame_count_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/items/color_gamut_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/pixmap_item_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/rotation_normalization_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/items/transform_commands_test.cpp
@@ -47,6 +54,8 @@ list(APPEND FamiliarTestsSrc
     ${CMAKE_CURRENT_LIST_DIR}/io/export_snapshot_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/scene_export_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/import_session_settings_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/io/image_import_session_test.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/ui/settings_window_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/fml_deferred_encode_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/import_lossless_test.cpp
     ${CMAKE_CURRENT_LIST_DIR}/io/repaired_project_backup_test.cpp

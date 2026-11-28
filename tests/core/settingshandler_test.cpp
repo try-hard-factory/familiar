@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 
 // SettingsHandler owns the single settings.json document (see its own
@@ -263,6 +264,83 @@ TEST(SettingsHandlerTest, ImportFromMissingFileFails)
     auto* h = SettingsHandler::get_instance();
     EXPECT_FALSE(h->import_settings_from(
         QStringLiteral("/nonexistent/path/does-not-exist.json")));
+}
+
+TEST(SettingsHandlerTest, MalformedImportLeavesCurrentSettingsIntact)
+{
+    auto* h = SettingsHandler::get_instance();
+    const QString group = QStringLiteral("MalformedImportTest");
+    h->set_json_value(group, QStringLiteral("value"), 17);
+    const auto cleanup = qScopeGuard([&] { h->remove_json_group(group); });
+
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString path = dir.filePath(QStringLiteral("broken.json"));
+    QFile file(path);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    ASSERT_EQ(file.write("{not json}"), 10);
+    file.close();
+
+    EXPECT_FALSE(h->import_settings_from(path));
+    EXPECT_EQ(h->json_value(group, QStringLiteral("value")).toInt(), 17);
+}
+
+TEST(SettingsHandlerTest, OlderSettingsSchemaIsNormalizedOnImport)
+{
+    auto* h = SettingsHandler::get_instance();
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString before = dir.filePath(QStringLiteral("before.json"));
+    ASSERT_TRUE(h->export_settings_to(before));
+    const auto restore = qScopeGuard([&] { h->import_settings_from(before); });
+
+    const QString input = dir.filePath(QStringLiteral("old.json"));
+    QFile file(input);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    const QJsonObject old{{QStringLiteral("schemaVersion"), 0},
+                          {QStringLiteral("TestGroup"),
+                           QJsonObject{{QStringLiteral("value"), 42}}}};
+    ASSERT_GT(file.write(QJsonDocument(old).toJson()), 0);
+    file.close();
+    ASSERT_TRUE(h->import_settings_from(input));
+
+    const QString output = dir.filePath(QStringLiteral("normalized.json"));
+    ASSERT_TRUE(h->export_settings_to(output));
+    QFile normalized(output);
+    ASSERT_TRUE(normalized.open(QIODevice::ReadOnly));
+    const QJsonObject saved = QJsonDocument::fromJson(normalized.readAll()).object();
+    EXPECT_EQ(saved.value(QStringLiteral("schemaVersion")).toInt(), 1);
+    EXPECT_EQ(saved.value(QStringLiteral("TestGroup"))
+                  .toObject().value(QStringLiteral("value")).toInt(), 42);
+}
+
+TEST(SettingsHandlerTest, NewerSettingsSchemaLoadsBestEffort)
+{
+    auto* h = SettingsHandler::get_instance();
+    QTemporaryDir dir;
+    ASSERT_TRUE(dir.isValid());
+    const QString before = dir.filePath(QStringLiteral("before.json"));
+    ASSERT_TRUE(h->export_settings_to(before));
+    const auto restore = qScopeGuard([&] { h->import_settings_from(before); });
+
+    const QString input = dir.filePath(QStringLiteral("future.json"));
+    QFile file(input);
+    ASSERT_TRUE(file.open(QIODevice::WriteOnly));
+    const QJsonObject future{{QStringLiteral("schemaVersion"), 99},
+                             {QStringLiteral("TestGroup"),
+                              QJsonObject{{QStringLiteral("value"), 42}}}};
+    ASSERT_GT(file.write(QJsonDocument(future).toJson()), 0);
+    file.close();
+    ASSERT_TRUE(h->import_settings_from(input));
+
+    const QString output = dir.filePath(QStringLiteral("preserved.json"));
+    ASSERT_TRUE(h->export_settings_to(output));
+    QFile preserved(output);
+    ASSERT_TRUE(preserved.open(QIODevice::ReadOnly));
+    const QJsonObject saved = QJsonDocument::fromJson(preserved.readAll()).object();
+    EXPECT_EQ(saved.value(QStringLiteral("schemaVersion")).toInt(), 99);
+    EXPECT_EQ(saved.value(QStringLiteral("TestGroup"))
+                  .toObject().value(QStringLiteral("value")).toInt(), 42);
 }
 
 TEST(SettingsHandlerTest, ExportToUnwritablePathFails)

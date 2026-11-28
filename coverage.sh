@@ -90,7 +90,11 @@ DoOrDie "Build familiar (coverage instrumentation)"
 # accumulates across runs of the same binary otherwise).
 find "$BUILD_DIR" -name '*.gcda' -delete
 
-"${BUILD_DIR}/familiar" -t
+# This one benchmark compares wall-clock timings of two scene sizes. gcov
+# instrumentation changes those timings, so it belongs in the normal test
+# run rather than in the coverage run.
+"${BUILD_DIR}/familiar" -t \
+    --gtest_filter='-GroupOwnershipTest.OnChangeDoesNotGrowWithTheNumberOfGroups'
 DoOrDie "Run familiar's GoogleTest suite (familiar -t)"
 
 lcov --capture \
@@ -102,17 +106,12 @@ lcov --capture \
      --output-file "${REPORTS_DIR}/familiar_tests.info"
 DoOrDie "Generate coverage report"
 
-lcov --remove "${REPORTS_DIR}/familiar_tests.info" \
-     '/usr/*' \
-     '/opt/*' \
-     "${SCRIPT_DIR}/include/quill/*" \
-     "${SCRIPT_DIR}/include/miniz/*" \
-     "${SCRIPT_DIR}/include/libraw/*" \
-     "${BUILD_DIR}/*" \
+lcov --extract "${REPORTS_DIR}/familiar_tests.info" \
+     "${SCRIPT_DIR}/src/*" \
      --rc branch_coverage=1 \
      --ignore-errors mismatch,negative,unused,empty,inconsistent \
      --output-file "${REPORTS_DIR}/familiar_tests.filtered.info"
-DoOrDie "Filter out system/vendored/generated code"
+DoOrDie "Keep only application source code (exclude tests and dependencies)"
 
 genhtml "${REPORTS_DIR}/familiar_tests.filtered.info" \
         --output-directory "${REPORTS_DIR}/html" \

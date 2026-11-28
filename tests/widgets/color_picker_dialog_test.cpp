@@ -4,6 +4,21 @@
 
 #include <QSignalSpy>
 #include <QTest>
+#include <QLineEdit>
+
+namespace {
+
+QLineEdit* hex_field(ColorPickerDialog& dialog)
+{
+    for (auto* field : dialog.findChildren<QLineEdit*>()) {
+        if (field->placeholderText() == QStringLiteral("RRGGBB")) {
+            return field;
+        }
+    }
+    return nullptr;
+}
+
+} // namespace
 
 // SvPicker/HueSlider/AlphaSlider/SwatchRow all convert a mouse position
 // into a color value via a private pick_()/swatchAt_() helper only
@@ -14,10 +29,8 @@
 // the observable contract). show()+qWaitForWindowExposed() first - see
 // tests/widgets/flat_checkbox_test.cpp's own comment for why.
 //
-// ColorPickerDialog itself (the QDialog wiring these four together) and
-// showColorPickerDialog() aren't exercised here - modal exec(), not
-// worth automating just to re-check wiring the pieces below already
-// cover individually.
+// The dialog's field synchronization can be exercised without opening
+// its modal event loop; show_color_picker_dialog() itself remains manual.
 
 TEST(SvPickerTest, MousePressComputesSaturationAndValueFromPosition)
 {
@@ -141,4 +154,64 @@ TEST(SwatchRowTest, WithNonePrependsTransparentSwatch)
 
     ASSERT_EQ(spy.count(), 1);
     EXPECT_EQ(spy.first().at(0).value<QColor>(), QColor(0, 0, 0, 0));
+}
+
+TEST(ColorPickerDialogTest, HexEditChangesRgbWithoutDiscardingAlpha)
+{
+    ColorPickerDialog dialog(nullptr, QColor(20, 30, 40, 80),
+                             QStringLiteral("Color"));
+    auto* hex = hex_field(dialog);
+    ASSERT_NE(hex, nullptr);
+    QSignalSpy changed(&dialog, &ColorPickerDialog::color_changed);
+
+    hex->setText(QStringLiteral("AABBCC"));
+    ASSERT_TRUE(QMetaObject::invokeMethod(hex, "editingFinished"));
+
+    EXPECT_EQ(dialog.selected_color(), QColor(0xAA, 0xBB, 0xCC, 80));
+    EXPECT_EQ(changed.count(), 1);
+}
+
+TEST(ColorPickerDialogTest, InvalidHexEditLeavesCurrentColorAlone)
+{
+    const QColor initial(20, 30, 40, 80);
+    ColorPickerDialog dialog(nullptr, initial, QStringLiteral("Color"));
+    auto* hex = hex_field(dialog);
+    ASSERT_NE(hex, nullptr);
+    QSignalSpy changed(&dialog, &ColorPickerDialog::color_changed);
+
+    hex->setText(QStringLiteral("no-color"));
+    ASSERT_TRUE(QMetaObject::invokeMethod(hex, "editingFinished"));
+
+    EXPECT_EQ(dialog.selected_color(), initial);
+    EXPECT_EQ(changed.count(), 0);
+}
+
+TEST(ColorPickerDialogTest, OpacityPercentageIsClampedToFullAlpha)
+{
+    ColorPickerDialog dialog(nullptr, QColor(20, 30, 40, 80),
+                             QStringLiteral("Color"));
+    QLineEdit* percentage = nullptr;
+    for (auto* field : dialog.findChildren<QLineEdit*>()) {
+        if (field != hex_field(dialog)) {
+            percentage = field;
+        }
+    }
+    ASSERT_NE(percentage, nullptr);
+
+    percentage->setText(QStringLiteral("120"));
+    ASSERT_TRUE(QMetaObject::invokeMethod(percentage, "editingFinished"));
+    EXPECT_EQ(dialog.selected_color().alpha(), 255);
+
+    percentage->setText(QStringLiteral("invalid"));
+    ASSERT_TRUE(QMetaObject::invokeMethod(percentage, "editingFinished"));
+    EXPECT_EQ(dialog.selected_color().alpha(), 255);
+}
+
+TEST(ColorPickerDialogTest, NoAlphaModeAlwaysStartsOpaque)
+{
+    ColorPickerDialog dialog(nullptr, QColor(20, 30, 40, 80),
+                             QStringLiteral("Color"), /*withAlpha=*/false);
+
+    EXPECT_EQ(dialog.selected_color().alpha(), 255);
+    EXPECT_EQ(dialog.findChildren<AlphaSlider*>().size(), 0);
 }
